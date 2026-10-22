@@ -220,6 +220,54 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .route.drawing {
     animation: none;
+
+    /* ===== 新版单位图标 ===== */
+
+/* 空心图标不填充背景，内部显示中心圆点。 */
+.unit .unit-icon.is-hollow .unit-symbol {
+  fill: none;
+}
+
+/* 实心图标使用阵营颜色。 */
+.unit .unit-icon.is-filled .unit-symbol {
+  fill: currentColor;
+}
+
+/* 水下单位只将轮廓改为虚线。 */
+.unit .unit-icon.is-underwater .unit-symbol {
+  stroke-dasharray: 4 3;
+}
+
+/* 空心图标内部的小圆点。 */
+.unit-center-dot {
+  fill: currentColor;
+  stroke: none;
+  pointer-events: none;
+}
+
+/* 覆盖旧版“选中后填满图标”的规则。 */
+.unit.selected .unit-icon.is-hollow .unit-symbol {
+  fill: none;
+}
+
+.unit.selected .unit-icon.is-filled .unit-symbol {
+  fill: currentColor;
+}
+
+/* 选中时只加强边框与名称。 */
+.unit.selected .unit-symbol {
+  stroke-width: 2.8;
+}
+
+.unit.selected text {
+  font-weight: 800;
+}
+
+/* 键盘聚焦提示。 */
+.unit:focus-visible .unit-symbol {
+  stroke-width: 2.8;
+}
+
     stroke-dashoffset: 0;
   }
 }
