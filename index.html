@@ -1,48 +1,233 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>AMAシミュレーション計算ツール</title>
-  <link rel="stylesheet" href="./css/style.css">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f6f8;
+      color: #263238;
+      font-family: sans-serif;
+      line-height: 1.7;
+    }
+
+    .site-header,
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(22px, 4vw, 32px);
+    }
+
+    .navigation {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .navigation button {
+      padding: 10px 16px;
+      border: 1px solid #cbd5df;
+      border-radius: 8px;
+      background: white;
+      color: #263238;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .navigation button:hover {
+      background: #edf3f9;
+    }
+
+    .navigation button.active {
+      background: #245ea8;
+      border-color: #245ea8;
+      color: white;
+    }
+
+    .navigation button:focus-visible {
+      outline: 3px solid #77a9e7;
+      outline-offset: 3px;
+    }
+
+    .panel {
+      padding: 20px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid #e0e5ea;
+    }
+
+    .panel h2 {
+      margin-top: 0;
+    }
+
+    .muted {
+      color: #647180;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .map-frame {
+      display: block;
+      width: 100%;
+      height: 850px;
+      border: 1px solid #20364b;
+      border-radius: 8px;
+      background: #050a12;
+    }
+
+    a {
+      color: #245ea8;
+    }
+
+    @media (max-width: 600px) {
+      .site-header,
+      main {
+        padding: 12px;
+      }
+
+      .panel {
+        padding: 12px;
+      }
+
+      .map-frame {
+        height: 780px;
+      }
+    }
+  </style>
 </head>
+
 <body>
   <header class="site-header">
     <h1>AMAシミュレーション計算ツール</h1>
-    <p>図鑑と参戦状況を共有します。戦闘計算は現時点では行いません。</p>
+    <p>
+      海戦・空戦・陸戦の計算、ユニット図鑑、
+      戦術マップをまとめたシミュレーションツールです。
+    </p>
   </header>
 
   <main>
-    <p id="status" role="status">ユニットデータを読み込み中……</p>
+    <nav class="navigation" aria-label="機能選択">
+      <button type="button" data-view="navy-calculator">
+        海戦計算
+      </button>
 
-    <nav class="navigation" aria-label="機能モジュール">
-      <button type="button" data-view="navy-calculator">海戦計算</button>
-      <button type="button" data-view="air-calculator">空戦計算</button>
-      <button type="button" data-view="army-calculator">陸戦計算</button>
-      <button type="button" data-view="navy-catalog">海戦図鑑</button>
-      <button type="button" data-view="air-catalog">空戦図鑑</button>
-      <button type="button" data-view="army-catalog">陸戦図鑑</button>
+      <button type="button" data-view="air-calculator">
+        空戦計算
+      </button>
+
+      <button type="button" data-view="army-calculator">
+        陸戦計算
+      </button>
+
+      <button type="button" data-view="navy-catalog">
+        海軍図鑑
+      </button>
+
+      <button type="button" data-view="air-catalog">
+        空軍図鑑
+      </button>
+
+      <button type="button" data-view="army-catalog">
+        陸軍図鑑
+      </button>
+
+      <button type="button" data-view="tactical-map">
+        戦術マップ
+      </button>
     </nav>
 
     <section class="panel">
-      <h2 id="view-title">機能モジュール</h2>
-      <div id="view-content"></div>
-    </section>
+      <h2 id="module-title">海戦計算</h2>
 
-    <section class="panel">
-      <h2>現在の参戦ユニット</h2>
-      <p class="muted">
-        ここでの状態は6つのモジュールで共有されます。
-       在の耐久値を変更しても、図鑑の基本データには影響しません。
-      </p>
-      <p id="storage-status" class="muted"></p>
-      <div id="battle-content"></div>
-      <button type="button" id="clear-battle" class="danger">
-        現在のシミュレーションをクリア
-      </button>
+      <div id="placeholder">
+        <p>このモジュールは準備中です。</p>
+        <p class="muted">
+          今後、ユニットデータと計算ルールを追加します。
+        </p>
+      </div>
+
+      <div id="map-module" hidden>
+        <p class="muted">
+          現在は表示と操作のための試作版です。
+          図鑑・戦闘計算との連携はまだ実装されていません。
+        </p>
+
+        <p>
+          <a
+            href="./tactical-map/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            戦術マップを別タブで開く
+          </a>
+        </p>
+
+        <iframe
+          id="map-frame"
+          class="map-frame"
+          title="戦術マップ"
+          src="./tactical-map/"
+          loading="lazy"
+        ></iframe>
+      </div>
     </section>
   </main>
 
-  <script type="module" src="./js/app.js"></script>
+  <script>
+    const moduleNames = {
+      "navy-calculator": "海戦計算",
+      "air-calculator": "空戦計算",
+      "army-calculator": "陸戦計算",
+      "navy-catalog": "海軍図鑑",
+      "air-catalog": "空軍図鑑",
+      "army-catalog": "陸軍図鑑",
+      "tactical-map": "戦術マップ"
+    };
+
+    const buttons = document.querySelectorAll("[data-view]");
+    const title = document.getElementById("module-title");
+    const placeholder = document.getElementById("placeholder");
+    const mapModule = document.getElementById("map-module");
+
+    function showModule(view) {
+      title.textContent = moduleNames[view];
+
+      const isMap = view === "tactical-map";
+
+      placeholder.hidden = isMap;
+      mapModule.hidden = !isMap;
+
+      for (const button of buttons) {
+        const active = button.dataset.view === view;
+
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      }
+    }
+
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        showModule(button.dataset.view);
+      });
+    }
+
+    showModule("navy-calculator");
+  </script>
 </body>
 </html>
