@@ -221,31 +221,31 @@ button:focus-visible {
   .route.drawing {
     animation: none;
 
-    /* ===== 新版单位图标 ===== */
+    /* ===== 新しいユニットアイコン ===== */
 
-/* 空心图标不填充背景，内部显示中心圆点。 */
+/* 輪郭のみのアイコンは背景を塗りつぶさず、内部に中心点を表示する。 */
 .unit .unit-icon.is-hollow .unit-symbol {
   fill: none;
 }
 
-/* 实心图标使用阵营颜色。 */
+/* 塗りつぶし型のアイコンには陣営色を使用する。 */
 .unit .unit-icon.is-filled .unit-symbol {
   fill: currentColor;
 }
 
-/* 水下单位只将轮廓改为虚线。 */
+/* 水中ユニットは輪郭線のみを破線にする。 */
 .unit .unit-icon.is-underwater .unit-symbol {
   stroke-dasharray: 4 3;
 }
 
-/* 空心图标内部的小圆点。 */
+/* 輪郭のみのアイコン内に表示する小さな中心点。 */
 .unit-center-dot {
   fill: currentColor;
   stroke: none;
   pointer-events: none;
 }
 
-/* 覆盖旧版“选中后填满图标”的规则。 */
+/*  旧仕様の「選択時にアイコンを塗りつぶす」ルールを廃止する。 */
 .unit.selected .unit-icon.is-hollow .unit-symbol {
   fill: none;
 }
@@ -254,7 +254,7 @@ button:focus-visible {
   fill: currentColor;
 }
 
-/* 选中时只加强边框与名称。 */
+/* 選択時はアイコンの輪郭線とユニット名のみを強調する。 */
 .unit.selected .unit-symbol {
   stroke-width: 2.8;
 }
@@ -263,11 +263,42 @@ button:focus-visible {
   font-weight: 800;
 }
 
-/* 键盘聚焦提示。 */
+/* キーボードフォーカス表示。 */
 .unit:focus-visible .unit-symbol {
   stroke-width: 2.8;
 }
 
     stroke-dashoffset: 0;
   }
+}
+
+/* ===== 砲弾、魚雷、誘導弾、レーザー ===== */
+
+.projectile {
+  color: #b6eeff;
+  pointer-events: none;
+}
+
+.projectile.enemy {
+  color: #ffb07b;
+}
+
+.projectile-shell {
+  fill: currentColor;
+  stroke: none;
+  filter: url(#glow);
+}
+
+.projectile-rod {
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: url(#glow);
+}
+
+.projectile-laser {
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  filter: url(#glow);
 }
