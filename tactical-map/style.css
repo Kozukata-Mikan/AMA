@@ -302,3 +302,49 @@ button:focus-visible {
   stroke-linecap: round;
   filter: url(#glow);
 }
+
+/* ===== 空间显示修正 ===== */
+
+/* 水下轮廓：更粗、更明显的间隔，减弱泛光。 */
+.unit .unit-icon.is-underwater .unit-symbol {
+  stroke-dasharray: 6 5;
+  stroke-width: 2.2;
+  stroke-linecap: butt;
+  filter: none;
+}
+
+/* 明确覆盖旧版选中填充规则。 */
+.unit .unit-icon.is-hollow .unit-symbol,
+.unit.selected .unit-icon.is-hollow .unit-symbol {
+  fill: none;
+}
+
+.unit .unit-icon.is-filled .unit-symbol,
+.unit.selected .unit-icon.is-filled .unit-symbol {
+  fill: currentColor;
+}
+
+/* 航空机到海平面的高度参考线。 */
+.altitude-reference {
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.65;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.altitude-foot {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.65;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.unit .altitude-label {
+  font-size: 10px;
+  font-weight: 400;
+  pointer-events: none;
+}
