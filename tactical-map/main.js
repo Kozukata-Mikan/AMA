@@ -179,8 +179,8 @@ const units = [
     filled: false,
     underwater: false,
 
-    x: -110,
-    y: -30,
+    x: -220,
+    y: -100,
     labelHeight: 65,
     description: "五角形の艦船アイコン。輪郭のみで表示し、中央に小さな点があります。"
   },
@@ -193,6 +193,7 @@ const units = [
     branch: "air",
     sizeLevel: 3,
     heading: 45,
+    altitude: 80,
     filled: false,
 
     x: -35,
@@ -231,6 +232,7 @@ const units = [
 
     x: -190,
     y: 100,
+    depth: 12,
     labelHeight: 55,
     description: "水中ユニット。艦船アイコンの輪郭を破線で表示します。"
   },
@@ -528,17 +530,136 @@ function selectUnit(unit, group) {
   group.classList.add("selected");
 
   document.querySelector("#unitName").textContent = unit.name;
-  document.querySelector("#unitDescription").textContent =
-    unit.description;
+  const spatial = getUnitSpatialState(unit);
+
+document.querySelector("#unitDescription").textContent = [
+  unit.description || "",
+  spatial.valid ? spatial.note : spatial.reason
+].filter(Boolean).join(" ");
+
 }
+
+// 返回单位当前所在位置的显示高度与合法性。
+// 后续编辑器和移动系统也应调用同一个函数。
+function getUnitSpatialState(unit) {
+  const x = Number(unit.x);
+  const y = Number(unit.y);
+
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return {
+      valid: false,
+      reason: "地图坐标必须是有效数字。"
+    };
+  }
+
+  const terrain = terrainHeight(x, y);
+  const ground = Math.max(0, terrain);
+
+  switch (unit.branch) {
+    case "navy": {
+      if (terrain > 0) {
+        return {
+          valid: false,
+          reason: "海军单位不能放置在陆地区域。"
+        };
+      }
+
+      if (unit.underwater === true) {
+        const depth = Number(unit.depth ?? 12);
+
+        if (!Number.isFinite(depth) || depth <= 0) {
+          return {
+            valid: false,
+            reason: "水下深度必须大于0。"
+          };
+        }
+
+        return {
+          valid: true,
+          height: -depth,
+          ground: 0,
+          note: `水下深度：${depth} 地图高度单位`
+        };
+      }
+
+      return {
+        valid: true,
+        height: 0,
+        ground: 0,
+        note: "位于海平面"
+      };
+    }
+
+    case "army":
+      if (terrain <= 0) {
+        return {
+          valid: false,
+          reason: "陆军单位不能放置在海域。"
+        };
+      }
+
+      return {
+        valid: true,
+        height: terrain,
+        ground: terrain,
+        note: `地形海拔：${terrain.toFixed(1)} 地图高度单位`
+      };
+
+    case "air": {
+      const altitude = Number(unit.altitude ?? 80);
+
+      if (!Number.isFinite(altitude) || altitude <= ground) {
+        return {
+          valid: false,
+          reason: "航空机海拔必须高于当地地形或海平面。"
+        };
+      }
+
+      return {
+        valid: true,
+        height: altitude,
+        ground,
+        note:
+          `海拔：${altitude} 地图高度单位；` +
+          `离地高度：${(altitude - ground).toFixed(1)}`
+      };
+    }
+
+    default: {
+      const altitude = Number(unit.altitude ?? ground);
+
+      if (!Number.isFinite(altitude)) {
+        return {
+          valid: false,
+          reason: "高度必须是有效数字。"
+        };
+      }
+
+      return {
+        valid: true,
+        height: altitude,
+        ground,
+        note: `海拔：${altitude.toFixed(1)} 地图高度单位`
+      };
+    }
+  }
+}
+
 
 function drawUnits() {
   // 方便以后重新绘制，避免出现重复单位。
   layers.units.replaceChildren();
 
   for (const unit of units) {
-    const height = Math.max(0, terrainHeight(unit.x, unit.y));
-    const position = project(unit.x, unit.y, height);
+   const spatial = getUnitSpatialState(unit);
+
+if (!spatial.valid) {
+  console.warn(`${unit.name}：${spatial.reason}`);
+  continue;
+}
+
+const position = project(unit.x, unit.y, spatial.height);
+
     const labelHeight = unit.labelHeight ?? 65;
 
     const group = createSVG("g", {
@@ -548,6 +669,37 @@ function drawUnits() {
       role: "button",
       "aria-label": unit.name
     }, layers.units);
+
+    // 航空机：画出到海平面的高度参考线。
+// 这条线与单位名称的定位线是两回事。
+if (unit.branch === "air") {
+  const seaPosition = project(unit.x, unit.y, 0);
+  const seaOffset = seaPosition.y - position.y;
+
+  createSVG("line", {
+    x1: 0,
+    y1: 0,
+    x2: 0,
+    y2: seaOffset,
+    class: "altitude-reference"
+  }, group);
+
+  createSVG("circle", {
+    cx: 0,
+    cy: seaOffset,
+    r: 3,
+    class: "altitude-foot"
+  }, group);
+
+  const altitudeLabel = createSVG("text", {
+    x: 8,
+    y: seaOffset / 2,
+    class: "altitude-label"
+  }, group);
+
+  altitudeLabel.textContent =
+    `高度 ${spatial.height} u`;
+}
 
     // 定位线：保持竖直，不跟随图标旋转。
     createSVG("line", {
