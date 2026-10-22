@@ -170,7 +170,7 @@ function drawTerrain() {
 const units = [
   {
     id: "ally-01",
-    name: "海军演示单位",
+    name: "海軍サンプルユニット",
     side: "ally",
 
     branch: "navy",
@@ -182,12 +182,12 @@ const units = [
     x: -110,
     y: -30,
     labelHeight: 65,
-    description: "五边形舰船，空心轮廓，中心有圆点。"
+    description: "五角形の艦船アイコン。輪郭のみで表示し、中央に小さな点があります。"
   },
 
   {
     id: "ally-02",
-    name: "空军演示单位",
+    name: "空軍サンプルユニット",
     side: "ally",
 
     branch: "air",
@@ -198,12 +198,12 @@ const units = [
     x: -35,
     y: 55,
     labelHeight: 90,
-    description: "3级航空机，尖头角为90度。"
+    description: "サイズレベル3の航空機アイコン。先端の角度は90度です。"
   },
 
   {
     id: "enemy-01",
-    name: "陆军演示单位",
+    name: "陸軍サンプルユニット",
     side: "enemy",
 
     branch: "army",
@@ -215,12 +215,12 @@ const units = [
     x: 95,
     y: 20,
     labelHeight: 75,
-    description: "陆军轮廓，上部有3个凸块。"
+    description: "上部に3つの突起がある陸軍アイコンです。"
   },
 
   {
     id: "ally-submarine",
-    name: "水下演示单位",
+    name: "水中サンプルユニット",
     side: "ally",
 
     branch: "navy",
@@ -232,12 +232,12 @@ const units = [
     x: -190,
     y: 100,
     labelHeight: 55,
-    description: "水下单位，舰船轮廓使用虚线。"
+    description: "水中ユニット。艦船アイコンの輪郭を破線で表示します。"
   },
 
   {
     id: "enemy-special",
-    name: "特殊演示单位",
+    name: "特殊サンプルユニット",
     side: "enemy",
 
     branch: "special",
@@ -248,7 +248,7 @@ const units = [
     x: 170,
     y: -90,
     labelHeight: 60,
-    description: "特殊单位，使用实心菱形。"
+    description: "特殊ユニット。塗りつぶした菱形で表示します。"
   }
 ];
 
@@ -690,7 +690,7 @@ function drawProjectile({
   const supportedKinds = ["shell", "torpedo", "missile", "laser"];
 
   if (!supportedKinds.includes(kind)) {
-    throw new Error(`未知的射击效果类型：${kind}`);
+    throw new Error(`不明な射撃エフェクトの種類です：${kind}`);
   }
 
   const position = project(x, y, height);
@@ -759,5 +759,39 @@ drawUnits();
 updateView();
 playRoute();
 
+// 临时射击效果演示。
+// 后续有正式动画后，可以删除这四次调用。
+
+drawProjectile({
+  kind: "shell",
+  x: -210,
+  y: -110,
+  side: "ally"
+});
+
+drawProjectile({
+  kind: "torpedo",
+  x: -150,
+  y: -110,
+  heading: 90,
+  side: "ally"
+});
+
+drawProjectile({
+  kind: "missile",
+  x: -90,
+  y: -110,
+  heading: 45,
+  side: "enemy"
+});
+
+drawProjectile({
+  kind: "laser",
+  x: -30,
+  y: -110,
+  heading: 90,
+  length: 70,
+  side: "ally"
+});
 
 
