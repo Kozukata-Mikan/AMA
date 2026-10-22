@@ -46,14 +46,18 @@ function pathFromPoints(points) {
 function terrainHeight(x, y) {
   const mountainA =
     65 * Math.exp(
-      -((x + 80) / 105) ** 2
-      -((y + 15) / 80) ** 2
+      -(
+        ((x + 80) / 105) ** 2 +
+        ((y + 15) / 80) ** 2
+      )
     );
 
   const mountainB =
     60 * Math.exp(
-      -((x - 75) / 95) ** 2
-      -((y - 25) / 100) ** 2
+      -(
+        ((x - 75) / 95) ** 2 +
+        ((y - 25) / 100) ** 2
+      )
     );
 
   const detail =
