@@ -391,11 +391,93 @@ function getUnitIconPath(unit) {
   }
 }
 
-// 在单位容器里绘制可旋转、可缩放的图标。
-// 名称与定位线不放在这个容器里，因此不会旋转。
-function drawUnitIcon(unit, parent) {
+// 将图标的局部坐标转换到地图平面，再经过投影。
+// 当前让整个图标位于同一个高度平面。
+function projectIconPoint(unit, localX, localY) {
   const scale = getIconScale(unit.sizeLevel);
-  const rotation = getHeadingRotation(unit.heading);
+  const heading = Number(unit.heading) || 0;
+  const angle = heading * Math.PI / 180;
+
+  const x = localX * scale;
+  const y = localY * scale;
+
+  // 在地图平面旋转，而不是在屏幕上旋转。
+  const mapX = x * Math.cos(angle) - y * Math.sin(angle);
+  const mapY = x * Math.sin(angle) + y * Math.cos(angle);
+
+  // 这里只需要投影后的相对偏移。
+  const origin = project(0, 0, 0);
+  const point = project(mapX, mapY, 0);
+
+  return {
+    x: point.x - origin.x,
+    y: point.y - origin.y
+  };
+}
+
+// 当前四种形状只使用 M、L、Z 指令。
+// 将这些形状的每个顶点转换为投影后的顶点。
+function projectIconPath(unit, pathData) {
+  const tokens = pathData.match(
+    /[MLZ]|[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?/gi
+  );
+
+  if (!tokens) return "";
+
+  const result = [];
+  let index = 0;
+
+  while (index < tokens.length) {
+    const command = tokens[index++].toUpperCase();
+
+    if (command === "Z") {
+      result.push("Z");
+      continue;
+    }
+
+    if (command !== "M" && command !== "L") {
+      throw new Error("图标路径暂时只支持 M、L、Z 指令。");
+    }
+
+    const x = Number(tokens[index++]);
+    const y = Number(tokens[index++]);
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new Error("图标顶点数据不正确。");
+    }
+
+    const point = projectIconPoint(unit, x, y);
+
+    result.push(
+      `${command} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`
+    );
+  }
+
+  return result.join(" ");
+}
+
+// 圆点也经过相同投影，会呈现为倾斜平面上的椭圆。
+function makeProjectedCenterDot(unit) {
+  const centerY = unit.branch === "army" ? 6 : 0;
+  const radius = UNIT_ICON_RULES.centerDotRadius;
+  const points = [];
+
+  for (let index = 0; index < 24; index++) {
+    const angle = index * Math.PI * 2 / 24;
+
+    points.push(
+      projectIconPoint(
+        unit,
+        Math.cos(angle) * radius,
+        centerY + Math.sin(angle) * radius
+      )
+    );
+  }
+
+  return pathFromPoints(points) + " Z";
+}
+
+function drawUnitIcon(unit, parent) {
   const filled = unit.filled === true;
   const underwater =
     unit.branch === "navy" && unit.underwater === true;
@@ -405,15 +487,24 @@ function drawUnitIcon(unit, parent) {
       "unit-icon",
       filled ? "is-filled" : "is-hollow",
       underwater ? "is-underwater" : ""
-    ].filter(Boolean).join(" "),
-
-    transform: `rotate(${rotation}) scale(${scale})`
+    ].filter(Boolean).join(" ")
   }, parent);
 
   createSVG("path", {
-    d: getUnitIconPath(unit),
+    d: projectIconPath(unit, getUnitIconPath(unit)),
     class: "unit-symbol"
   }, icon);
+
+  if (!filled) {
+    createSVG("path", {
+      d: makeProjectedCenterDot(unit),
+      class: "unit-center-dot"
+    }, icon);
+  }
+
+  return getIconScale(unit.sizeLevel);
+}
+
 
   // 空心单位的内部标记。
   if (!filled) {
