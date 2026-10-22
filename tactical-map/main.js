@@ -667,6 +667,90 @@ document.querySelector("#resetView").addEventListener("click", () => {
 
 document.querySelector("#replay").addEventListener("click", playRoute);
 
+// ===== 射击效果绘制接口 =====
+// 当前只负责绘制静态效果，不负责移动、命中或伤害。
+const PROJECTILE_RULES = {
+  shellRadius: 2.5,
+  rodLength: 14,
+  rodWidth: 3,
+  laserLength: 100,
+  laserWidth: 1.5
+};
+
+function drawProjectile({
+  kind = "shell",
+  x = 0,
+  y = 0,
+  height = 0,
+  heading = 0,
+  side = "ally",
+  size = 1,
+  length = PROJECTILE_RULES.laserLength
+} = {}) {
+  const supportedKinds = ["shell", "torpedo", "missile", "laser"];
+
+  if (!supportedKinds.includes(kind)) {
+    throw new Error(`未知的射击效果类型：${kind}`);
+  }
+
+  const position = project(x, y, height);
+  const rotation = getHeadingRotation(heading);
+
+  const numericSize = Number(size);
+  const effectScale = Number.isFinite(numericSize)
+    ? Math.max(0.1, numericSize)
+    : 1;
+
+  const group = createSVG("g", {
+    class: `projectile ${side} projectile-${kind}`,
+    transform:
+      `translate(${position.x} ${position.y}) ` +
+      `rotate(${rotation}) scale(${effectScale})`
+  }, layers.routes);
+
+  switch (kind) {
+    case "shell":
+      createSVG("circle", {
+        cx: 0,
+        cy: 0,
+        r: PROJECTILE_RULES.shellRadius,
+        class: "projectile-shell"
+      }, group);
+      break;
+
+    case "torpedo":
+    case "missile":
+      createSVG("line", {
+        x1: 0,
+        y1: PROJECTILE_RULES.rodLength / 2,
+        x2: 0,
+        y2: -PROJECTILE_RULES.rodLength / 2,
+        class: "projectile-rod"
+      }, group);
+      break;
+
+    case "laser": {
+      const numericLength = Number(length);
+      const rayLength = Number.isFinite(numericLength)
+        ? Math.max(0, numericLength)
+        : PROJECTILE_RULES.laserLength;
+
+      createSVG("line", {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: -rayLength,
+        class: "projectile-laser"
+      }, group);
+      break;
+    }
+  }
+
+  // 以后动画或命中处理可以操作、删除这个元素。
+  return group;
+}
+
+
 // 起動順序
 drawGrid();
 drawTerrain();
