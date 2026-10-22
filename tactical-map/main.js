@@ -170,32 +170,264 @@ function drawTerrain() {
 const units = [
   {
     id: "ally-01",
-    name: "友軍編隊 01",
+    name: "海军演示单位",
     side: "ally",
+
+    branch: "navy",
+    sizeLevel: 2,
+    heading: 0,
+    filled: false,
+    underwater: false,
+
     x: -110,
     y: -30,
     labelHeight: 65,
-    description: "任務：指定航路に沿って中央区域へ接近する。"
+    description: "五边形舰船，空心轮廓，中心有圆点。"
   },
+
   {
     id: "ally-02",
-    name: "友軍編隊 02",
+    name: "空军演示单位",
     side: "ally",
+
+    branch: "air",
+    sizeLevel: 3,
+    heading: 45,
+    filled: false,
+
     x: -35,
     y: 55,
     labelHeight: 90,
-    description: "任務：待機を維持し、側面支援に備える。"
+    description: "3级航空机，尖头角为90度。"
   },
+
   {
     id: "enemy-01",
-    name: "敵方目標 A",
+    name: "陆军演示单位",
     side: "enemy",
+
+    branch: "army",
+    sizeLevel: 2,
+    heading: 180,
+    filled: false,
+    armyBlocks: 3,
+
     x: 95,
     y: 20,
     labelHeight: 75,
-    description: "主要目標：島東部の敵方施設。"
+    description: "陆军轮廓，上部有3个凸块。"
+  },
+
+  {
+    id: "ally-submarine",
+    name: "水下演示单位",
+    side: "ally",
+
+    branch: "navy",
+    sizeLevel: 2,
+    heading: 90,
+    filled: false,
+    underwater: true,
+
+    x: -190,
+    y: 100,
+    labelHeight: 55,
+    description: "水下单位，舰船轮廓使用虚线。"
+  },
+
+  {
+    id: "enemy-special",
+    name: "特殊演示单位",
+    side: "enemy",
+
+    branch: "special",
+    sizeLevel: 1,
+    heading: 270,
+    filled: true,
+
+    x: 170,
+    y: -90,
+    labelHeight: 60,
+    description: "特殊单位，使用实心菱形。"
   }
 ];
+
+// ===== 图标规则配置 =====
+// 后续调整尺寸与航空机角度，优先修改这里。
+const UNIT_ICON_RULES = {
+  scales: [1, 1.75, 2.5, 3.25, 4],
+  airAngles: [15, 30, 90, 120, 150],
+  baseExtent: 24,
+  centerDotRadius: 1.6
+};
+
+function getSizeLevel(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(5, Math.round(number)));
+}
+
+function getIconScale(sizeLevel) {
+  return UNIT_ICON_RULES.scales[getSizeLevel(sizeLevel) - 1];
+}
+
+// 图标的原始前方是屏幕上方。
+// 将地图朝向转换为屏幕上的旋转角度。
+//
+// 地图朝向：
+//   0度：地图 -y 方向
+//  90度：地图 +x 方向
+// 180度：地图 +y 方向
+// 270度：地图 -x 方向
+function getHeadingRotation(heading = 0) {
+  const degrees = Number(heading);
+  const radians =
+    (Number.isFinite(degrees) ? degrees : 0) * Math.PI / 180;
+
+  const dx = Math.sin(radians);
+  const dy = -Math.cos(radians);
+
+  const origin = project(0, 0, 0);
+  const forward = project(dx, dy, 0);
+
+  const screenAngle = Math.atan2(
+    forward.y - origin.y,
+    forward.x - origin.x
+  );
+
+  return screenAngle * 180 / Math.PI + 90;
+}
+
+// 海军：5个顶点，船头为最上方的尖端。
+function makeNavyPath() {
+  return "M 0 -12 L 8 -4 L 8 12 L -8 12 L -8 -4 Z";
+}
+
+// 空军：保持指定尖头角，并归一化基础外框。
+// 后面的大小倍率负责统一放大。
+function makeAirPath(sizeLevel) {
+  const level = getSizeLevel(sizeLevel);
+  const angle = UNIT_ICON_RULES.airAngles[level - 1];
+  const halfAngle = angle * Math.PI / 360;
+
+  const rawHeight = 1;
+  const rawWidth = 2 * Math.tan(halfAngle);
+
+  const factor =
+    UNIT_ICON_RULES.baseExtent / Math.max(rawWidth, rawHeight);
+
+  const height = rawHeight * factor;
+  const width = rawWidth * factor;
+
+  return [
+    `M 0 ${-height / 2}`,
+    `L ${width / 2} ${height / 2}`,
+    `L ${-width / 2} ${height / 2}`,
+    "Z"
+  ].join(" ");
+}
+
+// 陆军：矩形基座，上方有3、4或5个凸块。
+// 凸块所朝的一侧就是前方。
+function makeArmyPath(blocks = 3) {
+  const count = [3, 4, 5].includes(Number(blocks))
+    ? Number(blocks)
+    : 3;
+
+  const width = 24;
+  const left = -width / 2;
+  const bottom = 12;
+  const shoulder = 0;
+  const top = -12;
+
+  // 凸块之间保留同宽间隔。
+  const segmentWidth = width / (count * 2 - 1);
+
+  let path = `M ${left} ${bottom} L ${left} ${shoulder}`;
+
+  for (let index = 0; index < count; index++) {
+    const blockLeft = left + index * 2 * segmentWidth;
+    const blockRight = blockLeft + segmentWidth;
+
+    path += [
+      ` L ${blockLeft} ${shoulder}`,
+      ` L ${blockLeft} ${top}`,
+      ` L ${blockRight} ${top}`,
+      ` L ${blockRight} ${shoulder}`
+    ].join("");
+
+    if (index < count - 1) {
+      path += ` L ${blockRight + segmentWidth} ${shoulder}`;
+    }
+  }
+
+  path += ` L ${width / 2} ${bottom} Z`;
+
+  return path;
+}
+
+function makeSpecialPath() {
+  return "M 0 -12 L 10 0 L 0 12 L -10 0 Z";
+}
+
+function getUnitIconPath(unit) {
+  switch (unit.branch) {
+    case "navy":
+      return makeNavyPath();
+
+    case "air":
+      return makeAirPath(unit.sizeLevel);
+
+    case "army":
+      return makeArmyPath(unit.armyBlocks);
+
+    case "special":
+    default:
+      return makeSpecialPath();
+  }
+}
+
+// 在单位容器里绘制可旋转、可缩放的图标。
+// 名称与定位线不放在这个容器里，因此不会旋转。
+function drawUnitIcon(unit, parent) {
+  const scale = getIconScale(unit.sizeLevel);
+  const rotation = getHeadingRotation(unit.heading);
+  const filled = unit.filled === true;
+  const underwater =
+    unit.branch === "navy" && unit.underwater === true;
+
+  const icon = createSVG("g", {
+    class: [
+      "unit-icon",
+      filled ? "is-filled" : "is-hollow",
+      underwater ? "is-underwater" : ""
+    ].filter(Boolean).join(" "),
+
+    transform: `rotate(${rotation}) scale(${scale})`
+  }, parent);
+
+  createSVG("path", {
+    d: getUnitIconPath(unit),
+    class: "unit-symbol"
+  }, icon);
+
+  // 空心单位的内部标记。
+  if (!filled) {
+    createSVG("circle", {
+      cx: 0,
+      cy: unit.branch === "army" ? 6 : 0,
+      r: UNIT_ICON_RULES.centerDotRadius,
+      class: "unit-center-dot"
+    }, icon);
+  }
+
+  return scale;
+}
+
 
 function selectUnit(unit, group) {
   document.querySelectorAll(".unit.selected").forEach(element => {
@@ -210,55 +442,67 @@ function selectUnit(unit, group) {
 }
 
 function drawUnits() {
+  // 方便以后重新绘制，避免出现重复单位。
+  layers.units.replaceChildren();
+
   for (const unit of units) {
     const height = Math.max(0, terrainHeight(unit.x, unit.y));
     const position = project(unit.x, unit.y, height);
+    const labelHeight = unit.labelHeight ?? 65;
 
     const group = createSVG("g", {
       class: `unit ${unit.side}`,
-      transform: `translate(${position.x} ${position.y})`
+      transform: `translate(${position.x} ${position.y})`,
+      tabindex: "0",
+      role: "button",
+      "aria-label": unit.name
     }, layers.units);
 
-    // 位置を示す垂直線
+    // 定位线：保持竖直，不跟随图标旋转。
     createSVG("line", {
       x1: 0,
       y1: 0,
       x2: 0,
-      y2: -unit.labelHeight,
+      y2: -labelHeight,
       class: "unit-stem"
     }, group);
 
-    // 地表面の菱形マーカー
-    createSVG("path", {
-      d: "M 0 -5 L 10 0 L 0 5 L -10 0 Z",
-      class: "unit-symbol"
-    }, group);
+    // 军种图标：独立处理形状、朝向和大小。
+    const scale = drawUnitIcon(unit, group);
 
-    // ラベル上端の光点
+    // 名称旁的光点，不是图标内部的小圆点。
     createSVG("circle", {
       cx: 0,
-      cy: -unit.labelHeight,
+      cy: -labelHeight,
       r: 2,
       class: "unit-dot"
     }, group);
 
     const label = createSVG("text", {
       x: 7,
-      y: -unit.labelHeight + 4
+      y: -labelHeight + 4
     }, group);
 
     label.textContent = unit.name;
 
-    // ユニットのクリック判定範囲を広げる
+    // 点击区域随图标等级扩大。
     createSVG("circle", {
       cx: 0,
       cy: 0,
-      r: 17,
+      r: 17 * scale,
       class: "hit-area"
     }, group);
 
     group.addEventListener("click", () => {
       selectUnit(unit, group);
+    });
+
+    // 支持键盘选择。
+    group.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectUnit(unit, group);
+      }
     });
   }
 }
