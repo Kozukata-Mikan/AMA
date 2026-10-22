@@ -1,0 +1,225 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+  background: #050a12;
+  color: #dceaf5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+small {
+  color: #7e9bb2;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 6px 0 0;
+  font-size: 24px;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  border: 1px solid #294259;
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: #101e2c;
+  color: #dceaf5;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #79d5ff;
+  background: #172d40;
+}
+
+button:focus-visible {
+  outline: 2px solid #79d5ff;
+  outline-offset: 3px;
+}
+
+.map-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #20364b;
+  border-radius: 8px;
+  background:
+    radial-gradient(ellipse at 50% 45%, #122336, #060b13 75%);
+}
+
+#map {
+  display: block;
+  width: 100%;
+  height: min(76vh, 800px);
+  min-height: 400px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+#map.dragging {
+  cursor: grabbing;
+}
+
+/* 装飾レイヤーではクリック操作を受け付けない */
+#gridLayer,
+#terrainLayer,
+#routeLayer {
+  pointer-events: none;
+}
+
+/* 主要な線の画面上での太さを、拡大縮小してもほぼ一定に保つ */
+.grid-line,
+.contour,
+.route,
+.unit-symbol,
+.unit-stem,
+.unit-dot {
+  vector-effect: non-scaling-stroke;
+}
+
+.grid-line {
+  fill: none;
+  stroke: #52748d;
+  stroke-width: 0.7;
+  opacity: 0.17;
+}
+
+.contour {
+  fill: none;
+  stroke: #6e97b3;
+  stroke-width: 0.9;
+  opacity: 0.5;
+  stroke-linecap: round;
+}
+
+.contour.coast {
+  stroke: #93d4ed;
+  stroke-width: 1.5;
+  opacity: 0.9;
+  filter: url(#glow);
+}
+
+.route {
+  fill: none;
+  stroke: #8be4ff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: url(#glow);
+}
+
+.route.drawing {
+  animation: draw-route 3s ease-in-out forwards;
+}
+
+@keyframes draw-route {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.unit {
+  color: #83dcff;
+  cursor: pointer;
+}
+
+.unit.enemy {
+  color: #ff9b65;
+}
+
+.unit-symbol,
+.unit-dot {
+  fill: #09121e;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  filter: url(#glow);
+}
+
+.unit-stem {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.8;
+}
+
+.unit text {
+  fill: currentColor;
+  font-size: 12px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #07101a;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.unit .hit-area {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.unit.selected .unit-symbol {
+  fill: currentColor;
+}
+
+.info-panel {
+  position: absolute;
+  left: 18px;
+  bottom: 45px;
+  width: min(280px, calc(100% - 36px));
+  padding: 14px;
+  border: 1px solid #2b4358;
+  border-radius: 5px;
+  background: rgba(7, 16, 27, 0.9);
+  pointer-events: none;
+}
+
+.info-panel h2 {
+  margin: 8px 0;
+  font-size: 18px;
+}
+
+.info-panel p {
+  margin: 0;
+  color: #a9bdce;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.hint {
+  position: absolute;
+  left: 18px;
+  bottom: 15px;
+  color: #7e98ac;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route.drawing {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
