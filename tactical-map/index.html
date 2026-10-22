@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>作戦指揮視点プロトタイプ</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./main.js" defer></script>
+</head>
+
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <small>TACTICAL MAP / PROTOTYPE</small>
+        <h1>島嶼作戦概要</h1>
+      </div>
+
+      <div class="controls">
+        <button id="zoomIn" aria-label="地図を拡大">＋</button>
+        <button id="zoomOut" aria-label="地図を縮小">－</button>
+        <button id="resetView">表示をリセット</button>
+        <button id="replay">航路を再生</button>
+      </div>
+    </header>
+
+    <section class="map-panel">
+      <svg
+        id="map"
+        viewBox="0 0 1000 650"
+        role="img"
+        aria-label="ドラッグによる移動・拡大縮小・ユニット選択が可能な戦術地図"
+      >
+        <defs>
+          <!-- 局所的に弱いグロー効果を適用し、地図全体がぼやけすぎないようにする -->
+          <filter
+            id="glow"
+            x="-50%" y="-50%"
+            width="200%" height="200%"
+          >
+            <feGaussianBlur
+              stdDeviation="2"
+              result="blur"
+            />
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- 地図上の全要素をまとめて移動・拡大縮小します -->
+        <g id="viewport">
+          <g id="gridLayer"></g>
+          <g id="terrainLayer"></g>
+          <g id="routeLayer"></g>
+          <g id="unitLayer"></g>
+        </g>
+      </svg>
+
+      <aside class="info-panel" aria-live="polite">
+        <small>ユニット情報</small>
+        <h2 id="unitName">選択待ち</h2>
+        <p id="unitDescription">地図上の菱形ユニットをクリックすると、詳細を確認できます。</p>
+      </aside>
+
+      <div class="hint">
+        余白をドラッグして移動 · ホイールで拡大縮小 · 菱形をクリックしてユニットを選択
+      </div>
+    </section>
+  </main>
+</body>
+</html>
