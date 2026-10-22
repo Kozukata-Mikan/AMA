@@ -508,19 +508,6 @@ function drawUnitIcon(unit, parent) {
 }
 
 
-  // 空心单位的内部标记。
-  if (!filled) {
-    createSVG("circle", {
-      cx: 0,
-      cy: unit.branch === "army" ? 6 : 0,
-      r: UNIT_ICON_RULES.centerDotRadius,
-      class: "unit-center-dot"
-    }, icon);
-  }
-
-  return scale;
-}
-
 
 function selectUnit(unit, group) {
   document.querySelectorAll(".unit.selected").forEach(element => {
