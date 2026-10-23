@@ -257,11 +257,21 @@ const units = [
 // ===== 图标规则配置 =====
 // 后续调整尺寸与航空机角度，优先修改这里。
 const UNIT_ICON_RULES = {
+ 
+  displayScale: 0.5,
+
+  
   scales: [1, 1.75, 2.5, 3.25, 4],
+
   airAngles: [15, 30, 90, 120, 150],
+
+  
+  navyLengthRatios: [1, 1.5, 2, 2.5, 3],
+
   baseExtent: 24,
   centerDotRadius: 1.6
 };
+
 
 function getSizeLevel(value) {
   const number = Number(value);
@@ -274,8 +284,24 @@ function getSizeLevel(value) {
 }
 
 function getIconScale(sizeLevel) {
-  return UNIT_ICON_RULES.scales[getSizeLevel(sizeLevel) - 1];
+  const level = getSizeLevel(sizeLevel);
+
+  return (
+    UNIT_ICON_RULES.displayScale *
+    UNIT_ICON_RULES.scales[level - 1]
+  );
 }
+
+// 海军不使用等级整体放大。
+// 它的长度变化由舰船形状函数单独处理。
+function getUnitScale(unit) {
+  if (unit.branch === "navy") {
+    return UNIT_ICON_RULES.displayScale;
+  }
+
+  return getIconScale(unit.sizeLevel);
+}
+
 
 // 图标的原始前方是屏幕上方。
 // 将地图朝向转换为屏幕上的旋转角度。
@@ -305,9 +331,27 @@ function getHeadingRotation(heading = 0) {
 }
 
 // 海军：5个顶点，船头为最上方的尖端。
-function makeNavyPath() {
-  return "M 0 -12 L 8 -4 L 8 12 L -8 12 L -8 -4 Z";
+function makeNavyPath(sizeLevel = 1) {
+  const level = getSizeLevel(sizeLevel);
+  const ratio = UNIT_ICON_RULES.navyLengthRatios[level - 1];
+
+  const bowY = -12;
+  const shoulderY = -4;
+  const halfWidth = 8;
+
+  const baseLength = 24;
+  const sternY = bowY + baseLength * ratio;
+
+  return [
+    `M 0 ${bowY}`,
+    `L ${halfWidth} ${shoulderY}`,
+    `L ${halfWidth} ${sternY}`,
+    `L ${-halfWidth} ${sternY}`,
+    `L ${-halfWidth} ${shoulderY}`,
+    "Z"
+  ].join(" ");
 }
+
 
 // 空军：保持指定尖头角，并归一化基础外框。
 // 后面的大小倍率负责统一放大。
@@ -335,42 +379,40 @@ function makeAirPath(sizeLevel) {
 
 // 陆军：矩形基座，上方有3、4或5个凸块。
 // 凸块所朝的一侧就是前方。
-function makeArmyPath(blocks = 3) {
-  const count = [3, 4, 5].includes(Number(blocks))
-    ? Number(blocks)
-    : 3;
-
-  const width = 24;
-  const left = -width / 2;
-  const bottom = 12;
-  const shoulder = 0;
-  const top = -12;
-
-  // 凸块之间保留同宽间隔。
-  const segmentWidth = width / (count * 2 - 1);
-
-  let path = `M ${left} ${bottom} L ${left} ${shoulder}`;
-
-  for (let index = 0; index < count; index++) {
-    const blockLeft = left + index * 2 * segmentWidth;
-    const blockRight = blockLeft + segmentWidth;
-
-    path += [
-      ` L ${blockLeft} ${shoulder}`,
-      ` L ${blockLeft} ${top}`,
-      ` L ${blockRight} ${top}`,
-      ` L ${blockRight} ${shoulder}`
-    ].join("");
-
-    if (index < count - 1) {
-      path += ` L ${blockRight + segmentWidth} ${shoulder}`;
-    }
-  }
-
-  path += ` L ${width / 2} ${bottom} Z`;
-
-  return path;
+// 方框的前方与左右两侧。
+// 尾部不在这里闭合，另用虚线绘制。
+function makeArmyPath() {
+  return "M -12 12 L -12 -12 L 12 -12 L 12 12";
 }
+
+function makeArmyLevelPath(sizeLevel = 1) {
+  const level = getSizeLevel(sizeLevel);
+
+  switch (level) {
+    case 1:
+      return "";
+
+    case 2:
+      return "M 0 -5 L 0 3";
+
+    case 3:
+      return "M -3 -5 L -3 3 M 3 -5 L 3 3";
+
+    case 4:
+      return (
+        "M -5 -5 L -5 3 " +
+        "M 0 -5 L 0 3 " +
+        "M 5 -5 L 5 3"
+      );
+
+    case 5:
+      return "M -5 -5 L 0 3 L 5 -5";
+
+    default:
+      return "";
+  }
+}
+
 
 function makeSpecialPath() {
   return "M 0 -12 L 10 0 L 0 12 L -10 0 Z";
@@ -379,13 +421,13 @@ function makeSpecialPath() {
 function getUnitIconPath(unit) {
   switch (unit.branch) {
     case "navy":
-      return makeNavyPath();
+      return makeNavyPath(unit.sizeLevel);
 
     case "air":
       return makeAirPath(unit.sizeLevel);
 
     case "army":
-      return makeArmyPath(unit.armyBlocks);
+      return makeArmyPath();
 
     case "special":
     default:
@@ -393,10 +435,11 @@ function getUnitIconPath(unit) {
   }
 }
 
+
 // 将图标的局部坐标转换到地图平面，再经过投影。
 // 当前让整个图标位于同一个高度平面。
 function projectIconPoint(unit, localX, localY) {
-  const scale = getIconScale(unit.sizeLevel);
+  const scale = getUnitScale(unit);
   const heading = Number(unit.heading) || 0;
   const angle = heading * Math.PI / 180;
 
