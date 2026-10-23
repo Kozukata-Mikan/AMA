@@ -531,7 +531,8 @@ function drawUnitIcon(unit, parent) {
     class: [
       "unit-icon",
       filled ? "is-filled" : "is-hollow",
-      underwater ? "is-underwater" : ""
+      underwater ? "is-underwater" : "",
+      unit.branch === "army" ? "is-army" : ""
     ].filter(Boolean).join(" ")
   }, parent);
 
@@ -540,6 +541,27 @@ function drawUnitIcon(unit, parent) {
     class: "unit-symbol"
   }, icon);
 
+  if (unit.branch === "army") {
+    // 方框尾部：单独绘制为虚线。
+    createSVG("path", {
+      d: projectIconPath(
+        unit,
+        "M -12 12 L 12 12"
+      ),
+      class: "army-rear"
+    }, icon);
+
+    // 内部等级标记：无、Ⅰ、Ⅱ、Ⅲ、Ⅴ。
+    const levelPath = makeArmyLevelPath(unit.sizeLevel);
+
+    if (levelPath) {
+      createSVG("path", {
+        d: projectIconPath(unit, levelPath),
+        class: "army-level-mark"
+      }, icon);
+    }
+  }
+
   if (!filled) {
     createSVG("path", {
       d: makeProjectedCenterDot(unit),
@@ -547,8 +569,9 @@ function drawUnitIcon(unit, parent) {
     }, icon);
   }
 
-  return getIconScale(unit.sizeLevel);
+  return getUnitScale(unit);
 }
+
 
 
 
