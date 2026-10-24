@@ -79,8 +79,23 @@ function element(tag, text = "", className = "") {
   return node;
 }
 
+// 个体已有快照时优先使用，避免图鉴修改影响现有参战个体。
+function getInstanceBase(instance) {
+  const base = instance.snapshot || findUnit(units, instance.unitId);
+
+  if (!base) {
+    throw new Error(
+      `参戦ユニットの図鑑資料が見つかりません：${instance.unitId}`
+    );
+  }
+
+  return base;
+}
+
+
 function instanceLabel(instance) {
-  const base = findUnit(units, instance.unitId);
+  const base = getInstanceBase(instance);
+
 
   return (
     `${base.name} · ${getBranchName(base.branch)}` +
@@ -169,9 +184,11 @@ function renderCalculator(branch) {
   const instances = battleStore.getAll();
   const choice = selections[branch];
 
-  const attackers = instances.filter(instance => {
-    const base = findUnit(units, instance.unitId);
-    return base.branch === branch;
+const attackers = instances.filter(instance => {
+  const base = getInstanceBase(instance);
+  return base.branch === branch;
+});
+
   });
 
   const attackerSelect = makeInstanceSelect(
@@ -303,7 +320,9 @@ function renderBattle() {
 
   const instances = battleStore.getAll();
 
-  clearButton.disabled = instances.length === 0;
+  clearButton.disabled =
+  instances.length === 0 && !battleStore.isRecoveryBlocked();
+
 
   if (instances.length === 0) {
     battleContent.append(
@@ -334,7 +353,7 @@ function renderBattle() {
   const body = element("tbody");
 
   for (const instance of instances) {
-    const base = findUnit(units, instance.unitId);
+    const base = getInstanceBase(instance);
     const row = element("tr");
 
     const nameCell = element(
@@ -427,8 +446,9 @@ async function start() {
 
     clearButton.addEventListener("click", () => {
       const confirmed = confirm(
-        "現在のシミュレーションを消去しますか？図鑑資料は削除されません。"
-      );
+  "現在の作戦を初期化しますか？ユニット、編隊、地図表示設定が消去されます。図鑑資料と旧形式のバックアップは削除されません。"
+);
+
 
       if (confirmed) {
         battleStore.clear();
