@@ -220,42 +220,20 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .route.drawing {
     animation: none;
-
-    /* ===== 新しいユニットアイコン ===== */
-
-/* 輪郭のみのアイコンは背景を塗りつぶさず、内部に中心点を表示する。 */
-.unit .unit-icon.is-hollow .unit-symbol {
-  fill: none;
+    stroke-dashoffset: 0;
+  }
 }
 
-/* 塗りつぶし型のアイコンには陣営色を使用する。 */
-.unit .unit-icon.is-filled .unit-symbol {
-  fill: currentColor;
-}
-
-/* 水中ユニットは輪郭線のみを破線にする。 */
-.unit .unit-icon.is-underwater .unit-symbol {
-  stroke-dasharray: 4 3;
-}
-
-/* 輪郭のみのアイコン内に表示する小さな中心点。 */
+/* 中心点不使用默认的黑色填充。 */
 .unit-center-dot {
   fill: currentColor;
   stroke: none;
   pointer-events: none;
 }
 
-/*  旧仕様の「選択時にアイコンを塗りつぶす」ルールを廃止する。 */
-.unit.selected .unit-icon.is-hollow .unit-symbol {
-  fill: none;
-}
-
-.unit.selected .unit-icon.is-filled .unit-symbol {
-  fill: currentColor;
-}
-
-/* 選択時はアイコンの輪郭線とユニット名のみを強調する。 */
-.unit.selected .unit-symbol {
+/* 选择和键盘聚焦只加强轮廓，不改变空心、实心设置。 */
+.unit.selected .unit-symbol,
+.unit:focus-visible .unit-symbol {
   stroke-width: 2.8;
 }
 
@@ -263,14 +241,6 @@ button:focus-visible {
   font-weight: 800;
 }
 
-/* キーボードフォーカス表示。 */
-.unit:focus-visible .unit-symbol {
-  stroke-width: 2.8;
-}
-
-    stroke-dashoffset: 0;
-  }
-}
 
 /* ===== 砲弾、魚雷、誘導弾、レーザー ===== */
 
@@ -382,3 +352,164 @@ button:focus-visible {
   stroke-width: 2.8;
 }
 
+/* ===== 第一阶段：单位与编队编辑器 ===== */
+
+.workspace {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.editor-panel {
+  min-width: 0;
+  max-height: 82vh;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid #20364b;
+  border-radius: 8px;
+  background: #09121e;
+}
+
+.editor-panel h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.editor-panel h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.editor-section {
+  padding: 14px 0;
+  border-top: 1px solid #20364b;
+}
+
+.editor-panel label {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #a9bdce;
+}
+
+.editor-panel input,
+.editor-panel select,
+.editor-panel textarea {
+  min-width: 0;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #294259;
+  border-radius: 4px;
+  background: #101e2c;
+  color: #dceaf5;
+  font: inherit;
+}
+
+.editor-panel textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.editor-panel input:focus-visible,
+.editor-panel select:focus-visible,
+.editor-panel textarea:focus-visible {
+  outline: 2px solid #79d5ff;
+  outline-offset: 2px;
+}
+
+.editor-panel input[type="checkbox"] {
+  width: auto;
+  justify-self: start;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 10px;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor-actions button {
+  font-size: 12px;
+}
+
+.editor-panel button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.editor-note {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #a9bdce;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.editor-status {
+  padding: 10px;
+  border: 1px solid #294259;
+  border-radius: 4px;
+}
+
+.editor-status.error {
+  border-color: #ff9b65;
+  color: #ffbc98;
+}
+
+.unit-list {
+  display: grid;
+  gap: 6px;
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.unit-list button {
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.unit-list button.active {
+  border-color: #79d5ff;
+  background: #172d40;
+}
+
+.unit-list small {
+  display: block;
+  margin-top: 5px;
+  letter-spacing: normal;
+}
+
+.group-tree {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.unit.neutral {
+  color: #b7bdcf;
+}
+
+@media (max-width: 960px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-panel {
+    max-height: none;
+  }
+
+  #map {
+    height: 65vh;
+  }
+}
