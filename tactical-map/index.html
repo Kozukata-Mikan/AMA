@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>作戦指揮視点プロトタイプ</title>
   <link rel="stylesheet" href="./style.css">
-  <script src="./main.js" defer></script>
+  <script type="module" src="./main.js"></script>
 </head>
 
 <body>
@@ -23,6 +23,11 @@
         <button id="replay">航路を再生</button>
       </div>
     </header>
+
+    <div class="workspace">
+  <aside id="editor" class="editor-panel" aria-label="作戦編集">
+    <p>編集機能を読み込んでいます…</p>
+  </aside>
 
     <section class="map-panel">
       <svg
@@ -68,6 +73,7 @@
         余白をドラッグして移動 · ホイールで拡大縮小 · 菱形をクリックしてユニットを選択
       </div>
     </section>
+  </div>
   </main>
 </body>
 </html>
