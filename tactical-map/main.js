@@ -1,3 +1,10 @@
+import { loadUnitData } from "../js/data-store.js";
+import { createBattleStore } from "../js/battle-state.js";
+import { mountEditor } from "./editor.js";
+
+let editorController = null;
+
+
 const NS = "http://www.w3.org/2000/svg";
 
 const svg = document.querySelector("#map");
@@ -167,92 +174,8 @@ function drawTerrain() {
   }
 }
 
-const units = [
-  {
-    id: "ally-01",
-    name: "海軍サンプルユニット",
-    side: "ally",
-
-    branch: "navy",
-    sizeLevel: 2,
-    heading: 0,
-    filled: false,
-    underwater: false,
-
-    x: -220,
-    y: -100,
-    labelHeight: 65,
-    description: "五角形の艦船アイコン。輪郭のみで表示し、中央に小さな点があります。"
-  },
-
-  {
-    id: "ally-02",
-    name: "空軍サンプルユニット",
-    side: "ally",
-
-    branch: "air",
-    sizeLevel: 3,
-    heading: 45,
-    altitude: 80,
-    filled: false,
-
-    x: -35,
-    y: 55,
-    labelHeight: 90,
-    description: "サイズレベル3の航空機アイコン。先端の角度は90度です。"
-  },
-
-  {
-    id: "enemy-01",
-    name: "陸軍サンプルユニット",
-    side: "enemy",
-
-    branch: "army",
-    sizeLevel: 2,
-    heading: 180,
-    filled: false,
-    armyBlocks: 3,
-
-    x: 95,
-    y: 20,
-    labelHeight: 75,
-    description: "上部に3つの突起がある陸軍アイコンです。"
-  },
-
-  {
-    id: "ally-submarine",
-    name: "水中サンプルユニット",
-    side: "ally",
-
-    branch: "navy",
-    sizeLevel: 2,
-    heading: 90,
-    filled: false,
-    underwater: true,
-
-    x: -190,
-    y: 100,
-    depth: 12,
-    labelHeight: 55,
-    description: "水中ユニット。艦船アイコンの輪郭を破線で表示します。"
-  },
-
-  {
-    id: "enemy-special",
-    name: "特殊サンプルユニット",
-    side: "enemy",
-
-    branch: "special",
-    sizeLevel: 1,
-    heading: 270,
-    filled: true,
-
-    x: 170,
-    y: -90,
-    labelHeight: 60,
-    description: "特殊ユニット。塗りつぶした菱形で表示します。"
-  }
-];
+// 参战单位来自共享存储，绘制时附加原绘图代码使用的 id。
+let units = [];
 
 // ===== 图标规则配置 =====
 // 后续调整尺寸与航空机角度，优先修改这里。
@@ -589,19 +512,28 @@ document.querySelector("#unitDescription").textContent = [
   unit.description || "",
   spatial.valid ? spatial.note : spatial.reason
 ].filter(Boolean).join(" ");
+editorController?.select(unit.instanceId);
 
 }
 
 // 返回单位当前所在位置的显示高度与合法性。
 // 后续编辑器和移动系统也应调用同一个函数。
 function getUnitSpatialState(unit) {
+  // 未配置单位不能被 Number(null) 转换为地图原点。
+  if (unit.x == null || unit.y == null) {
+    return {
+      valid: false,
+      reason: "未配置です。X と Y 座標を指定してください。"
+    };
+  }
+
   const x = Number(unit.x);
   const y = Number(unit.y);
 
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
     return {
       valid: false,
-      reason: "地图坐标必须是有效数字。"
+      reason: "地図座標は有効な数値で指定してください。"
     };
   }
 
@@ -613,7 +545,7 @@ function getUnitSpatialState(unit) {
       if (terrain > 0) {
         return {
           valid: false,
-          reason: "海军单位不能放置在陆地区域。"
+          reason: "海軍ユニットは陸地に配置できません。"
         };
       }
 
@@ -623,7 +555,7 @@ function getUnitSpatialState(unit) {
         if (!Number.isFinite(depth) || depth <= 0) {
           return {
             valid: false,
-            reason: "水下深度必须大于0。"
+            reason: "水中深度は 0 より大きい値で指定してください。"
           };
         }
 
@@ -631,7 +563,7 @@ function getUnitSpatialState(unit) {
           valid: true,
           height: -depth,
           ground: 0,
-          note: `水下深度：${depth} 地图高度单位`
+          note: `水中深度：${depth} 地図高度ユニット`
         };
       }
 
@@ -639,7 +571,7 @@ function getUnitSpatialState(unit) {
         valid: true,
         height: 0,
         ground: 0,
-        note: "位于海平面"
+        note: "海面に配置されています"
       };
     }
 
@@ -647,7 +579,7 @@ function getUnitSpatialState(unit) {
       if (terrain <= 0) {
         return {
           valid: false,
-          reason: "陆军单位不能放置在海域。"
+          reason: "陸軍ユニットは海域に配置できません。"
         };
       }
 
@@ -655,7 +587,7 @@ function getUnitSpatialState(unit) {
         valid: true,
         height: terrain,
         ground: terrain,
-        note: `地形海拔：${terrain.toFixed(1)} 地图高度单位`
+        note: `地形海抜：${terrain.toFixed(1)} 地図高度ユニット`
       };
 
     case "air": {
@@ -664,7 +596,7 @@ function getUnitSpatialState(unit) {
       if (!Number.isFinite(altitude) || altitude <= ground) {
         return {
           valid: false,
-          reason: "航空机海拔必须高于当地地形或海平面。"
+          reason: "航空機の海抜高度は地形または海面より高くしてください。"
         };
       }
 
@@ -673,8 +605,8 @@ function getUnitSpatialState(unit) {
         height: altitude,
         ground,
         note:
-          `海拔：${altitude} 地图高度单位；` +
-          `离地高度：${(altitude - ground).toFixed(1)}`
+          `海抜：${altitude} 地図高度ユニット；` +
+          `対地高度：${(altitude - ground).toFixed(1)}`
       };
     }
 
@@ -684,7 +616,7 @@ function getUnitSpatialState(unit) {
       if (!Number.isFinite(altitude)) {
         return {
           valid: false,
-          reason: "高度必须是有效数字。"
+          reason: "高度は有効な数値で指定してください。"
         };
       }
 
@@ -692,7 +624,7 @@ function getUnitSpatialState(unit) {
         valid: true,
         height: altitude,
         ground,
-        note: `海拔：${altitude.toFixed(1)} 地图高度单位`
+        note: `海抜：${altitude.toFixed(1)} 地図高度ユニット`
       };
     }
   }
@@ -717,6 +649,7 @@ const position = project(unit.x, unit.y, spatial.height);
 
     const group = createSVG("g", {
       class: `unit ${unit.side}`,
+      "data-instance-id": unit.instanceId,
       transform: `translate(${position.x} ${position.y})`,
       tabindex: "0",
       role: "button",
@@ -1048,46 +981,97 @@ function drawProjectile({
 
 
 // 起動順序
+// ===== 启动与编辑器桥接 =====
+
 drawGrid();
 drawTerrain();
 drawRoute();
-drawUnits();
 updateView();
-playRoute();
 
-// 临时射击效果演示。
-// 后续有正式动画后，可以删除这四次调用。
+// 航路仍然只是原型演示，不代表参战单位的真实移动。
+document.querySelector("#replay").textContent = "経路デモを再生";
 
-drawProjectile({
-  kind: "shell",
-  x: -210,
-  y: -110,
-  side: "ally"
-});
+async function startEditor() {
+  const container = document.querySelector("#editor");
 
-drawProjectile({
-  kind: "torpedo",
-  x: -150,
-  y: -110,
-  heading: 90,
-  side: "ally"
-});
+  try {
+    const catalog = await loadUnitData();
+    const store = createBattleStore(catalog);
 
-drawProjectile({
-  kind: "missile",
-  x: -90,
-  y: -110,
-  heading: 45,
-  side: "enemy"
-});
+    editorController = mountEditor({
+      container,
+      catalog,
+      store,
 
-drawProjectile({
-  kind: "laser",
-  x: -30,
-  y: -110,
-  heading: 90,
-  length: 70,
-  side: "ally"
-});
+      spatialState: getUnitSpatialState,
 
+      getView() {
+        return { ...view };
+      },
 
+      setView(savedView) {
+        Object.assign(view, savedView);
+        updateView();
+      },
+
+      renderMap(instances, selectedId) {
+        units = instances.map(instance => ({
+          ...instance,
+          id: instance.instanceId
+        }));
+
+        drawUnits();
+
+        // 避免把编号直接拼进 CSS 选择器。
+        for (const element of layers.units.querySelectorAll(".unit")) {
+          element.classList.toggle(
+            "selected",
+            element.dataset.instanceId === selectedId
+          );
+        }
+
+        const selected = units.find(
+          unit => unit.instanceId === selectedId
+        );
+
+        const name = document.querySelector("#unitName");
+        const description = document.querySelector("#unitDescription");
+
+        if (!selected) {
+          name.textContent = "選択待ち";
+          description.textContent =
+            "一覧または地図からユニットを選択してください。";
+          return;
+        }
+
+        name.textContent = selected.name;
+
+        const spatial = getUnitSpatialState(selected);
+
+        description.textContent = [
+          selected.description,
+          spatial.valid ? spatial.note : spatial.reason
+        ].filter(Boolean).join(" ");
+      }
+    });
+
+    window.addEventListener("pagehide", event => {
+      // 进入浏览器往返缓存时保留订阅，返回页面后仍可使用。
+      if (event.persisted) return;
+
+      editorController?.destroy();
+      store.destroy();
+    });
+  } catch (error) {
+    console.error(error);
+
+    const paragraph = document.createElement("p");
+    paragraph.className = "editor-note editor-status error";
+    paragraph.textContent =
+      `編集機能の起動に失敗しました：${error.message}`;
+
+    container.replaceChildren(paragraph);
+  }
+}
+
+startEditor();
