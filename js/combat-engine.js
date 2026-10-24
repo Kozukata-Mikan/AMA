@@ -30,8 +30,13 @@ export function previewAction({
     throw new Error("選択した参戦ユニットが存在しません。再選択してください。");
   }
 
-  const attackerBase = findUnit(units, attacker.unitId);
-  const targetBase = findUnit(units, target.unitId);
+  // 优先使用创建参战个体时保存的型号资料。
+const attackerBase =
+  attacker.snapshot || findUnit(units, attacker.unitId);
+
+const targetBase =
+  target.snapshot || findUnit(units, target.unitId);
+
 
   if (!attackerBase || !targetBase) {
     throw new Error("選択したユニットの図鑑資料がありません。");
