@@ -60,9 +60,9 @@ let currentView = "navy-calculator";
 
 // 各计算页面分别记住上次选择，但共用同一套参战状态。
 const selections = {
-  navy: { attackerId: "", targetId: "", actionType: "攻撃？" },
-  air: { attackerId: "", targetId: "", actionType: "攻撃？" },
-  army: { attackerId: "", targetId: "", actionType: "攻撃？" }
+  navy: { attackerId: "", targetId: "", actionType: "攻撃" },
+  air: { attackerId: "", targetId: "", actionType: "攻撃" },
+  army: { attackerId: "", targetId: "", actionType: "攻撃" }
 };
 
 function element(tag, text = "", className = "") {
@@ -318,7 +318,7 @@ function renderBattle() {
   const headingRow = element("tr");
 
   for (const title of [
-    "参戦ユニット,
+    "参戦ユニット",
     "面目",
     "基礎最大耐性",
     "現在耐性",
