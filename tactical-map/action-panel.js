@@ -128,6 +128,7 @@ export function mountActionPanel({ container, store, spatialState }) {
     return JSON.stringify({
       attacker,
       target,
+      terrain: store.getScene().terrain,
       actionType: actionSelect.value,
       note: note.value
     });
