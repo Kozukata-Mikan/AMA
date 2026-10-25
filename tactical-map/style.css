@@ -513,3 +513,49 @@ button:focus-visible {
     height: 65vh;
   }
 }
+/* ===== 第三阶段：地形编辑 ===== */
+
+#map {
+  touch-action: none;
+}
+
+#map.terrain-editing {
+  cursor: crosshair;
+}
+
+.map-boundary {
+  fill: none;
+  stroke: #6d8da7;
+  stroke-width: 1.4;
+  stroke-dasharray: 7 5;
+  pointer-events: none;
+}
+
+.river-surface {
+  fill: #268bb4;
+  fill-opacity: 0.65;
+  stroke: none;
+  pointer-events: none;
+}
+
+.invalid-unit {
+  color: #ffad78;
+}
+
+.invalid-unit-mark {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+}
+
+.invalid-unit text {
+  fill: currentColor;
+}
+
+.terrain-editor {
+  margin-bottom: 16px;
+}
+
+.terrain-editor .editor-actions {
+  margin: 10px 0;
+}
