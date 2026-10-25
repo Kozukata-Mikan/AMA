@@ -10,7 +10,7 @@ function node(tag, text = "", className = "") {
   if (className) result.className = className;
   return result;
 }
-
+ 
 function field(parent, title, control) {
   const label = node("label");
   label.append(node("span", title), control);
