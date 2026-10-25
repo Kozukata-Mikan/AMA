@@ -12,7 +12,8 @@ import { mountTerrainEditor } from "./terrain-editor.js";
 
 let terrain = createDemoTerrain();
 let terrainController = null;
-
+let axesVisible = false;
+let axesLayer = null;
 
 let editorController = null;
 
@@ -64,6 +65,147 @@ function pathFromPoints(points) {
 
 function terrainHeight(x, y) {
   return sampleTerrain(terrain, x, y).height;
+}
+
+function drawAxes() {
+  if (!axesLayer) {
+    axesLayer = createSVG("g", {
+      id: "axesLayer",
+      "aria-hidden": "true",
+      "pointer-events": "none"
+    });
+
+    // 坐标轴跟随地图平移、缩放，单位仍绘制在它上面。
+    viewport.insertBefore(axesLayer, layers.units);
+  }
+
+  axesLayer.replaceChildren();
+  axesLayer.style.display = axesVisible ? "" : "none";
+
+  if (!axesVisible) return;
+
+  const xLength = terrain.width / 2;
+  const yLength = terrain.height / 2;
+
+  let highest = 0;
+
+  for (const height of terrain.heights) {
+    highest = Math.max(highest, height);
+  }
+
+  const zLength = Math.max(100, Math.ceil(highest / 50) * 50);
+
+  const origin = project(0, 0, 0);
+
+  const definitions = [
+    {
+      name: "X",
+      className: "axis-x",
+      length: xLength,
+      at: value => project(value, 0, 0),
+      negative: true
+    },
+    {
+      name: "Y",
+      className: "axis-y",
+      length: yLength,
+      at: value => project(0, value, 0),
+      negative: true
+    },
+    {
+      name: "Z",
+      className: "axis-z",
+      length: zLength,
+      at: value => project(0, 0, value),
+      negative: false
+    }
+  ];
+
+  for (const axis of definitions) {
+    const group = createSVG("g", {
+      class: `coordinate-axis ${axis.className}`
+    }, axesLayer);
+
+    const end = axis.at(axis.length);
+
+    createSVG("path", {
+      d: pathFromPoints([origin, end]),
+      class: "axis-line"
+    }, group);
+
+    if (axis.negative) {
+      createSVG("path", {
+        d: pathFromPoints([axis.at(-axis.length), origin]),
+        class: "axis-line axis-negative"
+      }, group);
+    }
+
+    // 屏幕上的小箭头，仅表达正方向。
+    const angle = Math.atan2(end.y - origin.y, end.x - origin.x);
+
+    const arrow = [
+      end,
+      {
+        x: end.x - 9 * Math.cos(angle - 0.45),
+        y: end.y - 9 * Math.sin(angle - 0.45)
+      },
+      {
+        x: end.x - 9 * Math.cos(angle + 0.45),
+        y: end.y - 9 * Math.sin(angle + 0.45)
+      }
+    ];
+
+    createSVG("path", {
+      d: pathFromPoints(arrow) + " Z",
+      class: "axis-arrow"
+    }, group);
+
+    const title = createSVG("text", {
+      x: end.x + 9,
+      y: end.y - 8,
+      class: "axis-label"
+    }, group);
+
+    title.textContent = `+${axis.name}`;
+
+    // 大地图适当增大刻度间隔，避免标签过密。
+    const spacing = Math.max(
+      50,
+      Math.ceil(axis.length / 6 / 50) * 50
+    );
+
+    const start = axis.negative ? -axis.length : 0;
+    const first = Math.ceil(start / spacing) * spacing;
+
+    for (let value = first; value <= axis.length; value += spacing) {
+      if (value === 0) continue;
+
+      const point = axis.at(value);
+
+      createSVG("circle", {
+        cx: point.x,
+        cy: point.y,
+        r: 2,
+        class: "axis-tick"
+      }, group);
+
+      const label = createSVG("text", {
+        x: point.x + 5,
+        y: point.y + 12,
+        class: "axis-value"
+      }, group);
+
+      label.textContent = String(value);
+    }
+  }
+
+  const label = createSVG("text", {
+    x: origin.x + 7,
+    y: origin.y - 7,
+    class: "axis-origin"
+  }, axesLayer);
+
+  label.textContent = "O (0, 0, 0)";
 }
 
 
@@ -160,45 +302,61 @@ function drawTerrain() {
   layers.terrain.replaceChildren();
 
   const grid = makeHeightGrid();
-
-  // 河流显示与最近网格顶点分区一致。
   const dx = terrain.width / (terrain.cols - 1);
   const dy = terrain.height / (terrain.rows - 1);
-  let riverPath = "";
 
-  for (let row = 0; row < terrain.rows; row++) {
-    for (let col = 0; col < terrain.cols; col++) {
-      const index = row * terrain.cols + col;
+  // 水域标记按最近网格顶点的区域绘制。
+  function drawWaterMask(mask, kind, className) {
+    if (!mask) return;
 
-      if (
-        terrain.rivers[index] !== 1 ||
-        terrain.heights[index] <= 0
-      ) continue;
+    let pathData = "";
 
-      const center = gridPosition(terrain, col, row);
+    for (let row = 0; row < terrain.rows; row++) {
+      for (let col = 0; col < terrain.cols; col++) {
+        const index = row * terrain.cols + col;
 
-      const corners = [
-        [center.x - dx / 2, center.y - dy / 2],
-        [center.x + dx / 2, center.y - dy / 2],
-        [center.x + dx / 2, center.y + dy / 2],
-        [center.x - dx / 2, center.y + dy / 2]
-      ].map(([x, y]) => {
-        const px = Math.max(-terrain.width / 2, Math.min(terrain.width / 2, x));
-        const py = Math.max(-terrain.height / 2, Math.min(terrain.height / 2, y));
-        const sample = sampleTerrain(terrain, px, py);
-        return project(px, py, sample.surface);
-      });
+        if (mask[index] !== 1) continue;
 
-      riverPath += pathFromPoints(corners) + " Z ";
+        const center = gridPosition(terrain, col, row);
+        const sample = sampleTerrain(terrain, center.x, center.y);
+
+        // 随高度变化隐藏不再适用的水域标记。
+        if (sample.kind !== kind) continue;
+
+        const corners = [
+          [center.x - dx / 2, center.y - dy / 2],
+          [center.x + dx / 2, center.y - dy / 2],
+          [center.x + dx / 2, center.y + dy / 2],
+          [center.x - dx / 2, center.y + dy / 2]
+        ].map(([x, y]) => {
+          const px = Math.max(
+            -terrain.width / 2,
+            Math.min(terrain.width / 2, x)
+          );
+
+          const py = Math.max(
+            -terrain.height / 2,
+            Math.min(terrain.height / 2, y)
+          );
+
+          const height = sampleTerrain(terrain, px, py).surface;
+          return project(px, py, height);
+        });
+
+        pathData += pathFromPoints(corners) + " Z ";
+      }
+    }
+
+    if (pathData) {
+      createSVG("path", {
+        d: pathData,
+        class: className
+      }, layers.terrain);
     }
   }
 
-  if (riverPath) {
-    createSVG("path", {
-      d: riverPath,
-      class: "river-surface"
-    }, layers.terrain);
-  }
+  drawWaterMask(terrain.shallows, "shallow", "shallow-surface");
+  drawWaterMask(terrain.rivers, "river", "river-surface");
 
   let maximum = 0;
 
@@ -615,7 +773,7 @@ function getUnitSpatialState(unit) {
   const ground = sample.surface;
 
   switch (unit.branch) {
-    case "navy": {
+      case "navy": {
       if (sample.kind === "land") {
         return {
           valid: false,
@@ -623,14 +781,33 @@ function getUnitSpatialState(unit) {
         };
       }
 
-      if (sample.kind === "river") {
-        return {
-          valid: false,
-          reason: "河川の通航ルールは未設定です。海域に配置してください。"
-        };
+      const restricted =
+        sample.kind === "river" ||
+        sample.kind === "shallow";
+
+      const waterName = sample.kind === "river" ? "河川" : "浅海";
+
+      if (restricted) {
+        const level = Number(unit.sizeLevel);
+
+        if (unit.underwater === true) {
+          return {
+            valid: false,
+            reason: `${waterName}に水中ユニットは進入できません。`
+          };
+        }
+
+        if (!Number.isInteger(level) || level < 1 || level > 2) {
+          return {
+            valid: false,
+            reason:
+              `${waterName}に進入できるのは、` +
+              "サイズレベル 1～2 の水上ユニットのみです。"
+          };
+        }
       }
 
-      if (unit.underwater) {
+      if (unit.underwater === true) {
         const depth = Number(unit.depth ?? 12);
 
         if (!Number.isFinite(depth) || depth <= 0) {
@@ -650,19 +827,26 @@ function getUnitSpatialState(unit) {
 
       return {
         valid: true,
-        height: 0,
-        ground: 0,
-        note: "海面に配置されています。"
+        height: ground,
+        ground,
+        note: restricted
+          ? `${waterName}の水面に配置されています。サイズレベル ${unit.sizeLevel}：進入可能。`
+          : "海面に配置されています。"
       };
     }
 
-    case "army":
+
+      case "army":
       if (sample.kind !== "land") {
+        const waterName = {
+          sea: "海域",
+          river: "河川",
+          shallow: "浅海"
+        }[sample.kind] ?? "水域";
+
         return {
           valid: false,
-          reason: sample.kind === "river"
-            ? "河川の横断ルールは未設定です。陸地に配置してください。"
-            : "陸軍ユニットは海域に配置できません。"
+          reason: `陸軍ユニットは${waterName}に配置できません。`
         };
       }
 
@@ -672,6 +856,7 @@ function getUnitSpatialState(unit) {
         ground,
         note: `地形標高：${ground.toFixed(1)} 地図高度単位`
       };
+
 
     case "air": {
       const altitude = Number(unit.altitude ?? 80);
@@ -1014,6 +1199,7 @@ function pickTerrainPoint(event) {
 function redrawTerrain() {
   drawGrid();
   drawTerrain();
+  drawAxes();
 
   // 临时航路跟随地形重建，不保留旧的高度位置。
   layers.routes.replaceChildren();
@@ -1197,6 +1383,26 @@ function drawProjectile({
 
 
 // 起動順序
+// 坐标轴是辅助显示，本次不写入场景存档。
+const axesButton = document.createElement("button");
+axesButton.type = "button";
+axesButton.textContent = "XYZ 軸を表示";
+axesButton.setAttribute("aria-pressed", "false");
+axesButton.setAttribute("aria-controls", "axesLayer");
+
+axesButton.addEventListener("click", () => {
+  axesVisible = !axesVisible;
+
+  axesButton.textContent = axesVisible
+    ? "XYZ 軸を非表示"
+    : "XYZ 軸を表示";
+
+  axesButton.setAttribute("aria-pressed", String(axesVisible));
+  drawAxes();
+});
+
+document.querySelector(".controls").append(axesButton);
+
 // ===== 启动与编辑器桥接 =====
 
 drawGrid();
