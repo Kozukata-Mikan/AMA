@@ -1,5 +1,9 @@
 // ===== 共享参战状态 =====
 // 界面和错误文案使用日文，代码注释使用中文。
+import {
+  createDemoTerrain,
+  validateTerrain
+} from "../tactical-map/terrain-data.js";
 
 const STORAGE_KEY = "junqi-battle-scene-v2";
 const LEGACY_KEY = "junqi-battle-state-v1";
@@ -63,6 +67,7 @@ function emptyScene() {
     version: VERSION,
     name: "新しい作戦",
     terrainId: "demo-islands-v1",
+    terrain: createDemoTerrain(),
     instances: [],
     groups: [],
     actions: [],
@@ -409,6 +414,7 @@ export function createBattleStore(units) {
       version: VERSION,
       name: requireText(input.name, "作戦名"),
       terrainId: input.terrainId,
+      terrain: validateTerrain(input.terrain ?? createDemoTerrain()),
       instances,
       groups,
       actions,
@@ -773,6 +779,13 @@ export function createBattleStore(units) {
       );
     });
   }
+    function setTerrain(terrain) {
+    const validated = validateTerrain(terrain);
+
+    change(candidate => {
+      candidate.terrain = validated;
+    });
+  }
 
   function subscribe(listener) {
     if (typeof listener !== "function") {
@@ -832,6 +845,7 @@ export function createBattleStore(units) {
 
     // 第一阶段新增接口。
     getScene,
+    setTerrain,
     getGroups: () => copy(scene.groups),
     updateUnit,
     addGroup,
