@@ -26,7 +26,9 @@ export function createDemoTerrain() {
     rows: 81,
     contourInterval: 6,
     heights: [],
-    rivers: []
+    rivers: [],
+    shallows: []
+    
   };
 
   for (let row = 0; row < terrain.rows; row++) {
@@ -34,6 +36,7 @@ export function createDemoTerrain() {
       const { x, y } = gridPosition(terrain, col, row);
       terrain.heights.push(demoHeight(x, y));
       terrain.rivers.push(0);
+      terrain.shallows.push(0);
     }
   }
 
@@ -67,6 +70,15 @@ export function validateTerrain(value) {
   }
 
   const count = value.cols * value.rows;
+    // 旧地图没有浅海字段，自动补为全零，不改变已有地形。
+  const shallows = value.shallows === undefined
+    ? Array(count).fill(0)
+    : value.shallows;
+
+  if (!Array.isArray(shallows) || shallows.length !== count) {
+    throw new Error("浅海マスクの長さが一致しません。");
+  }
+
 
   if (count > 10000) {
     throw new Error("地形の頂点数は 10000 以下にしてください。");
@@ -93,6 +105,8 @@ export function validateTerrain(value) {
   for (let index = 0; index < count; index++) {
     const height = value.heights[index];
     const river = value.rivers[index];
+    const shallow = shallows[index];
+
 
     if (
       typeof height !== "number" ||
@@ -106,6 +120,10 @@ export function validateTerrain(value) {
     if (river !== 0 && river !== 1) {
       throw new Error("河川マスクの値が不正です。");
     }
+        if (shallow !== 0 && shallow !== 1) {
+      throw new Error("浅海マスクの値が不正です。");
+    }
+
   }
 
   return {
@@ -115,8 +133,8 @@ export function validateTerrain(value) {
     cols: value.cols,
     rows: value.rows,
     contourInterval: value.contourInterval,
-    heights: value.heights.slice(),
-    rivers: value.rivers.slice()
+    rivers: value.rivers.slice(),
+    shallows: shallows.slice()
   };
 }
 
@@ -167,8 +185,12 @@ export function sampleTerrain(terrain, x, y) {
   const nearestCol = Math.min(terrain.cols - 1, Math.round(gx));
   const nearestRow = Math.min(terrain.rows - 1, Math.round(gy));
   const river = terrain.rivers[nearestRow * terrain.cols + nearestCol] === 1;
+  const shallow = terrain.shallows?.[nearestRow * terrain.cols + nearestCol] === 1;
 
-  const kind = height <= 0 ? "sea" : river ? "river" : "land";
+  const kind = height <= 0
+    ? shallow ? "shallow" : "sea"
+    : river ? "river" : "land";
+
 
   return {
     inside: true,
@@ -203,7 +225,8 @@ export function resizeTerrain(source, settings) {
     rows,
     contourInterval: Number(settings.contourInterval),
     heights: [],
-    rivers: []
+    rivers: [],
+    shallows: []
   };
 
   for (let row = 0; row < rows; row++) {
@@ -214,6 +237,7 @@ export function resizeTerrain(source, settings) {
       // 新增范围默认是海洋，不复制旧地图边缘。
       result.heights.push(sample.inside ? sample.height : -20);
       result.rivers.push(sample.kind === "river" ? 1 : 0);
+      result.shallows.push(sample.kind === "shallow" ? 1 : 0);
     }
   }
 
@@ -234,13 +258,27 @@ export function applyBrush(terrain, point, brush) {
   }
 
   const modes = [
-    "raise", "lower", "smooth", "level", "land", "sea", "river", "eraseRiver"
+    "raise",
+    "lower",
+    "smooth",
+    "level",
+    "land",
+    "sea",
+    "river",
+    "eraseRiver",
+    "shallow",
+    "eraseShallow"
   ];
 
   if (!modes.includes(brush.mode)) {
     throw new Error("不明なブラシです。");
   }
 
+// 防御性兼容：工作副本也允许从没有浅海字段的旧地图生成。
+  if (!terrain.shallows) {
+    terrain.shallows = Array(terrain.cols * terrain.rows).fill(0);
+  }
+  
   const old = terrain.heights.slice();
   const dx = terrain.width / (terrain.cols - 1);
   const dy = terrain.height / (terrain.rows - 1);
@@ -289,12 +327,15 @@ export function applyBrush(terrain, point, brush) {
         case "land":
           next = Math.max(1, height + strength * weight);
           terrain.rivers[index] = 0;
+          terrain.shallows[index] = 0;
           break;
 
         case "sea":
           next = Math.min(-1, height - strength * weight);
           terrain.rivers[index] = 0;
+          terrain.shallows[index] = 0;
           break;
+
 
         case "river":
           // 河流不强制降低到海平面。
@@ -304,6 +345,16 @@ export function applyBrush(terrain, point, brush) {
         case "eraseRiver":
           terrain.rivers[index] = 0;
           break;
+
+        case "shallow":
+          // 浅海只在海域上绘制，不修改高度。
+          if (height <= 0) terrain.shallows[index] = 1;
+          break;
+
+        case "eraseShallow":
+          terrain.shallows[index] = 0;
+          break;
+
 
         case "smooth": {
           let sum = 0;
