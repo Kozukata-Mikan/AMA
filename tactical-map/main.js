@@ -2,6 +2,18 @@ import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
 import { mountEditor } from "./editor.js";
 
+import {
+  createDemoTerrain,
+  gridPosition,
+  sampleTerrain
+} from "./terrain-data.js";
+
+import { mountTerrainEditor } from "./terrain-editor.js";
+
+let terrain = createDemoTerrain();
+let terrainController = null;
+
+
 let editorController = null;
 
 
@@ -51,72 +63,72 @@ function pathFromPoints(points) {
 }
 
 function terrainHeight(x, y) {
-  const mountainA =
-    65 * Math.exp(
-      -(
-        ((x + 80) / 105) ** 2 +
-        ((y + 15) / 80) ** 2
-      )
-    );
-
-  const mountainB =
-    60 * Math.exp(
-      -(
-        ((x - 75) / 95) ** 2 +
-        ((y - 25) / 100) ** 2
-      )
-    );
-
-  const detail =
-    2 * Math.sin(x / 24) * Math.cos(y / 29);
-
-  // 標高 0 は海面を表し、 0 未満の領域は海です。
-  return mountainA + mountainB + detail - 19;
+  return sampleTerrain(terrain, x, y).height;
 }
+
 
 function drawGrid() {
-  const extent = 300;
-  const spacing = 30;
+  layers.grid.replaceChildren();
 
-  for (let value = -extent; value <= extent; value += spacing) {
-    const horizontal = [
-      project(-extent, value),
-      project(extent, value)
-    ];
+  const halfWidth = terrain.width / 2;
+  const halfHeight = terrain.height / 2;
+  const spacing = Math.max(30, Math.ceil(
+    Math.max(terrain.width, terrain.height) / 30
+  ));
 
-    const vertical = [
-      project(value, -extent),
-      project(value, extent)
-    ];
-
-    for (const points of [horizontal, vertical]) {
-      createSVG("path", {
-        d: pathFromPoints(points),
-        class: "grid-line"
-      }, layers.grid);
-    }
+  for (let x = -halfWidth; x <= halfWidth; x += spacing) {
+    createSVG("path", {
+      d: pathFromPoints([
+        project(x, -halfHeight),
+        project(x, halfHeight)
+      ]),
+      class: "grid-line"
+    }, layers.grid);
   }
+
+  for (let y = -halfHeight; y <= halfHeight; y += spacing) {
+    createSVG("path", {
+      d: pathFromPoints([
+        project(-halfWidth, y),
+        project(halfWidth, y)
+      ]),
+      class: "grid-line"
+    }, layers.grid);
+  }
+
+  createSVG("path", {
+    d: pathFromPoints([
+      project(-halfWidth, -halfHeight),
+      project(halfWidth, -halfHeight),
+      project(halfWidth, halfHeight),
+      project(-halfWidth, halfHeight)
+    ]) + " Z",
+    class: "map-boundary"
+  }, layers.grid);
 }
 
+
 function makeHeightGrid() {
-  const rows = [];
+  const result = [];
 
-  for (let y = -180; y <= 180; y += 6) {
-    const row = [];
+  for (let row = 0; row < terrain.rows; row++) {
+    const points = [];
 
-    for (let x = -240; x <= 240; x += 6) {
-      row.push({
-        x,
-        y,
-        z: terrainHeight(x, y)
+    for (let col = 0; col < terrain.cols; col++) {
+      const point = gridPosition(terrain, col, row);
+
+      points.push({
+        ...point,
+        z: terrain.heights[row * terrain.cols + col]
       });
     }
 
-    rows.push(row);
+    result.push(points);
   }
 
-  return rows;
+  return result;
 }
+
 
 function contourTriangle(triangle, level) {
   const intersections = [];
@@ -145,10 +157,64 @@ function contourTriangle(triangle, level) {
 }
 
 function drawTerrain() {
+  layers.terrain.replaceChildren();
+
   const grid = makeHeightGrid();
 
-  // 標高 0 は海岸線に、それ以外の標高は山体の等高線に対応します。
-  const levels = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60];
+  // 河流显示与最近网格顶点分区一致。
+  const dx = terrain.width / (terrain.cols - 1);
+  const dy = terrain.height / (terrain.rows - 1);
+  let riverPath = "";
+
+  for (let row = 0; row < terrain.rows; row++) {
+    for (let col = 0; col < terrain.cols; col++) {
+      const index = row * terrain.cols + col;
+
+      if (
+        terrain.rivers[index] !== 1 ||
+        terrain.heights[index] <= 0
+      ) continue;
+
+      const center = gridPosition(terrain, col, row);
+
+      const corners = [
+        [center.x - dx / 2, center.y - dy / 2],
+        [center.x + dx / 2, center.y - dy / 2],
+        [center.x + dx / 2, center.y + dy / 2],
+        [center.x - dx / 2, center.y + dy / 2]
+      ].map(([x, y]) => {
+        const px = Math.max(-terrain.width / 2, Math.min(terrain.width / 2, x));
+        const py = Math.max(-terrain.height / 2, Math.min(terrain.height / 2, y));
+        const sample = sampleTerrain(terrain, px, py);
+        return project(px, py, sample.surface);
+      });
+
+      riverPath += pathFromPoints(corners) + " Z ";
+    }
+  }
+
+  if (riverPath) {
+    createSVG("path", {
+      d: riverPath,
+      class: "river-surface"
+    }, layers.terrain);
+  }
+
+  let maximum = 0;
+
+  for (const height of terrain.heights) {
+    maximum = Math.max(maximum, height);
+  }
+
+  const levels = [0];
+
+  for (
+    let level = terrain.contourInterval;
+    level <= maximum;
+    level += terrain.contourInterval
+  ) {
+    levels.push(level);
+  }
 
   for (const level of levels) {
     let pathData = "";
@@ -173,6 +239,7 @@ function drawTerrain() {
     }, layers.terrain);
   }
 }
+
 
 // 参战单位来自共享存储，绘制时附加原绘图代码使用的 id。
 let units = [];
@@ -519,7 +586,6 @@ editorController?.select(unit.instanceId);
 // 返回单位当前所在位置的显示高度与合法性。
 // 后续编辑器和移动系统也应调用同一个函数。
 function getUnitSpatialState(unit) {
-  // 未配置单位不能被 Number(null) 转换为地图原点。
   if (unit.x == null || unit.y == null) {
     return {
       valid: false,
@@ -537,25 +603,40 @@ function getUnitSpatialState(unit) {
     };
   }
 
-  const terrain = terrainHeight(x, y);
-  const ground = Math.max(0, terrain);
+  const sample = sampleTerrain(terrain, x, y);
+
+  if (!sample.inside) {
+    return {
+      valid: false,
+      reason: "地図の範囲外です。座標を修正してください。"
+    };
+  }
+
+  const ground = sample.surface;
 
   switch (unit.branch) {
     case "navy": {
-      if (terrain > 0) {
+      if (sample.kind === "land") {
         return {
           valid: false,
           reason: "海軍ユニットは陸地に配置できません。"
         };
       }
 
-      if (unit.underwater === true) {
+      if (sample.kind === "river") {
+        return {
+          valid: false,
+          reason: "河川の通航ルールは未設定です。海域に配置してください。"
+        };
+      }
+
+      if (unit.underwater) {
         const depth = Number(unit.depth ?? 12);
 
         if (!Number.isFinite(depth) || depth <= 0) {
           return {
             valid: false,
-            reason: "水中深度は 0 より大きい値で指定してください。"
+            reason: "水中深度は 0 より大きくしてください。"
           };
         }
 
@@ -563,7 +644,7 @@ function getUnitSpatialState(unit) {
           valid: true,
           height: -depth,
           ground: 0,
-          note: `水中深度：${depth} 地図高度ユニット`
+          note: `水中深度：${depth} 地図高度単位`
         };
       }
 
@@ -571,23 +652,25 @@ function getUnitSpatialState(unit) {
         valid: true,
         height: 0,
         ground: 0,
-        note: "海面に配置されています"
+        note: "海面に配置されています。"
       };
     }
 
     case "army":
-      if (terrain <= 0) {
+      if (sample.kind !== "land") {
         return {
           valid: false,
-          reason: "陸軍ユニットは海域に配置できません。"
+          reason: sample.kind === "river"
+            ? "河川の横断ルールは未設定です。陸地に配置してください。"
+            : "陸軍ユニットは海域に配置できません。"
         };
       }
 
       return {
         valid: true,
-        height: terrain,
-        ground: terrain,
-        note: `地形海抜：${terrain.toFixed(1)} 地図高度ユニット`
+        height: ground,
+        ground,
+        note: `地形標高：${ground.toFixed(1)} 地図高度単位`
       };
 
     case "air": {
@@ -596,7 +679,7 @@ function getUnitSpatialState(unit) {
       if (!Number.isFinite(altitude) || altitude <= ground) {
         return {
           valid: false,
-          reason: "航空機の海抜高度は地形または海面より高くしてください。"
+          reason: "航空機の海抜高度は地形または水面より高くしてください。"
         };
       }
 
@@ -605,8 +688,8 @@ function getUnitSpatialState(unit) {
         height: altitude,
         ground,
         note:
-          `海抜：${altitude} 地図高度ユニット；` +
-          `対地高度：${(altitude - ground).toFixed(1)}`
+          `海抜高度：${altitude} 地図高度単位；` +
+          `対地・対水面高度：${(altitude - ground).toFixed(1)}`
       };
     }
 
@@ -624,10 +707,60 @@ function getUnitSpatialState(unit) {
         valid: true,
         height: altitude,
         ground,
-        note: `海抜：${altitude.toFixed(1)} 地図高度ユニット`
+        note: `海抜高度：${altitude.toFixed(1)} 地図高度単位`
       };
     }
   }
+}
+
+function drawInvalidUnit(unit, reason) {
+  // 未配置单位只显示在列表。越界单位同样不画到地图范围外。
+  if (unit.x == null || unit.y == null) return;
+
+  const sample = sampleTerrain(terrain, Number(unit.x), Number(unit.y));
+  if (!sample.inside) return;
+
+  const position = project(unit.x, unit.y, sample.surface);
+
+  const group = createSVG("g", {
+    class: "unit invalid-unit",
+    "data-instance-id": unit.instanceId,
+    transform: `translate(${position.x} ${position.y})`,
+    tabindex: "0",
+    role: "button",
+    "aria-label": `${unit.name}：${reason}`
+  }, layers.units);
+
+  createSVG("path", {
+    d: "M -8 -8 L 8 8 M 8 -8 L -8 8",
+    class: "invalid-unit-mark"
+  }, group);
+
+  const label = createSVG("text", {
+    x: 12,
+    y: 4
+  }, group);
+
+  label.textContent = `${unit.name} ⚠`;
+
+  const title = createSVG("title", {}, group);
+  title.textContent = reason;
+
+  createSVG("circle", {
+    cx: 0,
+    cy: 0,
+    r: 18,
+    class: "hit-area"
+  }, group);
+
+  group.addEventListener("click", () => selectUnit(unit, group));
+
+  group.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectUnit(unit, group);
+    }
+  });
 }
 
 
@@ -639,9 +772,10 @@ function drawUnits() {
    const spatial = getUnitSpatialState(unit);
 
 if (!spatial.valid) {
-  console.warn(`${unit.name}：${spatial.reason}`);
+  drawInvalidUnit(unit, spatial.reason);
   continue;
 }
+
 
 const position = project(unit.x, unit.y, spatial.height);
 
@@ -807,6 +941,88 @@ function getSVGPoint(event) {
 
   return point.matrixTransform(svg.getScreenCTM().inverse());
 }
+
+// 从屏幕位置寻找可见地形三角形上的地图坐标。
+// 不直接按海平面反投影，否则山地上的笔刷会发生偏移。
+function pickTerrainPoint(event) {
+  const screen = getSVGPoint(event);
+
+  const point = {
+    x: (screen.x - view.x) / view.scale,
+    y: (screen.y - view.y) / view.scale
+  };
+
+  let result = null;
+  let nearestDepth = -Infinity;
+
+  function test(vertices) {
+    const projected = vertices.map(vertex =>
+      project(vertex.x, vertex.y, Math.max(0, vertex.z))
+    );
+
+    const [a, b, c] = projected;
+
+    const denominator =
+      (b.y - c.y) * (a.x - c.x) +
+      (c.x - b.x) * (a.y - c.y);
+
+    if (Math.abs(denominator) < 0.000001) return;
+
+    const wa = (
+      (b.y - c.y) * (point.x - c.x) +
+      (c.x - b.x) * (point.y - c.y)
+    ) / denominator;
+
+    const wb = (
+      (c.y - a.y) * (point.x - c.x) +
+      (a.x - c.x) * (point.y - c.y)
+    ) / denominator;
+
+    const wc = 1 - wa - wb;
+
+    if (wa < -0.00001 || wb < -0.00001 || wc < -0.00001) return;
+
+    const x = vertices[0].x * wa + vertices[1].x * wb + vertices[2].x * wc;
+    const y = vertices[0].y * wa + vertices[1].y * wb + vertices[2].y * wc;
+
+    // 多个坡面投影重叠时，选择朝观察者的一侧。
+    const depth = x + y;
+
+    if (depth > nearestDepth) {
+      nearestDepth = depth;
+      result = { x, y };
+    }
+  }
+
+  const grid = makeHeightGrid();
+
+  for (let row = 0; row < grid.length - 1; row++) {
+    for (let col = 0; col < grid[row].length - 1; col++) {
+      const a = grid[row][col];
+      const b = grid[row][col + 1];
+      const c = grid[row + 1][col + 1];
+      const d = grid[row + 1][col];
+
+      test([a, b, c]);
+      test([a, c, d]);
+    }
+  }
+
+  return result;
+}
+
+function redrawTerrain() {
+  drawGrid();
+  drawTerrain();
+
+  // 临时航路跟随地形重建，不保留旧的高度位置。
+  layers.routes.replaceChildren();
+  routeElement = null;
+  drawRoute();
+
+  drawUnits();
+}
+
 
 function zoomAt(factor, center) {
   const oldScale = view.scale;
@@ -998,11 +1214,27 @@ async function startEditor() {
     const catalog = await loadUnitData();
     const store = createBattleStore(catalog);
 
+    terrain = store.getScene().terrain;
+    let terrainText = JSON.stringify(terrain);
+
+    redrawTerrain();
+
+    // 必须先注册：编辑器重建列表前，空间查询先切换到新地形。
+    const unsubscribeTerrain = store.subscribe(() => {
+      const next = store.getScene().terrain;
+      const text = JSON.stringify(next);
+
+      if (text !== terrainText) {
+        terrain = next;
+        terrainText = text;
+        redrawTerrain();
+      }
+    });
+
     editorController = mountEditor({
       container,
       catalog,
       store,
-
       spatialState: getUnitSpatialState,
 
       getView() {
@@ -1022,7 +1254,6 @@ async function startEditor() {
 
         drawUnits();
 
-        // 避免把编号直接拼进 CSS 选择器。
         for (const element of layers.units.querySelectorAll(".unit")) {
           element.classList.toggle(
             "selected",
@@ -1055,10 +1286,32 @@ async function startEditor() {
       }
     });
 
+    // 放在单位编辑器前面，但不让 mountEditor 清空它。
+    const terrainHost = document.createElement("section");
+    terrainHost.className = "editor-section terrain-editor";
+    container.prepend(terrainHost);
+
+    terrainController = mountTerrainEditor({
+      container: terrainHost,
+      svg,
+      store,
+      pickPoint: pickTerrainPoint,
+
+      getTerrain() {
+        return terrain;
+      },
+
+      previewTerrain(next) {
+        terrain = next;
+        redrawTerrain();
+      }
+    });
+
     window.addEventListener("pagehide", event => {
-      // 进入浏览器往返缓存时保留订阅，返回页面后仍可使用。
       if (event.persisted) return;
 
+      terrainController?.destroy();
+      unsubscribeTerrain();
       editorController?.destroy();
       store.destroy();
     });
@@ -1073,5 +1326,6 @@ async function startEditor() {
     container.replaceChildren(paragraph);
   }
 }
+
 
 startEditor();
