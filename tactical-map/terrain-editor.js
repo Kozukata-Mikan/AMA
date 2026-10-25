@@ -43,9 +43,9 @@ export function mountTerrainEditor({
   editing.type = "checkbox";
   field(container, "地形編集モード", editing);
 
-  const mode = node("select");
+   const mode = node("select");
 
-  for (const [value, title] of [
+  const brushOptions = [
     ["raise", "標高を上げる"],
     ["lower", "標高を下げる"],
     ["smooth", "平滑化"],
@@ -53,14 +53,17 @@ export function mountTerrainEditor({
     ["land", "陸地を描く"],
     ["sea", "海域を描く"],
     ["river", "河川を描く"],
-    ["eraseRiver", "河川を消す"]
+    ["eraseRiver", "河川を消す"],
     ["shallow", "浅海を描く"],
     ["eraseShallow", "浅海を消す"]
-  ]) {
+  ];
+
+  for (const [value, title] of brushOptions) {
     mode.append(new Option(title, value));
   }
 
   field(container, "ブラシ", mode);
+
   const radius = field(container, "半径（5～200）", numberInput(30));
   const strength = field(container, "強度（0.1～50）", numberInput(5));
   const target = field(container, "指定標高（-200～600）", numberInput(20));
