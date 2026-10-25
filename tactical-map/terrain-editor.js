@@ -54,6 +54,8 @@ export function mountTerrainEditor({
     ["sea", "海域を描く"],
     ["river", "河川を描く"],
     ["eraseRiver", "河川を消す"]
+    ["shallow", "浅海を描く"],
+    ["eraseShallow", "浅海を消す"]
   ]) {
     mode.append(new Option(title, value));
   }
@@ -65,7 +67,7 @@ export function mountTerrainEditor({
 
   container.append(node(
     "p",
-    "編集モードでは地図上をドラッグして描画します。島と大陸は陸地ブラシで作成できます。河川ブラシは陸地上に水域を設定します。",
+    "編集モードでは地図上をドラッグして描画します。河川は陸地上、浅海は海域上に描けます。河川と浅海には、サイズレベル 1～2 の水上海軍ユニットのみ配置できます。",
     "editor-note"
   ));
 
