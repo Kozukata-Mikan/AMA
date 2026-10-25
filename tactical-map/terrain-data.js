@@ -133,6 +133,7 @@ export function validateTerrain(value) {
     cols: value.cols,
     rows: value.rows,
     contourInterval: value.contourInterval,
+    heights: value.heights.slice(),
     rivers: value.rivers.slice(),
     shallows: shallows.slice()
   };
