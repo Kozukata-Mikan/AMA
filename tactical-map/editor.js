@@ -1,4 +1,6 @@
 import { getBranchName } from "../js/data-store.js";
+import { mountActionPanel } from "./action-panel.js";
+
 
 // ===== 编辑器 DOM 工具 =====
 // 所有动态文字都通过 textContent 或表单 value 写入。
@@ -162,7 +164,7 @@ export function mountEditor({
     }),
     button("作戦を初期化", safely(() => {
       if (!confirm(
-        "現在のユニット、編隊、表示設定を初期化しますか？必要なデータは先に書き出してください。復元に失敗している場合は、保存領域の元データを先にバックアップしてください。"
+        "現在のユニット、編隊、行動記録、表示設定を初期化しますか？必要なデータは先に書き出してください。復元に失敗している場合は、保存領域の元データを先にバックアップしてください。"
       )) return;
 
       selectedId = "";
@@ -579,6 +581,14 @@ export function mountEditor({
 
     groupHost.append(node("p", "編隊構成", "editor-note"), root);
   }
+  // 行动草案使用同一个场景存储。
+  const actionSection = section("行動と記録");
+
+  const actionPanel = mountActionPanel({
+    container: actionSection,
+    store,
+    spatialState
+  });
 
   // ===== 状态与地图同步 =====
 
@@ -631,6 +641,7 @@ export function mountEditor({
 
     renderUnitForm(instances);
     renderGroups(instances);
+    actionPanel.refresh();
     renderMap(instances, selectedId);
   }
 
