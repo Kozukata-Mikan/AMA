@@ -65,6 +65,7 @@ function emptyScene() {
     terrainId: "demo-islands-v1",
     instances: [],
     groups: [],
+    actions: [],
     view: {
       x: 0,
       y: 0,
@@ -230,6 +231,90 @@ export function createBattleStore(units) {
       parentId
     };
   }
+    // 行动记录保存历史摘要，不要求对应个体现在仍然存在。
+  function normalizeActionActor(value) {
+    if (!isObject(value)) {
+      throw new Error("行動記録のユニット資料が不正です。");
+    }
+
+    const x = value.x ?? null;
+    const y = value.y ?? null;
+
+    if ((x === null) !== (y === null)) {
+      throw new Error("行動記録の座標が不正です。");
+    }
+
+    if (x !== null) {
+      requireNumber(x, "記録 X");
+      requireNumber(y, "記録 Y");
+    }
+
+    const altitude = value.altitude ?? null;
+
+    if (altitude !== null) {
+      requireNumber(altitude, "記録高度");
+    }
+
+    if (!BRANCHES.has(value.branch) || !SIDES.has(value.side)) {
+      throw new Error("行動記録の軍種または陣営が不正です。");
+    }
+
+    return {
+      instanceId: requireText(value.instanceId, "記録識別番号"),
+      unitId: requireText(value.unitId, "記録図鑑番号"),
+      name: requireText(value.name, "記録ユニット名"),
+      branch: value.branch,
+      side: value.side,
+      currentHp: requireNumber(value.currentHp, "記録耐性", 0),
+      x,
+      y,
+      altitude,
+      heading: requireNumber(value.heading, "記録方位"),
+      underwater: requireBoolean(value.underwater, "記録水中設定"),
+      depth: requireNumber(value.depth, "記録水中深度", Number.MIN_VALUE)
+    };
+  }
+
+  function normalizeAction(item) {
+    if (!isObject(item)) {
+      throw new Error("行動記録の書式が不正です。");
+    }
+
+    if (!["攻撃", "防空", "その他の行動"].includes(item.actionType)) {
+      throw new Error("行動種別が不正です。");
+    }
+
+    if (item.status !== "unresolved") {
+      throw new Error("対応していない行動記録状態です。");
+    }
+
+    const createdAt = requireText(item.createdAt, "記録日時");
+
+    if (!Number.isFinite(Date.parse(createdAt))) {
+      throw new Error("記録日時が不正です。");
+    }
+
+    if (typeof item.note !== "string" || item.note.length > 2000) {
+      throw new Error("行動メモは 2000 文字以内で指定してください。");
+    }
+
+    const attacker = normalizeActionActor(item.attacker);
+    const target = normalizeActionActor(item.target);
+
+    if (attacker.instanceId === target.instanceId) {
+      throw new Error("行動ユニットと目標は別の個体を指定してください。");
+    }
+
+    return {
+      id: requireText(item.id, "行動記録番号"),
+      createdAt,
+      status: "unresolved",
+      actionType: item.actionType,
+      note: item.note,
+      attacker,
+      target
+    };
+  }
 
   function normalizeScene(input) {
     if (!isObject(input) || input.version !== VERSION) {
@@ -249,6 +334,24 @@ export function createBattleStore(units) {
 
     const instances = input.instances.map(normalizeInstance);
     const groups = input.groups.map(normalizeGroup);
+        // 第一阶段保存文件没有 actions 字段，按空记录迁移。
+    const rawActions = input.actions ?? [];
+
+    if (!Array.isArray(rawActions) || rawActions.length > 500) {
+      throw new Error("行動記録は 500 件以内の一覧で指定してください。");
+    }
+
+    const actions = rawActions.map(normalizeAction);
+    const actionIds = new Set();
+
+    for (const action of actions) {
+      if (actionIds.has(action.id)) {
+        throw new Error("行動記録番号が重複しています。");
+      }
+
+      actionIds.add(action.id);
+    }
+
     const instanceIds = new Set();
     const groupMap = new Map();
 
@@ -308,6 +411,7 @@ export function createBattleStore(units) {
       terrainId: input.terrainId,
       instances,
       groups,
+      actions,
       view: {
         x: requireNumber(view.x, "表示 X"),
         y: requireNumber(view.y, "表示 Y"),
@@ -609,6 +713,67 @@ export function createBattleStore(units) {
     commit(candidate, true);
   }
 
+    function actionActor(instance) {
+    return {
+      instanceId: instance.instanceId,
+      unitId: instance.unitId,
+      name: instance.name,
+      branch: instance.branch,
+      side: instance.side,
+      currentHp: instance.currentHp,
+      x: instance.x,
+      y: instance.y,
+      altitude: instance.altitude,
+      heading: instance.heading,
+      underwater: instance.underwater,
+      depth: instance.depth
+    };
+  }
+
+  function addAction({ attackerId, targetId, actionType, note = "" }) {
+    const attacker = scene.instances.find(
+      item => item.instanceId === attackerId
+    );
+
+    const target = scene.instances.find(
+      item => item.instanceId === targetId
+    );
+
+    if (!attacker || !target) {
+      throw new Error("行動ユニットまたは目標が見つかりません。");
+    }
+
+    const record = normalizeAction({
+      id: newId(),
+      createdAt: new Date().toISOString(),
+      status: "unresolved",
+      actionType,
+      note,
+      attacker: actionActor(attacker),
+      target: actionActor(target)
+    });
+
+    change(candidate => {
+      if (candidate.actions.length >= 5000) {
+        throw new Error(
+          "行動記録が 5000 件に達しました。書き出した後、不要な記録を削除してください。"
+        );
+      }
+
+      candidate.actions.push(record);
+    });
+
+    return copy(record);
+  }
+
+  function removeAction(id) {
+    change(candidate => {
+      candidate.actions = candidate.actions.filter(
+        item => item.id !== id
+      );
+    });
+  }
+
   function subscribe(listener) {
     if (typeof listener !== "function") {
       throw new Error("更新通知の登録先が不正です。");
@@ -676,6 +841,9 @@ export function createBattleStore(units) {
     renameScene,
     exportScene,
     importScene,
+    getActions: () => copy(scene.actions),
+    addAction,
+    removeAction,
     isRecoveryBlocked: () => recoveryBlocked,
     destroy
   };
