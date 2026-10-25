@@ -342,8 +342,8 @@ export function createBattleStore(units) {
         // 第一阶段保存文件没有 actions 字段，按空记录迁移。
     const rawActions = input.actions ?? [];
 
-    if (!Array.isArray(rawActions) || rawActions.length > 500) {
-      throw new Error("行動記録は 500 件以内の一覧で指定してください。");
+    if (!Array.isArray(rawActions) || rawActions.length > 5000) {
+      throw new Error("行動記録は 5000 件以内の一覧で指定してください。");
     }
 
     const actions = rawActions.map(normalizeAction);
