@@ -1,6 +1,7 @@
 import { getBranchName } from "../js/data-store.js";
 import { mountActionPanel } from "./action-panel.js";
 import { mountSceneLibrary } from "./scene-library.js";
+import { assessCluster } from "./cluster-engine.js";
 
 
 
@@ -312,6 +313,255 @@ export function mountEditor({
     }))
   );
 
+   // ===== 集群编辑 =====
+
+  const clusterSection = section("集群");
+  const clusterHost = node("div");
+  clusterSection.append(clusterHost);
+
+  function renderClusters(instances) {
+    clusterHost.replaceChildren();
+
+    clusterHost.append(node(
+      "p",
+      "図鑑種別・サイズ・陣営が同じで、全メンバー間の距離が 10 以下の編隊を集群として表示します。" +
+      "個体の耐性と行動記録は独立して保持します。",
+      "editor-note"
+    ));
+
+    // ----- 直接新增集群 -----
+
+    const newForm = node("form");
+    newForm.append(node("h3", "新しい集群を追加"));
+
+    const catalogOptions = catalog.map(unit => [
+      unit.id,
+      `${getBranchName(unit.branch)} · ${unit.name}`
+    ]);
+
+    const catalogControl = field(
+      newForm,
+      "ユニット資料",
+      select(catalogOptions, catalogOptions[0]?.[0] ?? "")
+    );
+
+    const nameControl = field(
+      newForm,
+      "集群名",
+      input("新しい集群")
+    );
+
+    const sizeControl = field(
+      newForm,
+      "サイズレベル",
+      select(
+        [1, 2, 3, 4, 5].map(value => [
+          String(value),
+          String(value)
+        ]),
+        "1"
+      )
+    );
+
+    const countControl = field(
+      newForm,
+      "個体数（2～100）",
+      input(2, "number")
+    );
+
+    countControl.min = "2";
+    countControl.max = "100";
+    countControl.step = "1";
+
+    const add = node("button", "未配置の集群を追加");
+    add.type = "submit";
+    newForm.append(add);
+
+    newForm.addEventListener("submit", event => {
+      event.preventDefault();
+
+      safely(() => {
+        const created = store.addCluster(
+          catalogControl.value,
+          numberValue(countControl, "個体数"),
+          Number(sizeControl.value),
+          nameControl.value
+        );
+
+        selectedId = created.members[0].instanceId;
+        refresh();
+        openSection(listSection);
+
+        message(
+          "集群を追加しました。メンバーのドラッグ配置ハンドルから、集群全体を配置できます。"
+        );
+      })();
+    });
+
+    clusterHost.append(newForm);
+
+    // ----- 合并已有单体 -----
+
+    const mergeForm = node("form");
+    mergeForm.className = "editor-section";
+    mergeForm.append(node("h3", "配置済みユニットを合併"));
+
+    const mergeName = field(
+      mergeForm,
+      "集群名",
+      input("新しい集群")
+    );
+
+    const memberList = node("div", "", "cluster-member-list");
+    const checks = [];
+
+    for (const unit of instances.filter(
+      item => item.groupId === null
+    )) {
+      const check = input(false, "checkbox");
+
+      field(
+        memberList,
+        `${unit.name} · サイズ ${unit.sizeLevel}`,
+        check
+      );
+
+      checks.push({
+        instanceId: unit.instanceId,
+        control: check
+      });
+    }
+
+    if (!checks.length) {
+      memberList.append(node(
+        "p",
+        "所属なしのユニットはありません。",
+        "editor-note"
+      ));
+    }
+
+    mergeForm.append(memberList);
+
+    const mergeButton = node("button", "選択ユニットを集群に合併");
+    mergeButton.type = "submit";
+    mergeForm.append(mergeButton);
+
+    mergeForm.addEventListener("submit", event => {
+      event.preventDefault();
+
+      safely(() => {
+        const ids = checks
+          .filter(item => item.control.checked)
+          .map(item => item.instanceId);
+
+        const current = store.getAll();
+        const members = ids.map(id => current.find(
+          unit => unit.instanceId === id
+        ));
+
+        if (members.some(member => !member)) {
+          throw new Error("ユニット一覧を更新して選択し直してください。");
+        }
+
+        const assessment = assessCluster(
+          members,
+          store.getScene().terrain
+        );
+
+        if (!assessment.valid) {
+          throw new Error(assessment.reason);
+        }
+
+        for (const member of members) {
+          const spatial = spatialState(member);
+
+          if (!spatial.valid) {
+            throw new Error(`${member.name}：${spatial.reason}`);
+          }
+        }
+
+        store.createCluster(ids, mergeName.value);
+
+        message("集群を作成しました。地図上のアイコンを統合しました。");
+      })();
+    });
+
+    clusterHost.append(mergeForm);
+
+    // ----- 已有集群和拆分 -----
+
+    const existing = node("section", "", "editor-section");
+    existing.append(node("h3", "集群一覧"));
+
+    const groups = store.getGroups().filter(
+      group => group.kind === "cluster"
+    );
+
+    for (const group of groups) {
+      const members = instances.filter(
+        unit => unit.groupId === group.id
+      );
+
+      const assessment = assessCluster(
+        members,
+        store.getScene().terrain,
+        { allowUnplaced: true }
+      );
+
+      const invalidMember = !assessment.unplaced &&
+        members.find(member => !spatialState(member).valid);
+
+      const reason = !assessment.valid
+        ? assessment.reason
+        : invalidMember
+          ? spatialState(invalidMember).reason
+          : assessment.unplaced
+            ? "未配置"
+            : "アイコン統合中";
+
+      const card = node("div", "", "cluster-card");
+
+      card.append(node(
+        "p",
+        `${group.name} *${members.length}\n${reason}`,
+        "editor-note"
+      ));
+
+      const details = node("details");
+      details.append(node("summary", "メンバーを表示"));
+
+      const memberNames = node("ul", "", "group-tree");
+
+      for (const member of members) {
+        memberNames.append(node("li", member.name));
+      }
+
+      details.append(memberNames);
+      card.append(details);
+
+      card.append(button("集群を解除", safely(() => {
+        if (!confirm(
+          `「${group.name}」を解除しますか？個体は削除されません。`
+        )) return;
+
+        store.removeGroup(group.id);
+        message("集群を解除しました。個体はそのまま保持されています。");
+      })));
+
+      existing.append(card);
+    }
+
+    if (!groups.length) {
+      existing.append(node(
+        "p",
+        "集群はありません。",
+        "editor-note"
+      ));
+    }
+
+    clusterHost.append(existing);
+  }
+
   // ===== 单位列表与属性 =====
 
   const listSection = section("参戦ユニット");
@@ -353,6 +603,23 @@ export function mountEditor({
 
     const form = node("form");
     const base = unit.snapshot;
+    const clusterGroup = store.getGroups().find(
+      group =>
+        group.id === unit.groupId &&
+        group.kind === "cluster"
+    );
+
+    if (clusterGroup) {
+      form.append(node(
+        "p",
+        `所属集群：${clusterGroup.name}\n` +
+        "このフォームは選択した個体だけを編集します。" +
+        "集群全体の位置と方位は、地図上のドラッグとホイールで変更してください。" +
+        "条件を外れた場合、アイコンは個別表示になります。",
+        "editor-note"
+      ));
+    }
+
 
     form.append(node(
       "p",
@@ -723,6 +990,7 @@ export function mountEditor({
 
     renderUnitForm(instances);
     renderGroups(instances);
+    renderClusters(instances);
     actionPanel.refresh();
     renderMap(instances, selectedId);
   }
