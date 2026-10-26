@@ -53,9 +53,9 @@ export function validateTerrain(value) {
       typeof value[key] !== "number" ||
       !Number.isFinite(value[key]) ||
       value[key] < 120 ||
-      value[key] > 1600
+      value[key] > 3200
     ) {
-      throw new Error("地図の幅と高さは 120～1600 で指定してください。");
+      throw new Error("地図の幅と高さは 120～3200 で指定してください。");
     }
   }
 
@@ -209,8 +209,8 @@ export function resizeTerrain(source, settings) {
 
   // 先验证参数，避免创建过大的数组。
   if (
-    !Number.isFinite(width) || width < 120 || width > 1600 ||
-    !Number.isFinite(height) || height < 120 || height > 1600 ||
+    !Number.isFinite(width) || width < 120 || width > 3200 ||
+    !Number.isFinite(height) || height < 120 || height > 3200 ||
     !Number.isInteger(cols) || cols < 9 || cols > 121 ||
     !Number.isInteger(rows) || rows < 9 || rows > 121 ||
     cols * rows > 10000
