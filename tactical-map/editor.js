@@ -663,6 +663,18 @@ export function mountEditor({
       });
 
       item.classList.toggle("active", unit.instanceId === selectedId);
+      const deployHandle = node(
+        "span",
+        "↗ ドラッグ配置",
+        "unit-deploy-handle"
+      );
+
+      deployHandle.dataset.deployInstanceId = unit.instanceId;
+      deployHandle.title =
+        "地図へドラッグして配置します。ドラッグ中のホイールで方位を変更できます。";
+
+      item.append(deployHandle);
+
 
       item.append(node(
         "small",
