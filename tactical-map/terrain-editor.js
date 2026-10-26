@@ -4,6 +4,11 @@ import {
   applyBrush
 } from "./terrain-data.js";
 
+import {
+  mountEnvironmentEditor
+} from "./environment-editor.js";
+
+
 function node(tag, text = "", className = "") {
   const result = document.createElement(tag);
   result.textContent = text;
