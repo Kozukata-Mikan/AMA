@@ -476,6 +476,8 @@ export function mountTerrainEditor({
 
     destroy() {
 
+      environmentController.destroy();
+
       if (stroke) finish({ pointerId: stroke.pointerId }, true);
       unsubscribe();
 
@@ -488,6 +490,7 @@ export function mountTerrainEditor({
       svg.removeEventListener("pointercancel", cancel, true);
       svg.removeEventListener("lostpointercapture", lost, true);
       svg.removeEventListener("click", click, true);
+      
     }
   };
 }
