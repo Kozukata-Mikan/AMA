@@ -75,8 +75,10 @@ export function mountEditor({
   spatialState,
   renderMap,
   getView,
-  setView
+  setView,
+  onSceneLoaded = () => {}
 }) {
+
   let selectedId = "";
   let selectedGroupId = "";
   let lastSavedView = "";
@@ -155,6 +157,30 @@ export function mountEditor({
     details.open = true;
   }
 
+  // ===== 地图库 =====
+
+  const librarySection = section("地图库 / 保存スロット");
+
+  const libraryController = mountSceneLibrary({
+    container: librarySection,
+    store,
+    getView,
+
+    onLoaded() {
+      // 不保留上一张地图的单位和编队选择。
+      selectedId = "";
+      selectedGroupId = "";
+
+      const scene = store.getScene();
+
+      // 即使两个场景保存的视角数值相同，也明确恢复视角。
+      setView(scene.view);
+      lastSavedView = JSON.stringify(scene.view);
+
+      onSceneLoaded();
+      refresh();
+    }
+  });
 
   // ===== 场景操作 =====
 
@@ -721,9 +747,11 @@ export function mountEditor({
       message("地図からユニットを選択しました。");
     },
 
-    destroy() {
+  destroy() {
+      libraryController.destroy();
       unsubscribe();
       container.replaceChildren();
     }
+
   };
 }
