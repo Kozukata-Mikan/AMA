@@ -123,12 +123,7 @@ export function mountEnvironmentEditor({
     maxWidth: "calc(100% - 32px)",
     boxSizing: "border-box",
     margin: "0",
-    padding: "10px 14px",
-
-    border: "1px solid var(--weather-color, #f1f5f9)",
-    borderLeft: "4px solid var(--weather-color, #f1f5f9)",
-    borderRadius: "6px",
-    background: "rgba(7, 16, 27, 0.96)",
+    
     color: "#e8eef6",
 
     fontSize: "12px",
@@ -149,12 +144,11 @@ export function mountEnvironmentEditor({
     "environment-weather"
   );
 
-  const dot = node("span", "", "environment-weather-dot");
-  dot.setAttribute("aria-hidden", "true");
+  
 
   const weatherText = node("span");
 
-  weatherLine.append(dot, weatherText);
+  weatherLine.append(weatherText);
   badge.append(timeLine, weatherLine);
   mapHost.append(badge);
 
