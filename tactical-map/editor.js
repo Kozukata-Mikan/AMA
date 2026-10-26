@@ -107,12 +107,39 @@ export function mountEditor({
     };
   }
 
-  function section(title) {
-    const result = node("section", "", "editor-section");
-    result.append(node("h3", title));
-    container.append(result);
-    return result;
+    function section(title) {
+    const details = node("details", "", "editor-disclosure");
+
+    // 相同 name 的折叠面板组成一组。
+    // 支持该属性的浏览器会在展开新面板时关闭旧面板。
+    details.setAttribute("name", "ama-editor-sections");
+
+    const summary = node("summary", title, "editor-disclosure-title");
+    const body = node("div", "", "editor-disclosure-body");
+
+    details.append(summary, body);
+    container.append(details);
+
+    // 原有代码继续向 body 中添加表单和按钮。
+    return body;
   }
+
+  function openSection(body) {
+    const details = body.closest("details.editor-disclosure");
+    if (!details) return;
+
+    // 显式关闭其他面板，也兼容不支持 details.name 的浏览器。
+    const panel = container.closest("#editor") ?? container;
+
+    for (const other of panel.querySelectorAll(
+      "details.editor-disclosure"
+    )) {
+      if (other !== details) other.open = false;
+    }
+
+    details.open = true;
+  }
+
 
   // ===== 场景操作 =====
 
@@ -239,6 +266,7 @@ export function mountEditor({
       const added = store.addUnit(catalogSelect.value);
       selectedId = added.instanceId;
       refresh();
+      openSection(unitSection);
       message("追加しました。座標を入力して配置してください。");
     }))
   );
@@ -617,6 +645,7 @@ export function mountEditor({
       const item = button(unit.name, () => {
         selectedId = unit.instanceId;
         refresh();
+        openSection(unitSection);
         message("ユニットを選択しました。");
       });
 
@@ -661,6 +690,7 @@ export function mountEditor({
     select(instanceId) {
       selectedId = instanceId;
       refresh();
+      openSection(unitSection);
       message("地図からユニットを選択しました。");
     },
 
