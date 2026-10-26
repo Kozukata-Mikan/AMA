@@ -10,8 +10,20 @@ export function mountUnitDeployment({
   pickPlacement,
   previewUnit,
   clearPreview,
-  selectUnit
+  selectUnit,
+  resolveUnit = instanceId => store.getAll().find(
+    unit => unit.instanceId === instanceId
+  ),
+  commitUnit = candidate => store.updateUnit(
+    candidate.instanceId,
+    {
+      x: candidate.x,
+      y: candidate.y,
+      heading: candidate.heading
+    }
+  )
 }) {
+
   let drag = null;
   let blockClickUntil = 0;
 
@@ -29,9 +41,7 @@ export function mountUnitDeployment({
   }
 
   function findUnit(instanceId) {
-    return store.getAll().find(
-      unit => unit.instanceId === instanceId
-    );
+    return resolveUnit(instanceId);
   }
 
   function insideMap(event) {
@@ -242,11 +252,8 @@ export function mountUnitDeployment({
     }
 
     try {
-      store.updateUnit(candidate.instanceId, {
-        x: candidate.x,
-        y: candidate.y,
-        heading: candidate.heading
-      });
+      commitUnit(candidate);
+
 
       selectUnit(candidate.instanceId);
 
@@ -310,7 +317,9 @@ export function mountUnitDeployment({
     try {
       const heading = normalizeHeading(unit.heading + change);
 
-      store.updateUnit(unit.instanceId, { heading });
+      commitUnit({...unit,heading
+      });
+
 
       show(
         `方位を ${heading.toFixed(0)}° に変更しました。` +
