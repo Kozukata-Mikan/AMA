@@ -440,7 +440,25 @@ export function mountTerrainEditor({
   show("地形編集モードを有効にして描画してください。");
 
   return {
+    resetHistory() {
+      // 切换场景时清理上一张地图的撤销、重做记录。
+      if (stroke) {
+        finish({ pointerId: stroke.pointerId }, true);
+      }
+
+      undo = [];
+      redo = [];
+      known = JSON.stringify(getTerrain());
+
+      editing.checked = false;
+      svg.classList.remove("terrain-editing");
+
+      updateFields();
+      show("作戦を切り替えました。地形操作履歴をリセットしました。");
+    },
+
     destroy() {
+
       if (stroke) finish({ pointerId: stroke.pointerId }, true);
       unsubscribe();
 
