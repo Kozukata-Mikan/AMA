@@ -10,6 +10,7 @@ import {
   VIEW_SCALE_MAX
 } from "../tactical-map/map-settings.js";
 
+import { assessCluster } from "../tactical-map/cluster-engine.js";
 
 const STORAGE_KEY = "junqi-battle-scene-v2";
 const LEGACY_KEY = "junqi-battle-state-v1";
