@@ -5,6 +5,12 @@ import {
   validateTerrain
 } from "../tactical-map/terrain-data.js";
 
+import {
+  VIEW_SCALE_MIN,
+  VIEW_SCALE_MAX
+} from "../tactical-map/map-settings.js";
+
+
 const STORAGE_KEY = "junqi-battle-scene-v2";
 const LEGACY_KEY = "junqi-battle-state-v1";
 const VERSION = 2;
