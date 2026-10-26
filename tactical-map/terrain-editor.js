@@ -123,6 +123,17 @@ export function mountTerrainEditor({
   let frame = null;
   let known = JSON.stringify(getTerrain());
 
+  const environmentController = mountEnvironmentEditor({
+    container,
+    svg,
+    store,
+
+    canApply() {
+      return stroke === null;
+    }
+  });
+
+
   function show(text, error = false) {
     status.textContent = [
       text,
@@ -459,6 +470,7 @@ export function mountTerrainEditor({
       svg.classList.remove("terrain-editing");
 
       updateFields();
+      environmentController.refresh();
       show("作戦を切り替えました。地形操作履歴をリセットしました。");
     },
 
