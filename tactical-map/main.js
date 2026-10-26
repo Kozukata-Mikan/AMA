@@ -93,7 +93,7 @@ function drawAxes() {
     highest = Math.max(highest, height);
   }
 
-  const zLength = Math.max(100, Math.ceil(highest / 50) * 50);
+  const zLength = Math.max(300, Math.ceil(highest / 50) * 50);
 
   const origin = project(0, 0, 0);
 
