@@ -831,3 +831,58 @@ button:focus-visible {
   color: #9cdeff;
   font-size: 12px;
 }
+/* 环境标识：固定在沙盘右下角，避开底部操作说明 */
+.environment-map-host {
+  position: relative;
+}
+
+.environment-map-host .map-environment-badge {
+  position: absolute !important;
+
+  left: auto !important;
+  top: auto !important;
+  right: 16px !important;
+  bottom: 48px !important;
+
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 10px 14px;
+  z-index: 3;
+
+  border: 1px solid var(--weather-color, #f1f5f9);
+  border-left: 4px solid var(--weather-color, #f1f5f9);
+  border-radius: 6px;
+
+  background: rgba(7, 16, 27, 0.94);
+  color: #e8eef6;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
+
+  font-size: 12px;
+  line-height: 1.6;
+
+  pointer-events: none;
+  user-select: none;
+}
+
+.map-environment-badge .environment-time {
+  font-weight: 600;
+}
+
+.map-environment-badge .environment-weather {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--weather-color, #f1f5f9);
+}
+
+.map-environment-badge .environment-weather-dot {
+  display: inline-block;
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--weather-color, #f1f5f9);
+}
+
