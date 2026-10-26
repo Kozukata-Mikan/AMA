@@ -796,3 +796,38 @@ button:focus-visible {
   border-color: #ff9b65;
   color: #ffbc98;
 }
+
+/* ===== 集群编辑 ===== */
+
+.cluster-member-list {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 1px solid #294259;
+  border-radius: 4px;
+}
+
+.cluster-member-list label {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.cluster-card {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #294259;
+  border-radius: 5px;
+  background: #101e2c;
+}
+
+.cluster-card details {
+  margin-bottom: 10px;
+}
+
+.cluster-card summary {
+  cursor: pointer;
+  color: #9cdeff;
+  font-size: 12px;
+}
