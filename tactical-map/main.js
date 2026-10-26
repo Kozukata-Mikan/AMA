@@ -1,3 +1,4 @@
+import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
 import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
 import { mountEditor } from "./editor.js";
@@ -1117,6 +1118,89 @@ function updateView() {
   );
 }
 
+// 获取当前 SVG 显示窗口的中心。
+// 这里使用 viewBox 坐标，不使用网页像素。
+function getViewCenter() {
+  const box = svg.viewBox.baseVal;
+
+  return {
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2
+  };
+}
+
+// 完整显示当前地图。
+// 包含海平面边界、地形高度范围，以及显示中的 Z 轴。
+function fitMapToView() {
+  const box = svg.viewBox.baseVal;
+
+  if (box.width <= 0 || box.height <= 0) return;
+
+  const halfWidth = terrain.width / 2;
+  const halfHeight = terrain.height / 2;
+
+  let highest = 0;
+
+  for (const height of terrain.heights) {
+    highest = Math.max(highest, height);
+  }
+
+  const points = [];
+
+  // 使用地图四角在海平面和最高地形高度上的投影，
+  // 构成一个保守的显示包围框。
+  for (const x of [-halfWidth, halfWidth]) {
+    for (const y of [-halfHeight, halfHeight]) {
+      points.push(project(x, y, 0));
+      points.push(project(x, y, highest));
+    }
+  }
+
+  if (axesVisible) {
+    const zLength = Math.max(
+      300,
+      Math.ceil(highest / 50) * 50
+    );
+
+    points.push(project(0, 0, zLength));
+  }
+
+  const minX = Math.min(...points.map(point => point.x));
+  const maxX = Math.max(...points.map(point => point.x));
+  const minY = Math.min(...points.map(point => point.y));
+  const maxY = Math.max(...points.map(point => point.y));
+
+  const contentWidth = Math.max(1, maxX - minX);
+  const contentHeight = Math.max(1, maxY - minY);
+
+  // 留出边距，避免边界和轴标题紧贴窗口。
+  const padding = 40;
+  const availableWidth = Math.max(1, box.width - padding * 2);
+  const availableHeight = Math.max(1, box.height - padding * 2);
+
+  const scale = Math.min(
+    VIEW_SCALE_MAX,
+    Math.max(
+      VIEW_SCALE_MIN,
+      Math.min(
+        availableWidth / contentWidth,
+        availableHeight / contentHeight
+      )
+    )
+  );
+
+  const center = getViewCenter();
+  const contentCenterX = (minX + maxX) / 2;
+  const contentCenterY = (minY + maxY) / 2;
+
+  view.scale = scale;
+  view.x = center.x - contentCenterX * scale;
+  view.y = center.y - contentCenterY * scale;
+
+  updateView();
+}
+
+
 // ブラウザーウィンドウ上の座標を、SVG の viewBox 座標に変換する
 function getSVGPoint(event) {
   const point = svg.createSVGPoint();
@@ -1212,7 +1296,7 @@ function redrawTerrain() {
 
 function zoomAt(factor, center) {
   const oldScale = view.scale;
-  const newScale = Math.min(3.5, Math.max(0.6, oldScale * factor));
+  const newScale = Math.min(VIEW_SCALE_MAX,Math.max(VIEW_SCALE_MIN, oldScale * factor));
   const ratio = newScale / oldScale;
 
   view.x = center.x - (center.x - view.x) * ratio;
@@ -1282,19 +1366,18 @@ svg.addEventListener("lostpointercapture", () => {
 });
 
 document.querySelector("#zoomIn").addEventListener("click", () => {
-  zoomAt(1.2, { x: 500, y: 325 });
+  zoomAt(1.2, getViewCenter());
 });
 
 document.querySelector("#zoomOut").addEventListener("click", () => {
-  zoomAt(1 / 1.2, { x: 500, y: 325 });
+  zoomAt(1 / 1.2, getViewCenter());
 });
 
-document.querySelector("#resetView").addEventListener("click", () => {
-  view.x = 0;
-  view.y = 0;
-  view.scale = 1;
-  updateView();
-});
+const resetViewButton = document.querySelector("#resetView");
+
+resetViewButton.textContent = "地図全体を表示";
+resetViewButton.addEventListener("click", fitMapToView);
+
 
 document.querySelector("#replay").addEventListener("click", playRoute);
 
