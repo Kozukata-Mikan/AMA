@@ -2,6 +2,7 @@ import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
 import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
 import { mountEditor } from "./editor.js";
+import { mountUnitDeployment } from "./unit-deployment.js";
 
 import {
   createDemoTerrain,
@@ -17,6 +18,9 @@ let axesVisible = false;
 let axesLayer = null;
 
 let editorController = null;
+let deploymentController = null;
+let deploymentPreviewLayer = null;
+
 
 
 const NS = "http://www.w3.org/2000/svg";
@@ -1280,6 +1284,95 @@ function pickTerrainPoint(event) {
   return result;
 }
 
+// 根据单位所在高度平面拾取部署位置。
+// 陆军和水上海军使用地形拾取；航空机和水下单位保留高度。
+function pickUnitPlacement(event, unit) {
+  const fixedHeight =
+    unit.branch === "air"
+      ? Number(unit.altitude ?? 80)
+      : unit.branch === "navy" && unit.underwater === true
+        ? -Number(unit.depth ?? 12)
+        : unit.branch === "special" && unit.altitude !== null
+          ? Number(unit.altitude)
+          : null;
+
+  if (fixedHeight === null) {
+    return pickTerrainPoint(event);
+  }
+
+  if (!Number.isFinite(fixedHeight)) return null;
+
+  const screen = getSVGPoint(event);
+
+  const projectedX = (screen.x - view.x) / view.scale;
+  const projectedY = (screen.y - view.y) / view.scale;
+
+  // 与 project() 的投影参数保持一致。
+  const difference = (projectedX - 500) / 0.95;
+  const sum = (projectedY - 340 + fixedHeight * 0.75) / 0.43;
+
+  return {
+    x: (sum + difference) / 2,
+    y: (sum - difference) / 2
+  };
+}
+
+// 部署预览独立于 unitLayer，避免清空真实单位。
+function clearDeploymentPreview() {
+  deploymentPreviewLayer?.replaceChildren();
+}
+
+function drawDeploymentPreview(unit, spatial) {
+  if (!deploymentPreviewLayer) {
+    deploymentPreviewLayer = createSVG("g", {
+      id: "deploymentPreviewLayer",
+      "pointer-events": "none",
+      "aria-hidden": "true"
+    }, viewport);
+  }
+
+  clearDeploymentPreview();
+
+  const sample = sampleTerrain(terrain, unit.x, unit.y);
+
+  // 非法位置也显示预览，便于看清拒绝原因。
+  const height = spatial.valid
+    ? spatial.height
+    : unit.branch === "air"
+      ? Number(unit.altitude ?? 80)
+      : unit.branch === "navy" && unit.underwater === true
+        ? -Number(unit.depth ?? 12)
+        : sample.surface;
+
+  const position = project(unit.x, unit.y, height);
+
+  const group = createSVG("g", {
+    class:
+      `deployment-preview ${unit.side}` +
+      (spatial.valid ? "" : " invalid"),
+    transform: `translate(${position.x} ${position.y})`
+  }, deploymentPreviewLayer);
+
+  drawUnitIcon(unit, group);
+
+  createSVG("circle", {
+    cx: 0,
+    cy: 0,
+    r: 12,
+    class: "deployment-preview-ring"
+  }, group);
+
+  const label = createSVG("text", {
+    x: 14,
+    y: -12
+  }, group);
+
+  label.textContent =
+    `${unit.name} · ${unit.heading.toFixed(0)}°` +
+    (spatial.valid ? "" : " ⚠");
+}
+
+
 function redrawTerrain() {
   drawGrid();
   drawTerrain();
@@ -1596,9 +1689,25 @@ async function startEditor() {
       }
     });
 
+    deploymentController = mountUnitDeployment({
+      svg,
+      editorContainer: container,
+      store,
+      spatialState: getUnitSpatialState,
+      pickPlacement: pickUnitPlacement,
+      previewUnit: drawDeploymentPreview,
+      clearPreview: clearDeploymentPreview,
+
+      selectUnit(instanceId) {
+        editorController?.select(instanceId);
+      }
+    });
+
+    
     window.addEventListener("pagehide", event => {
       if (event.persisted) return;
 
+      deploymentController?.destroy();
       terrainController?.destroy();
       unsubscribeTerrain();
       editorController?.destroy();
