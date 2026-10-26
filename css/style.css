@@ -164,3 +164,61 @@ td input {
     padding: 16px;
   }
 }
+
+/* ===== 时间与天气 ===== */
+
+.environment-map-host {
+  position: relative;
+}
+
+.environment-editor input[type="time"] {
+  min-width: 0;
+  color-scheme: dark;
+}
+
+.map-environment-badge {
+  --weather-color: #f1f5f9;
+
+  position: absolute;
+  right: 12px;
+  bottom: 52px;
+  z-index: 3;
+
+  box-sizing: border-box;
+  max-width: calc(100% - 24px);
+  padding: 9px 12px;
+
+  border: 1px solid var(--weather-color);
+  border-left: 4px solid var(--weather-color);
+  border-radius: 6px;
+
+  background: rgba(7, 16, 27, 0.94);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+
+  color: #e8eef6;
+  font-size: 12px;
+  line-height: 1.6;
+
+  pointer-events: none;
+  user-select: none;
+}
+
+.environment-time {
+  font-weight: 600;
+}
+
+.environment-weather {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--weather-color);
+}
+
+.environment-weather-dot {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+
+  border-radius: 50%;
+  background: var(--weather-color);
+}
