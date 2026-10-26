@@ -1618,7 +1618,13 @@ async function startEditor() {
       catalog,
       store,
       spatialState: getUnitSpatialState,
+      
+      onSceneLoaded() {
+        terrainController?.resetHistory();
+        clearDeploymentPreview();
+      },
 
+      
       getView() {
         return { ...view };
       },
