@@ -6,7 +6,7 @@ const DATABASE_NAME = "ama-scene-library";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "scenes";
 const BACKUP_ID = "switch-backup";
-const SLOT_COUNT = 8;
+const SLOT_COUNT = 20;
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
