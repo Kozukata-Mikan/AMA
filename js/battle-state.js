@@ -687,6 +687,26 @@ export function createBattleStore(units) {
     });
   }
 
+  function newScene(name = "新しい作戦") {
+    if (recoveryBlocked) {
+      throw new Error(
+        "保存データを復元してから新しい作戦を作成してください。"
+      );
+    }
+
+    const candidate = emptyScene();
+
+    candidate.name = requireText(name, "作戦名");
+
+    // 新地图使用默认尺寸和网格，但不保留演示岛屿。
+    candidate.terrain.heights.fill(-20);
+    candidate.terrain.rivers.fill(0);
+    candidate.terrain.shallows.fill(0);
+
+    commit(candidate);
+  }
+
+  
   function clear() {
     // 明确的清空操作允许解除恢复保护。
     commit(emptyScene(), true);
@@ -860,6 +880,7 @@ export function createBattleStore(units) {
     removeGroup,
     updateView,
     renameScene,
+    newScene,
     exportScene,
     importScene,
     getActions: () => copy(scene.actions),
