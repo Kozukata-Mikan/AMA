@@ -1,5 +1,7 @@
 import { getBranchName } from "../js/data-store.js";
 import { mountActionPanel } from "./action-panel.js";
+import { mountSceneLibrary } from "./scene-library.js";
+
 
 
 // ===== 编辑器 DOM 工具 =====
