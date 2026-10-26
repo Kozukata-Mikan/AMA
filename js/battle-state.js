@@ -226,7 +226,7 @@ export function createBattleStore(units) {
     };
   }
 
-  function normalizeGroup(item) {
+    function normalizeGroup(item) {
     if (!isObject(item)) {
       throw new Error("編隊の書式が不正です。");
     }
@@ -237,12 +237,20 @@ export function createBattleStore(units) {
       requireText(parentId, "上位編隊番号");
     }
 
+    const kind = item.kind ?? "formation";
+
+    if (!["formation", "cluster"].includes(kind)) {
+      throw new Error("編隊種別が不正です。");
+    }
+
     return {
       id: requireText(item.id, "編隊番号"),
       name: requireText(item.name, "編隊名"),
-      parentId
+      parentId,
+      kind
     };
   }
+
     // 行动记录保存历史摘要，不要求对应个体现在仍然存在。
   function normalizeActionActor(value) {
     if (!isObject(value)) {
@@ -587,6 +595,171 @@ export function createBattleStore(units) {
     });
   }
 
+  // 批量更新先验证，再一次性提交。
+  // 避免集群移动到一半时被中间状态打断。
+  function updateUnits(updates) {
+    if (!Array.isArray(updates) || !updates.length) {
+      throw new Error("更新ユニット一覧が不正です。");
+    }
+
+    const editable = new Set([
+      "name",
+      "side",
+      "currentHp",
+      "sizeLevel",
+      "heading",
+      "filled",
+      "underwater",
+      "x",
+      "y",
+      "altitude",
+      "depth",
+      "labelHeight",
+      "description",
+      "groupId"
+    ]);
+
+    const ids = new Set();
+
+    for (const update of updates) {
+      if (
+        !isObject(update) ||
+        !isObject(update.patch) ||
+        typeof update.instanceId !== "string"
+      ) {
+        throw new Error("ユニット更新データが不正です。");
+      }
+
+      if (ids.has(update.instanceId)) {
+        throw new Error("更新ユニット番号が重複しています。");
+      }
+
+      ids.add(update.instanceId);
+
+      for (const key of Object.keys(update.patch)) {
+        if (!editable.has(key)) {
+          throw new Error(`変更できないユニット項目です：${key}`);
+        }
+      }
+    }
+
+    change(candidate => {
+      for (const update of updates) {
+        const index = candidate.instances.findIndex(
+          unit => unit.instanceId === update.instanceId
+        );
+
+        if (index < 0) {
+          throw new Error("更新対象のユニットが見つかりません。");
+        }
+
+        candidate.instances[index] = {
+          ...candidate.instances[index],
+          ...update.patch
+        };
+      }
+    });
+  }
+
+  // 将已有单体合并为集群。
+  function createCluster(instanceIds, name) {
+    if (
+      !Array.isArray(instanceIds) ||
+      new Set(instanceIds).size !== instanceIds.length
+    ) {
+      throw new Error("集群メンバー一覧が不正です。");
+    }
+
+    const group = {
+      id: newId(),
+      name: requireText(name, "集群名"),
+      parentId: null,
+      kind: "cluster"
+    };
+
+    change(candidate => {
+      const members = instanceIds.map(id => {
+        const member = candidate.instances.find(
+          unit => unit.instanceId === id
+        );
+
+        if (!member) {
+          throw new Error("集群メンバーが見つかりません。");
+        }
+
+        return member;
+      });
+
+      // 不静默改变已有编队归属。
+      if (members.some(member => member.groupId !== null)) {
+        throw new Error(
+          "合併するユニットは、先に既存の編隊から外してください。"
+        );
+      }
+
+      const assessment = assessCluster(
+        members,
+        candidate.terrain
+      );
+
+      if (!assessment.valid) {
+        throw new Error(assessment.reason);
+      }
+
+      candidate.groups.push(group);
+
+      for (const member of members) {
+        member.groupId = group.id;
+      }
+    });
+
+    return copy(group);
+  }
+
+  // 直接新增一个未部署集群。
+  function addCluster(unitId, count, sizeLevel, name) {
+    const base = catalog.get(unitId);
+
+    if (!base) {
+      throw new Error("該当ユニットの図鑑資料が見つかりません。");
+    }
+
+    if (!Number.isInteger(count) || count < 2 || count > 100) {
+      throw new Error("集群数は 2～100 の整数で指定してください。");
+    }
+
+    const group = {
+      id: newId(),
+      name: requireText(name, "集群名"),
+      parentId: null,
+      kind: "cluster"
+    };
+
+    const members = Array.from({ length: count }, (_, index) =>
+      normalizeInstance({
+        instanceId: newId(),
+        unitId,
+        snapshot: copy(base),
+        name: `${base.name} ${index + 1}`,
+        currentHp: base.maxHp,
+        sizeLevel,
+        groupId: group.id,
+        altitude: base.branch === "air" ? 80 : null
+      })
+    );
+
+    change(candidate => {
+      candidate.groups.push(group);
+      candidate.instances.push(...members);
+    });
+
+    return {
+      group: copy(group),
+      members: copy(members)
+    };
+  }
+
+  
   function updateHp(instanceId, currentHp) {
     updateUnit(instanceId, { currentHp });
   }
@@ -876,6 +1049,9 @@ export function createBattleStore(units) {
     setTerrain,
     getGroups: () => copy(scene.groups),
     updateUnit,
+    updateUnits,
+    createCluster,
+    addCluster,
     addGroup,
     updateGroup,
     removeGroup,
