@@ -626,3 +626,73 @@ button:focus-visible {
   paint-order: stroke fill;
   font-size: 11px;
 }
+
+/* ===== 功能分区：点击展开 ===== */
+
+.editor-disclosure {
+  min-width: 0;
+  margin: 10px 0;
+  border: 1px solid #294259;
+  border-radius: 6px;
+  background: #0c1724;
+}
+
+.editor-disclosure-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  color: #dceaf5;
+  font-size: 14px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.editor-disclosure-title::-webkit-details-marker {
+  display: none;
+}
+
+.editor-disclosure-title::after {
+  content: "＋";
+  flex: 0 0 auto;
+  color: #79d5ff;
+  font-size: 18px;
+}
+
+.editor-disclosure[open] > .editor-disclosure-title::after {
+  content: "－";
+}
+
+.editor-disclosure-title:hover {
+  background: #172d40;
+}
+
+.editor-disclosure-title:focus-visible {
+  outline: 2px solid #79d5ff;
+  outline-offset: 2px;
+}
+
+.editor-disclosure[open] > .editor-disclosure-title {
+  border-bottom: 1px solid #294259;
+}
+
+.editor-disclosure-body {
+  min-width: 0;
+  padding: 12px;
+}
+
+.editor-disclosure-body > :first-child {
+  margin-top: 0;
+}
+
+.editor-disclosure-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* 地形区现在与其他功能区采用相同的外层结构。 */
+.terrain-editor {
+  margin-bottom: 10px;
+}
