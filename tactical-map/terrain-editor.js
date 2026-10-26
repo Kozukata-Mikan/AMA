@@ -34,7 +34,26 @@ export function mountTerrainEditor({
   previewTerrain,
   getTerrain
 }) {
-  container.append(node("h2", "地図と地形"));
+  
+  const host = container;
+  const disclosure = node("details", "", "editor-disclosure");
+
+  disclosure.setAttribute("name", "ama-editor-sections");
+
+  const summary = node(
+    "summary",
+    "地図と地形",
+    "editor-disclosure-title"
+  );
+
+  const body = node("div", "", "editor-disclosure-body");
+
+  disclosure.append(summary, body);
+  host.append(disclosure);
+
+  // 后续原有控件全部添加到折叠面板内部。
+  container = body;
+
 
   const status = node("p", "", "editor-note editor-status");
   status.setAttribute("role", "status");
@@ -363,6 +382,32 @@ export function mountTerrainEditor({
     if (stroke) finish({ pointerId: stroke.pointerId }, true);
     svg.classList.toggle("terrain-editing", editing.checked);
   });
+  
+    function handleDisclosureToggle() {
+    if (disclosure.open) {
+      // 兼容不支持 details.name 的浏览器。
+      const panel = host.closest("#editor") ?? host;
+
+      for (const other of panel.querySelectorAll(
+        "details.editor-disclosure"
+      )) {
+        if (other !== disclosure) other.open = false;
+      }
+
+      return;
+    }
+
+    // 隐藏地形面板时，取消尚未提交的笔刷操作。
+    if (stroke) {
+      finish({ pointerId: stroke.pointerId }, true);
+    }
+
+    editing.checked = false;
+    svg.classList.remove("terrain-editing");
+  }
+
+  disclosure.addEventListener("toggle", handleDisclosureToggle);
+
 
   svg.addEventListener("pointerdown", down, true);
   svg.addEventListener("pointermove", move, true);
@@ -394,6 +439,9 @@ export function mountTerrainEditor({
     destroy() {
       if (stroke) finish({ pointerId: stroke.pointerId }, true);
       unsubscribe();
+
+      disclosure.removeEventListener("toggle", handleDisclosureToggle);
+      svg.classList.remove("terrain-editing");
 
       svg.removeEventListener("pointerdown", down, true);
       svg.removeEventListener("pointermove", move, true);
