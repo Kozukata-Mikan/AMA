@@ -427,7 +427,8 @@ export function createBattleStore(units) {
       view: {
         x: requireNumber(view.x, "表示 X"),
         y: requireNumber(view.y, "表示 Y"),
-        scale: requireNumber(view.scale, "表示倍率", 0.6, 3.5)
+        scale: requireNumber( view.scale, "表示倍率",VIEW_SCALE_MIN, VIEW_SCALE_MAX)
+
       }
     };
   }
