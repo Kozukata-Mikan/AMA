@@ -10,6 +10,14 @@ import {
   sampleTerrain
 } from "./terrain-data.js";
 
+import {
+  getActiveClusters,
+  getDisplayUnits,
+  makeClusterProxy,
+  getDeploymentUpdates
+} from "./cluster-engine.js";
+
+
 import { mountTerrainEditor } from "./terrain-editor.js";
 
 let terrain = createDemoTerrain();
@@ -406,6 +414,7 @@ function drawTerrain() {
 
 // 参战单位来自共享存储，绘制时附加原绘图代码使用的 id。
 let units = [];
+let unitGroups = [];
 
 // ===== 图标规则配置 =====
 // 后续调整尺寸与航空机角度，优先修改这里。
@@ -958,7 +967,15 @@ function drawUnits() {
   // 方便以后重新绘制，避免出现重复单位。
   layers.units.replaceChildren();
 
-  for (const unit of units) {
+  const displayUnits = getDisplayUnits(
+    units,
+    unitGroups,
+    terrain,
+    getUnitSpatialState
+  );
+
+  for (const unit of displayUnits) {
+
    const spatial = getUnitSpatialState(unit);
 
 if (!spatial.valid) {
@@ -1640,14 +1657,33 @@ async function startEditor() {
           id: instance.instanceId
         }));
 
+        unitGroups = store.getGroups();
+
         drawUnits();
 
-        for (const element of layers.units.querySelectorAll(".unit")) {
-          element.classList.toggle(
-            "selected",
-            element.dataset.instanceId === selectedId
+        const displayUnits = getDisplayUnits(
+          units,
+          unitGroups,
+          terrain,
+          getUnitSpatialState
+        );
+
+
+         for (const element of layers.units.querySelectorAll(".unit")) {
+          const displayed = displayUnits.find(
+            unit =>
+              unit.instanceId === element.dataset.instanceId
           );
+
+          const selected =
+            displayed?.instanceId === selectedId ||
+            displayed?.clusterMembers?.some(
+              member => member.instanceId === selectedId
+            );
+
+          element.classList.toggle("selected", Boolean(selected));
         }
+
 
         const selected = units.find(
           unit => unit.instanceId === selectedId
@@ -1663,7 +1699,15 @@ async function startEditor() {
           return;
         }
 
-        name.textContent = selected.name;
+        const displayedSelection = displayUnits.find(unit =>
+          unit.instanceId === selectedId ||
+          unit.clusterMembers?.some(
+            member => member.instanceId === selectedId
+          )
+        );
+
+        name.textContent = displayedSelection?.name ?? selected.name;
+
 
         const spatial = getUnitSpatialState(selected);
 
@@ -1695,19 +1739,86 @@ async function startEditor() {
       }
     });
 
+        // 对集群逐个检查成员，而不是只检查显示图标。
+    function deploymentSpatialState(candidate) {
+      if (!candidate.clusterMembers) {
+        return getUnitSpatialState(candidate);
+      }
+
+      const updates = getDeploymentUpdates(candidate);
+      const members = candidate.clusterMembers;
+
+      for (const update of updates) {
+        const original = members.find(
+          member => member.instanceId === update.instanceId
+        );
+
+        const spatial = getUnitSpatialState({
+          ...original,
+          ...update.patch
+        });
+
+        if (!spatial.valid) {
+          return {
+            valid: false,
+            reason: `${original.name}：${spatial.reason}`
+          };
+        }
+      }
+
+      return getUnitSpatialState(candidate);
+    }
+
     deploymentController = mountUnitDeployment({
       svg,
       editorContainer: container,
       store,
-      spatialState: getUnitSpatialState,
+      spatialState: deploymentSpatialState,
       pickPlacement: pickUnitPlacement,
       previewUnit: drawDeploymentPreview,
       clearPreview: clearDeploymentPreview,
+
+      resolveUnit(instanceId) {
+        const instances = store.getAll();
+
+        const clusters = getActiveClusters(
+          instances,
+          store.getGroups(),
+          terrain,
+          getUnitSpatialState,
+          true
+        );
+
+        const cluster = clusters.find(item =>
+          item.members.some(
+            member => member.instanceId === instanceId
+          )
+        );
+
+        if (cluster) {
+          return makeClusterProxy(cluster);
+        }
+
+        return instances.find(
+          unit => unit.instanceId === instanceId
+        );
+      },
+
+      commitUnit(candidate) {
+        const spatial = deploymentSpatialState(candidate);
+
+        if (!spatial.valid) {
+          throw new Error(spatial.reason);
+        }
+
+        store.updateUnits(getDeploymentUpdates(candidate));
+      },
 
       selectUnit(instanceId) {
         editorController?.select(instanceId);
       }
     });
+
 
     
     window.addEventListener("pagehide", event => {
