@@ -125,7 +125,7 @@ export function getTimePeriod(time) {
   }
 
   if (minutes >= 1141 && minutes <= 1230) {
-    return { id: "dusk", label: "黄昏" };
+    return { id: "dusk", label: "夕焼" };
   }
 
   return { id: "night", label: "黒夜" };
