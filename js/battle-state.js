@@ -81,6 +81,7 @@ function emptyScene() {
     name: "新しい作戦",
     terrainId: "demo-islands-v1",
     terrain: createDemoTerrain(),
+    environment: createDefaultEnvironment(),
     instances: [],
     groups: [],
     actions: [],
@@ -436,6 +437,7 @@ export function createBattleStore(units) {
       name: requireText(input.name, "作戦名"),
       terrainId: input.terrainId,
       terrain: validateTerrain(input.terrain ?? createDemoTerrain()),
+      environment: normalizeEnvironment(input.environment),
       instances,
       groups,
       actions,
@@ -765,6 +767,14 @@ export function createBattleStore(units) {
     };
   }
 
+    function setEnvironment(value) {
+    const environment = normalizeEnvironment(value);
+
+    change(candidate => {
+      candidate.environment = environment;
+    });
+  }
+
   
   function updateHp(instanceId, currentHp) {
     updateUnit(instanceId, { currentHp });
@@ -1045,6 +1055,7 @@ export function createBattleStore(units) {
     getAll,
     addUnit,
     updateHp,
+    setEnvironment,
     removeUnit,
     clear,
     subscribe,
