@@ -831,42 +831,48 @@ button:focus-visible {
   color: #9cdeff;
   font-size: 12px;
 }
-/* 环境标识：固定在沙盘右下角，避开底部操作说明 */
-.environment-map-host {
+/* ===== 沙盘环境标识：右下角 ===== */
+
+/* 标识以整个沙盘面板为定位参照。 */
+.map-panel {
   position: relative;
 }
 
-.environment-map-host .map-environment-badge {
-  position: absolute !important;
+/* 不依赖 environment-map-host 类，直接匹配标识自身。 */
+.map-environment-badge {
+  --weather-color: #f1f5f9;
 
-  left: auto !important;
-  top: auto !important;
-  right: 16px !important;
-  bottom: 48px !important;
-
-  width: fit-content;
-  max-width: calc(100% - 32px);
-  box-sizing: border-box;
-  margin: 0;
-  padding: 10px 14px;
+  position: absolute;
+  inset: auto 16px 48px auto;
   z-index: 3;
 
-  border: 1px solid var(--weather-color, #f1f5f9);
-  border-left: 4px solid var(--weather-color, #f1f5f9);
+  display: block;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+
+  margin: 0;
+  padding: 10px 14px;
+
+  border: 1px solid var(--weather-color);
+  border-left: 4px solid var(--weather-color);
   border-radius: 6px;
 
-  background: rgba(7, 16, 27, 0.94);
+  background: rgba(7, 16, 27, 0.96);
   color: #e8eef6;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
 
+  font-family: inherit;
   font-size: 12px;
   line-height: 1.6;
+  text-align: left;
 
   pointer-events: none;
   user-select: none;
 }
 
 .map-environment-badge .environment-time {
+  margin: 0;
   font-weight: 600;
 }
 
@@ -874,7 +880,8 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: var(--weather-color, #f1f5f9);
+  margin-top: 3px;
+  color: var(--weather-color);
 }
 
 .map-environment-badge .environment-weather-dot {
@@ -883,6 +890,11 @@ button:focus-visible {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--weather-color, #f1f5f9);
+  background: var(--weather-color);
 }
 
+/* 时间输入框沿用深色界面。 */
+.environment-editor input[type="time"] {
+  min-width: 0;
+  color-scheme: dark;
+}
