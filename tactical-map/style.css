@@ -696,3 +696,103 @@ button:focus-visible {
 .terrain-editor {
   margin-bottom: 10px;
 }
+
+/* ===== 单位拖放部署 ===== */
+
+.unit-deploy-handle {
+  display: block;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 5px 8px;
+  border: 1px dashed #49728f;
+  border-radius: 4px;
+  color: #9cdeff;
+  background: #0c1724;
+  font-size: 11px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.unit-deploy-handle:hover {
+  border-color: #79d5ff;
+  background: #172d40;
+}
+
+#map.unit-deploying {
+  cursor: grabbing;
+}
+
+.deployment-preview {
+  color: #83dcff;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.deployment-preview.enemy {
+  color: #ff9b65;
+}
+
+.deployment-preview.neutral {
+  color: #b7bdcf;
+}
+
+.deployment-preview.invalid {
+  color: #ff6969;
+}
+
+.deployment-preview-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.deployment-preview .unit-icon.is-hollow .unit-symbol {
+  fill: none;
+}
+
+.deployment-preview .unit-icon.is-filled .unit-symbol {
+  fill: currentColor;
+}
+
+.deployment-preview .unit-icon.is-underwater .unit-symbol {
+  stroke-dasharray: 6 5;
+  filter: none;
+}
+
+.deployment-preview .unit-icon.is-army.is-filled .army-level-mark {
+  stroke: #09121e;
+}
+
+.deployment-preview text {
+  fill: currentColor;
+  font-size: 12px;
+  paint-order: stroke fill;
+  stroke: #07101a;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.deployment-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 2;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #49728f;
+  border-radius: 5px;
+  background: rgba(7, 16, 27, 0.94);
+  color: #bceaff;
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.deployment-status.error {
+  border-color: #ff9b65;
+  color: #ffbc98;
+}
