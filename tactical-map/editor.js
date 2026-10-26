@@ -117,6 +117,19 @@ export function mountEditor({
     const summary = node("summary", title, "editor-disclosure-title");
     const body = node("div", "", "editor-disclosure-body");
 
+     details.addEventListener("toggle", () => {
+      if (!details.open) return;
+
+      const panel = container.closest("#editor") ?? container;
+
+      for (const other of panel.querySelectorAll(
+        "details.editor-disclosure"
+      )) {
+        if (other !== details) other.open = false;
+      }
+    });
+
+      
     details.append(summary, body);
     container.append(details);
 
