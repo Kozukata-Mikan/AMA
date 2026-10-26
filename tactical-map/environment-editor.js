@@ -89,7 +89,13 @@ export function mountEnvironmentEditor({
 
   // ===== 沙盘角落标识 =====
 
-  const mapHost = svg.parentElement;
+    // 优先挂到沙盘面板，而不是可能存在的 SVG 外层包装。
+  const mapHost = svg.closest(".map-panel") ?? svg.parentElement;
+
+  if (getComputedStyle(mapHost).position === "static") {
+    mapHost.style.position = "relative";
+  }
+
 
   const addedHostClass = !mapHost.classList.contains(
     "environment-map-host"
@@ -102,6 +108,34 @@ export function mountEnvironmentEditor({
     "",
     "map-environment-badge"
   );
+
+    // 直接定位作为兜底，避免 CSS 未更新时落入普通文档流。
+  Object.assign(badge.style, {
+    position: "absolute",
+    left: "auto",
+    top: "auto",
+    right: "16px",
+    bottom: "48px",
+    zIndex: "3",
+
+    display: "block",
+    width: "max-content",
+    maxWidth: "calc(100% - 32px)",
+    boxSizing: "border-box",
+    margin: "0",
+    padding: "10px 14px",
+
+    border: "1px solid var(--weather-color, #f1f5f9)",
+    borderLeft: "4px solid var(--weather-color, #f1f5f9)",
+    borderRadius: "6px",
+    background: "rgba(7, 16, 27, 0.96)",
+    color: "#e8eef6",
+
+    fontSize: "12px",
+    lineHeight: "1.6",
+    pointerEvents: "none",
+    userSelect: "none"
+  });
 
   badge.setAttribute("role", "status");
   badge.setAttribute("aria-live", "polite");
