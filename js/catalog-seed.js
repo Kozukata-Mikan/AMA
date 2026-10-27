@@ -46,6 +46,14 @@ export const UNIT_FIELDS = [
     definition: "参戦追加時に引き継ぐ資料上の色陣営。味方・敵・中立とは独立しています。"
   },
   {
+    key: "protected",
+    label: "編集保護",
+    type: "checkbox",
+    definition:
+      "有効にすると変更・削除・保護解除に編集パスワードが必要です。" +
+      "閲覧と地図への追加は制限しません。"
+  },
+  {
     key: "naval.detection",
     label: "探測強度",
     type: "text",
