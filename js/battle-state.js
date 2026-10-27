@@ -96,9 +96,22 @@ function emptyScene() {
 }
 
 export function createBattleStore(units) {
+  if (!Array.isArray(units)) {
+    throw new Error("ユニット図鑑が初期化されていません。");
+  }
+
+  // 保持与图鉴共享同一个数组。
+  // 图鉴编辑会原位更新该数组，因此每次读取最新模板。
+  const catalog = {
+    get(unitId) {
+      return units.find(unit => unit.id === unitId);
+    }
+  };
+
   const listeners = new Set();
 
   let scene = emptyScene();
+
   let storageWarning = "";
   let recoveryBlocked = false;
 
@@ -145,11 +158,12 @@ export function createBattleStore(units) {
     }
 
     const sizeLevel = requireNumber(
-      item.sizeLevel ?? 1,
+      item.sizeLevel ?? snapshot.sizeLevel ?? 1,
       "サイズレベル",
       1,
       5
     );
+
 
     if (!Number.isInteger(sizeLevel)) {
       throw new Error("サイズレベルは整数で指定してください。");
