@@ -583,6 +583,64 @@ export function mountCatalogEditor({
 
     detail.append(actions);
 
+        if (category === "units" && battleStore) {
+      const deploy = node("div", "", "catalog-notice");
+      deploy.append(node("h4", "地図へ追加"));
+
+      const nameOptions = [
+        ...new Set([
+          ...(item.hullNames ?? []),
+          item.name
+        ])
+      ].map(name => [name, name]);
+
+      const selectedName = labeled(
+        deploy,
+        "地図上の名称",
+        select(nameOptions, nameOptions[0][0])
+      );
+
+      const selectedFaction = labeled(
+        deploy,
+        "色陣営",
+        select(FACTION_OPTIONS, item.faction ?? "")
+      );
+
+      const selectedSide = labeled(
+        deploy,
+        "今回の作戦関係",
+        select([
+          ["ally", "味方"],
+          ["enemy", "敵"],
+          ["neutral", "中立"]
+        ], "ally")
+      );
+
+      deploy.append(
+        node(
+          "p",
+          `体型 ${item.sizeLevel} / 最大生命 ${item.maxHp}`,
+          "catalog-muted"
+        ),
+
+        button("追加してドラッグ配置へ", safely(() => {
+          const added = battleStore.addUnit(item.id, {
+            name: selectedName.value,
+            faction: selectedFaction.value,
+            side: selectedSide.value
+          });
+
+          editing = false;
+          dialog.close();
+
+          onAdded(added);
+        }))
+      );
+
+      detail.append(deploy);
+    }
+
+
     const fields = category === "units"
       ? UNIT_FIELDS
       : EQUIPMENT_FIELDS;
