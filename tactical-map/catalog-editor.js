@@ -1,4 +1,5 @@
 import { getCatalogStore } from "../js/catalog-store.js";
+import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
   UNIT_FIELDS,
@@ -197,13 +198,17 @@ function ensureStyles() {
 
 export function mountCatalogEditor({
   container,
+  battleStore,
+  onAdded = () => {},
   onChanged = () => {}
 }) {
+
   ensureStyles();
 
   const store = getCatalogStore();
 
   let category = "units";
+  let branchFilter = "navy";
   let selectedId = "navy-yamato-class-1941";
   let editing = false;
 
@@ -255,10 +260,18 @@ export function mountCatalogEditor({
 
   const toolbar = node("div", "", "catalog-toolbar");
 
-  const categorySelect = select([
-    ["units", "ユニット"],
+    const categorySelect = select([
+    ["navy", "海軍"],
+    ["army", "陸軍"],
+    ["air", "航空機"],
+    ["special", "特殊"],
     ["equipment", "装備"]
-  ], category);
+  ], "navy");
+
+  const factionFilter = select(FACTION_OPTIONS);
+  factionFilter.options[0].textContent = "すべての色陣営";
+  factionFilter.setAttribute("aria-label", "色陣営で絞り込み");
+
 
   const search = input();
   search.placeholder = "名称で検索";
@@ -300,7 +313,8 @@ export function mountCatalogEditor({
     return {
       id: newId("unit"),
       name: "",
-      branch: "navy",
+      branch: branchFilter || "navy",
+      faction: "",
       maxHp: 1,
       sizeLevel: 1,
       description: "",
@@ -336,13 +350,17 @@ export function mountCatalogEditor({
       range: null,
       maxOrder: "",
       guidance: "",
+      faction: "",
       targetScope: ""
+      
     };
   }
 
   toolbar.append(
     categorySelect,
+    factionFilter,
     search,
+
 
     button("新規追加", safely(() => {
       if (!confirmDiscard()) return;
@@ -400,13 +418,20 @@ export function mountCatalogEditor({
     }
   });
 
-  categorySelect.addEventListener("change", () => {
+    categorySelect.addEventListener("change", () => {
     if (!confirmDiscard()) {
-      categorySelect.value = category;
+      categorySelect.value = category === "equipment"
+        ? "equipment"
+        : branchFilter;
+
       return;
     }
 
-    category = categorySelect.value;
+    const value = categorySelect.value;
+
+    category = value === "equipment" ? "equipment" : "units";
+    branchFilter = value === "equipment" ? "" : value;
+
     selectedId = "";
     editing = false;
 
@@ -414,7 +439,7 @@ export function mountCatalogEditor({
     renderDetail();
   });
 
-  search.addEventListener("input", renderList);
+  factionFilter.addEventListener("change", renderList);
 
   function renderList() {
     list.replaceChildren();
@@ -423,8 +448,17 @@ export function mountCatalogEditor({
     const term = search.value.trim().toLowerCase();
 
     const items = data[category].filter(item =>
-      item.name.toLowerCase().includes(term)
+      item.name.toLowerCase().includes(term) &&
+      (
+        category === "equipment" ||
+        item.branch === branchFilter
+      ) &&
+      (
+        !factionFilter.value ||
+        item.faction === factionFilter.value
+      )
     );
+
 
     for (const item of items) {
       const text = category === "units"
@@ -562,7 +596,10 @@ export function mountCatalogEditor({
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.key === "faction"
+            ? getFactionName(value)
             : value
+
         ];
       })
     ));
@@ -585,8 +622,11 @@ export function mountCatalogEditor({
       for (const unit of users) {
         detail.append(button(unit.name, () => {
           category = "units";
-          categorySelect.value = category;
+          branchFilter = unit.branch;
+          categorySelect.value = unit.branch;
+          factionFilter.value = "";
           selectedId = unit.id;
+
           search.value = "";
 
           renderList();
@@ -619,6 +659,7 @@ export function mountCatalogEditor({
           () => {
             category = "equipment";
             categorySelect.value = category;
+            factionFilter.value = "";
             selectedId = equipment.id;
             search.value = "";
 
@@ -696,7 +737,9 @@ export function mountCatalogEditor({
       const value = getPath(draft, field.key);
       let control;
 
-      if (field.type === "branch") {
+     if (field.type === "faction") {
+        control = select(FACTION_OPTIONS, value ?? "");
+      } else if (field.type === "branch") {
         control = select([
           ["navy", "海軍"],
           ["air", "航空機"],
