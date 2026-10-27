@@ -1,4 +1,6 @@
 import { createCatalogSeed } from "./catalog-seed.js";
+import { normalizeFaction } from "./faction-data.js";
+
 
 // ===== 图鉴存储 =====
 // 图鉴与作战场景使用不同的保存键。
@@ -65,6 +67,7 @@ function normalizeEquipment(value) {
   return {
     id: text(value.id, "装備 ID", true),
     name: text(value.name, "装備名", true),
+    faction: normalizeFaction(value.faction ?? ""),
     kind: value.kind,
 
     barrelCount: number(
@@ -151,6 +154,7 @@ function normalizeUnit(value) {
     id: text(value.id, "ユニット ID", true),
     name: text(value.name, "名称", true),
     branch: value.branch,
+    faction: normalizeFaction(value.faction ?? ""),
 
     maxHp: number(value.maxHp, "最大生命", {
       min: Number.MIN_VALUE
