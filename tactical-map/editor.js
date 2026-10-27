@@ -292,7 +292,9 @@ export function mountEditor({
     select([])
   );
 
-  function updateCatalog() {
+    function updateCatalog() {
+    const previous = catalogSelect.value;
+
     catalogSelect.replaceChildren();
 
     for (const unit of catalog) {
@@ -300,10 +302,33 @@ export function mountEditor({
         catalogSelect.append(new Option(unit.name, unit.id));
       }
     }
+
+    if ([...catalogSelect.options].some(
+      option => option.value === previous
+    )) {
+      catalogSelect.value = previous;
+    }
   }
+
 
   branchSelect.addEventListener("change", updateCatalog);
   updateCatalog();
+
+  // 独立的图鉴查看与编辑入口。
+  const catalogEditorSection = section("図鑑 / 資料編集");
+
+  const catalogController = mountCatalogEditor({
+    container: catalogEditorSection,
+
+    onChanged() {
+      updateCatalog();
+
+      // 集群新增表单也使用最新模板。
+      // 不调用整个 refresh，避免覆盖当前个体设置中的草稿。
+      renderClusters(store.getAll());
+    }
+  });
+
 
   catalogSection.append(
     button("参戦ユニットを追加", safely(() => {
@@ -1018,6 +1043,7 @@ export function mountEditor({
     },
 
   destroy() {
+      catalogController.destroy();
       libraryController.destroy();
       unsubscribe();
       container.replaceChildren();
