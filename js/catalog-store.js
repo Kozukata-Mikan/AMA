@@ -36,6 +36,24 @@ function text(value, label, required = false) {
   return result;
 }
 
+function normalizeProtected(value = false) {
+  if (typeof value !== "boolean") {
+    throw new Error("編集保護の値が不正です。");
+  }
+
+  return value;
+}
+
+function protectionError() {
+  const error = new Error(
+    "保護された資料を変更するには編集パスワードが必要です。"
+  );
+
+  error.code = "CATALOG_LOCKED";
+  return error;
+}
+
+
 function number(value, label, {
   nullable = false,
   min = 0,
@@ -68,6 +86,7 @@ function normalizeEquipment(value) {
     id: text(value.id, "装備 ID", true),
     name: text(value.name, "装備名", true),
     faction: normalizeFaction(value.faction ?? ""),
+    protected: normalizeProtected(value.protected ?? false),
     kind: value.kind,
 
     barrelCount: number(
@@ -323,6 +342,16 @@ export function initializeCatalog(baseUnits) {
 
   const units = [];
   const listeners = new Set();
+  // 只在当前页面内有效，不写入 localStorage。
+  // 刷新页面后需要重新输入密码。
+  let editingAuthorized = false;
+
+  function requireEditingAuthorization() {
+    if (!editingAuthorized) {
+      throw protectionError();
+    }
+  }
+
 
   function syncUnits() {
     const equipmentMap = new Map(
@@ -374,7 +403,20 @@ export function initializeCatalog(baseUnits) {
   }
 
   function upsert(collection, item) {
+    if (collection === "units") {
+      const existing = data.units.find(
+        unit => unit.id === item.id
+      );
+
+      // 修改已保护单位，以及首次开启保护，都需要授权。
+      // 因此不能通过取消勾选来绕过保护。
+      if (existing?.protected || item.protected === true) {
+        requireEditingAuthorization();
+      }
+    }
+
     const candidate = copy(data);
+
     const list = candidate[collection];
     const index = list.findIndex(value => value.id === item.id);
 
@@ -391,6 +433,22 @@ export function initializeCatalog(baseUnits) {
 
   currentStore = {
     units,
+  isEditingAuthorized() {
+      return editingAuthorized;
+    },
+
+    authorizeEditing(password) {
+      // 前端编辑锁：不能视为服务器权限验证或真正加密。
+      if (password !== "shireisenyuri") {
+        throw new Error("編集パスワードが違います。");
+      }
+
+      editingAuthorized = true;
+    },
+
+    lockEditing() {
+      editingAuthorized = false;
+    },
 
     getData() {
       return copy(data);
@@ -409,10 +467,21 @@ export function initializeCatalog(baseUnits) {
     },
 
     deleteUnit(id) {
+      const existing = data.units.find(unit => unit.id === id);
+
+      if (existing?.protected) {
+        requireEditingAuthorization();
+      }
+
       const candidate = copy(data);
-      candidate.units = candidate.units.filter(item => item.id !== id);
+
+      candidate.units = candidate.units.filter(
+        item => item.id !== id
+      );
+
       commit(candidate);
     },
+
 
     deleteEquipment(id) {
       const users = data.units.filter(unit =>
@@ -465,7 +534,39 @@ export function initializeCatalog(baseUnits) {
         throw new Error("JSON の書式が不正です。");
       }
 
-      commit(parsed, true);
+            // 先完整验证，导入失败不改变当前图鉴。
+      const next = normalizeCatalog(parsed);
+
+      const nextUnits = new Map(
+        next.units.map(unit => [unit.id, unit])
+      );
+
+      // 不允许通过导入删除、修改或解除现有单位的保护。
+      const changesProtectedUnits = data.units.some(unit => {
+        if (!unit.protected) return false;
+
+        const replacement = nextUnits.get(unit.id);
+
+        return !replacement ||
+          JSON.stringify(unit) !== JSON.stringify(replacement);
+      });
+
+      // 导入新的受保护单位，也需要授权。
+      const currentUnits = new Map(
+        data.units.map(unit => [unit.id, unit])
+      );
+
+      const enablesProtection = next.units.some(unit =>
+        unit.protected &&
+        !currentUnits.get(unit.id)?.protected
+      );
+
+      if (changesProtectedUnits || enablesProtection) {
+        requireEditingAuthorization();
+      }
+
+      commit(next, true);
+
     },
 
     subscribe(listener) {
