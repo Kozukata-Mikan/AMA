@@ -94,7 +94,6 @@ function emptyScene() {
 }
 
 export function createBattleStore(units) {
-  const catalog = new Map(units.map(unit => [unit.id, unit]));
   const listeners = new Set();
 
   let scene = emptyScene();
@@ -548,6 +547,7 @@ export function createBattleStore(units) {
       unitId,
       snapshot: copy(base),
       currentHp: base.maxHp,
+      sizeLevel: base.sizeLevel ?? 1,
       altitude: base.branch === "air" ? 80 : null
     });
 
