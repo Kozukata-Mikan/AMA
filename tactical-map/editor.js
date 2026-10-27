@@ -2,6 +2,8 @@ import { getBranchName } from "../js/data-store.js";
 import { mountActionPanel } from "./action-panel.js";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
+import { mountCatalogEditor } from "./catalog-editor.js";
+
 
 
 
