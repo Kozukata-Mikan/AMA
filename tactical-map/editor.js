@@ -680,11 +680,18 @@ export function mountEditor({
     ));
 
     const name = field(form, "表示名", input(unit.name));
-    const side = field(form, "陣営", select([
+    const side = field(form, "作戦関係", select([
       ["ally", "味方"],
       ["enemy", "敵"],
       ["neutral", "中立"]
     ], unit.side));
+
+    const faction = field(
+      form,
+      "色陣営",
+      select(FACTION_OPTIONS, unit.faction ?? "")
+    );
+
 
     const group = field(
       form,
@@ -802,6 +809,7 @@ export function mountEditor({
         const patch = {
           name: name.value,
           side: side.value,
+          faction: faction.value,
           groupId: group.value || null,
           x: numberValue(x, "X 座標", true),
           y: numberValue(y, "Y 座標", true),
@@ -1023,8 +1031,12 @@ export function mountEditor({
 
       item.append(node(
         "small",
-        `${getBranchName(unit.branch)} · 耐性 ${unit.currentHp}` +
+        `${getBranchName(unit.branch)}` +
+        ` · ${getFactionName(unit.faction)}` +
+        ` · 体型 ${unit.sizeLevel}` +
+        ` · 耐性 ${unit.currentHp}` +
         ` · ${state.valid ? "配置済み" : state.reason}`
+
       ));
 
       unitList.append(item);
