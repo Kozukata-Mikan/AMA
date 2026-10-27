@@ -1,3 +1,7 @@
+
+import { initializeCatalog } from "./catalog-store.js";
+
+
 const BRANCH_NAMES = {
   navy: "海軍",
   air: "航空機",
@@ -41,7 +45,8 @@ export async function loadUnitData() {
         }
       }
 
-      return list;
+        // 返回同一个可同步的数组，图鉴编辑后不需要重新加载页面。
+     return initializeCatalog(units).units;
     })
   );
 
