@@ -15,6 +15,8 @@ import {
   normalizeEnvironment
 } from "../tactical-map/environment-data.js";
 
+import { normalizeFaction } from "./faction-data.js";
+
 
 import { assessCluster } from "../tactical-map/cluster-engine.js";
 
@@ -203,7 +205,13 @@ export function createBattleStore(units) {
       name,
       branch: snapshot.branch,
       side,
+
+      faction: normalizeFaction(
+        item.faction ?? snapshot.faction ?? ""
+      ),
+
       currentHp: requireNumber(
+
         item.currentHp,
         "現在耐性",
         0,
@@ -535,19 +543,32 @@ export function createBattleStore(units) {
     console.warn(error);
   }
 
-  function addUnit(unitId) {
+    function addUnit(unitId, options = {}) {
     const base = catalog.get(unitId);
 
     if (!base) {
       throw new Error("該当ユニットの図鑑資料が見つかりません。");
     }
 
+    if (!isObject(options)) {
+      throw new Error("参戦追加設定の書式が不正です。");
+    }
+
     const instance = normalizeInstance({
       instanceId: newId(),
       unitId,
       snapshot: copy(base),
+
+      name: options.name ?? base.name,
+      side: options.side ?? "ally",
+
+      faction: normalizeFaction(
+        options.faction ?? base.faction ?? ""
+      ),
+
       currentHp: base.maxHp,
       sizeLevel: base.sizeLevel ?? 1,
+
       altitude: base.branch === "air" ? 80 : null
     });
 
@@ -567,6 +588,7 @@ export function createBattleStore(units) {
     const editable = new Set([
       "name",
       "side",
+      "faction",
       "currentHp",
       "sizeLevel",
       "heading",
@@ -613,6 +635,7 @@ export function createBattleStore(units) {
     const editable = new Set([
       "name",
       "side",
+      "faction",
       "currentHp",
       "sizeLevel",
       "heading",
