@@ -3,6 +3,8 @@ import { mountActionPanel } from "./action-panel.js";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
 import { mountCatalogEditor } from "./catalog-editor.js";
+import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
+
 
 
 
@@ -317,17 +319,38 @@ export function mountEditor({
   // 独立的图鉴查看与编辑入口。
   const catalogEditorSection = section("図鑑 / 資料編集");
 
-  const catalogController = mountCatalogEditor({
+    const catalogController = mountCatalogEditor({
     container: catalogEditorSection,
+    battleStore: store,
+
+    onAdded(added) {
+      selectedId = added.instanceId;
+
+      refresh();
+      openSection(listSection);
+
+      const handle = [...unitList.querySelectorAll(
+        "[data-deploy-instance-id]"
+      )].find(element =>
+        element.dataset.deployInstanceId === added.instanceId
+      );
+
+      handle?.scrollIntoView({
+        block: "nearest"
+      });
+
+      message(
+        `「${added.name}」を追加しました。` +
+        "そのユニットの「↗ ドラッグ配置」を地図へドラッグしてください。"
+      );
+    },
 
     onChanged() {
       updateCatalog();
-
-      // 集群新增表单也使用最新模板。
-      // 不调用整个 refresh，避免覆盖当前个体设置中的草稿。
       renderClusters(store.getAll());
     }
   });
+
 
 
   catalogSection.append(
