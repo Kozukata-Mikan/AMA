@@ -3,41 +3,47 @@
 // 未确定的规则只保存参数，不执行计算。
 
 export const UNIT_FIELDS = [
-  {
+   {
     key: "name",
     label: "名称",
     type: "text",
-    definition: "図鑑の表示名。計算上の参照には変更されない ID を使用します。"
+    definition: "図鑑の表示名。個体名は参戦追加時に選択できます。"
   },
   {
     key: "branch",
     label: "軍種",
     type: "branch",
-    definition: "海軍・航空機・陸軍・特殊の分類。配置可能な地形と表示形状に使用します。"
-  },
-  {
-    key: "maxHp",
-    label: "最大耐性 / 最大生命",
-    type: "number",
-    definition: "個体の基礎最大生命値。参戦時の現在生命はこの値で初期化されます。"
-  },
-  {
-    key: "sizeLevel",
-    label: "体型",
-    type: "size",
-    definition: "1～5 のサイズレベル。現在の地図では形状と河川・浅海への進入条件に使用します。"
+    definition: "海軍・航空機・陸軍・特殊の分類。配置条件と表示形状に使用します。"
   },
   {
     key: "naval.type",
     label: "属性",
     type: "text",
-    definition: "艦種などの属性コード。BB は戦列艦。詳細な適用ルールは後で接続します。"
+    definition: "BB などの属性コード。詳細な適用ルールは後で接続します。"
+  },
+  {
+    key: "sizeLevel",
+    label: "体型",
+    type: "size",
+    definition: "1～5 のサイズ。地図上のユニット表示サイズと配置条件に直接使用します。"
+  },
+  {
+    key: "maxHp",
+    label: "耐性 / 最大生命",
+    type: "number",
+    definition: "基礎最大生命値。参戦個体の現在生命をこの値で初期化します。"
   },
   {
     key: "naval.strength",
     label: "強度",
     type: "optional-number",
-    definition: "独立した強度パラメーター。計算上の意味と式は未設定です。"
+    definition: "独立した強度パラメーター。計算式は未設定です。"
+  },
+  {
+    key: "faction",
+    label: "初期色陣営",
+    type: "faction",
+    definition: "参戦追加時に引き継ぐ資料上の色陣営。味方・敵・中立とは独立しています。"
   },
   {
     key: "naval.detection",
@@ -83,6 +89,12 @@ export const EQUIPMENT_FIELDS = [
     label: "装備名",
     type: "text",
     definition: "装備の名称。連装数や艦船上の装備組数を名称に含める必要はありません。"
+  },
+  {
+    key: "faction",
+    label: "所属色陣営",
+    type: "faction",
+    definition: "装備資料の色陣営。搭載艦の色陣営や作戦関係とは独立しています。"
   },
   {
     key: "kind",
