@@ -1,0 +1,290 @@
+/* ===== 图鉴弹窗 ===== */
+
+.catalog-dialog {
+  width: min(1120px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+
+  border: 1px solid #36536b;
+  border-radius: 10px;
+
+  background: #09121e;
+  color: #dceaf5;
+}
+
+.catalog-dialog::backdrop {
+  background: rgba(0, 5, 12, 0.75);
+}
+
+.catalog-shell {
+  display: flex;
+  flex-direction: column;
+  height: min(820px, calc(100dvh - 40px));
+  min-height: 0;
+}
+
+.catalog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+
+  padding: 16px 20px;
+  border-bottom: 1px solid #294259;
+}
+
+.catalog-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.catalog-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px;
+}
+
+.catalog-toolbar input {
+  flex: 1 1 180px;
+}
+
+.catalog-dialog input,
+.catalog-dialog select,
+.catalog-dialog textarea {
+  min-width: 0;
+  padding: 8px;
+
+  border: 1px solid #294259;
+  border-radius: 4px;
+
+  background: #101e2c;
+  color: #dceaf5;
+  font: inherit;
+}
+
+.catalog-dialog input:focus-visible,
+.catalog-dialog select:focus-visible,
+.catalog-dialog textarea:focus-visible {
+  outline: 2px solid #79d5ff;
+  outline-offset: 2px;
+}
+
+.catalog-dialog textarea {
+  width: 100%;
+  min-height: 78px;
+  resize: vertical;
+}
+
+.catalog-status {
+  margin: 0;
+  padding: 0 20px 12px;
+  color: #a9bdce;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.catalog-status.error {
+  color: #ffbc98;
+}
+
+.catalog-body {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid #294259;
+}
+
+.catalog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  overflow-y: auto;
+  border-right: 1px solid #294259;
+}
+
+.catalog-list button {
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.catalog-list button.active {
+  border-color: #79d5ff;
+  background: #172d40;
+}
+
+.catalog-detail {
+  min-width: 0;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.catalog-detail h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.catalog-detail h4 {
+  margin: 24px 0 10px;
+  font-size: 15px;
+}
+
+.catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.catalog-muted {
+  color: #93adc2;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.catalog-notice {
+  padding: 10px 12px;
+  border-left: 3px solid #578ba8;
+  background: #0e1b29;
+  color: #bdd4e5;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.catalog-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.catalog-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.catalog-table th,
+.catalog-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #20364b;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.catalog-table th {
+  color: #9fbacf;
+  background: #0c1724;
+  font-weight: 600;
+}
+
+.catalog-table td button {
+  padding: 3px 6px;
+  color: #9cdeff;
+  font-size: 12px;
+  text-align: left;
+}
+
+.catalog-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.catalog-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: #bfd1df;
+  font-size: 12px;
+}
+
+.catalog-field input,
+.catalog-field select,
+.catalog-field textarea {
+  width: 100%;
+}
+
+.catalog-field small {
+  color: #7e9bb2;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+
+.catalog-repeat-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.catalog-repeat-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  padding: 12px;
+
+  border: 1px solid #294259;
+  border-radius: 5px;
+  background: #0c1724;
+}
+
+.catalog-repeat-row > button {
+  justify-self: start;
+}
+
+.catalog-repeat-row > p {
+  margin: 0;
+  align-self: center;
+}
+
+.catalog-definitions {
+  margin-top: 24px;
+}
+
+.catalog-definitions summary {
+  margin-bottom: 12px;
+  color: #9cdeff;
+  cursor: pointer;
+}
+
+.catalog-description {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .catalog-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .catalog-shell {
+    height: calc(100dvh - 24px);
+  }
+
+  .catalog-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 140px minmax(0, 1fr);
+  }
+
+  .catalog-list {
+    border-right: none;
+    border-bottom: 1px solid #294259;
+  }
+
+  .catalog-form-grid,
+  .catalog-repeat-row {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-detail {
+    padding: 14px;
+  }
+}
