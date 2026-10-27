@@ -298,6 +298,45 @@ export function mountCatalogEditor({
     status.classList.toggle("error", error);
   }
 
+    function requestEditingAuthorization() {
+    if (store.isEditingAuthorized()) return true;
+
+    const password = window.prompt(
+      "保護資料の編集パスワードを入力してください。"
+    );
+
+    if (password === null) return false;
+
+    try {
+      store.authorizeEditing(password);
+
+      message(
+        "保護資料の編集を許可しました。" +
+        "ページ更新または「編集を再ロック」で解除されます。"
+      );
+
+      return true;
+    } catch (error) {
+      message(error.message, true);
+      return false;
+    }
+  }
+
+  function withProtectionAuthorization(action) {
+    try {
+      return action();
+    } catch (error) {
+      if (error.code !== "CATALOG_LOCKED") {
+        throw error;
+      }
+
+      if (!requestEditingAuthorization()) return false;
+
+      return action();
+    }
+  }
+
+  
   function safely(action) {
     return () => {
       try {
@@ -318,6 +357,7 @@ export function mountCatalogEditor({
       maxHp: 1,
       sizeLevel: 1,
       description: "",
+      protected: false,
       naval: {
         type: "",
         strength: null,
@@ -361,6 +401,14 @@ export function mountCatalogEditor({
     factionFilter,
     search,
 
+    button("編集を再ロック", () => {
+      store.lockEditing();
+
+      message(
+        "保護資料の編集をロックしました。" +
+        "次の変更時にパスワードが必要です。"
+      );
+    }),
 
     button("新規追加", safely(() => {
       if (!confirmDiscard()) return;
@@ -404,7 +452,12 @@ export function mountCatalogEditor({
         "未保存の編集も破棄されます。"
       )) return;
 
-      store.importJSON(text);
+      const imported = withProtectionAuthorization(() => {
+        store.importJSON(text);
+        return true;
+      });
+
+      if (!imported) return;
 
       editing = false;
       selectedId = "";
@@ -556,6 +609,10 @@ export function mountCatalogEditor({
 
         draft.name += "（複製）";
 
+        // 允许访客创建自己的副本，不改变受保护的原条目。
+        if (category === "units") {
+          draft.protected = false;
+        }
         renderForm(draft);
       })),
 
@@ -566,7 +623,13 @@ export function mountCatalogEditor({
         )) return;
 
         if (category === "units") {
-          store.deleteUnit(item.id);
+          const deleted = withProtectionAuthorization(() => {
+            store.deleteUnit(item.id);
+            return true;
+          });
+
+          if (!deleted) return;
+
         } else {
           store.deleteEquipment(item.id);
         }
@@ -656,7 +719,10 @@ export function mountCatalogEditor({
             ? branchName(value)
             : field.key === "faction"
             ? getFactionName(value)
+            : field.key === "protected"
+            ? (value ? "保護あり 🔒" : "保護なし")
             : value
+
 
         ];
       })
@@ -771,8 +837,17 @@ export function mountCatalogEditor({
     detail.append(showDefinitions(fields));
   }
 
-  function renderForm(source) {
+    function renderForm(source) {
+    if (
+      category === "units" &&
+      source.protected &&
+      !requestEditingAuthorization()
+    ) {
+      return;
+    }
+
     editing = true;
+
     detail.replaceChildren();
 
     const draft = copy(source);
@@ -795,7 +870,11 @@ export function mountCatalogEditor({
       const value = getPath(draft, field.key);
       let control;
 
-     if (field.type === "faction") {
+     if (field.type === "checkbox") {
+        control = input("", "checkbox");
+        control.checked = value === true;
+      } else if (field.type === "faction") {
+
         control = select(FACTION_OPTIONS, value ?? "");
       } else if (field.type === "branch") {
         control = select([
@@ -1106,10 +1185,13 @@ export function mountCatalogEditor({
 
           let value = control.value;
 
-          if (
+          if (field.type === "checkbox") {
+            value = control.checked;
+          } else if (
             field.type === "number" ||
             field.type === "optional-number"
           ) {
+
             value = readNumber(
               control,
               field.label,
@@ -1138,7 +1220,13 @@ export function mountCatalogEditor({
             .filter(reader => reader.active)
             .map(reader => reader.read());
 
-          store.saveUnit(next);
+          const saved = withProtectionAuthorization(() => {
+            store.saveUnit(next);
+            return true;
+          });
+
+          if (!saved) return;
+
         } else {
           store.saveEquipment(next);
         }
