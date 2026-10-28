@@ -142,6 +142,61 @@
       margin: 10px 0;
     }
 
+      .simulation-map-panel {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#terrainLayer,
+#axesLayer {
+  pointer-events: none;
+}
+
+#axesLayer text {
+  font-size: 11px;
+}
+
+#units > details > summary {
+  font-size: 13px;
+}
+
+.map-environment-badge {
+  --weather-color: #f1f5f9;
+
+  position: absolute;
+  right: 16px;
+  bottom: 24px;
+  z-index: 3;
+
+  max-width: calc(100% - 32px);
+  color: #e8eef6;
+  font-size: 12px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+
+.environment-time {
+  margin: 0;
+  font-weight: 600;
+}
+
+.environment-weather {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--weather-color);
+}
+
+.environment-weather-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: var(--weather-color);
+}
+
+
     @media (max-width: 760px) {
       .workspace {
         grid-template-columns: 1fr;
@@ -167,6 +222,8 @@
     <div class="toolbar">
       <button id="back" type="button">自定義ページへ戻る</button>
       <button id="fit" type="button">地図全体を表示</button>
+      <button id="axesToggle" type="button" aria-pressed="false">XYZ 軸を表示</button>
+      <button id="colorToggle" type="button" aria-pressed="true">地形着色を非表示</button>
       <button id="export" type="button">推演JSONを書き出し</button>
     </div>
   </header>
@@ -176,9 +233,52 @@
   </p>
 
   <main class="workspace">
-    <aside>
+        <aside>
+      <!-- 新增：时间、天气与回合流程 -->
+      <details open>
+        <summary>時間・天候・回合</summary>
+
+        <p id="environmentInfo" class="note"></p>
+        <p id="turnInfo" class="note"></p>
+
+        <p class="note">
+          回合開始 → 移動段階 → 次序5 → 次序4 → 次序3 →
+          次序2 → 次序1 → PAS → 特殊詞条判定 → 回合終了
+        </p>
+
+        <p class="note">
+          1回合は30分です。具体的な行動ルールが未登録のため、
+          現在は時間と段階を進めません。
+        </p>
+      </details>
+
+      <!-- 原来的参战单位面板 -->
       <details open>
         <summary>参戦ユニット</summary>
+
+        <label>
+  <span>軍種</span>
+  <select id="branchFilter">
+    <option value="">すべて</option>
+    <option value="navy">海軍</option>
+    <option value="air">航空機</option>
+    <option value="army">陸軍</option>
+    <option value="special">特殊</option>
+  </select>
+</label>
+
+<label>
+  <span>作戦関係</span>
+  <select id="sideFilter">
+    <option value="">すべて</option>
+    <option value="ally">我方</option>
+    <option value="enemy">敵方</option>
+    <option value="neutral">中立</option>
+  </select>
+</label>
+
+<p id="unitCount" class="note"></p>
+
         <div id="units"></div>
         <p id="unitInfo" class="note"></p>
       </details>
@@ -256,6 +356,7 @@
       </details>
     </aside>
 
+    <section class="simulation-map-panel">
     <svg
       id="map"
       viewBox="0 0 1000 650"
@@ -264,9 +365,12 @@
     >
       <g id="viewport">
         <g id="terrainLayer"></g>
+        <g id="axesLayer" pointer-events="none" aria-hidden="true"></g>
         <g id="unitLayer"></g>
       </g>
     </svg>
+    <div id="environmentBadge" class="map-environment-badge"></div>
+   </section>
   </main>
 </body>
 </html>
