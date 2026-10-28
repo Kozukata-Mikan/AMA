@@ -1,5 +1,6 @@
 import { assessCluster } from "./cluster-engine.js";
 import { RULESET, evaluateAction } from "./rules-engine.js";
+import { normalizeEnvironment } from "./environment-data.js";
 
 // ===== 独立推演状态 =====
 // 不调用 createBattleStore，避免读取或覆盖自定义模式存档。
@@ -49,6 +50,17 @@ function readSaved(id) {
     !value.terrain
   ) {
     throw new Error("推演データの書式が不正です。");
+  }
+
+    // 兼容之前创建的框架推演。
+  value.environment = normalizeEnvironment(value.environment);
+
+  if (value.turn === undefined) {
+    value.turn = {
+      number: 1,
+      phaseId: "start",
+      elapsedMinutes: 0
+    };
   }
 
   return value;
@@ -239,7 +251,14 @@ export function createSimulation(scene, spatialState) {
     initialScene: copy(scene),
 
     terrain: copy(scene.terrain),
-    environment: copy(scene.environment),
+    environment: normalizeEnvironment(scene.environment),
+
+    turn: {
+      number: 1,
+      phaseId: "start",
+      elapsedMinutes: 0
+    },
+
     instances: copy(scene.instances),
     groups: copy(scene.groups),
 
