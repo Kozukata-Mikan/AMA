@@ -30,6 +30,128 @@ function requireText(value, label) {
   return value.trim();
 }
 
+// 仅对完全相同的初始资料去重。
+// 发生过编队重组等变化的资料仍分别保存。
+function packSaved(value) {
+  const packed = { ...value };
+
+  delete packed.initialSceneReferences;
+
+  if (
+    value.initialScene &&
+    typeof value.initialScene === "object"
+  ) {
+    packed.initialScene = { ...value.initialScene };
+
+    const references = [];
+
+    for (const key of [
+      "terrain",
+      "instances",
+      "groups",
+      "environment",
+      "view"
+    ]) {
+      if (
+        value[key] !== undefined &&
+        value.initialScene[key] !== undefined &&
+        JSON.stringify(value[key]) ===
+          JSON.stringify(value.initialScene[key])
+      ) {
+        delete packed.initialScene[key];
+        references.push(key);
+      }
+    }
+
+    if (references.length) {
+      packed.initialSceneReferences = references;
+    }
+  }
+
+  return JSON.stringify(packed);
+}
+
+function unpackSaved(value) {
+  const references = value.initialSceneReferences;
+
+  // 兼容以前未经去重的存档。
+  if (references === undefined) return value;
+
+  const allowed = new Set([
+    "terrain",
+    "instances",
+    "groups",
+    "environment",
+    "view"
+  ]);
+
+  if (
+    !Array.isArray(references) ||
+    !value.initialScene ||
+    references.some(key =>
+      !allowed.has(key) || value[key] === undefined
+    )
+  ) {
+    throw new Error("推演スナップショットの書式が不正です。");
+  }
+
+  for (const key of references) {
+    // 独立恢复初始快照，不让后续修改改变历史资料。
+    value.initialScene[key] = copy(value[key]);
+  }
+
+  delete value.initialSceneReferences;
+
+  return value;
+}
+
+// 压缩已经存在的推演存档。
+// 不删除存档；单个写入失败时，原存档仍保留。
+export function compactSimulationSaves() {
+  const keys = [];
+
+  for (let index = 0; index < localStorage.length; index++) {
+    const key = localStorage.key(index);
+
+    if (key?.startsWith(PREFIX)) {
+      keys.push(key);
+    }
+  }
+
+  let compacted = 0;
+  let failed = 0;
+
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      const value = unpackSaved(JSON.parse(raw));
+
+      if (
+        value.version !== VERSION ||
+        value.mode !== "simulation" ||
+        key !== PREFIX + value.id
+      ) {
+        continue;
+      }
+
+      const packed = packSaved(value);
+
+      if (packed.length < raw.length) {
+        localStorage.setItem(key, packed);
+        compacted += 1;
+      }
+    } catch (error) {
+      console.warn("推演存档压缩失败：", key, error);
+      failed += 1;
+    }
+  }
+
+  return { compacted, failed };
+}
+
+
 function readSaved(id) {
   const raw = localStorage.getItem(PREFIX + id);
 
@@ -37,7 +159,8 @@ function readSaved(id) {
     throw new Error("推演データが見つかりません。");
   }
 
-  const value = JSON.parse(raw);
+ const value = unpackSaved(JSON.parse(raw));
+
 
   if (
     value.version !== VERSION ||
@@ -67,17 +190,38 @@ function readSaved(id) {
 }
 
 function writeSaved(value) {
+  const key = PREFIX + value.id;
+  const text = packSaved(value);
+
   try {
-    localStorage.setItem(
-      PREFIX + value.id,
-      JSON.stringify(value)
-    );
-  } catch {
+    localStorage.setItem(key, text);
+    return;
+  } catch (firstError) {
+    // 容量不足时，先对旧推演去重，再重试。
+    // 不自动删除任何存档。
+    if (
+      firstError.name === "QuotaExceededError" ||
+      firstError.name === "NS_ERROR_DOM_QUOTA_REACHED"
+    ) {
+      compactSimulationSaves();
+
+      try {
+        localStorage.setItem(key, text);
+        return;
+      } catch {
+        // 继续交给下面的错误提示。
+      }
+    }
+
     throw new Error(
-      "推演データを保存できません。保存容量とブラウザー設定を確認してください。"
+      "推演データを保存できません。" +
+      "既存の推演を圧縮しても容量が不足しているか、" +
+      "ブラウザーが保存を許可していません。" +
+      "既存データは削除していません。"
     );
   }
 }
+
 
 // 展开单体或编队，包括已有的嵌套编队。
 // 使用 visited 防止异常数据造成死循环。
@@ -359,9 +503,27 @@ export function openSimulation(id) {
   }
 
   return {
-    getScene() {
-      return copy(state);
+        getScene() {
+      // 界面只需要当前状态，不需要复制完整初始场景。
+      return copy({
+        version: state.version,
+        mode: state.mode,
+        id: state.id,
+        revision: state.revision,
+        name: state.name,
+        createdAt: state.createdAt,
+        updatedAt: state.updatedAt,
+        ruleset: state.ruleset,
+        terrain: state.terrain,
+        environment: state.environment,
+        turn: state.turn,
+        instances: state.instances,
+        groups: state.groups,
+        actions: state.actions,
+        view: state.view
+      });
     },
+
 
     getEntities() {
       return listEntities(state);
