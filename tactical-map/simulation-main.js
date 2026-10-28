@@ -1,8 +1,12 @@
 import {
-  drawTerrainFaces,
   drawMapAxes,
   renderEnvironmentBadge
 } from "./map-display.js";
+
+import { drawUnitIcon } from "./unit-icon-renderer.js";
+
+import { getDisplayUnits } from "./cluster-engine.js";
+
 
 import {
   normalizeEnvironment,
