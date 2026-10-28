@@ -166,15 +166,78 @@ function drawMap() {
   const scene = store.getScene();
   const terrain = scene.terrain;
 
-  $("terrainLayer").replaceChildren();
-  $("unitLayer").replaceChildren();
+  const terrainLayer = $("terrainLayer");
+  const unitLayer = $("unitLayer");
 
-   drawTerrainFaces({
-    layer: $("terrainLayer"),
+  // 编队变化、单位选择不需要重新生成所有地形元素。
+  const terrainKey = JSON.stringify({
     terrain,
-    colored: terrainColorVisible,
-    wireframe: true
+    colored: terrainColorVisible
   });
+
+  if (terrainLayer.dataset.renderKey !== terrainKey) {
+    terrainLayer.replaceChildren();
+
+    // 恢复之前的低密度网格。
+    // 不再使用每个原始网格单元两个三角面的绘制方式。
+    const stride = Math.max(
+      1,
+      Math.ceil(Math.max(terrain.rows, terrain.cols) / 45)
+    );
+
+    for (let row = 0; row < terrain.rows - 1; row += stride) {
+      for (let col = 0; col < terrain.cols - 1; col += stride) {
+        const nextRow = Math.min(
+          row + stride,
+          terrain.rows - 1
+        );
+
+        const nextCol = Math.min(
+          col + stride,
+          terrain.cols - 1
+        );
+
+        const corners = [
+          [col, row],
+          [nextCol, row],
+          [nextCol, nextRow],
+          [col, nextRow]
+        ].map(([c, r]) => {
+          const point = gridPosition(terrain, c, r);
+
+          const sample = sampleTerrain(
+            terrain,
+            point.x,
+            point.y
+          );
+
+          return {
+            ...project(
+              point.x,
+              point.y,
+              sample.surface
+            ),
+            kind: sample.kind
+          };
+        });
+
+        const land = corners.some(
+          point => point.kind === "land"
+        );
+
+        svgNode("polygon", {
+          points: pointsText(corners),
+          fill: terrainColorVisible
+            ? (land ? "#152d2a" : "#0a2033")
+            : "none",
+          stroke: land ? "#2b5146" : "#173b55",
+          "stroke-width": 0.5
+        }, terrainLayer);
+      }
+    }
+
+    terrainLayer.dataset.renderKey = terrainKey;
+  }
 
   drawMapAxes(
     $("axesLayer"),
@@ -182,95 +245,123 @@ function drawMap() {
     axesVisible
   );
 
+  unitLayer.replaceChildren();
 
-  for (const unit of scene.instances) {
+  function spatialState(unit) {
+    if (unit.x == null || unit.y == null) {
+      return {
+        valid: false,
+        reason: "未配置です。"
+      };
+    }
+
+    const sample = sampleTerrain(
+      terrain,
+      unit.x,
+      unit.y
+    );
+
     const height = unitHeight(unit, terrain);
+
+    return {
+      valid: sample.inside && Number.isFinite(height),
+      height
+    };
+  }
+
+  // 恢复集群合并显示。
+  // 集群仍保留独立成员，代理图标不改变成员数据。
+  const displayUnits = getDisplayUnits(
+    scene.instances,
+    scene.groups,
+    terrain,
+    spatialState
+  );
+
+  for (const unit of displayUnits) {
+    const spatial = spatialState(unit);
+
+    if (!spatial.valid) continue;
+
+    const height = spatial.height;
     const position = project(unit.x, unit.y, height);
-    const color = relationColor(unit.side);
+    const labelHeight = unit.labelHeight ?? 65;
+
+    const selected =
+      unit.instanceId === selectedId ||
+      unit.clusterMembers?.some(
+        member => member.instanceId === selectedId
+      );
 
     const group = svgNode("g", {
+      class: `unit ${unit.side}${selected ? " selected" : ""}`,
+      transform: `translate(${position.x} ${position.y})`,
       tabindex: 0,
       role: "button",
       "aria-label": unit.name,
-      style: "cursor:pointer"
-    }, $("unitLayer"));
+      "data-instance-id": unit.instanceId
+    }, unitLayer);
 
-    const level = Math.max(1, Math.min(5, unit.sizeLevel));
-    const scale = 0.5 * [1, 1.75, 2.5, 3.25, 4][level - 1];
+    // 航空机到海平面的高度参考线。
+    if (unit.branch === "air") {
+      const seaPosition = project(unit.x, unit.y, 0);
+      const seaOffset = seaPosition.y - position.y;
 
-    let localPoints;
+      svgNode("line", {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: seaOffset,
+        class: "altitude-reference"
+      }, group);
 
-    if (unit.branch === "navy") {
-      const stern = -12 + 24 * [1, 1.5, 2, 2.5, 3][level - 1];
+      svgNode("circle", {
+        cx: 0,
+        cy: seaOffset,
+        r: 3,
+        class: "altitude-foot"
+      }, group);
 
-      localPoints = [
-        [0, -12], [8, -4], [8, stern],
-        [-8, stern], [-8, -4]
-      ];
-    } else if (unit.branch === "air") {
-      const angle = [15, 30, 90, 120, 150][level - 1];
-      const width = 2 * Math.tan(angle * Math.PI / 360);
-      const factor = 24 / Math.max(1, width);
+      const altitudeLabel = svgNode("text", {
+        x: 8,
+        y: seaOffset / 2,
+        class: "altitude-label"
+      }, group);
 
-      localPoints = [
-        [0, -factor / 2],
-        [width * factor / 2, factor / 2],
-        [-width * factor / 2, factor / 2]
-      ];
-    } else if (unit.branch === "army") {
-      localPoints = [
-        [-12, -12], [12, -12], [12, 12], [-12, 12]
-      ];
-    } else {
-      localPoints = [[0, -12], [10, 0], [0, 12], [-10, 0]];
+      altitudeLabel.textContent = `高度 ${height} u`;
     }
 
-    const iconScale = unit.branch === "navy" ? 0.5 : scale;
-    const angle = unit.heading * Math.PI / 180;
-
-    const iconPoints = localPoints.map(([x, y]) => {
-      const sx = x * iconScale;
-      const sy = y * iconScale;
-
-      return project(
-        unit.x + sx * Math.cos(angle) - sy * Math.sin(angle),
-        unit.y + sx * Math.sin(angle) + sy * Math.cos(angle),
-        height
-      );
-    });
-
-    svgNode("polygon", {
-      points: pointsText(iconPoints),
-      fill: unit.filled ? color : "#09121e",
-      stroke: color,
-      "stroke-width": selectedId === unit.instanceId ? 2.5 : 1.2,
-      "stroke-dasharray": unit.underwater ? "3 2" : ""
+    // 名称定位线，与航空高度参考线分开。
+    svgNode("line", {
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: -labelHeight,
+      class: "unit-stem"
     }, group);
 
-    const labelHeight = unit.labelHeight ?? 65;
+    // 使用自定义模式原版图标，不再另写简化多边形。
+    const scale = drawUnitIcon(unit, group);
 
-    svgNode("line", {
-      x1: position.x,
-      y1: position.y,
-      x2: position.x,
-      y2: position.y - labelHeight,
-      stroke: color,
-      "stroke-width": 0.7
+    svgNode("circle", {
+      cx: 0,
+      cy: -labelHeight,
+      r: 2,
+      class: "unit-dot"
     }, group);
 
     const label = svgNode("text", {
-      x: position.x + 5,
-      y: position.y - labelHeight,
-      fill: color
+      x: 7,
+      y: -labelHeight + 4
     }, group);
 
     label.textContent = unit.name;
 
     svgNode("circle", {
-      cx: position.x,
-      cy: position.y,
-      r: 12,
-      fill: "transparent"
+      cx: 0,
+      cy: 0,
+      r: 17 * scale,
+      class: "hit-area"
     }, group);
 
     group.addEventListener("click", () => {
@@ -285,6 +376,7 @@ function drawMap() {
     });
   }
 }
+
 
 function updateView() {
   viewport.setAttribute(
