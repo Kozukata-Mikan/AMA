@@ -433,7 +433,7 @@ const UNIT_ICON_RULES = {
   displayScale: 0.5,
 
   
-  scales: [1, 1.75, 2.5, 3.25, 4],
+  scales: [1, 1.5, 2, 2.5, 3],
 
   airAngles: [15, 30, 90, 120, 150],
 
