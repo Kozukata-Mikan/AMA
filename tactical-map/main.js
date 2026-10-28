@@ -3,6 +3,8 @@ import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
 import { mountEditor } from "./editor.js";
 import { mountUnitDeployment } from "./unit-deployment.js";
+import { drawTerrainFaces } from "./map-display.js";
+
 
 import {
   createDemoTerrain,
@@ -23,6 +25,7 @@ import { mountTerrainEditor } from "./terrain-editor.js";
 let terrain = createDemoTerrain();
 let terrainController = null;
 let axesVisible = false;
+let terrainColorVisible = false;
 let axesLayer = null;
 
 let editorController = null;
@@ -313,6 +316,13 @@ function contourTriangle(triangle, level) {
 
 function drawTerrain() {
   layers.terrain.replaceChildren();
+
+  // 必须先绘制面，再绘制水域标记和等高线。
+  drawTerrainFaces({
+    layer: layers.terrain,
+    terrain,
+    colored: terrainColorVisible
+  });
 
   const grid = makeHeightGrid();
   const dx = terrain.width / (terrain.cols - 1);
@@ -1595,6 +1605,29 @@ axesButton.addEventListener("click", () => {
 });
 
 document.querySelector(".controls").append(axesButton);
+const terrainColorButton = document.createElement("button");
+terrainColorButton.type = "button";
+terrainColorButton.textContent = "地形着色を表示";
+terrainColorButton.setAttribute("aria-pressed", "false");
+
+terrainColorButton.addEventListener("click", () => {
+  terrainColorVisible = !terrainColorVisible;
+
+  terrainColorButton.textContent = terrainColorVisible
+    ? "地形着色を非表示"
+    : "地形着色を表示";
+
+  terrainColorButton.setAttribute(
+    "aria-pressed",
+    String(terrainColorVisible)
+  );
+
+  // 仅重画地形显示，不改存档、不加入笔刷撤销历史。
+  drawTerrain();
+});
+
+document.querySelector(".controls").append(terrainColorButton);
+
 
 // ===== 启动与编辑器桥接 =====
 
