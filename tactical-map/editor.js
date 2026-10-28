@@ -1,5 +1,5 @@
 import { getBranchName } from "../js/data-store.js";
-import { mountActionPanel } from "./action-panel.js";
+import { createSimulation } from "./simulation-store.js";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
 import { mountCatalogEditor } from "./catalog-editor.js";
@@ -975,14 +975,48 @@ export function mountEditor({
 
     groupHost.append(node("p", "編隊構成", "editor-note"), root);
   }
-  // 行动草案使用同一个场景存储。
-  const actionSection = section("行動と記録");
+    // ===== 推演入口 =====
+  // 先保存独立快照，再进入新页面。
+  // 不把推演状态写回自定义场景。
 
-  const actionPanel = mountActionPanel({
-    container: actionSection,
-    store,
-    spatialState
-  });
+  const simulationSection = section("推演モード");
+
+  simulationSection.append(
+    node(
+      "p",
+      "地図とユニット配置から独立した推演を作成します。" +
+      "推演中は自由な追加・削除・地形編集ができません。" +
+      "現在はルール未登録のため、編隊操作と行動草案のみ使用できます。",
+      "editor-note"
+    ),
+
+    button("現在の配置で推演を開始", safely(() => {
+      if (store.isRecoveryBlocked()) {
+        throw new Error(
+          "作戦データの復元が完了していません。先に復元してください。"
+        );
+      }
+
+      if (!confirm(
+        "現在の配置から新しい推演を作成しますか？" +
+        "自定義モードの作戦データは変更されません。"
+      )) return;
+
+      const source = store.getScene();
+
+      // 尚未保存的观察视角也进入初始快照，
+      // 但不触发自定义场景的写入与表单重绘。
+      source.view = getView();
+
+      const id = createSimulation(source, spatialState);
+
+      const url = new URL("./simulation.html", import.meta.url);
+      url.searchParams.set("id", id);
+
+      location.assign(url.href);
+    }))
+  );
+
 
   // ===== 状态与地图同步 =====
 
@@ -1053,7 +1087,6 @@ export function mountEditor({
     renderUnitForm(instances);
     renderGroups(instances);
     renderClusters(instances);
-    actionPanel.refresh();
     renderMap(instances, selectedId);
   }
 
