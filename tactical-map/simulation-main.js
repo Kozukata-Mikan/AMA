@@ -151,26 +151,6 @@ function relationColor(side) {
   }[side] ?? "#c1c8d0";
 }
 
-function selectUnit(id) {
-  selectedId = id;
-
-  const unit =getRenderScene().instances.find(
-    item => item.instanceId === id
-  );
-
-  if (!unit) return;
-
-  $("unitInfo").textContent = [
-    unit.name,
-    `色陣営：${getFactionName(unit.faction)}`,
-    `作戦関係：${unit.side}`,
-    `体型：${unit.sizeLevel}`,
-    `耐性：${unit.currentHp} / ${unit.snapshot.maxHp}`,
-    `位置：X ${unit.x} / Y ${unit.y}`,
-    `方位：${unit.heading}°`,
-    "観察専用です。自由な位置・生命・性能編集はできません。"
-  ].join("\n");
-
 let renderedTerrain = null;
 let renderedTerrainColored = null;
 
@@ -313,6 +293,28 @@ function renderSimulationTerrain(terrain, colored) {
   renderedTerrainColored = colored;
 }
 
+
+function selectUnit(id) {
+  selectedId = id;
+
+  const unit =getRenderScene().instances.find(
+    item => item.instanceId === id
+  );
+
+  if (!unit) return;
+
+  $("unitInfo").textContent = [
+    unit.name,
+    `色陣営：${getFactionName(unit.faction)}`,
+    `作戦関係：${unit.side}`,
+    `体型：${unit.sizeLevel}`,
+    `耐性：${unit.currentHp} / ${unit.snapshot.maxHp}`,
+    `位置：X ${unit.x} / Y ${unit.y}`,
+    `方位：${unit.heading}°`,
+    "観察専用です。自由な位置・生命・性能編集はできません。"
+  ].join("\n");
+
+
   
    const scene = getRenderScene();
 
@@ -348,22 +350,13 @@ function drawMap() {
   const scene = getRenderScene();
   const terrain = scene.terrain;
 
-  const terrainLayer = $("terrainLayer");
   const unitLayer = $("unitLayer");
 
-  // 编队变化、单位选择不需要重新生成所有地形元素。
-  const terrainKey = JSON.stringify({
-    terrain,
-    colored: terrainColorVisible
-  });
-
-  if (terrainLayer.dataset.renderKey !== terrainKey) {
-    terrainLayer.replaceChildren();
-
-     renderSimulationTerrain(
+  renderSimulationTerrain(
     terrain,
     terrainColorVisible
   );
+
 
 
   drawMapAxes(
