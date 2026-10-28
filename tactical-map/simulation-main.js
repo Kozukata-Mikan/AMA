@@ -34,6 +34,18 @@ const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
 let store = null;
+// 只供界面读取，不修改缓存中的数据。
+// 所有写入仍然通过simulation-store的方法完成。
+let renderSceneCache = null;
+
+function getRenderScene() {
+  if (!renderSceneCache) {
+    renderSceneCache = store.getScene();
+  }
+
+  return renderSceneCache;
+}
+
 let selectedId = "";
 let draftPreview = null;
 let axesVisible = false;
@@ -142,7 +154,7 @@ function relationColor(side) {
 function selectUnit(id) {
   selectedId = id;
 
-  const unit = store.getScene().instances.find(
+  const unit =getRenderScene().instances.find(
     item => item.instanceId === id
   );
 
@@ -159,11 +171,181 @@ function selectUnit(id) {
     "観察専用です。自由な位置・生命・性能編集はできません。"
   ].join("\n");
 
-  drawMap();
+let renderedTerrain = null;
+let renderedTerrainColored = null;
+
+function renderSimulationTerrain(terrain, colored) {
+  if (
+    renderedTerrain === terrain &&
+    renderedTerrainColored === colored
+  ) {
+    return;
+  }
+
+  const layer = $("terrainLayer");
+
+  // 每个方向最多约32格。
+  const colStep = Math.max(
+    1,
+    Math.ceil((terrain.cols - 1) / 32)
+  );
+
+  const rowStep = Math.max(
+    1,
+    Math.ceil((terrain.rows - 1) / 32)
+  );
+
+  const paths = {
+    land: [],
+    sea: [],
+    river: [],
+    shallow: []
+  };
+
+  const colors = {
+    land: "#152d2a",
+    sea: "#0a2033",
+    river: "#267fa1",
+    shallow: "#286a71"
+  };
+
+  // 同一个网格顶点只计算一次。
+  const vertices = new Map();
+
+  function vertex(col, row) {
+    const key = row * terrain.cols + col;
+
+    if (vertices.has(key)) {
+      return vertices.get(key);
+    }
+
+    const point = gridPosition(terrain, col, row);
+    const sample = sampleTerrain(
+      terrain,
+      point.x,
+      point.y
+    );
+
+    const projected = project(
+      point.x,
+      point.y,
+      sample.surface
+    );
+
+    vertices.set(key, projected);
+    return projected;
+  }
+
+  function coordinate(point) {
+    return `${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+  }
+
+  for (
+    let row = 0;
+    row < terrain.rows - 1;
+    row += rowStep
+  ) {
+    const nextRow = Math.min(
+      row + rowStep,
+      terrain.rows - 1
+    );
+
+    for (
+      let col = 0;
+      col < terrain.cols - 1;
+      col += colStep
+    ) {
+      const nextCol = Math.min(
+        col + colStep,
+        terrain.cols - 1
+      );
+
+      const corners = [
+        vertex(col, row),
+        vertex(nextCol, row),
+        vertex(nextCol, nextRow),
+        vertex(col, nextRow)
+      ];
+
+      const center = gridPosition(
+        terrain,
+        (col + nextCol) / 2,
+        (row + nextRow) / 2
+      );
+
+      const sample = sampleTerrain(
+        terrain,
+        center.x,
+        center.y
+      );
+
+      const kind = Object.hasOwn(paths, sample.kind)
+        ? sample.kind
+        : "sea";
+
+      paths[kind].push(
+        `M${coordinate(corners[0])}` +
+        `L${coordinate(corners[1])}` +
+        `L${coordinate(corners[2])}` +
+        `L${coordinate(corners[3])}Z`
+      );
+    }
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  for (const [kind, segments] of Object.entries(paths)) {
+    if (!segments.length) continue;
+
+    svgNode("path", {
+      d: segments.join(" "),
+      fill: colored ? colors[kind] : "none",
+      stroke: kind === "land" ? "#2b5146" : "#173b55",
+      "stroke-width": 0.5,
+      "vector-effect": "non-scaling-stroke",
+      "pointer-events": "none"
+    }, fragment);
+  }
+
+  layer.replaceChildren(fragment);
+
+  renderedTerrain = terrain;
+  renderedTerrainColored = colored;
+}
+
+  
+   const scene = getRenderScene();
+
+  const selectedUnit = scene.instances.find(
+    item => item.instanceId === selectedId
+  );
+
+  const selectedGroup = scene.groups.find(
+    group => group.id === selectedUnit?.groupId
+  );
+
+  for (const element of $("unitLayer").querySelectorAll(".unit")) {
+    const displayedId = element.dataset.instanceId;
+
+    const sameUnit = displayedId === selectedId;
+
+    const sameCluster =
+      selectedGroup?.kind === "cluster" &&
+      scene.instances.some(unit =>
+        unit.instanceId === displayedId &&
+        unit.groupId === selectedGroup.id
+      );
+
+    element.classList.toggle(
+      "selected",
+      sameUnit || sameCluster
+    );
+  }
+
 }
 
 function drawMap() {
-  const scene = store.getScene();
+  const scene = getRenderScene();
   const terrain = scene.terrain;
 
   const terrainLayer = $("terrainLayer");
@@ -178,66 +360,11 @@ function drawMap() {
   if (terrainLayer.dataset.renderKey !== terrainKey) {
     terrainLayer.replaceChildren();
 
-    // 恢复之前的低密度网格。
-    // 不再使用每个原始网格单元两个三角面的绘制方式。
-    const stride = Math.max(
-      1,
-      Math.ceil(Math.max(terrain.rows, terrain.cols) / 45)
-    );
+     renderSimulationTerrain(
+    terrain,
+    terrainColorVisible
+  );
 
-    for (let row = 0; row < terrain.rows - 1; row += stride) {
-      for (let col = 0; col < terrain.cols - 1; col += stride) {
-        const nextRow = Math.min(
-          row + stride,
-          terrain.rows - 1
-        );
-
-        const nextCol = Math.min(
-          col + stride,
-          terrain.cols - 1
-        );
-
-        const corners = [
-          [col, row],
-          [nextCol, row],
-          [nextCol, nextRow],
-          [col, nextRow]
-        ].map(([c, r]) => {
-          const point = gridPosition(terrain, c, r);
-
-          const sample = sampleTerrain(
-            terrain,
-            point.x,
-            point.y
-          );
-
-          return {
-            ...project(
-              point.x,
-              point.y,
-              sample.surface
-            ),
-            kind: sample.kind
-          };
-        });
-
-        const land = corners.some(
-          point => point.kind === "land"
-        );
-
-        svgNode("polygon", {
-          points: pointsText(corners),
-          fill: terrainColorVisible
-            ? (land ? "#152d2a" : "#0a2033")
-            : "none",
-          stroke: land ? "#2b5146" : "#173b55",
-          "stroke-width": 0.5
-        }, terrainLayer);
-      }
-    }
-
-    terrainLayer.dataset.renderKey = terrainKey;
-  }
 
   drawMapAxes(
     $("axesLayer"),
@@ -386,7 +513,7 @@ function updateView() {
 }
 
 function fitMap() {
-  const terrain = store.getScene().terrain;
+  const terrain = getRenderScene().terrain;
   let highest = 0;
 
   for (const height of terrain.heights) {
@@ -403,7 +530,7 @@ function fitMap() {
   }
 
   // 同时考虑空中和水下单位，避免初始视角将其裁掉。
-  for (const unit of store.getScene().instances) {
+  for (const unit of getRenderScene().instances) {
     const p = project(unit.x, unit.y, unitHeight(unit, terrain));
     points.push(p, { x: p.x, y: p.y - (unit.labelHeight ?? 65) });
   }
@@ -428,7 +555,7 @@ function fitMap() {
 function refillEntities(id) {
   const control = $(id);
   const previous = control.value;
-  const scene = store.getScene();
+  const scene = getRenderScene();
 
   control.replaceChildren(new Option("選択してください", ""));
 
@@ -635,7 +762,7 @@ function renderGroups(scene) {
 }
 
 function renderUnitList() {
-  const scene = store.getScene();
+  const scene = getRenderScene();
   const branchFilter = $("branchFilter").value;
   const sideFilter = $("sideFilter").value;
 
@@ -755,7 +882,7 @@ $("colorToggle").addEventListener("click", safely(() => {
 
 
 function refresh() {
-  const scene = store.getScene();
+  const scene = getRenderScene();
 
   $("title").textContent = `${scene.name} / 推演モード`;
 
@@ -963,7 +1090,11 @@ try {
   }
 
   store = openSimulation(id);
-  store.subscribe(refresh);
+    store.subscribe(() => {
+    renderSceneCache = null;
+    refresh();
+  });
+
 
   refresh();
   fitMap();
