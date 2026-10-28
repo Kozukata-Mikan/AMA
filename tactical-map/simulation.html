@@ -210,6 +210,137 @@
 
       #map { height: 60dvh; }
     }
+
+    /* ===== 与自定义模式一致的单位显示 ===== */
+
+#unitLayer .unit {
+  color: #83dcff;
+  cursor: pointer;
+}
+
+#unitLayer .unit.enemy {
+  color: #ff9b65;
+}
+
+#unitLayer .unit.neutral {
+  color: #b7bdcf;
+}
+
+#unitLayer .unit-symbol,
+#unitLayer .unit-dot {
+  fill: #09121e;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+#unitLayer .unit-stem {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+#unitLayer .unit text {
+  fill: currentColor;
+  font-size: 12px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #07101a;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+#unitLayer .hit-area {
+  fill: transparent;
+  pointer-events: all;
+}
+
+#unitLayer .unit-center-dot {
+  fill: currentColor;
+  stroke: none;
+  pointer-events: none;
+}
+
+/* 选中只加强轮廓，不改变空心和实心。 */
+#unitLayer .unit.selected .unit-symbol,
+#unitLayer .unit:focus-visible .unit-symbol {
+  stroke-width: 2.8;
+}
+
+#unitLayer .unit.selected text {
+  font-weight: 800;
+}
+
+#unitLayer .is-hollow .unit-symbol {
+  fill: none;
+}
+
+#unitLayer .is-filled .unit-symbol {
+  fill: currentColor;
+}
+
+/* 水下轮廓。 */
+#unitLayer .is-underwater .unit-symbol {
+  stroke-dasharray: 6 5;
+  stroke-width: 2.2;
+  stroke-linecap: butt;
+}
+
+/* 航空高度标记。 */
+#unitLayer .altitude-reference {
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.65;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+#unitLayer .altitude-foot {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.65;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+#unitLayer .unit .altitude-label {
+  font-size: 10px;
+  font-weight: 400;
+  pointer-events: none;
+}
+
+/* 陆军尾部虚线及等级标记。 */
+#unitLayer .army-rear {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-dasharray: 3 2;
+  stroke-linecap: butt;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+#unitLayer .army-level-mark {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+#unitLayer .is-army.is-filled .army-level-mark {
+  stroke: #09121e;
+}
+
+#unitLayer .unit.selected .army-rear {
+  stroke-width: 2.8;
+}
+
   </style>
 
   <script type="module" src="./simulation-main.js"></script>
