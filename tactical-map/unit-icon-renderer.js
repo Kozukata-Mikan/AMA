@@ -341,3 +341,6 @@ function drawUnitIcon(unit, parent) {
   }
 
   return getUnitScale(unit);
+}
+
+export { drawUnitIcon };
