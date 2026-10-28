@@ -1,4 +1,17 @@
 import {
+  drawTerrainFaces,
+  drawMapAxes,
+  renderEnvironmentBadge
+} from "./map-display.js";
+
+import {
+  normalizeEnvironment,
+  getTimePeriod,
+  getWeatherInfo
+} from "./environment-data.js";
+
+
+import {
   openSimulation,
   resolveEntity
 } from "./simulation-store.js";
@@ -19,6 +32,22 @@ const NS = "http://www.w3.org/2000/svg";
 let store = null;
 let selectedId = "";
 let draftPreview = null;
+let axesVisible = false;
+let terrainColorVisible = true;
+
+const BRANCH_LABELS = {
+  navy: "海軍",
+  air: "航空機",
+  army: "陸軍",
+  special: "特殊"
+};
+
+const SIDE_LABELS = {
+  ally: "我方",
+  enemy: "敵方",
+  neutral: "中立"
+};
+
 
 const svg = $("map");
 const viewport = $("viewport");
@@ -136,43 +165,19 @@ function drawMap() {
   $("terrainLayer").replaceChildren();
   $("unitLayer").replaceChildren();
 
-  // 简化的投影网格地形，不复用原编辑器的事件。
-  // 大网格采样绘制，控制观察页 DOM 数量。
-  const stride = Math.max(
-    1,
-    Math.ceil(Math.max(terrain.rows, terrain.cols) / 45)
+   drawTerrainFaces({
+    layer: $("terrainLayer"),
+    terrain,
+    colored: terrainColorVisible,
+    wireframe: true
+  });
+
+  drawMapAxes(
+    $("axesLayer"),
+    terrain,
+    axesVisible
   );
 
-  for (let row = 0; row < terrain.rows - 1; row += stride) {
-    for (let col = 0; col < terrain.cols - 1; col += stride) {
-      const nextRow = Math.min(row + stride, terrain.rows - 1);
-      const nextCol = Math.min(col + stride, terrain.cols - 1);
-
-      const corners = [
-        [col, row],
-        [nextCol, row],
-        [nextCol, nextRow],
-        [col, nextRow]
-      ].map(([c, r]) => {
-        const point = gridPosition(terrain, c, r);
-        const sample = sampleTerrain(terrain, point.x, point.y);
-
-        return {
-          ...project(point.x, point.y, sample.surface),
-          kind: sample.kind
-        };
-      });
-
-      const land = corners.some(point => point.kind === "land");
-
-      svgNode("polygon", {
-        points: pointsText(corners),
-        fill: land ? "#152d2a" : "#0a2033",
-        stroke: land ? "#2b5146" : "#173b55",
-        "stroke-width": 0.5
-      }, $("terrainLayer"));
-    }
-  }
 
   for (const unit of scene.instances) {
     const height = unitHeight(unit, terrain);
@@ -327,14 +332,74 @@ function fitMap() {
 function refillEntities(id) {
   const control = $(id);
   const previous = control.value;
+  const scene = store.getScene();
 
   control.replaceChildren(new Option("選択してください", ""));
 
-  for (const entity of store.getEntities()) {
-    control.append(new Option(
-      entity.label,
-      JSON.stringify(entity.ref)
+  const buckets = new Map();
+
+  function addOption(category, label, ref) {
+    if (!buckets.has(category)) {
+      const group = document.createElement("optgroup");
+      group.label = category;
+      buckets.set(category, group);
+      control.append(group);
+    }
+
+    buckets.get(category).append(new Option(
+      label,
+      JSON.stringify(ref)
     ));
+  }
+
+  for (const branch of Object.keys(BRANCH_LABELS)) {
+    for (const side of Object.keys(SIDE_LABELS)) {
+      for (const unit of scene.instances.filter(item =>
+        item.branch === branch && item.side === side
+      )) {
+        addOption(
+          `${BRANCH_LABELS[branch]} / ${SIDE_LABELS[side]}`,
+          `${unit.name} · ${unit.instanceId.slice(-6)}`,
+          { kind: "unit", id: unit.instanceId }
+        );
+      }
+    }
+  }
+
+  for (const group of scene.groups) {
+    let entity;
+
+    try {
+      entity = resolveEntity(scene, {
+        kind: "group",
+        id: group.id
+      });
+    } catch {
+      continue;
+    }
+
+    const branches = new Set(
+      entity.members.map(unit => unit.branch)
+    );
+
+    const sides = new Set(
+      entity.members.map(unit => unit.side)
+    );
+
+    const branchText = branches.size === 1
+      ? BRANCH_LABELS[[...branches][0]] ?? "特殊"
+      : "混合軍種";
+
+    const sideText = sides.size === 1
+      ? SIDE_LABELS[[...sides][0]] ?? "不明"
+      : "混合作戦関係";
+
+    addOption(
+      group.kind === "cluster" ? "集群" : "編隊",
+      `${group.name}（${entity.members.length}）` +
+      ` / ${branchText} / ${sideText}`,
+      entity.ref
+    );
   }
 
   if ([...control.options].some(option =>
@@ -343,6 +408,7 @@ function refillEntities(id) {
     control.value = previous;
   }
 }
+
 
 function requestFromForm() {
   if (!$("attacker").value || !$("target").value) {
@@ -472,25 +538,139 @@ function renderGroups(scene) {
   }
 }
 
+function renderUnitList() {
+  const scene = store.getScene();
+  const branchFilter = $("branchFilter").value;
+  const sideFilter = $("sideFilter").value;
+
+  const filtered = scene.instances.filter(unit =>
+    (!branchFilter || unit.branch === branchFilter) &&
+    (!sideFilter || unit.side === sideFilter)
+  );
+
+  $("units").replaceChildren();
+
+  $("unitCount").textContent =
+    `表示 ${filtered.length} / 全 ${scene.instances.length} 個体`;
+
+  for (const branch of Object.keys(BRANCH_LABELS)) {
+    const branchMembers = filtered.filter(
+      unit => unit.branch === branch
+    );
+
+    if (!branchMembers.length) continue;
+
+    const branchSection = node("details");
+    branchSection.open = true;
+
+    branchSection.append(node(
+      "summary",
+      `${BRANCH_LABELS[branch]}（${branchMembers.length}）`
+    ));
+
+    for (const side of Object.keys(SIDE_LABELS)) {
+      const members = branchMembers.filter(
+        unit => unit.side === side
+      );
+
+      if (!members.length) continue;
+
+      const sideSection = node("details");
+      sideSection.open = true;
+
+      sideSection.append(node(
+        "summary",
+        `${SIDE_LABELS[side]}（${members.length}）`
+      ));
+
+      for (const unit of members) {
+        const entry = button(
+          `${unit.name} / 体型 ${unit.sizeLevel}` +
+          ` / 耐性 ${unit.currentHp}`,
+          () => selectUnit(unit.instanceId)
+        );
+
+        entry.className = "unit-entry";
+        sideSection.append(entry);
+      }
+
+      branchSection.append(sideSection);
+    }
+
+    $("units").append(branchSection);
+  }
+}
+
+function renderEnvironment(scene) {
+  const environment = normalizeEnvironment(scene.environment);
+  const period = getTimePeriod(environment.time);
+  const weather = getWeatherInfo(environment.weather);
+
+  renderEnvironmentBadge(
+    $("environmentBadge"),
+    environment
+  );
+
+  $("environmentInfo").textContent = [
+    `沙盤時刻：${environment.time} / ${period.label}`,
+    `天候：${weather.label} / ${weather.levelLabel}`,
+    "天候は自定義場景から継承しています。"
+  ].join("\n");
+
+  $("turnInfo").textContent = [
+    `回合：${scene.turn?.number ?? 1}`,
+    "段階：回合開始（ルール接続待ち）",
+    "回合時間：30分"
+  ].join("\n");
+}
+
+$("branchFilter").addEventListener("change", safely(renderUnitList));
+$("sideFilter").addEventListener("change", safely(renderUnitList));
+
+$("axesToggle").addEventListener("click", safely(() => {
+  axesVisible = !axesVisible;
+
+  $("axesToggle").textContent = axesVisible
+    ? "XYZ 軸を非表示"
+    : "XYZ 軸を表示";
+
+  $("axesToggle").setAttribute(
+    "aria-pressed",
+    String(axesVisible)
+  );
+
+  drawMap();
+}));
+
+$("colorToggle").addEventListener("click", safely(() => {
+  terrainColorVisible = !terrainColorVisible;
+
+  $("colorToggle").textContent = terrainColorVisible
+    ? "地形着色を非表示"
+    : "地形着色を表示";
+
+  $("colorToggle").setAttribute(
+    "aria-pressed",
+    String(terrainColorVisible)
+  );
+
+  drawMap();
+}));
+
+
 function refresh() {
   const scene = store.getScene();
 
   $("title").textContent = `${scene.name} / 推演モード`;
 
-  $("units").replaceChildren();
+    renderUnitList();
+  renderEnvironment(scene);
+
   $("members").replaceChildren();
 
   for (const unit of scene.instances) {
-    const entry = button(
-      `${unit.name} / 体型 ${unit.sizeLevel}` +
-      ` / 耐性 ${unit.currentHp}`,
-      () => selectUnit(unit.instanceId)
-    );
-
-    entry.className = "unit-entry";
-    $("units").append(entry);
-
     const label = node("label");
+
     label.className = "member-entry";
 
     const check = node("input");
