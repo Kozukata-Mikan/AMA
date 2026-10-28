@@ -894,3 +894,9 @@ button:focus-visible {
   min-width: 0;
   color-scheme: dark;
 }
+
+/* 观察用显示开关增多后允许换行。 */
+.controls {
+  flex-wrap: wrap;
+}
+
