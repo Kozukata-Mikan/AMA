@@ -177,6 +177,10 @@ function readSaved(id) {
 
     // 兼容之前创建的框架推演。
   value.environment = normalizeEnvironment(value.environment);
+  value.controls = {
+    enemyAutonomy: value.controls?.enemyAutonomy === true
+  };
+
 
   if (value.turn === undefined) {
     value.turn = {
@@ -385,6 +389,9 @@ export function createSimulation(scene, spatialState) {
     mode: "simulation",
     id,
     revision: 0,
+    controls: {
+      enemyAutonomy: false
+    },
     name: scene.name,
     createdAt: now,
     updatedAt: now,
@@ -477,6 +484,18 @@ export function openSimulation(id) {
 
     const actingEntity = resolveEntity(state, attacker);
     const targetEntity = resolveEntity(state, target);
+        if (
+      state.controls?.enemyAutonomy === true &&
+      actingEntity.members.some(unit =>
+        unit.side === "enemy" || unit.side === "neutral"
+      )
+    ) {
+      throw new Error(
+        "敵の自主はすでに開かれており、敵や中立単位の行動を人工的に手配することはできない" +
+        "自主行動計画はまだアクセスされていません。手動で手配する必要がある場合は、まず敵の自主を閉鎖してください"
+      );
+    }
+
 
     const actingIds = new Set(
       actingEntity.members.map(unit => unit.instanceId)
@@ -502,8 +521,32 @@ export function openSimulation(id) {
     };
   }
 
-  return {
-        getScene() {
+    return {
+    getControlSettings() {
+      return {
+        enemyAutonomy: state.controls?.enemyAutonomy === true
+      };
+    },
+
+    setEnemyAutonomy(enabled) {
+      if (typeof enabled !== "boolean") {
+        throw new Error("自律行動の設定には真偽値を指定してください。");
+      }
+
+      if (enabled === (state.controls?.enemyAutonomy === true)) {
+        return;
+      }
+
+      commit(candidate => {
+        candidate.controls = {
+          ...candidate.controls,
+          enemyAutonomy: enabled
+        };
+      });
+    },
+
+    getScene() {
+
       // 界面只需要当前状态，不需要复制完整初始场景。
       return copy({
         version: state.version,
@@ -520,7 +563,9 @@ export function openSimulation(id) {
         instances: state.instances,
         groups: state.groups,
         actions: state.actions,
+        controls: state.controls,
         view: state.view
+        
       });
     },
 
