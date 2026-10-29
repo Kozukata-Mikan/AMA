@@ -66,10 +66,11 @@ const BRANCH_LABELS = {
 };
 
 const SIDE_LABELS = {
-  ally: "我方",
-  enemy: "敵方",
+  ally: "味方",
+  enemy: "敵",
   neutral: "中立"
 };
+
 
 
 const svg = $("map");
@@ -313,7 +314,7 @@ function selectUnit(id) {
   $("unitInfo").textContent = [
     unit.name,
     `色陣営：${getFactionName(unit.faction)}`,
-    `作戦関係：${unit.side}`,
+    `作戦関係：${SIDE_LABELS[unit.side] ?? "不明"}`,
     `体型：${unit.sizeLevel}`,
     `耐性：${unit.currentHp} / ${unit.snapshot.maxHp}`,
     `位置：X ${unit.x} / Y ${unit.y}`,
@@ -324,6 +325,11 @@ function selectUnit(id) {
 
   
    const scene = getRenderScene();
+    if (unit.branch === "navy") {
+    $("unitInfo").textContent +=
+      "\n\n【艦船性能・推演状態】\n" +
+      getShipDetailLines(unit, scene.environment).join("\n");
+  }
 
   const selectedUnit = scene.instances.find(
     item => item.instanceId === selectedId
@@ -826,8 +832,7 @@ function renderUnitList() {
 
 function renderEnvironment(scene) {
   const environment = normalizeEnvironment(scene.environment);
-  const period = getTimePeriod(environment.time);
-  const weather = getWeatherInfo(environment.weather);
+  const recon = getReconConditions(environment);
 
   renderEnvironmentBadge(
     $("environmentBadge"),
@@ -835,17 +840,25 @@ function renderEnvironment(scene) {
   );
 
   $("environmentInfo").textContent = [
-    `沙盤時刻：${environment.time} / ${period.label}`,
-    `天候：${weather.label} / ${weather.levelLabel}`,
-    "天候は自定義場景から継承しています。"
+    `シナリオ時刻：${environment.time} / ${recon.period.label}`,
+    `天候：${recon.weather.label} / ${recon.weather.levelLabel}`,
+    "時刻と天候は自定義シナリオから継承しています。",
+    "",
+    `偵察距離の時刻補正：−${recon.timePenalty}`,
+    `偵察距離の天候補正：−${recon.weatherPenalty}`,
+    `通常偵察距離の上限：${recon.normalRange}`,
+    `近距離識別：${recon.identificationRange}以下`,
+    "発見には等級条件と地形遮蔽の判定も必要です。",
+    "現時点ではマップの表示制限には適用していません。"
   ].join("\n");
 
   $("turnInfo").textContent = [
-    `回合：${scene.turn?.number ?? 1}`,
-    `阶段：${getPhaseLabel(scene.turn?.phaseId ?? "start")}（決済ルールアクセス中）`,
-    "回合時間：30分"
+    `ラウンド：${scene.turn?.number ?? 1}`,
+    `段階：${getPhaseLabel(scene.turn?.phaseId ?? "start")}（処理ルール実装中）`,
+    "1ラウンド：30分"
   ].join("\n");
 }
+
 
 $("branchFilter").addEventListener("change", safely(renderUnitList));
 $("sideFilter").addEventListener("change", safely(renderUnitList));
