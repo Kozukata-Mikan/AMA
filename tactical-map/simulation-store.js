@@ -1,6 +1,8 @@
 import { assessCluster } from "./cluster-engine.js";
 import { RULESET, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
+import { ensureShipRuntime } from "./ship-runtime.js";
+
 
 // ===== 独立推演状态 =====
 // 不调用 createBattleStore，避免读取或覆盖自定义模式存档。
@@ -188,6 +190,10 @@ function readSaved(id) {
       phaseId: "start",
       elapsedMinutes: 0
     };
+  }
+
+  for (const unit of value.instances) {
+    ensureShipRuntime(unit);
   }
 
   return value;
@@ -419,9 +425,14 @@ export function createSimulation(scene, spatialState) {
     view: copy(scene.view)
   };
 
+  for (const unit of value.instances) {
+  ensureShipRuntime(unit);
+  }
+
   writeSaved(value);
 
   return id;
+
 }
 
 export function openSimulation(id) {
