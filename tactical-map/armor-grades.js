@@ -150,3 +150,30 @@ export function isMajorPenetration(penetration, armor) {
   // 恰好高10阶仍为穿，高11阶才进入大穿。
   return comparePenetrationToArmor(penetration, armor) > 10;
 }
+
+/**
+ * 已命中且没有触发进失时，进行穿深与装甲比较。
+ * 这里只分类，不抛硬币、不扣耐性、不推进阶段。
+ */
+export function classifyPenetration(penetration, armor) {
+  const penetrationGrade = parseArmorGrade(penetration);
+  const armorGrade = parseArmorGrade(armor);
+
+  const difference =
+    penetrationGrade.stepIndex - armorGrade.stepIndex;
+
+  if (difference > 10) {
+    return "major";
+  }
+
+  if (difference > 0) {
+    return "penetration";
+  }
+
+  if (difference < -10) {
+    return "shatter";
+  }
+
+  return "normal";
+}
+
