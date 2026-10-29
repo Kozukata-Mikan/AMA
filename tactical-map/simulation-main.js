@@ -6,6 +6,8 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js";
 
 import { getDisplayUnits } from "./cluster-engine.js";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js";
+
 
 
 import {
@@ -835,7 +837,7 @@ function renderEnvironment(scene) {
 
   $("turnInfo").textContent = [
     `回合：${scene.turn?.number ?? 1}`,
-    "段階：回合開始（ルール接続待ち）",
+    `阶段：${getPhaseLabel(scene.turn?.phaseId ?? "start")}（決済ルールアクセス中）`,
     "回合時間：30分"
   ].join("\n");
 }
@@ -1083,6 +1085,7 @@ try {
   }
 
   store = openSimulation(id);
+  mountSimulationRulebook(store);
     store.subscribe(() => {
     renderSceneCache = null;
     refresh();
