@@ -162,19 +162,23 @@ export function ensureShipRuntime(unit) {
     throw new Error("現在耐性が最大耐性を超えています。");
   }
 
+  // 新推演或尚无舰船状态的旧框架：建立起始状态。
   if (unit.shipState === undefined) {
     unit.shipState = {
       version: 1,
       status: inferInitialStatus(currentHp, profile.maxHp),
 
-      // null表示旧框架未记录历史，不冒充“从未受伤”。
+      // null表示旧框架未记录完整伤害历史。
       hasReceivedDamage:
         currentHp < profile.maxHp ? true : null,
 
       underwaterStrengthUses: 0,
       remainingEndurance: profile.enduranceBudget,
 
-      // 仅预留状态，不擅自决定回合计时边界。
+      // 常命中的剩余累计份数：只能为0、1或2。
+      normalHitRemainder: 0,
+
+      // 仅保存状态，不在这里推进计时。
       sinkingElapsedMinutes: 0,
       rescueTaskId: null
     };
@@ -182,6 +186,7 @@ export function ensureShipRuntime(unit) {
 
   const state = unit.shipState;
 
+  // 先确认保存状态的基本结构有效。
   if (
     !state ||
     typeof state !== "object" ||
@@ -190,6 +195,21 @@ export function ensureShipRuntime(unit) {
     !Object.hasOwn(SHIP_STATUS_LABELS, state.status)
   ) {
     throw new Error("艦船の保存状態が不正です。");
+  }
+
+  // 兼容以前没有常命中累计字段的存档。
+  // 已有0、1或2时保留原值，绝不因刷新重置。
+  if (state.normalHitRemainder === undefined) {
+    state.normalHitRemainder = 0;
+  }
+
+  // 检查常命中的累计余数。
+  if (
+    !Number.isInteger(state.normalHitRemainder) ||
+    state.normalHitRemainder < 0 ||
+    state.normalHitRemainder > 2
+  ) {
+    throw new Error("通常命中の累積値が不正です。");
   }
 
   if (
