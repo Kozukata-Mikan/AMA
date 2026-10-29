@@ -7,6 +7,11 @@ import { drawUnitIcon } from "./unit-icon-renderer.js";
 
 import { getDisplayUnits } from "./cluster-engine.js";
 import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js";
+import {
+  getShipDetailLines,
+  getReconConditions
+} from "./ship-runtime.js";
+
 
 
 
