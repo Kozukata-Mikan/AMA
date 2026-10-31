@@ -181,9 +181,13 @@ function readSaved(id) {
 
     // 兼容之前创建的框架推演。
   value.environment = normalizeEnvironment(value.environment);
-  value.controls = {
+    value.controls = {
+    ...value.controls,
     enemyAutonomy: value.controls?.enemyAutonomy === true
   };
+
+  initializeSimulationFeatures(value);
+
 
 
   if (value.turn === undefined) {
@@ -495,8 +499,9 @@ export function openSimulation(id) {
       throw new Error("メモは 2000 文字以内にしてください。");
     }
 
-    const actingEntity = resolveEntity(state, attacker);
-    const targetEntity = resolveEntity(state, target);
+    assertManualControl(state, actingEntity.members);
+    assertIdentifiedTargets(state, targetEntity.members);
+    
         if (
       state.controls?.enemyAutonomy === true &&
       actingEntity.members.some(unit =>
@@ -504,9 +509,10 @@ export function openSimulation(id) {
       )
     ) {
       throw new Error(
-        "敵の自主はすでに開かれており、敵や中立単位の行動を人工的に手配することはできない" +
-        "自主行動計画はまだアクセスされていません。手動で手配する必要がある場合は、まず敵の自主を閉鎖してください"
+        "自律行動が有効な場合、敵と中立の行動は手動指定できません。" +
+        "自律行動の計画処理はまだ実装されていません。"
       );
+
     }
 
 
@@ -534,8 +540,11 @@ export function openSimulation(id) {
     };
   }
 
-    return {
+        return {
+    ...createSimulationFeatures(() => state, commit),
+
     getControlSettings() {
+
       return {
         enemyAutonomy: state.controls?.enemyAutonomy === true
       };
@@ -551,40 +560,25 @@ export function openSimulation(id) {
       }
 
       commit(candidate => {
-        candidate.controls = {
+                candidate.controls = {
           ...candidate.controls,
-          enemyAutonomy: enabled
+          enemyAutonomy: enabled,
+          observationSide: enabled
+            ? "ally"
+            : candidate.controls.observationSide
         };
+
       });
     },
 
     getScene() {
-
-      // 界面只需要当前状态，不需要复制完整初始场景。
-      return copy({
-        version: state.version,
-        mode: state.mode,
-        id: state.id,
-        revision: state.revision,
-        name: state.name,
-        createdAt: state.createdAt,
-        updatedAt: state.updatedAt,
-        ruleset: state.ruleset,
-        terrain: state.terrain,
-        environment: state.environment,
-        turn: state.turn,
-        instances: state.instances,
-        groups: state.groups,
-        actions: state.actions,
-        controls: state.controls,
-        view: state.view
-        
-      });
+      return getObservedScene(state);
     },
 
 
+
     getEntities() {
-      return listEntities(state);
+      return listEntities(getObservedScene(state));
     },
 
     previewDraft,
@@ -645,6 +639,20 @@ export function openSimulation(id) {
           return unit;
         });
 
+        assertManualControl(candidate, members);
+
+        const plannedIds = new Set(
+          candidate.movementPlans.flatMap(plan => plan.memberIds)
+        );
+
+        if (members.some(unit => plannedIds.has(unit.instanceId))) {
+          throw new Error(
+            "移動計画があるメンバーの編隊変更はできません。" +
+            "先に移動計画を取り消してください。"
+          );
+        }
+
+        
         if (kind === "cluster") {
           // 仅沿用已有的集群结构/显示条件。
           // 未来若推演规则另有要求，在这里接入。
@@ -686,6 +694,24 @@ export function openSimulation(id) {
           throw new Error("編隊が見つかりません。");
         }
 
+          const entity = resolveEntity(candidate, {
+          kind: "group",
+          id: groupId
+        });
+
+        assertManualControl(candidate, entity.members);
+
+        const plannedIds = new Set(
+          candidate.movementPlans.flatMap(plan => plan.memberIds)
+        );
+
+        if (entity.members.some(unit => plannedIds.has(unit.instanceId))) {
+          throw new Error(
+            "移動計画がある編隊は変更できません。" +
+            "先に移動計画を取り消してください。"
+          );
+        }
+
         group.name = nextName;
       });
     },
@@ -700,6 +726,25 @@ export function openSimulation(id) {
           throw new Error("編隊が見つかりません。");
         }
 
+        const entity = resolveEntity(candidate, {
+          kind: "group",
+          id: groupId
+        });
+
+        assertManualControl(candidate, entity.members);
+
+        const plannedIds = new Set(
+          candidate.movementPlans.flatMap(plan => plan.memberIds)
+        );
+
+        if (entity.members.some(unit => plannedIds.has(unit.instanceId))) {
+          throw new Error(
+            "移動計画がある編隊は変更できません。" +
+            "先に移動計画を取り消してください。"
+          );
+        }
+
+        
         for (const child of candidate.groups) {
           if (child.parentId === groupId) {
             child.parentId = group.parentId ?? null;
@@ -724,8 +769,13 @@ export function openSimulation(id) {
     },
 
     exportJSON() {
-      return JSON.stringify(state, null, 2);
+      return JSON.stringify({
+        ...getObservedScene(state),
+        exportType: "observation",
+        restorable: false
+      }, null, 2);
     },
+
 
     subscribe(listener) {
       listeners.add(listener);
