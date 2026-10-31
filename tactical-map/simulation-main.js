@@ -12,6 +12,7 @@ import {
   getReconConditions
 } from "./ship-runtime.js";
 
+import { mountSimulationFeatures } from "./simulation-feature-ui.js";
 
 
 
@@ -310,6 +311,12 @@ function selectUnit(id) {
   );
 
   if (!unit) return;
+  if (unit.observationLevel === "shadow") {
+    $("unitInfo").textContent =
+      "未識別の影です。名称・性能・損傷状態は確認できません。";
+    return;
+  }
+
 
   $("unitInfo").textContent = [
     unit.name,
@@ -474,7 +481,41 @@ function drawMap() {
     }, group);
 
     // 使用自定义模式原版图标，不再另写简化多边形。
-    const scale = drawUnitIcon(unit, group);
+        let scale;
+
+    if (unit.observationLevel === "shadow") {
+      svgNode("ellipse", {
+        cx: 0,
+        cy: 0,
+        rx: 7,
+        ry: 3.5,
+        fill: "none",
+        stroke: "#b7bdcf",
+        "stroke-width": 1.5,
+        "vector-effect": "non-scaling-stroke"
+      }, group);
+
+      scale = 1;
+    } else {
+      scale = drawUnitIcon(unit, group);
+
+      if (unit.shipState?.status === "sunk") {
+        for (const [x1, y1, x2, y2] of [
+          [-8, -8, 8, 8],
+          [-8, 8, 8, -8]
+        ]) {
+          svgNode("line", {
+            x1, y1, x2, y2,
+            stroke: "currentColor",
+            "stroke-width": 1.5,
+            "vector-effect": "non-scaling-stroke"
+          }, group);
+        }
+
+        group.setAttribute("opacity", "0.65");
+      }
+    }
+
 
     svgNode("circle", {
       cx: 0,
@@ -562,6 +603,12 @@ function refillEntities(id) {
   const control = $(id);
   const previous = control.value;
   const scene = getRenderScene();
+    $("unitInfo").textContent = "";
+
+  if (!scene.instances.some(unit => unit.instanceId === selectedId)) {
+    selectedId = "";
+  }
+
 
   control.replaceChildren(new Option("選択してください", ""));
 
@@ -586,6 +633,16 @@ function refillEntities(id) {
       for (const unit of scene.instances.filter(item =>
         item.branch === branch && item.side === side
       )) {
+
+        if (unit.observationLevel === "shadow") continue;
+
+        if (
+          id === "attacker" &&
+          unit.side !== scene.controls.observationSide
+        ) {
+          continue;
+        }
+
         addOption(
           `${BRANCH_LABELS[branch]} / ${SIDE_LABELS[side]}`,
           `${unit.name} · ${unit.instanceId.slice(-6)}`,
@@ -814,8 +871,11 @@ function renderUnitList() {
 
       for (const unit of members) {
         const entry = button(
-          `${unit.name} / 体型 ${unit.sizeLevel}` +
-          ` / 耐性 ${unit.currentHp}`,
+            unit.observationLevel === "shadow"
+            ? "未識別の影"
+            : `${unit.name} / 体型 ${unit.sizeLevel}` +
+              ` / 耐性 ${unit.currentHp}`,
+
           () => selectUnit(unit.instanceId)
         );
 
@@ -849,12 +909,24 @@ function renderEnvironment(scene) {
     `通常偵察距離の上限：${recon.normalRange}`,
     `近距離識別：${recon.identificationRange}以下`,
     "発見には等級条件と地形遮蔽の判定も必要です。",
-    "現時点ではマップの表示制限には適用していません。"
+    "現在の観察陣営に応じて、地図と情報一覧を制限しています。"
   ].join("\n");
 
   $("turnInfo").textContent = [
     `ラウンド：${scene.turn?.number ?? 1}`,
-    `段階：${getPhaseLabel(scene.turn?.phaseId ?? "start")}（処理ルール実装中）`,
+        `段階：${({
+      start: "ラウンド開始",
+      movement: "移動段階",
+      "order-5": "次序5",
+      "order-4": "次序4",
+      "order-3": "次序3",
+      "order-2": "次序2",
+      "order-1": "次序1",
+      pas: "PAS",
+      special: "特殊効果判定",
+      end: "ラウンド終了"
+    })[scene.turn?.phaseId] ?? "不明な段階"}`,
+
     "1ラウンド：30分"
   ].join("\n");
 }
@@ -876,6 +948,8 @@ $("axesToggle").addEventListener("click", safely(() => {
   );
 
   drawMap();
+  if (selectedId) selectUnit(selectedId);
+
 }));
 
 $("colorToggle").addEventListener("click", safely(() => {
@@ -904,8 +978,11 @@ function refresh() {
 
   $("members").replaceChildren();
 
-  for (const unit of scene.instances) {
+  for (const unit of scene.instances.filter(
+    item => item.side === scene.controls.observationSide
+  )) {
     const label = node("label");
+
 
     label.className = "member-entry";
 
@@ -1104,6 +1181,8 @@ try {
 
   store = openSimulation(id);
   mountSimulationRulebook(store);
+  mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
+
     store.subscribe(() => {
     renderSceneCache = null;
     refresh();
