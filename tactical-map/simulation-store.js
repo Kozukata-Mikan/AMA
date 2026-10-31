@@ -2,6 +2,8 @@ import { assessCluster } from "./cluster-engine.js";
 import { RULESET, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
+import {initializeSimulationFeatures,getObservedScene,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js";
+
 
 
 // ===== 独立推演状态 =====
