@@ -1,4 +1,4 @@
-import { createCatalogSeed } from "./catalog-seed.js";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -149,6 +149,39 @@ function normalizeEquipment(value) {
   };
 }
 
+const TRAINING_TRAIT_IDS = new Set(
+  TRAINING_TRAIT_OPTIONS.map(item => item.id)
+);
+
+function normalizeTrainingTraits(value) {
+  // 兼容旧图鉴：缺少字段表示没有词条，不默认添加奖励或惩罚。
+  if (value === undefined) return [];
+
+  if (!Array.isArray(value)) {
+    throw new Error(
+      "練度・特訓・特殊能力は一覧で指定してください。"
+    );
+  }
+
+  const selected = new Set();
+
+  for (const id of value) {
+    if (typeof id !== "string" || !TRAINING_TRAIT_IDS.has(id)) {
+      throw new Error(
+        "未対応の練度・特訓・特殊能力が含まれています。"
+      );
+    }
+
+    selected.add(id);
+  }
+
+  // 固定顺序并去重，避免重复词条导致补正重复计算。
+  return TRAINING_TRAIT_OPTIONS
+    .filter(item => selected.has(item.id))
+    .map(item => item.id);
+}
+
+
 function normalizeUnit(value) {
   if (!object(value)) {
     throw new Error("ユニット資料の書式が不正です。");
@@ -200,7 +233,9 @@ function normalizeUnit(value) {
     }),
 
     sizeLevel,
+    trainingTraits: normalizeTrainingTraits(value.trainingTraits),
     description: text(value.description ?? "", "説明"),
+
 
     naval: {
       ...copy(naval),
