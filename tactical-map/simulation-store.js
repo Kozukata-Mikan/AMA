@@ -4,6 +4,7 @@ import { normalizeEnvironment } from "./environment-data.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
 import {initializeSimulationFeatures,getObservedScene,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js";
 
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
 
 
 // ===== 独立推演状态 =====
@@ -200,6 +201,7 @@ function readSaved(id) {
 
   for (const unit of value.instances) {
     ensureShipRuntime(unit);
+    initializeRescueState(value);
   }
 
   return value;
@@ -501,7 +503,19 @@ export function openSimulation(id) {
 
     assertManualControl(state, actingEntity.members);
     assertIdentifiedTargets(state, targetEntity.members);
-    
+
+    if (actingEntity.members.some(unit =>
+      unit.branch === "navy" &&
+      (
+        ["sinking", "sunk"].includes(unit.shipState.status) ||
+        unit.shipState.rescueTaskId !== null
+      )
+    )) {
+      throw new Error(
+        "行動不能または救助中の艦船は、行動を指定できません。"
+      );
+    }
+
         if (
       state.controls?.enemyAutonomy === true &&
       actingEntity.members.some(unit =>
@@ -542,6 +556,8 @@ export function openSimulation(id) {
 
         return {
     ...createSimulationFeatures(() => state, commit),
+    ...createRescueFeatures(() => state, commit),
+
 
     getControlSettings() {
 
