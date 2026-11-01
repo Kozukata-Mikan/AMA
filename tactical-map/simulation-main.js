@@ -13,6 +13,8 @@ import {
 } from "./ship-runtime.js";
 
 import { mountSimulationFeatures } from "./simulation-feature-ui.js";
+import { mountRescueUI } from "./simulation-rescue-ui.js";
+
 
 
 
@@ -1182,6 +1184,8 @@ try {
   store = openSimulation(id);
   mountSimulationRulebook(store);
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
+  mountRescueUI(store);
+
 
     store.subscribe(() => {
     renderSceneCache = null;
