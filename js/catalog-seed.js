@@ -1,6 +1,61 @@
 // ===== 图鉴初始资料与字段定义 =====
 // 界面文案使用日文，注释使用中文。
 // 未确定的规则只保存参数，不执行计算。
+// 保存稳定的词条ID；具体战斗效果由推演规则接入。
+export const TRAINING_TRAIT_OPTIONS = [
+  {
+    id: "high-training",
+    label: "高練度",
+    definition: "命中判定に有利判定1回。"
+  },
+  {
+    id: "low-training",
+    label: "低練度",
+    definition: "命中判定に不利判定1回。"
+  },
+  {
+    id: "one-against-thousand",
+    label: "一騎当千",
+    definition:
+      "中破後、各ラウンドに50％の確率で発動。有利判定2回。"
+  },
+  {
+    id: "night-training",
+    label: "夜間特訓",
+    definition: "時間帯が夜間の場合、有利判定1回。"
+  },
+  {
+    id: "underwater-training",
+    label: "水雷特訓",
+    definition: "水中武器による攻撃の場合、有利判定1回。"
+  },
+  {
+    id: "excellent-sea-fire-control",
+    label: "優秀な対海射撃管制",
+    definition:
+      "対海偵察がA以上の場合、海軍・陸軍目標への攻撃に有利判定1回。"
+  },
+  {
+    id: "excellent-air-fire-control",
+    label: "優秀な対空射撃管制",
+    definition:
+      "対空偵察がA以上の場合、航空機・特殊目標への攻撃に有利判定1回。"
+  },
+  {
+    id: "poor-sea-armament",
+    label: "劣悪な対海兵装",
+    definition: "海軍・陸軍目標への攻撃に不利判定1回。"
+  },
+  {
+    id: "poor-air-armament",
+    label: "劣悪な対空兵装",
+    definition: "航空機・特殊目標への攻撃に不利判定1回。"
+  }
+];
+
+export function getTrainingTraitLabel(id) {
+  return TRAINING_TRAIT_OPTIONS.find(item => item.id === id)?.label ?? id;
+}
 
 export const UNIT_FIELDS = [
    {
@@ -88,6 +143,14 @@ export const UNIT_FIELDS = [
     label: "続航力",
     type: "text",
     definition: "続航距離の原表記。7.2k などを保持します。単位と消費計算は未設定です。"
+  },
+   {
+    key: "trainingTraits",
+    label: "練度・特訓・特殊能力",
+    type: "training-traits",
+    definition:
+      "該当する項目を複数選択できます。未選択の場合、補正はありません。" +
+      "図鑑では能力を登録し、発動判定と補正計算は推演で行います。"
   }
 ];
 
