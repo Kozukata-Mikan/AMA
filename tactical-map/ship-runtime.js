@@ -358,6 +358,9 @@ export function getShipDetailLines(unit, environment) {
     `救助判定：${profile.isRepairShip
       ? "ARによる救助は必ず成功"
       : "コインによる判定"}`,
-    "移動・攻撃・救助の実行処理は、対応ルールの接続待ちです。"
+        `救助状態：${state.rescueTaskId
+      ? "救助中・他の行動は不可"
+      : "救助中ではありません"}`,
+    "移動と救助開始を接続済み。攻撃と正式な特殊段階処理は接続待ちです。"
   ];
 }
