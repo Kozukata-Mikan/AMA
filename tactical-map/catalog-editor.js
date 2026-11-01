@@ -382,6 +382,7 @@ export function mountCatalogEditor({
       barrelCount: null,
       projectionCoefficient: null,
       projectionSuffix: "R",
+      ammo: null,
       note: "",
       slot: "",
       powerRule: "",
@@ -903,6 +904,12 @@ export function mountCatalogEditor({
             ? "number"
             : "text"
         );
+      }
+
+      if (field.key === "ammo") {
+        control.min = "0";
+        control.step = "1";
+        control.max = String(Number.MAX_SAFE_INTEGER);
       }
 
       controls.set(field.key, control);
