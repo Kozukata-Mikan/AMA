@@ -495,17 +495,24 @@ function validateRoute(scene, unit, to) {
 
   for (const wreck of scene.instances) {
     if (
+      wreck.instanceId !== unit.instanceId &&
       wreck.shipState?.status === "sunk" &&
       positioned(wreck) &&
-      pointOnSegment(wreck, unit, to)
+      Math.hypot(
+        wreck.x - to.x,
+        wreck.y - to.y
+      ) <= EPSILON
     ) {
-      // 不透露隐藏沉船的名称或坐标。
-      fail("この経路では移動を完了できません。");
+      // 仅禁止终点占用沉船坐标。
+      // 不透露隐藏沉船的名称、资料或确切坐标。
+      fail("この位置への移動は完了できません。");
     }
   }
 
-  // 未定义地形通行规则，不擅自添加陆地或河流禁行。
+  // 尚未定义经过沉船的限制，不增加路径禁行规则。
+  // 尚未定义完整地形通行规则，不擅自增加陆地或河流禁行。
 }
+
 
 function buildPlan(scene, ref, x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
