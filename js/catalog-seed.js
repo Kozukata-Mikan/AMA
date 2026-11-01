@@ -150,7 +150,8 @@ export const EQUIPMENT_FIELDS = [
     key: "penetration",
     label: "穿深",
     type: "text",
-    definition: "装甲貫通能力の等級。- の意味も含め、等級比較規則は未設定です。"
+    definition: "装甲貫通能力の等級。「-」は穿深0を表します。" +
+      "図鑑の編集・保存だけでは傷害計算を実行しません。"
   },
   {
     key: "ceilingU",
@@ -188,8 +189,9 @@ export const EQUIPMENT_FIELDS = [
     label: "予備弾数",
     type: "optional-number",
     definition:
-      "装備1組の初期予備弾数。攻撃時の消費量は投射表記に基づきます。" +
-      "空欄は未登録であり、無限弾薬を意味しません。"
+      "装備1組の初期予備弾数。0以上の整数で指定します。" +
+      "0は残弾なし、空欄は未登録であり、無限弾薬を意味しません。" +
+      "攻撃時の消費量は投射表記に基づきます。"
   }
 ];
 
