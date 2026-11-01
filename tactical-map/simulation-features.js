@@ -3,6 +3,7 @@ import {
   getReconConditions
 } from "./ship-runtime.js";
 import { sampleTerrain } from "./terrain-data.js";
+import { startPlannedRescues } from "./simulation-rescue.js";
 
 const SIDES = ["ally", "enemy", "neutral"];
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
@@ -333,6 +334,44 @@ export function getObservedScene(scene) {
     instances,
     groups: safeGroups,
     actions,
+    rescuePlans: (scene.rescuePlans ?? []).filter(plan =>
+      scene.instances.some(unit =>
+        unit.instanceId === plan.rescuerId &&
+        unit.side === side
+      )
+    ).map(plan => ({
+      rescuerId: plan.rescuerId,
+      turnNumber: plan.turnNumber,
+
+      // 目标重新变成未识别时，不泄露目标引用。
+      targetId: visibility.get(plan.targetId) === "identified"
+        ? plan.targetId
+        : null
+    })),
+
+    rescueTasks: (scene.rescueTasks ?? []).filter(task =>
+      scene.instances.some(unit =>
+        [task.rescuerId, task.targetId].includes(unit.instanceId) &&
+        unit.side === side
+      )
+    ).map(task => ({
+      id: task.id,
+      startedTurn: task.startedTurn,
+      status: task.status,
+      resolvedTurn: task.resolvedTurn,
+      guaranteed: task.guaranteed,
+      coinHeads: task.coinHeads,
+
+      rescuerId: visibility.get(task.rescuerId) === "identified"
+        ? task.rescuerId
+        : null,
+
+      targetId: visibility.get(task.targetId) === "identified"
+        ? task.targetId
+        : null
+    })),
+
+
     movementPlans: (scene.movementPlans ?? []).filter(plan =>
       plan.memberIds.every(id =>
         scene.instances.some(
@@ -649,8 +688,11 @@ export function createSimulationFeatures(getState, commit) {
           }
         }
 
+        startPlannedRescues(scene);
+
         scene.movementPlans = [];
         scene.turn.phaseId = "order-5";
+
 
         // 移動処理ではラウンド番号も時刻も進めない。
       });
