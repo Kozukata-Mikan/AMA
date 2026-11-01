@@ -413,12 +413,37 @@ function drawMap() {
 
   // 恢复集群合并显示。
   // 集群仍保留独立成员，代理图标不改变成员数据。
-  const displayUnits = getDisplayUnits(
-    scene.instances,
-    scene.groups,
-    terrain,
-    spatialState
+   // 沉船单独显示，不参与集群合并。
+  // 场景已经经过观察权限过滤，未发现的沉船不会在这里出现。
+  const wrecks = scene.instances.filter(
+    unit => unit.shipState?.status === "sunk"
   );
+
+  const otherUnits = scene.instances.filter(
+    unit => unit.shipState?.status !== "sunk"
+  );
+
+  // 若集群含有已显示的沉船，存活成员也暂时按单体显示。
+  // 不修改实际编队归属或保存数据。
+  const groupsWithWrecks = new Set(
+    wrecks.map(unit => unit.groupId).filter(Boolean)
+  );
+
+  const displayGroups = scene.groups.filter(group =>
+    group.kind !== "cluster" ||
+    !groupsWithWrecks.has(group.id)
+  );
+
+  const displayUnits = [
+    ...getDisplayUnits(
+      otherUnits,
+      displayGroups,
+      terrain,
+      spatialState
+    ),
+    ...wrecks
+  ];
+
 
   for (const unit of displayUnits) {
     const spatial = spatialState(unit);
