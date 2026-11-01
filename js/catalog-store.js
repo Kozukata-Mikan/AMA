@@ -73,6 +73,24 @@ function number(value, label, {
   return value;
 }
 
+// 空值表示未登记；0表示没有备弹，不把两者混为一谈。
+function normalizeAmmo(value) {
+  const result = number(
+    value ?? null,
+    "予備弾数",
+    { nullable: true, min: 0, integer: true }
+  );
+
+  if (result !== null && !Number.isSafeInteger(result)) {
+    throw new Error(
+      "予備弾数は0以上の安全に扱える整数で指定してください。"
+    );
+  }
+
+  return result;
+}
+
+
 function normalizeEquipment(value) {
   if (!object(value)) {
     throw new Error("装備資料の書式が不正です。");
@@ -101,10 +119,12 @@ function normalizeEquipment(value) {
       { nullable: true, min: 0 }
     ),
 
-    projectionSuffix: text(
+       projectionSuffix: text(
       value.projectionSuffix ?? "",
       "投射率の接尾記号"
     ),
+
+    ammo: normalizeAmmo(value.ammo),
 
     note: text(value.note ?? "", "備考"),
     slot: text(value.slot ?? "", "スロット"),
