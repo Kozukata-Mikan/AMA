@@ -5,6 +5,8 @@ import {
   UNIT_FIELDS,
   EQUIPMENT_FIELDS,
   EXTRA_DEFINITIONS,
+  TRAINING_TRAIT_OPTIONS,
+  getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
 } from "../js/catalog-seed.js";
@@ -356,6 +358,7 @@ export function mountCatalogEditor({
       faction: "",
       maxHp: 1,
       sizeLevel: 1,
+      trainingTraits: [],
       description: "",
       protected: false,
       naval: {
@@ -722,7 +725,14 @@ export function mountCatalogEditor({
             ? getFactionName(value)
             : field.key === "protected"
             ? (value ? "保護あり 🔒" : "保護なし")
+            : field.type === "training-traits"
+            ? (
+                Array.isArray(value) && value.length
+                  ? value.map(getTrainingTraitLabel).join(" / ")
+                  : "なし"
+              )
             : value
+
 
 
         ];
@@ -871,6 +881,48 @@ export function mountCatalogEditor({
       const value = getPath(draft, field.key);
       let control;
 
+           if (field.type === "training-traits") {
+        const group = node("fieldset", "", "catalog-field");
+        group.append(node("legend", field.label));
+        group.append(node("small", field.definition));
+
+        const selected = new Set(
+          Array.isArray(value) ? value : []
+        );
+
+        const checkboxes = [];
+
+        for (const trait of TRAINING_TRAIT_OPTIONS) {
+          const checkbox = input("", "checkbox");
+          checkbox.checked = selected.has(trait.id);
+          checkbox.style.width = "auto";
+
+          labeled(
+            group,
+            trait.label,
+            checkbox,
+            trait.definition
+          );
+
+          checkboxes.push({
+            id: trait.id,
+            checkbox
+          });
+        }
+
+        controls.set(field.key, {
+          read() {
+            return checkboxes
+              .filter(item => item.checkbox.checked)
+              .map(item => item.id);
+          }
+        });
+
+        grid.append(group);
+        continue;
+      }
+
+      
      if (field.type === "checkbox") {
         control = input("", "checkbox");
         control.checked = value === true;
@@ -1190,7 +1242,13 @@ export function mountCatalogEditor({
         for (const field of fields) {
           const control = controls.get(field.key);
 
+          if (field.type === "training-traits") {
+            setPath(next, field.key, control.read());
+            continue;
+          }
+
           let value = control.value;
+
 
           if (field.type === "checkbox") {
             value = control.checked;
