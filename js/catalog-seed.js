@@ -176,11 +176,20 @@ export const EQUIPMENT_FIELDS = [
     type: "text",
     definition: "抛射・平射などの攻撃方式。対応する軌道・判定規則は未設定です。"
   },
+
   {
     key: "targetScope",
     label: "攻撃範囲",
     type: "text",
     definition: "集群・単体などの目標選択粒度。集群全員への自動傷害を意味するものではありません。"
+  },
+  {
+    key: "ammo",
+    label: "予備弾数",
+    type: "optional-number",
+    definition:
+      "装備1組の初期予備弾数。攻撃時の消費量は投射表記に基づきます。" +
+      "空欄は未登録であり、無限弾薬を意味しません。"
   }
 ];
 
