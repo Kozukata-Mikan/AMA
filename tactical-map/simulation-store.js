@@ -547,6 +547,10 @@ export function openSimulation(id) {
     change(candidate);
 
     initializeCombatRuntime(candidate);
+        // 检查任务与双方运行状态一致后，才允许保存。
+    // 不在校验阶段自动决定救助中断或补算时间。
+    initializeRescueState(candidate);
+
 
         if (
       !Number.isSafeInteger(candidate.revision) ||
