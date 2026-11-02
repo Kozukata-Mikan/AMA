@@ -14,6 +14,10 @@ import {
 
 import { mountSimulationFeatures } from "./simulation-feature-ui.js";
 import { mountRescueUI } from "./simulation-rescue-ui.js";
+import {
+  getTrainingTraitLabel,
+  getEquipmentLabel
+} from "../js/catalog-seed.js";
 
 
 
@@ -304,6 +308,77 @@ function renderSimulationTerrain(terrain, colored) {
   renderedTerrainColored = colored;
 }
 
+function getOwnCombatDetailLines(unit, turnNumber) {
+  // 已识别外方也不能读取内部装备状态。
+  if (unit.observationOwn !== true) return [];
+
+  const lines = [];
+
+  const training = unit.trainingState;
+
+  if (training) {
+    const traits = [
+      ...new Set([
+        ...training.baseTraits,
+        ...training.acquiredTraits
+      ])
+    ];
+
+    lines.push(
+      "【練度・特殊能力】",
+      traits.length
+        ? traits.map(getTrainingTraitLabel).join(" / ")
+        : "なし"
+    );
+  }
+
+  const equipmentState = unit.equipmentState;
+
+  if (!equipmentState) return lines;
+
+  const profiles = new Map(
+    (unit.snapshot.equipmentSnapshots ?? [])
+      .map(item => [item.id, item])
+  );
+
+  lines.push("", "【装備組・残弾】");
+
+  if (!equipmentState.groups.length) {
+    lines.push("組数が登録された装備はありません。");
+  }
+
+  for (const group of equipmentState.groups) {
+    const profile = profiles.get(group.equipmentId);
+    const name = profile
+      ? getEquipmentLabel(profile)
+      : "性能未登録の装備";
+
+    const ammo = group.remainingAmmo === null
+      ? "未登録"
+      : String(group.remainingAmmo);
+
+    const use = group.lastUsedTurn === turnNumber
+      ? "このラウンドは使用済み"
+      : group.lastUsedTurn === null
+        ? "未使用"
+        : `最終使用：ラウンド${group.lastUsedTurn}`;
+
+    lines.push(
+      `${group.position} / ${name} / 第${group.groupIndex + 1}組`,
+      `残弾：${ammo} / ${group.damaged ? "損傷" : "正常"} / ${use}`
+    );
+  }
+
+  if (equipmentState.unresolvedMountIndexes.length) {
+    lines.push(
+      `組数未登録の配置：${equipmentState.unresolvedMountIndexes.length}件`,
+      "未登録の組数や残弾を自動補充することはありません。"
+    );
+  }
+
+  return lines;
+}
+
 
 function selectUnit(id) {
   selectedId = id;
@@ -340,6 +415,17 @@ function selectUnit(id) {
       getShipDetailLines(unit, scene.environment).join("\n");
   }
 
+  const combatLines = getOwnCombatDetailLines(
+    unit,
+    scene.turn?.number
+  );
+
+  if (combatLines.length) {
+    $("unitInfo").textContent +=
+      "\n\n" + combatLines.join("\n");
+  }
+
+  
   const selectedUnit = scene.instances.find(
     item => item.instanceId === selectedId
   );
@@ -1026,8 +1112,13 @@ function refresh() {
 
   invalidatePreview();
   renderGroups(scene);
-  renderHistory(scene);
+   renderHistory(scene);
   drawMap();
+
+  if (selectedId) {
+    selectUnit(selectedId);
+  }
+
 }
 
 $("createGroup").addEventListener("click", safely(() => {
