@@ -1,4 +1,6 @@
 import { readShipProfile } from "./ship-runtime.js";
+import { TURN_DURATION_MINUTES } from "./rules-engine.js";
+
 
 import {
   assertManualControl,
@@ -63,11 +65,37 @@ export function initializeRescueState(scene) {
       !task ||
       typeof task.id !== "string" ||
       taskIds.has(task.id) ||
-      !Number.isInteger(task.startedTurn) ||
+      !Number.isSafeInteger(task.startedTurn) ||
       task.startedTurn < 1 ||
-      !["active", "success", "failure"].includes(task.status)
+      !["active", "success", "failure", "interrupted"]
+      .includes(task.status)
+
     ) {
       fail("救助任務の保存値が不正です。");
+    }
+
+        if (
+      !task.id.trim() ||
+      task.startedTurn > scene.turn.number
+    ) {
+      fail("救助任務の識別番号または開始ラウンドが不正です。");
+    }
+
+    if (task.status === "interrupted") {
+      if (
+        !Number.isSafeInteger(task.resolvedTurn) ||
+        task.resolvedTurn < task.startedTurn ||
+        task.resolvedTurn > scene.turn.number ||
+        typeof task.interruptionReason !== "string" ||
+        !task.interruptionReason.trim() ||
+        !Number.isSafeInteger(task.pausedMinutesBackfilled) ||
+        task.pausedMinutesBackfilled !==
+          (task.resolvedTurn - task.startedTurn) *
+          TURN_DURATION_MINUTES ||
+        task.coinHeads !== null
+      ) {
+        fail("救助中断の保存記録が不正です。");
+      }
     }
 
     taskIds.add(task.id);
@@ -75,15 +103,11 @@ export function initializeRescueState(scene) {
     const rescuer = findUnit(scene, task.rescuerId);
     const target = findUnit(scene, task.targetId);
 
-    if (task.status === "active") {
-      if (
-        rescuer.instanceId === target.instanceId ||
-        rescuer.shipState.rescueTaskId !== task.id ||
-        target.shipState.rescueTaskId !== task.id ||
-        target.shipState.status !== "sinking"
-      ) {
-        fail("救助任務と艦船の保存状態が一致していません。");
-      }
+    if (
+      task.status === "active" &&
+      !rescueCanContinue(task, rescuer, target)
+    ) {
+      fail("救助任務と艦船の保存状態が一致していません。");
     }
   }
 
@@ -172,6 +196,178 @@ export function isSinkingTimerPaused(scene, unit) {
 }
 
 /**
+ * 当前任务是否仍能继续。
+ * 救助双方挨打本身不导致中断。
+ * 救助舰无法行动、目标不再濒临沉没、
+ * 任务引用失配或距离条件不再满足时，不能继续。
+ */
+function rescueCanContinue(task, rescuer, target) {
+  return (
+    rescuer.instanceId !== target.instanceId &&
+    hasPosition(rescuer) &&
+    hasPosition(target) &&
+    !["sinking", "sunk"].includes(rescuer.shipState.status) &&
+    target.shipState.status === "sinking" &&
+    rescuer.shipState.rescueTaskId === task.id &&
+    target.shipState.rescueTaskId === task.id &&
+    Math.hypot(
+      rescuer.x - target.x,
+      rescuer.y - target.y
+    ) <= 2
+  );
+}
+
+/**
+ * 中断一个救助任务，并补算救助期间暂停的自然沉没时间。
+ *
+ * 必须在正式保存事务的工作副本上调用。
+ * 不掷硬币、不推进时间，不独立保存。
+ *
+ * 计时约定：
+ * - sinkingElapsedMinutes保存实际已累计的沉没时间；
+ * - 活跃救助期间，回合结束模块不得增加这个值；
+ * - 中断时补回已经过去的完整回合；
+ * - 当前尚未结束的回合不提前计入。
+ */
+export function interruptRescueTask(
+  scene,
+  taskId,
+  reason = "state-changed"
+) {
+  if (
+    typeof reason !== "string" ||
+    !reason.trim()
+  ) {
+    fail("救助中断の理由が不正です。");
+  }
+
+  const task = scene.rescueTasks.find(
+    item => item.id === taskId
+  );
+
+  if (!task) {
+    fail("救助任務が見つかりません。");
+  }
+
+  // 已终结任务不重复补算暂停时间。
+  if (task.status !== "active") {
+    return {
+      taskId: task.id,
+      interrupted: false,
+      alreadyFinished: true
+    };
+  }
+
+  if (
+    !Number.isSafeInteger(scene.turn.number) ||
+    !Number.isSafeInteger(task.startedTurn) ||
+    task.startedTurn < 1 ||
+    scene.turn.number < task.startedTurn
+  ) {
+    fail("救助の開始ラウンドと現在のラウンドが不正です。");
+  }
+
+  const rescuer = findUnit(scene, task.rescuerId);
+  const target = findUnit(scene, task.targetId);
+
+  const elapsedBefore = target.shipState.sinkingElapsedMinutes;
+
+  if (
+    !Number.isFinite(elapsedBefore) ||
+    elapsedBefore < 0
+  ) {
+    fail("沈没寸前の経過時間が不正です。");
+  }
+
+  const pausedMinutes =
+    (scene.turn.number - task.startedTurn) *
+    TURN_DURATION_MINUTES;
+
+  const elapsedAfter = elapsedBefore + pausedMinutes;
+
+  if (
+    !Number.isSafeInteger(pausedMinutes) ||
+    !Number.isFinite(elapsedAfter)
+  ) {
+    fail("救助の停止期間の換算結果が範囲外です。");
+  }
+
+  // 已计算完所有值，再更新任务及双方引用。
+  task.status = "interrupted";
+  task.resolvedTurn = scene.turn.number;
+  task.interruptionReason = reason.trim();
+  task.pausedMinutesBackfilled = pausedMinutes;
+
+  // 中断不是失败抽签，不能伪造反面结果。
+  task.coinHeads = null;
+  task.guaranteed = false;
+
+  if (rescuer.shipState.rescueTaskId === task.id) {
+    rescuer.shipState.rescueTaskId = null;
+  }
+
+  if (target.shipState.rescueTaskId === task.id) {
+    target.shipState.rescueTaskId = null;
+  }
+
+  // 补算只恢复被暂停的时间，不重新开始沉没倒计时。
+  target.shipState.sinkingElapsedMinutes = elapsedAfter;
+
+  let naturallySunk = false;
+
+  if (
+    target.shipState.status === "sinking" &&
+    elapsedAfter >= 4 * TURN_DURATION_MINUTES
+  ) {
+    target.shipState.status = "sunk";
+    naturallySunk = true;
+  }
+
+  return {
+    taskId: task.id,
+    interrupted: true,
+    alreadyFinished: false,
+    reason: task.interruptionReason,
+    pausedMinutesBackfilled: pausedMinutes,
+    sinkingElapsedBefore: elapsedBefore,
+    sinkingElapsedAfter: elapsedAfter,
+    naturallySunk
+  };
+}
+
+/**
+ * 正式攻击／特殊效果应用后调用，清理不能继续的救助。
+ * 必须和导致状态变化的处理处于同一个保存事务。
+ */
+export function reconcileActiveRescues(scene) {
+   const results = reconcileActiveRescues(scene).map(result => ({
+    ...result,
+    resultType: "interruption"
+  }));
+
+
+  for (const task of scene.rescueTasks) {
+    if (task.status !== "active") continue;
+
+    const rescuer = findUnit(scene, task.rescuerId);
+    const target = findUnit(scene, task.targetId);
+
+    if (!rescueCanContinue(task, rescuer, target)) {
+      results.push(
+        interruptRescueTask(
+          scene,
+          task.id,
+          "continuation-conditions-lost"
+        )
+      );
+    }
+  }
+
+  return results;
+}
+
+
+/**
  * 正式特殊阶段的内部结算接口。
  * 开始当回合为第1回合，下一个回合为第2回合。
  * 保存事务外不应单独调用本函数。
@@ -194,14 +390,10 @@ export function resolveRescuesAtSpecial(scene) {
     const rescuer = findUnit(scene, task.rescuerId);
     const target = findUnit(scene, task.targetId);
 
-    if (
-      rescuer.shipState.rescueTaskId !== task.id ||
-      target.shipState.rescueTaskId !== task.id ||
-      target.shipState.status !== "sinking"
-    ) {
-      // 救助中断规则未定义，不能擅自决定成功或失败。
-      fail("救助中の状態が変化しています。中断規則の定義が必要です。");
+    if (!rescueCanContinue(task, rescuer, target)) {
+      fail("救助任務の継続条件が一致していません。");
     }
+
 
     const guaranteed = readShipProfile(rescuer).isRepairShip;
     const heads = guaranteed ? null : coin();
@@ -219,6 +411,7 @@ export function resolveRescuesAtSpecial(scene) {
 
     // 成功不恢复耐性，也不重置已保存的沉没经过时间。
     results.push({
+      resultType: "rescue-roll",
       taskId: task.id,
       success,
       guaranteed,
