@@ -379,6 +379,58 @@ function getOwnCombatDetailLines(unit, turnNumber) {
   return lines;
 }
 
+function getWeaponProfileDetailLines(unit) {
+  if (unit.observationOwn !== true) return [];
+
+  const report = store.getAttackEquipmentProfiles(
+    unit.instanceId
+  );
+
+  const lines = [
+    "【武器資料・接続確認】",
+    "資料確認のみです。攻撃実行の許可ではありません。"
+  ];
+
+  lines.push(...report.issues);
+
+  for (const profile of report.profiles) {
+    if (profile.kind !== "weapon") continue;
+
+    const projection = profile.projection
+      ? profile.projection.standalone
+        ? "R"
+        : `${profile.projection.groups}·` +
+          `${profile.projection.coinsPerGroup}R`
+      : "未登録／未対応";
+
+    const order = profile.pasOnly
+      ? "PAS専用"
+      : profile.maxOrder === null
+        ? "未登録／未対応"
+        : `次序${profile.maxOrder}以下`;
+
+    lines.push(
+      "",
+      profile.label,
+      `投射率：${projection}`,
+      `完全投射時の消費弾数：${profile.fullAmmoCost ?? "未登録"}`,
+      `使用段階：${order}`,
+      `射距：${profile.range ?? "未登録"}` +
+        ` / 相対射高：${profile.ceilingU ?? "未登録"}`,
+      `威力：${profile.powerRule || "未登録"}` +
+        ` / 穿深：${profile.penetration || "未登録"}`,
+      `攻撃範囲：${profile.targetScope || "未登録"}`
+    );
+
+    for (const issue of profile.issues) {
+      lines.push(`確認事項：${issue}`);
+    }
+  }
+
+  return lines;
+}
+
+
 
 function selectUnit(id) {
   selectedId = id;
@@ -423,6 +475,13 @@ function selectUnit(id) {
   if (combatLines.length) {
     $("unitInfo").textContent +=
       "\n\n" + combatLines.join("\n");
+  }
+
+   const weaponProfileLines = getWeaponProfileDetailLines(unit);
+
+  if (weaponProfileLines.length) {
+    $("unitInfo").textContent +=
+      "\n\n" + weaponProfileLines.join("\n");
   }
 
   
