@@ -4,6 +4,14 @@ import {
   getWeatherInfo
 } from "./environment-data.js";
 
+import {
+  createShipEffectsState,
+  validateShipEffectsState,
+  getOwnShipEffectLines,
+  resolveShipEffectAcquisition
+} from "./ship-effects-runtime.js";
+
+
 // ===== 舰船数据与推演状态接入 =====
 // 不修改图鉴快照，不推进时间，不执行战斗。
 // 页面文案使用日语，代码注释使用中文。
@@ -256,10 +264,19 @@ export function ensureShipRuntime(unit) {
       ? ["intact", "minor"].includes(state.status)
       : state.status === hpStatus;
 
-  if (!consistent) {
+    if (!consistent) {
     throw new Error("耐性と艦船の損傷状態が一致していません。");
   }
+
+  // 仅为没有此字段的旧框架状态补建。
+  // 已存在的起火、进水及处理历史绝不能重置。
+  if (state.effects === undefined) {
+    state.effects = createShipEffectsState();
+  } else {
+    state.effects = validateShipEffectsState(state.effects);
+  }
 }
+
 
 export function getReconConditions(environment) {
   const normalized = normalizeEnvironment(environment);
@@ -365,6 +382,9 @@ export function getShipDetailLines(unit, environment) {
     `探測強度：${profile.detection}`,
     `対海偵察：${profile.seaRecon}`,
     `対空偵察：${profile.airRecon}`,
+    ...getOwnShipEffectLines(
+      state.effects ?? createShipEffectsState()
+    ),
     `現在の通常偵察距離：${recon.normalRange}`,
     `近距離識別距離：${recon.identificationRange}`,
     "偵察には等級条件と地形遮蔽の判定も必要です。",
@@ -638,3 +658,99 @@ export function previewShipDamageAttack(
   return report;
 }
 
+// ===== 攻击导致的起火／进水获得接口 =====
+// 只处理一次符合资格的命中。
+// 必须对正式保存事务的工作副本调用。
+// 不保存、不扣弹、不推进阶段。
+
+export function applyShipEffectAcquisition(
+  unit,
+  request,
+  context,
+  coinSource
+) {
+  if (
+    !request ||
+    typeof request !== "object" ||
+    Array.isArray(request) ||
+    typeof request.attackId !== "string" ||
+    !request.attackId.trim() ||
+    !["fire", "flooding"].includes(request.type)
+  ) {
+    throw new Error("特殊状態の取得要求が不正です。");
+  }
+
+  if (
+    !context ||
+    !Number.isSafeInteger(context.turnNumber) ||
+    context.turnNumber < 1 ||
+    typeof context.phaseId !== "string" ||
+    !/^(order-[1-5]|pas)$/.test(context.phaseId)
+  ) {
+    throw new Error(
+      "特殊状態を取得するラウンド・攻撃段階が不正です。"
+    );
+  }
+
+  if (
+    coinSource !== undefined &&
+    typeof coinSource !== "function"
+  ) {
+    throw new Error("特殊状態のコイン関数が不正です。");
+  }
+
+  const working = JSON.parse(JSON.stringify(unit));
+
+  if (working?.branch !== "navy") {
+    throw new Error("特殊状態の対象が艦船ではありません。");
+  }
+
+  ensureShipRuntime(working);
+
+  // 已沉没单位不再取得新的起火或进水，也不消耗随机判定。
+  if (working.shipState.status === "sunk") {
+    return {
+      version: 1,
+      attackId: request.attackId,
+      targetId: working.instanceId,
+      turnNumber: context.turnNumber,
+      phaseId: context.phaseId,
+      type: request.type,
+      skipped: true,
+      skipReason: "sunk",
+      coin: null,
+      acquired: false
+    };
+  }
+
+  const result = resolveShipEffectAcquisition(
+    {
+      state: working.shipState.effects,
+      type: request.type,
+      turnNumber: context.turnNumber
+    },
+    coinSource
+  );
+
+  working.shipState.effects = result.state;
+
+  // 所有校验成功后，才修改事务工作副本。
+  ensureShipRuntime(working);
+
+  unit.shipState = JSON.parse(
+    JSON.stringify(working.shipState)
+  );
+
+  return {
+    version: 1,
+    attackId: request.attackId,
+    targetId: working.instanceId,
+    turnNumber: context.turnNumber,
+    phaseId: context.phaseId,
+    type: request.type,
+    skipped: result.skipped,
+    skipReason: result.skipped ? "already-present" : null,
+    coin: result.coin,
+    acquired: result.acquired
+  };
+}
