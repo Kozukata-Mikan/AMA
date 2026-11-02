@@ -232,6 +232,13 @@ export function getObservedScene(scene) {
         if (level === "identified") {
       const observed = clone(unit);
       const observationOwn = unit.side === side;
+            // 此标记只提供给已识别单位，不公开内部救助任务。
+      // 最终资格仍由planRescue和移动后结算重新检查。
+      observed.rescueCandidate =
+        unit.branch === "navy" &&
+        unit.shipState?.status === "sinking" &&
+        unit.shipState?.rescueTaskId === null;
+
 
       if (!observationOwn) {
         // 外方识别只开放可识别资料，不开放内部运行状态。
