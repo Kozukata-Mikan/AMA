@@ -1,4 +1,6 @@
 import { getPhaseLabel } from "./simulation-rulebook.js";
+import { getHitModifiers } from "./weapon-hit-runtime.js";
+
 
 // 多组选装、共用目标、批量检查。
 // 选择仅属于当前界面，不保存为攻击命令。
@@ -139,8 +141,12 @@ export function mountAttackUI(store) {
       lines.push("目標を選択すると、全選択装備を一括確認します。");
     }
 
+        // 从观察副本读取环境，不读取完整战场内部状态。
+    const environment = store.getScene().environment;
+
     for (const group of groups) {
       const profile = group.profile;
+
 
       lines.push(
         "",
@@ -161,6 +167,52 @@ export function mountAttackUI(store) {
           : ["接続済みのチェックでは阻害条件を検出していません。"])
       );
 
+            lines.push("", "【時刻・天候の命中修正】");
+
+      try {
+        const modifiers = getHitModifiers({
+          guidance: profile?.guidance,
+          environment
+        });
+
+        const detail = modifiers.breakdown;
+
+        lines.push(
+          `時刻による不利判定：${detail.timePenalties}`,
+          `天候による不利判定：${detail.weatherPenalties}`
+        );
+
+        if (profile?.projection?.standalone) {
+          lines.push(
+            "単独Rには束の有利・不利判定を適用しません。"
+          );
+        } else if (profile?.projection) {
+          const stackCount = profile.projection.groups;
+          const effectivePenalties = Math.min(
+            stackCount,
+            modifiers.penalties
+          );
+
+          lines.push(
+            `環境要因だけの場合の適用回数：${effectivePenalties}`,
+            `元の束数による上限：${stackCount}`,
+            "最終判定では、他の有利・不利判定を合算し、" +
+            "相殺してから上限を適用します。"
+          );
+        }
+
+        lines.push(
+          "練度・特殊能力はこの環境表示に含めていません。",
+          "コインは投げていません。"
+        );
+      } catch (error) {
+        console.error(error);
+        lines.push(
+          `環境修正を確認できません：${error.message}`
+        );
+      }
+
+      
       if (!target.value) continue;
 
       try {
