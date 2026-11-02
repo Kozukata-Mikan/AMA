@@ -136,10 +136,12 @@ export function mountRescueUI(store) {
       const state = {
         active: "救助中",
         success: "救助成功",
-        failure: "救助失敗・沈没"
-      }[task.status];
+        failure: "救助失敗",
+        interrupted: "救助中断"
+      }[task.status] ?? "不明な救助状態";
 
       const elapsed = scene.turn.number - task.startedTurn + 1;
+
 
       const p = element("p",
         `${state}：` +
@@ -147,7 +149,10 @@ export function mountRescueUI(store) {
         `${names.get(task.targetId) ?? "未識別の対象"}` +
         (task.status === "active"
           ? ` / 救助第${elapsed}ラウンド`
-          : "")
+          : Number.isInteger(task.resolvedTurn)
+            ? ` / 結果確定：ラウンド${task.resolvedTurn}`
+            : "")
+
       );
 
       p.className = "note";
