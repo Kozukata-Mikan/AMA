@@ -8,7 +8,9 @@ import {
   createShipEffectsState,
   validateShipEffectsState,
   getOwnShipEffectLines,
-  resolveShipEffectAcquisition
+  resolveShipEffectAcquisition,
+  resolveShipFireFloodingPhase
+
 } from "./ship-effects-runtime.js";
 
 
@@ -256,13 +258,37 @@ export function ensureShipRuntime(unit) {
     throw new Error("救助識別番号が不正です。");
   }
 
+    // 特殊效果可以使正耐性舰船进入濒临沉没。
+  // 救助成功后的大破，以及后续沉没，也保留这个来源标记。
+  // 旧存档只补缺失字段，不凭耐性猜测特殊损伤历史。
+  if (state.specialDamageStatus === undefined) {
+    state.specialDamageStatus = false;
+  }
+
+  if (typeof state.specialDamageStatus !== "boolean") {
+    throw new Error("特殊効果による損傷状態の記録が不正です。");
+  }
+
+  if (
+    state.specialDamageStatus &&
+    !["heavy", "sinking", "sunk"].includes(state.status)
+  ) {
+    throw new Error("特殊損傷の記録と艦船の状態が一致していません。");
+  }
+
   const hpStatus = inferInitialStatus(currentHp, profile.maxHp);
 
-  const consistent = currentHp === 0
-    ? ["heavy", "sinking", "sunk"].includes(state.status)
-    : currentHp === profile.maxHp
-      ? ["intact", "minor"].includes(state.status)
-      : state.status === hpStatus;
+    const severeStatus =
+    ["heavy", "sinking", "sunk"].includes(state.status);
+
+  const consistent = state.specialDamageStatus
+    ? severeStatus
+    : currentHp === 0
+      ? severeStatus
+      : currentHp === profile.maxHp
+        ? ["intact", "minor"].includes(state.status)
+        : state.status === hpStatus;
+
 
     if (!consistent) {
     throw new Error("耐性と艦船の損傷状態が一致していません。");
