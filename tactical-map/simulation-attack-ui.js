@@ -1,7 +1,7 @@
 import { getPhaseLabel } from "./simulation-rulebook.js";
 
-// 当前只接入装备组选择和只读检查。
-// 不保存攻击计划，不扣弹，不执行伤害或推进阶段。
+// 装备组、目标及几何检查入口。
+// 不扣弹，不随机判定，不推进阶段。
 
 export function mountAttackUI(store) {
   const aside = document.querySelector("aside");
@@ -16,22 +16,23 @@ export function mountAttackUI(store) {
     return result;
   }
 
+  function labeled(text, control) {
+    const label = element("label");
+    label.append(element("span", text), control);
+    return label;
+  }
+
   const panel = element("details");
-  panel.append(element("summary", "攻撃装備・組別確認"));
+  panel.append(element("summary", "攻撃装備・目標確認"));
 
   const actor = element("select");
   const equipmentGroup = element("select");
-
-  const actorLabel = element("label");
-  actorLabel.append(element("span", "行動するユニット"), actor);
-
-  const groupLabel = element("label");
-  groupLabel.append(element("span", "使用する装備組"), equipmentGroup);
+  const target = element("select");
 
   const notice = element(
     "p",
-    "装備組ごとの残弾・使用記録・損傷・次序を確認します。" +
-    "攻撃結算は未接続です。この操作では弾薬を消費しません。"
+    "装備組と目標を選び、資料・段階・射程・地形を確認します。" +
+    "正式な攻撃結算は未接続です。残弾は消費しません。"
   );
   notice.className = "note";
 
@@ -40,12 +41,19 @@ export function mountAttackUI(store) {
   output.style.whiteSpace = "pre-wrap";
   output.setAttribute("aria-live", "polite");
 
-  panel.append(actorLabel, groupLabel, notice, output);
+  panel.append(
+    labeled("行動するユニット", actor),
+    labeled("使用する装備組", equipmentGroup),
+    labeled("確認する目標", target),
+    notice,
+    output
+  );
+
   aside.append(panel);
 
   let report = null;
 
-  function showGroup() {
+  function renderReport() {
     if (!report) {
       output.textContent = "ユニットを選択してください。";
       return;
@@ -66,6 +74,7 @@ export function mountAttackUI(store) {
     }
 
     const profile = group.profile;
+
     const projection = profile?.projection
       ? profile.projection.standalone
         ? "R"
@@ -73,43 +82,80 @@ export function mountAttackUI(store) {
           `${profile.projection.coinsPerGroup}R`
       : "未登録／未対応";
 
-    const use = group.lastUsedTurn === null
-      ? "未使用"
-      : `ラウンド${group.lastUsedTurn}`;
-
-    output.textContent = [
+    const lines = [
       `${report.unitName} / ${group.label}`,
       `${group.position} / 第${group.groupIndex + 1}組`,
-      `現在：ラウンド${report.turnNumber}` +
-        ` / ${getPhaseLabel(report.phaseId)}`,
+      `ラウンド${report.turnNumber} / ${getPhaseLabel(report.phaseId)}`,
       "",
       `残弾：${group.remainingAmmo ?? "未登録"}`,
-      `最終使用：${use}`,
-      `装備状態：${group.damaged ? "損傷" : "正常"}`,
+      `最終使用：${group.lastUsedTurn === null
+        ? "未使用"
+        : `ラウンド${group.lastUsedTurn}`}`,
+      `状態：${group.damaged ? "損傷" : "正常"}`,
       `投射率：${projection}`,
       `完全投射時の消費：${profile?.fullAmmoCost ?? "未登録"}`,
       "",
-      "【装備・段階の確認】",
+      "【装備・段階】",
       ...(group.issues.length
         ? group.issues.map(issue => `・${issue}`)
-        : ["接続済みの装備チェックでは阻害条件を検出していません。"]),
+        : ["接続済みの装備チェックでは阻害条件を検出していません。"])
+    ];
+
+    if (target.value) {
+      try {
+        const check = store.getAttackTargetReport({
+          unitId: actor.value,
+          groupId: group.groupId,
+          targetId: target.value
+        });
+
+        lines.push("", "【目標・三次元幾何】");
+
+        if (check.distance3D !== null) {
+          lines.push(
+            `距離：${check.distance3D.toFixed(2)}`,
+            `相対高度：${check.relativeHeight.toFixed(2)}`,
+            `直線の地形内部通過：${check.terrainInterior
+              ? "あり"
+              : "なし"}`
+          );
+        }
+
+        lines.push(
+          ...(check.issues.length
+            ? check.issues.map(issue => `・${issue}`)
+            : ["接続済みの目標チェックでは阻害条件を検出していません。"]),
+          "",
+          "【実装境界】",
+          ...check.boundaries.map(item => `・${item}`)
+        );
+      } catch (error) {
+        console.error(error);
+        lines.push("", `目標確認：${error.message}`);
+      }
+    } else {
+      lines.push("", "目標を選択してください。");
+    }
+
+    lines.push(
       "",
-      "【未接続】",
-      "目標資格・射程・地形・命中・被害の統合判定。",
-      "正式な攻撃結算は実行できません。"
-    ].join("\n");
+      "上記の確認結果は、攻撃実行の許可ではありません。"
+    );
+
+    output.textContent = lines.join("\n");
   }
 
   function refillGroups() {
     const previous = equipmentGroup.value;
     report = null;
+
     equipmentGroup.replaceChildren(
       new Option("選択してください", "")
     );
 
     if (!actor.value) {
       equipmentGroup.disabled = true;
-      showGroup();
+      renderReport();
       return;
     }
 
@@ -135,12 +181,41 @@ export function mountAttackUI(store) {
         equipmentGroup.value = previous;
       }
 
-      showGroup();
+      renderReport();
     } catch (error) {
       console.error(error);
       equipmentGroup.disabled = true;
       output.textContent = error.message;
     }
+  }
+
+  function refillTargets(scene) {
+    const previous = target.value;
+
+    target.replaceChildren(
+      new Option("選択してください", "")
+    );
+
+    const actingUnit = scene.instances.find(
+      unit => unit.instanceId === actor.value
+    );
+
+    for (const unit of scene.instances) {
+      if (unit.observationLevel !== "identified") continue;
+      if (unit.instanceId === actor.value) continue;
+      if (actingUnit && unit.side === actingUnit.side) continue;
+      if (unit.shipState?.status === "sunk") continue;
+
+      target.append(new Option(unit.name, unit.instanceId));
+    }
+
+    if ([...target.options].some(
+      option => option.value === previous
+    )) {
+      target.value = previous;
+    }
+
+    target.disabled = !actor.value;
   }
 
   function sync() {
@@ -164,16 +239,19 @@ export function mountAttackUI(store) {
       actor.value = previous;
     }
 
+    refillTargets(scene);
     refillGroups();
   }
 
   actor.addEventListener("change", () => {
-    // 不把上一单位的同名组ID当作新单位的选择。
+    // 组ID仅在单位内唯一，换单位后取消旧组选择。
     equipmentGroup.value = "";
+    refillTargets(store.getScene());
     refillGroups();
   });
 
-  equipmentGroup.addEventListener("change", showGroup);
+  equipmentGroup.addEventListener("change", renderReport);
+  target.addEventListener("change", renderReport);
 
   const unsubscribe = store.subscribe(sync);
   sync();
