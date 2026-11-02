@@ -626,7 +626,7 @@ export function openSimulation(id) {
       return listEntities(getObservedScene(state));
     },
 
-        getAttackEquipmentProfiles(instanceId) {
+            getAttackEquipmentProfiles(instanceId) {
       const unit = state.instances.find(
         item => item.instanceId === instanceId
       );
@@ -635,7 +635,6 @@ export function openSimulation(id) {
         throw new Error("ユニットが見つかりません。");
       }
 
-      // 不能通过已知ID读取非当前操作阵营的内部适配信息。
       assertManualControl(state, [unit]);
 
       const equipment = unit.snapshot?.equipmentSnapshots;
@@ -661,6 +660,134 @@ export function openSimulation(id) {
         issues: []
       };
     },
+
+    getAttackGroupReport(instanceId) {
+      const unit = state.instances.find(
+        item => item.instanceId === instanceId
+      );
+
+      if (!unit) {
+        throw new Error("ユニットが見つかりません。");
+      }
+
+      // 必须在完整状态入口检查权限，不能只靠界面过滤。
+      assertManualControl(state, [unit]);
+
+      const equipment = new Map(
+        (unit.snapshot.equipmentSnapshots ?? [])
+          .map(item => [item.id, item])
+      );
+
+      const phaseId = state.turn.phaseId;
+      const turnNumber = state.turn.number;
+      const orderMatch = /^order-([1-5])$/.exec(phaseId);
+      const currentOrder = orderMatch
+        ? Number(orderMatch[1])
+        : null;
+
+      const unitIssues = [];
+
+      if (unit.branch === "navy") {
+        if (["sinking", "sunk"].includes(unit.shipState.status)) {
+          unitIssues.push("沈没寸前・沈没の艦船は行動できません。");
+        }
+
+        if (unit.shipState.rescueTaskId !== null) {
+          unitIssues.push("救助中の艦船は他の行動を実行できません。");
+        }
+      } else {
+        // 当前缺少其他军种的正式行动限制适配。
+        unitIssues.push(
+          "この軍種の正式な攻撃資格判定は未接続です。"
+        );
+      }
+
+      const groups = unit.equipmentState.groups.map(group => {
+        const source = equipment.get(group.equipmentId);
+        const profile = source ? readWeaponProfile(source) : null;
+        const issues = [...unitIssues];
+
+        if (!profile) {
+          issues.push("配置スナップショットに装備性能がありません。");
+        } else if (profile.kind !== "weapon") {
+          issues.push("この装備は武器ではありません。");
+        } else {
+          issues.push(...profile.issues);
+
+          if (profile.pasOnly) {
+            if (phaseId !== "pas") {
+              issues.push("PAS装備はPAS段階に限り使用できます。");
+            }
+          } else if (profile.maxOrder !== null) {
+            if (currentOrder === null) {
+              issues.push("通常武器は次序1～5で使用します。");
+            } else if (currentOrder > profile.maxOrder) {
+              issues.push(
+                `この武器の最高次序は${profile.maxOrder}です。`
+              );
+            }
+          }
+        }
+
+        if (group.damaged) {
+          issues.push("この装備組は損傷しています。");
+        }
+
+        if (group.lastUsedTurn === turnNumber) {
+          issues.push("この装備組はこのラウンドで使用済みです。");
+        } else if (
+          group.lastUsedTurn !== null &&
+          group.lastUsedTurn > turnNumber
+        ) {
+          issues.push("使用記録が現在のラウンドより後になっています。");
+        }
+
+        if (group.remainingAmmo === null) {
+          issues.push("残弾が未登録です。無限弾薬として扱いません。");
+        } else if (group.remainingAmmo === 0) {
+          issues.push("残弾がありません。");
+        } else if (
+          profile?.fullAmmoCost !== null &&
+          profile?.fullAmmoCost !== undefined &&
+          group.remainingAmmo < profile.fullAmmoCost
+        ) {
+          // 登记实现边界；不猜测减量攻击的叠分配。
+          issues.push(
+            "完全投射には残弾が不足しています。" +
+            "減量投射の処理は未接続のため、結算できません。"
+          );
+        }
+
+        return {
+          // groupId只在本单位内唯一，不能单独用于全场查找。
+          unitId: unit.instanceId,
+          groupId: group.id,
+          equipmentId: group.equipmentId,
+          position: group.position,
+          groupIndex: group.groupIndex,
+          label: profile?.label ?? "性能未登録の装備",
+          remainingAmmo: group.remainingAmmo,
+          lastUsedTurn: group.lastUsedTurn,
+          damaged: group.damaged,
+          profile,
+          issues: [...new Set(issues)]
+        };
+      });
+
+      // 返回独立数据，调用方不能修改状态缓存。
+      return copy({
+        revision: state.revision,
+        turnNumber,
+        phaseId,
+        unitId: unit.instanceId,
+        unitName: unit.name,
+        unresolvedMountIndexes:
+          unit.equipmentState.unresolvedMountIndexes,
+        groups,
+        settlementConnected: false
+      });
+    },
+
 
           
     previewDraft,
