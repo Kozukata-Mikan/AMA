@@ -7,6 +7,11 @@ import {initializeSimulationFeatures,getObservedScene,assertManualControl,assert
 import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
 import { readWeaponProfile } from "./weapon-profile-runtime.js";
+import { getObserverVisibility } from "./simulation-features.js";
+
+import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
+
+import { sampleTerrain } from "./terrain-data.js";
 
 
 
@@ -786,6 +791,215 @@ export function openSimulation(id) {
         groups,
         settlementConnected: false
       });
+    },
+
+        getAttackTargetReport({
+      unitId,
+      groupId,
+      targetId
+    }) {
+      const actor = state.instances.find(
+        unit => unit.instanceId === unitId
+      );
+
+      if (!actor) {
+        throw new Error("行動側のユニットが見つかりません。");
+      }
+
+      assertManualControl(state, [actor]);
+
+      const target = state.instances.find(
+        unit => unit.instanceId === targetId
+      );
+
+      // 不用错误提示区分隐藏目标是否存在。
+      if (!target) {
+        throw new Error("目標を確認できません。");
+      }
+
+      assertIdentifiedTargets(state, [target]);
+
+      const group = actor.equipmentState.groups.find(
+        item => item.id === groupId
+      );
+
+      if (!group) {
+        throw new Error("指定した装備組が見つかりません。");
+      }
+
+      const source = (
+        actor.snapshot.equipmentSnapshots ?? []
+      ).find(item => item.id === group.equipmentId);
+
+      if (!source) {
+        throw new Error("装備性能のスナップショットがありません。");
+      }
+
+      const profile = readWeaponProfile(source);
+
+      if (profile.kind !== "weapon") {
+        throw new Error("この装備は武器ではありません。");
+      }
+
+      const issues = [];
+      const boundaries = [
+        "命中・被害・弾薬消費を含む正式な攻撃結算は未接続です。"
+      ];
+
+      if (actor.instanceId === target.instanceId) {
+        issues.push("自分自身を攻撃目標には指定できません。");
+      }
+
+      if (actor.side === target.side) {
+        // 友军攻击规则没有依据，不把它当成默认允许。
+        boundaries.push("同一陣営への攻撃ルールは未接続です。");
+      }
+
+      if (actor.branch !== "navy" || target.branch !== "navy") {
+        return {
+          revision: state.revision,
+          distance3D: null,
+          relativeHeight: null,
+          terrainInterior: null,
+          issues,
+          boundaries: [
+            ...boundaries,
+            "この確認は海軍から海軍への攻撃に限ります。"
+          ],
+          settlementConnected: false
+        };
+      }
+
+      if (target.shipState.status === "sunk") {
+        boundaries.push("沈没艦への攻撃ルールは未接続です。");
+      }
+
+      function navalPoint(unit) {
+        if (
+          !Number.isFinite(unit.x) ||
+          !Number.isFinite(unit.y)
+        ) {
+          throw new Error("艦船の位置が不正です。");
+        }
+
+        const sample = sampleTerrain(
+          state.terrain,
+          unit.x,
+          unit.y
+        );
+
+        if (!sample.inside) {
+          throw new Error("艦船が地図の範囲外にあります。");
+        }
+
+        // 与现有地图显示的舰船高度规则保持一致。
+        const z = unit.underwater
+          ? -(unit.depth ?? 12)
+          : sample.surface;
+
+        if (!Number.isFinite(z)) {
+          throw new Error("艦船の深度が不正です。");
+        }
+
+        return { x: unit.x, y: unit.y, z };
+      }
+
+      const from = navalPoint(actor);
+      const to = navalPoint(target);
+
+      const trace = traceAttackTerrainLine(
+        state.terrain,
+        from,
+        to
+      );
+
+      const relativeHeight = to.z - from.z;
+      const terrainInterior = entersTerrainInterior(trace);
+      const tolerance = 1e-7;
+
+      if (relativeHeight < -tolerance) {
+        issues.push("艦船武器は下方の目標を攻撃できません。");
+      }
+
+      if (
+        profile.ceilingU !== null &&
+        relativeHeight > profile.ceilingU + tolerance
+      ) {
+        issues.push("目標との相対高度が射高を超えています。");
+      }
+
+      if (
+        profile.range !== null &&
+        trace.distance3D > profile.range + tolerance
+      ) {
+        issues.push("三次元距離が射距を超えています。");
+      }
+
+      switch (profile.guidance) {
+        case "direct":
+          if (terrainInterior) {
+            issues.push("三次元の射撃直線が地形内部を通過します。");
+          }
+          break;
+
+        case "lobbed":
+          // 高度30以下は越えられる。侦察の「30以上」と別条件。
+          if (trace.maxGroundHeight > 30 + tolerance) {
+            issues.push("高度30を超える地形を越えられません。");
+          }
+          break;
+
+        case "inertial":
+          // 地形では拒否しない。
+          break;
+
+        case "radar":
+          if (
+            getObserverVisibility(state, actor, target) === null
+          ) {
+            issues.push(
+              "レーダー誘導には発射艦自身による目標発見が必要です。"
+            );
+          }
+
+          boundaries.push(
+            "レーダー誘導のその他の攻撃資格は統合待ちです。"
+          );
+          break;
+
+        case "computer":
+          // 上のassertIdentifiedTargetsにより、
+          // 現在の陣営が識別した対象であることは確認済み。
+          boundaries.push(
+            "数控誘導のその他の攻撃資格は統合待ちです。"
+          );
+          break;
+
+        case "ray":
+          boundaries.push(
+            "射線の1ラウンド1目標ロックは未接続です。"
+          );
+          break;
+
+        default:
+          issues.push("引導方式を確認できません。");
+      }
+
+      if (profile.large) {
+        boundaries.push(
+          "大型の区分は保存されていますが、専用効果は未接続です。"
+        );
+      }
+
+      return {
+        revision: state.revision,
+        distance3D: trace.distance3D,
+        relativeHeight,
+        terrainInterior,
+        issues: [...new Set(issues)],
+        boundaries: [...new Set(boundaries)],
+        settlementConnected: false
+      };
     },
 
 
