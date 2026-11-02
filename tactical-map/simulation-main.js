@@ -18,6 +18,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel
 } from "../js/catalog-seed.js";
+import { mountAttackUI } from "./simulation-attack-ui.js";
 
 
 
@@ -1360,6 +1361,7 @@ try {
   mountSimulationRulebook(store);
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
   mountRescueUI(store);
+  mountAttackUI(store);
 
 
     store.subscribe(() => {
