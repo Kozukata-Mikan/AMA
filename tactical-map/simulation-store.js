@@ -15,6 +15,9 @@ import { sampleTerrain } from "./terrain-data.js";
 import { getArmorPreview } from "./armor-runtime.js";
 import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
+import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
+
+
 
 
 
@@ -1048,6 +1051,32 @@ export function openSimulation(id) {
           }
         }
 
+                // 先判断是否为本模块支持的威力。
+        // 舰炮和设备威力仍由各自模块处理。
+        let isNumericPower = false;
+
+        try {
+          readNumericPower(profile.powerRule);
+          isNumericPower = true;
+        } catch {
+          // 不在这里把其他威力类型误判为数字威力。
+        }
+
+        if (isNumericPower) {
+          armorPreview.push(
+            "",
+            "【数字威力の被害規則】",
+            ...getNumericDamagePreview({
+              powerRule: profile.powerRule,
+              penetration: profile.penetration,
+              armor: naval.armor,
+              inertial: profile.guidance === "inertial",
+              strength: naval.strength
+            })
+          );
+        }
+
+        
         if (profile.guidance === "inertial") {
           armorPreview.unshift(
             "慣性攻撃：本来の装甲ではなく、強度対応等級を使用します。"
