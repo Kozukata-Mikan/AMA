@@ -13,6 +13,7 @@ import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-run
 
 import { sampleTerrain } from "./terrain-data.js";
 import { getArmorPreview } from "./armor-runtime.js";
+import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
 
 
@@ -1028,6 +1029,24 @@ export function openSimulation(id) {
           armor: effectiveArmor,
           powerRule: profile.powerRule
         });
+
+          if (/舰炮规则|艦砲規則|艦砲ルール/.test(profile.powerRule)) {
+          if (profile.penetration.trim() === "-") {
+            armorPreview.push(
+              "貫通値0の艦砲結算は未接続です。" +
+              "資料欠落とは扱わず、正式結算を停止します。"
+            );
+          } else {
+            armorPreview.push(
+              "",
+              "【艦砲命中後の処理】",
+              ...getCannonDamagePreview({
+                penetration: profile.penetration,
+                armor: effectiveArmor
+              })
+            );
+          }
+        }
 
         if (profile.guidance === "inertial") {
           armorPreview.unshift(
