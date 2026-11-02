@@ -12,10 +12,10 @@ const GUIDANCE = new Map([
   ["平射(水下)", { id: "direct", underwater: true }],
   ["惯性", { id: "inertial", underwater: false }],
   ["慣性", { id: "inertial", underwater: false }],
-  ["惯性（大型）", { id: "inertial", underwater: false }],
-  ["慣性（大型）", { id: "inertial", underwater: false }],
-  ["惯性(大型)", { id: "inertial", underwater: false }],
-  ["慣性(大型)", { id: "inertial", underwater: false }],
+  ["惯性（大型）", { id: "inertial", underwater: false, large: true }],
+  ["慣性（大型）", { id: "inertial", underwater: false, large: true }],
+  ["惯性(大型)", { id: "inertial", underwater: false, large: true }],
+  ["慣性(大型)", { id: "inertial", underwater: false, large: true }],
   ["射线", { id: "ray", underwater: false }],
   ["射線", { id: "ray", underwater: false }],
   ["雷达", { id: "radar", underwater: false }],
@@ -60,6 +60,7 @@ export function readWeaponProfile(equipment) {
     fullAmmoCost: null,
     guidance: null,
     underwater: false,
+    large: false,
     maxOrder: null,
     pasOnly: false,
     range: null,
@@ -127,6 +128,7 @@ export function readWeaponProfile(equipment) {
   if (guidance) {
     result.guidance = guidance.id;
     result.underwater = guidance.underwater;
+    result.large = guidance.large === true;
   } else {
     issues.push("引導方式が未登録、または未対応です。");
   }
