@@ -229,13 +229,31 @@ export function getObservedScene(scene) {
     const level = visibility.get(unit.instanceId);
     if (!level) continue;
 
-    if (level === "identified") {
+        if (level === "identified") {
+      const observed = clone(unit);
+      const observationOwn = unit.side === side;
+
+      if (!observationOwn) {
+        // 外方识别只开放可识别资料，不开放内部运行状态。
+        delete observed.equipmentState;
+        delete observed.trainingState;
+
+        if (observed.shipState) {
+          // 损伤等级保留；续航、损管、救助计时等不对外公开。
+          observed.shipState = {
+            status: observed.shipState.status
+          };
+        }
+      }
+
       instances.push({
-        ...clone(unit),
+        ...observed,
+        observationOwn,
         observationLevel: "identified"
       });
       continue;
     }
+
 
     instances.push({
       instanceId: unit.instanceId,
@@ -332,7 +350,12 @@ export function getObservedScene(scene) {
     controls: scene.controls,
     view: scene.view,
     instances,
-    groups: safeGroups,
+        groups: safeGroups.map(group => ({
+      ...group,
+      parentId: safeGroupIds.has(group.parentId)
+        ? group.parentId
+        : null
+    })),
     actions,
     rescuePlans: (scene.rescuePlans ?? []).filter(plan =>
       scene.instances.some(unit =>
