@@ -351,6 +351,7 @@ export function getShipDetailLines(unit, environment) {
     return [
       `艦種：${profile.type}`,
       `損傷状態：${SHIP_STATUS_LABELS[unit.shipState?.status] ?? "未確認"}`,
+      `火災：${unit.observedEffects?.fire ? "あり" : "なし"}`,
       `強度：${profile.strength}`,
       `装甲：${profile.armor || "未登録"}`,
       `探測強度：${profile.detection}`,
