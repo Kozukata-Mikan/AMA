@@ -257,6 +257,15 @@ export function mountAttackUI(store) {
           );
         }
 
+               if (check.armorPreview?.length) {
+          lines.push(
+            "",
+            "【装甲・貫通の基本比較】",
+            ...check.armorPreview
+          );
+        }
+
+        
         lines.push(
           ...(check.issues.length
             ? check.issues.map(issue => `・${issue}`)
