@@ -514,6 +514,18 @@ export function openSimulation(id) {
       throw new Error("メモは 2000 文字以内にしてください。");
     }
 
+        // 外方编队结构没有公开，不能用已知ID绕过观察过滤。
+    if (
+      target?.kind === "group" &&
+      !getObservedScene(state).groups.some(
+        group => group.id === target.id
+      )
+    ) {
+      throw new Error(
+        "未公開の編隊を目標として指定できません。"
+      );
+    }
+
     const actingEntity = resolveEntity(state, attacker);
     const targetEntity = resolveEntity(state, target);
     assertManualControl(state, actingEntity.members);
