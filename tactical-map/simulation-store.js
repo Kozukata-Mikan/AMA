@@ -5,6 +5,7 @@ import { ensureShipRuntime } from "./ship-runtime.js";
 import {initializeSimulationFeatures,getObservedScene,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js";
 
 import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
+import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
 
 
 // ===== 独立推演状态 =====
@@ -187,11 +188,7 @@ function readSaved(id) {
     enemyAutonomy: value.controls?.enemyAutonomy === true
   };
 
-  initializeSimulationFeatures(value);
-
-
-
-  if (value.turn === undefined) {
+    if (value.turn === undefined) {
     value.turn = {
       number: 1,
       phaseId: "start",
@@ -201,10 +198,16 @@ function readSaved(id) {
 
   for (const unit of value.instances) {
     ensureShipRuntime(unit);
-    initializeRescueState(value);
+    ensureUnitCombatRuntime(unit);
   }
 
+  initializeSimulationFeatures(value);
+
+  // 救助属于整个场景，只初始化一次，空实例场景也不能漏掉。
+  initializeRescueState(value);
+
   return value;
+
 }
 
 function writeSaved(value) {
@@ -433,9 +436,13 @@ export function createSimulation(scene, spatialState) {
     view: copy(scene.view)
   };
 
-  for (const unit of value.instances) {
-  ensureShipRuntime(unit);
+   for (const unit of value.instances) {
+    ensureShipRuntime(unit);
+    ensureUnitCombatRuntime(unit);
   }
+
+  initializeSimulationFeatures(value);
+  initializeRescueState(value);
 
   writeSaved(value);
 
@@ -473,7 +480,13 @@ export function openSimulation(id) {
 
     change(candidate);
 
+    for (const unit of candidate.instances) {
+      ensureShipRuntime(unit);
+      ensureUnitCombatRuntime(unit);
+    }
+
     candidate.revision += 1;
+
     candidate.updatedAt = new Date().toISOString();
 
     // 保存成功后才改变内存状态。
@@ -501,6 +514,8 @@ export function openSimulation(id) {
       throw new Error("メモは 2000 文字以内にしてください。");
     }
 
+    const actingEntity = resolveEntity(state, attacker);
+    const targetEntity = resolveEntity(state, target);
     assertManualControl(state, actingEntity.members);
     assertIdentifiedTargets(state, targetEntity.members);
 
