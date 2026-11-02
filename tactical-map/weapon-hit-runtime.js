@@ -360,6 +360,7 @@ export function getHitModifiers({
           orange: 3,
           red: 3
         })[weather.level];
+        requireInteger(weatherPenalties, "天候の不利判定");
 
     bonuses += trainingBonuses;
     penalties +=
@@ -373,6 +374,10 @@ export function getHitModifiers({
     bonuses += electronicBonuses;
     penalties += electronicPenalties;
   }
+
+    // 各输入合法，不代表求和后仍处于安全整数范围。
+  requireInteger(bonuses, "有利判定の合計");
+  requireInteger(penalties, "不利判定の合計");
 
   // 射线不受天气、练度和电子干扰影响。
   // 其他明确作用于R的通用效果仍单独保留。
