@@ -602,10 +602,13 @@ export function applyShipDamageAttack(
 
     // 不在这里直接清掉救助ID：
     // 救助模块必须同时更新任务、另一艘舰船和暂停计时。
+        // 挨打本身不自动中断救助。
+    // 本舰进入无法行动状态时，交给救助任务层检查并更新双方。
     rescueInterruptionRequired:
       !ignored &&
-      attack.hasDamageEffect &&
-      state.rescueTaskId !== null
+      (enteredSinking || becameSunk) &&
+      state.rescueTaskId != null
+
   };
 
   // 所有验证成功后才写回事务工作副本。
