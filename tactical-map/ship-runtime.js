@@ -327,8 +327,25 @@ export function getReconConditions(environment) {
 }
 
 export function getShipDetailLines(unit, environment) {
-  const profile = readShipProfile(unit);
+    const profile = readShipProfile(unit);
+
+  // 外方识别详情只显示公开资料，不读取内部运行状态。
+  if (unit.observationOwn === false) {
+    return [
+      `艦種：${profile.type}`,
+      `損傷状態：${SHIP_STATUS_LABELS[unit.shipState?.status] ?? "未確認"}`,
+      `強度：${profile.strength}`,
+      `装甲：${profile.armor || "未登録"}`,
+      `探測強度：${profile.detection}`,
+      `対海偵察：${profile.seaRecon}`,
+      `対空偵察：${profile.airRecon}`,
+      `速力：${profile.speedKnots}ノット`,
+      "残弾・装備損傷・航続距離の残量・内部状態は非公開です。"
+    ];
+  }
+
   const state = unit.shipState;
+
 
   if (!state) {
     throw new Error("艦船の推演状態が初期化されていません。");
