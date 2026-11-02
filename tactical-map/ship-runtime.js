@@ -381,3 +381,257 @@ export function getShipDetailLines(unit, environment) {
     "移動と救助開始を接続済み。攻撃と正式な特殊段階処理は接続待ちです。"
   ];
 }
+
+// ===== 单次攻击的舰船被害应用 =====
+// 输入必须是“一次装备组攻击”汇总后的结果。
+// 仅修改调用方提供的事务工作副本。
+// 不保存存档、不扣弹、不推进阶段、不掷随机数。
+
+function requireDamageInteger(value, label) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label}は0以上の安全な整数で指定してください。`);
+  }
+
+  return value;
+}
+
+function readDamageAttack(attack) {
+  if (
+    !attack ||
+    typeof attack !== "object" ||
+    Array.isArray(attack)
+  ) {
+    throw new Error("攻撃被害の書式が不正です。");
+  }
+
+  if (
+    typeof attack.attackId !== "string" ||
+    !attack.attackId.trim()
+  ) {
+    throw new Error("攻撃記録の識別番号がありません。");
+  }
+
+  if (!["cannon", "numeric", "underwater"].includes(attack.kind)) {
+    throw new Error("この被害処理は耐性への攻撃専用です。");
+  }
+
+  const hpDamage = requireDamageInteger(
+    attack.hpDamage,
+    "耐性への被害"
+  );
+
+  if (typeof attack.hasDamageEffect !== "boolean") {
+    throw new Error("被害効果の有無が不正です。");
+  }
+
+  if (!attack.hasDamageEffect && hpDamage !== 0) {
+    throw new Error("被害効果のない攻撃に耐性被害が登録されています。");
+  }
+
+  let normalHitRemainder = null;
+
+  if (attack.kind === "cannon") {
+    normalHitRemainder = requireDamageInteger(
+      attack.normalHitRemainder,
+      "通常命中の累積値"
+    );
+
+    if (normalHitRemainder > 2) {
+      throw new Error("通常命中の累積値は0～2で指定してください。");
+    }
+  } else if (attack.normalHitRemainder !== undefined) {
+    throw new Error(
+      "艦砲以外の攻撃では通常命中の累積値を変更できません。"
+    );
+  }
+
+  return {
+    attackId: attack.attackId,
+    kind: attack.kind,
+    hpDamage,
+    hasDamageEffect: attack.hasDamageEffect,
+    normalHitRemainder
+  };
+}
+
+/**
+ * 应用一次已经汇总、已经判定完成的耐性攻击。
+ *
+ * unit必须来自保存事务的工作副本，不能传部署快照。
+ *
+ * attack：
+ * - attackId：本次攻击记录ID。
+ * - kind：cannon / numeric / underwater。
+ * - hpDamage：防御及累计处理后的耐性伤害。
+ * - hasDamageEffect：是否存在被害效果。
+ * - normalHitRemainder：仅cannon需要，范围0～2。
+ *
+ * context：
+ * - turnNumber：当前回合。
+ * - phaseId：当前结算阶段。
+ *
+ * 不处理：
+ * - 装备损坏、强度次数消耗、起火和进水抽签。
+ * - 救助中断与自然沉没计时。
+ * - 同次序多次攻击的统一裁定。
+ */
+export function applyShipDamageAttack(
+  unit,
+  attackValue,
+  context
+) {
+  const attack = readDamageAttack(attackValue);
+
+  if (
+    !context ||
+    !Number.isSafeInteger(context.turnNumber) ||
+    context.turnNumber < 1 ||
+    !/^order-[1-5]$|^pas$/.test(context.phaseId)
+  ) {
+    throw new Error("攻撃被害を適用するラウンド・段階が不正です。");
+  }
+
+  // 在独立副本上完成初始化、验证和变更。
+  // 任意校验失败都不部分修改传入的单位。
+  const working = JSON.parse(JSON.stringify(unit));
+
+  ensureShipRuntime(working);
+
+  const profile = readShipProfile(working);
+  const beforeHp = working.currentHp;
+  const beforeState = JSON.parse(JSON.stringify(working.shipState));
+  const state = working.shipState;
+
+  let ignored = false;
+
+  if (state.status === "sunk") {
+    // 已沉没单位不再次升级损伤，也不继续累计常命中。
+    ignored = true;
+  } else {
+    if (attack.kind === "cannon") {
+      // 全碎或没有被害时，不能凭输入改变累计余数。
+      if (
+        !attack.hasDamageEffect &&
+        attack.normalHitRemainder !== state.normalHitRemainder
+      ) {
+        throw new Error(
+          "被害のない艦砲攻撃で通常命中の累積値が変化しています。"
+        );
+      }
+
+      state.normalHitRemainder = attack.normalHitRemainder;
+    }
+
+    if (attack.hasDamageEffect) {
+      state.hasReceivedDamage = true;
+
+      switch (beforeState.status) {
+        case "sinking":
+          // 濒临沉没：任何有被害效果的攻击都会导致沉没。
+          // “碎”因hasDamageEffect=false，不会进入这里。
+          state.status = "sunk";
+          break;
+
+        case "heavy":
+          // 大破：只有产生耐性削减效果的本次攻击才进入濒临沉没。
+          // 不能依赖显示HP差，因为这里的HP本来已经是0。
+          if (attack.hpDamage > 0) {
+            state.status = "sinking";
+            state.sinkingElapsedMinutes = 0;
+          }
+          break;
+
+        default:
+          working.currentHp = Math.max(
+            0,
+            beforeHp - attack.hpDamage
+          );
+
+          if (working.currentHp === 0) {
+            state.status = "heavy";
+          } else if (working.currentHp <= profile.maxHp / 2) {
+            state.status = "moderate";
+          } else if (working.currentHp < profile.maxHp) {
+            state.status = "light";
+          } else {
+            // 命中存在被害效果，但尚未造成耐性削减。
+            state.status = "minor";
+          }
+          break;
+      }
+    }
+  }
+
+  // 变更后的耐性、状态及运行字段仍须符合现有保存约束。
+  ensureShipRuntime(working);
+
+  const enteredSinking =
+    beforeState.status !== "sinking" &&
+    state.status === "sinking";
+
+  const becameSunk =
+    beforeState.status !== "sunk" &&
+    state.status === "sunk";
+
+  const report = {
+    version: 1,
+    attackId: attack.attackId,
+    targetId: working.instanceId,
+    turnNumber: context.turnNumber,
+    phaseId: context.phaseId,
+    ignored,
+    requestedHpDamage: attack.hpDamage,
+    actualHpLoss: beforeHp - working.currentHp,
+    hasDamageEffect: !ignored && attack.hasDamageEffect,
+    beforeHp,
+    afterHp: working.currentHp,
+    beforeStatus: beforeState.status,
+    afterStatus: state.status,
+    beforeNormalHitRemainder: beforeState.normalHitRemainder,
+    afterNormalHitRemainder: state.normalHitRemainder,
+
+    // 必须由正式事务层持久化首次濒临沉没时间。
+    sinkingStarted: enteredSinking
+      ? {
+          turnNumber: context.turnNumber,
+          phaseId: context.phaseId
+        }
+      : null,
+
+    becameSunk,
+
+    // 不在这里直接清掉救助ID：
+    // 救助模块必须同时更新任务、另一艘舰船和暂停计时。
+    rescueInterruptionRequired:
+      !ignored &&
+      attack.hasDamageEffect &&
+      state.rescueTaskId !== null
+  };
+
+  // 所有验证成功后才写回事务工作副本。
+  unit.currentHp = working.currentHp;
+  unit.shipState = JSON.parse(JSON.stringify(state));
+
+  return report;
+}
+
+/**
+ * 确定性试算，不修改传入单位。
+ * 只供内部规则集成使用；不能向外方观察页面返回完整单位。
+ */
+export function previewShipDamageAttack(
+  unit,
+  attack,
+  context
+) {
+  const working = JSON.parse(JSON.stringify(unit));
+
+  const report = applyShipDamageAttack(
+    working,
+    attack,
+    context
+  );
+
+  return report;
+}
+
