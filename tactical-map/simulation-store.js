@@ -6,6 +6,8 @@ import {initializeSimulationFeatures,getObservedScene,assertManualControl,assert
 
 import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
+import { readWeaponProfile } from "./weapon-profile-runtime.js";
+
 
 
 // ===== 独立推演状态 =====
@@ -624,6 +626,43 @@ export function openSimulation(id) {
       return listEntities(getObservedScene(state));
     },
 
+        getAttackEquipmentProfiles(instanceId) {
+      const unit = state.instances.find(
+        item => item.instanceId === instanceId
+      );
+
+      if (!unit) {
+        throw new Error("ユニットが見つかりません。");
+      }
+
+      // 不能通过已知ID读取非当前操作阵营的内部适配信息。
+      assertManualControl(state, [unit]);
+
+      const equipment = unit.snapshot?.equipmentSnapshots;
+
+      if (equipment === undefined) {
+        return {
+          profiles: [],
+          issues: [
+            "配置スナップショットに装備資料がありません。" +
+            "現在の図鑑から自動補完しません。"
+          ]
+        };
+      }
+
+      if (!Array.isArray(equipment)) {
+        throw new Error(
+          "装備スナップショットの一覧形式が不正です。"
+        );
+      }
+
+      return {
+        profiles: equipment.map(readWeaponProfile),
+        issues: []
+      };
+    },
+
+          
     previewDraft,
 
     saveDraft(request, expectedRevision) {
