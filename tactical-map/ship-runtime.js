@@ -781,3 +781,170 @@ export function applyShipEffectAcquisition(
     acquired: result.acquired
   };
 }
+
+// ===== 起火／进水特殊阶段应用 =====
+// 只用于正式事务工作副本。
+// 不独立保存、不推进阶段。
+// 不把火灾伤害伪装成武器攻击。
+
+export function applyShipFireFloodingPhase(
+  unit,
+  context,
+  coinSource
+) {
+  if (
+    !context ||
+    !Number.isSafeInteger(context.turnNumber) ||
+    context.turnNumber < 1 ||
+    context.phaseId !== "special"
+  ) {
+    throw new Error(
+      "火災・浸水の処理は特殊効果判定段階に限ります。"
+    );
+  }
+
+  if (
+    coinSource !== undefined &&
+    typeof coinSource !== "function"
+  ) {
+    throw new Error("特殊状態のコイン関数が不正です。");
+  }
+
+  const working = JSON.parse(JSON.stringify(unit));
+
+  if (working?.branch !== "navy") {
+    throw new Error("火災・浸水の処理対象が艦船ではありません。");
+  }
+
+  ensureShipRuntime(working);
+
+  const profile = readShipProfile(working);
+  const beforeHp = working.currentHp;
+  const beforeStatus = working.shipState.status;
+  const beforeEffects = JSON.parse(
+    JSON.stringify(working.shipState.effects)
+  );
+
+  // 沉没舰不进行损管，不消耗硬币。
+  if (beforeStatus === "sunk") {
+    return {
+      version: 1,
+      targetId: working.instanceId,
+      turnNumber: context.turnNumber,
+      phaseId: context.phaseId,
+      skipped: true,
+      skipReason: "sunk",
+      rolls: [],
+      events: [],
+      beforeHp,
+      afterHp: beforeHp,
+      beforeStatus,
+      afterStatus: beforeStatus,
+      sinkingStarted: null,
+      rescueInterruptionRequired: false
+    };
+  }
+
+  // 事件由本模块内部算法生成，不接受页面传入的伤害事件。
+  const result = resolveShipFireFloodingPhase(
+    {
+      state: working.shipState.effects,
+      turnNumber: context.turnNumber
+    },
+    coinSource
+  );
+
+  const state = working.shipState;
+  state.effects = result.state;
+
+  const sinkingCauses = [];
+
+  for (const event of result.events) {
+    switch (event.type) {
+      case "fire-hp-damage":
+        state.hasReceivedDamage = true;
+
+        working.currentHp = Math.max(
+          0,
+          working.currentHp - event.amount
+        );
+
+        // 火灾耐性伤害不是一次武器攻击。
+        // 不套用“濒临沉没再遭有被害效果攻击即沉没”的攻击规则。
+        if (
+          !["heavy", "sinking", "sunk"].includes(state.status)
+        ) {
+          state.status = inferInitialStatus(
+            working.currentHp,
+            profile.maxHp
+          );
+        }
+
+        break;
+
+      case "enter-sinking":
+        sinkingCauses.push(event.cause);
+
+        if (!["sinking", "sunk"].includes(state.status)) {
+          state.status = "sinking";
+          state.specialDamageStatus = true;
+
+          // 仅首次进入时初始化。
+          // 已濒临沉没的舰船不能因另一词条失控重置倒计时。
+          state.sinkingElapsedMinutes = 0;
+        }
+
+        break;
+
+      case "effect-cleared":
+      case "effect-worsened":
+      case "flooding-movement-reduction":
+      case "flooding-movement-restored":
+        // 状态算法已经更新effects。
+        // 移动层从effects计算减益，不另存第二套移动力。
+        break;
+
+      default:
+        throw new Error("未対応の火災・浸水イベントがあります。");
+    }
+  }
+
+  ensureShipRuntime(working);
+
+  const enteredSinking =
+    beforeStatus !== "sinking" &&
+    state.status === "sinking";
+
+  const report = {
+    version: 1,
+    targetId: working.instanceId,
+    turnNumber: context.turnNumber,
+    phaseId: context.phaseId,
+    skipped: false,
+    rolls: result.rolls,
+    events: result.events,
+    beforeEffects,
+    afterEffects: JSON.parse(JSON.stringify(state.effects)),
+    beforeHp,
+    afterHp: working.currentHp,
+    actualHpLoss: beforeHp - working.currentHp,
+    beforeStatus,
+    afterStatus: state.status,
+    sinkingStarted: enteredSinking
+      ? {
+          turnNumber: context.turnNumber,
+          phaseId: context.phaseId,
+          causes: sinkingCauses
+        }
+      : null,
+    rescueInterruptionRequired:
+      enteredSinking &&
+      state.rescueTaskId !== null
+  };
+
+  // 所有处理及校验成功后才写回。
+  unit.currentHp = working.currentHp;
+  unit.shipState = JSON.parse(JSON.stringify(state));
+
+  return report;
+}
