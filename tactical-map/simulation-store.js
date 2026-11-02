@@ -1,5 +1,5 @@
 import { assessCluster } from "./cluster-engine.js";
-import { RULESET, evaluateAction } from "./rules-engine.js";
+import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
 import {initializeSimulationFeatures,getObservedScene,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js";
@@ -30,6 +30,62 @@ const VERSION = 1;
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
 }
+
+// 只校验推演运行状态，不修改initialScene或部署快照。
+function initializeCombatRuntime(scene) {
+  const turn = scene.turn;
+
+  if (
+    !turn ||
+    typeof turn !== "object" ||
+    Array.isArray(turn) ||
+    !Number.isSafeInteger(turn.number) ||
+    turn.number < 1 ||
+    typeof turn.phaseId !== "string" ||
+    !TURN_PHASES.some(phase => phase.id === turn.phaseId) ||
+    !Number.isSafeInteger(turn.elapsedMinutes) ||
+    turn.elapsedMinutes < 0
+  ) {
+    throw new Error("推演のラウンド・段階・経過時間が不正です。");
+  }
+
+  if (!Array.isArray(scene.instances)) {
+    throw new Error("推演のユニット一覧が不正です。");
+  }
+
+  for (const unit of scene.instances) {
+    ensureShipRuntime(unit);
+    ensureUnitCombatRuntime(unit);
+
+    if (unit.branch !== "navy") continue;
+
+    const effects = unit.shipState.effects;
+
+    // 兼容尚未应用特殊状态初始化补丁的文件。
+    // 正式特殊阶段接入时会要求该字段存在。
+    if (effects === undefined) continue;
+
+    if (effects.lastResolvedTurn > turn.number) {
+      throw new Error(
+        "特殊状態の処理記録が現在のラウンドより未来になっています。"
+      );
+    }
+
+    for (const type of ["fire", "flooding"]) {
+      const effect = effects[type];
+
+      if (
+        effect !== null &&
+        effect.acquiredTurn > turn.number
+      ) {
+        throw new Error(
+          "特殊状態の取得記録が現在のラウンドより未来になっています。"
+        );
+      }
+    }
+  }
+}
+
 
 function newId() {
   if (!globalThis.crypto?.randomUUID) {
@@ -185,7 +241,8 @@ function readSaved(id) {
     value.version !== VERSION ||
     value.id !== id ||
     value.mode !== "simulation" ||
-    !Number.isInteger(value.revision) ||
+    !Number.isSafeInteger(value.revision) ||
+    value.revision < 0 ||
     !Array.isArray(value.instances) ||
     !Array.isArray(value.groups) ||
     !Array.isArray(value.actions) ||
@@ -209,10 +266,8 @@ function readSaved(id) {
     };
   }
 
-  for (const unit of value.instances) {
-    ensureShipRuntime(unit);
-    ensureUnitCombatRuntime(unit);
-  }
+  initializeCombatRuntime(value);
+
 
   initializeSimulationFeatures(value);
 
@@ -449,10 +504,8 @@ export function createSimulation(scene, spatialState) {
     view: copy(scene.view)
   };
 
-   for (const unit of value.instances) {
-    ensureShipRuntime(unit);
-    ensureUnitCombatRuntime(unit);
-  }
+  initializeCombatRuntime(value);
+
 
   initializeSimulationFeatures(value);
   initializeRescueState(value);
@@ -493,12 +546,18 @@ export function openSimulation(id) {
 
     change(candidate);
 
-    for (const unit of candidate.instances) {
-      ensureShipRuntime(unit);
-      ensureUnitCombatRuntime(unit);
+    initializeCombatRuntime(candidate);
+
+        if (
+      !Number.isSafeInteger(candidate.revision) ||
+      candidate.revision < 0 ||
+      candidate.revision >= Number.MAX_SAFE_INTEGER
+    ) {
+      throw new Error("推演の保存更新番号が範囲外です。");
     }
 
     candidate.revision += 1;
+
 
     candidate.updatedAt = new Date().toISOString();
 
