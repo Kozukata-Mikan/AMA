@@ -358,6 +358,6 @@ export function getOwnShipEffectLines(value) {
     `浸水による移動力補正：${
       getFloodingMovementFactor(state) * 100
     }%`,
-    "浸水の移動力補正は、移動処理への接続待ちです。"
+    "浸水補正は元の最大移動力に適用します。修復すると解除されます。"
   ];
 }
