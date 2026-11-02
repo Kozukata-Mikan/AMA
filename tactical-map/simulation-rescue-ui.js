@@ -107,9 +107,9 @@ export function mountRescueUI(store) {
     refill(target, scene.instances.filter(unit =>
       unit.branch === "navy" &&
       unit.observationLevel === "identified" &&
-      unit.shipState.status === "sinking" &&
-      unit.shipState.rescueTaskId === null
+      unit.rescueCandidate === true
     ));
+
 
     save.disabled = cancel.disabled =
       scene.turn.phaseId !== "movement";
