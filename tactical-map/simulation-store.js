@@ -17,6 +17,9 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js";
+
+
 
 
 
@@ -273,6 +276,7 @@ function readSaved(id) {
 
   // 救助属于整个场景，只初始化一次，空实例场景也不能漏掉。
   initializeRescueState(value);
+  initializeRescueRuntime(value);
 
   return value;
 
@@ -509,6 +513,8 @@ export function createSimulation(scene, spatialState) {
 
   initializeSimulationFeatures(value);
   initializeRescueState(value);
+  initializeRescueRuntime(value);
+
 
   writeSaved(value);
 
@@ -550,6 +556,7 @@ export function openSimulation(id) {
         // 检查任务与双方运行状态一致后，才允许保存。
     // 不在校验阶段自动决定救助中断或补算时间。
     initializeRescueState(candidate);
+    initializeRescueRuntime(candidate);
 
 
         if (
