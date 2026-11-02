@@ -19,6 +19,9 @@ import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runt
 
 import { initializeRescueRuntime } from "./simulation-rescue-runtime.js";
 
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js";
+
+
 
 
 
@@ -277,6 +280,7 @@ function readSaved(id) {
   // 救助属于整个场景，只初始化一次，空实例场景也不能漏掉。
   initializeRescueState(value);
   initializeRescueRuntime(value);
+  initializeSpecialRuntime(value);
 
   return value;
 
@@ -514,7 +518,7 @@ export function createSimulation(scene, spatialState) {
   initializeSimulationFeatures(value);
   initializeRescueState(value);
   initializeRescueRuntime(value);
-
+  initializeSpecialRuntime(value);
 
   writeSaved(value);
 
@@ -557,7 +561,7 @@ export function openSimulation(id) {
     // 不在校验阶段自动决定救助中断或补算时间。
     initializeRescueState(candidate);
     initializeRescueRuntime(candidate);
-
+    initializeSpecialRuntime(candidate);
 
         if (
       !Number.isSafeInteger(candidate.revision) ||
