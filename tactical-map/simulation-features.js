@@ -4,6 +4,11 @@ import {
 } from "./ship-runtime.js";
 import { sampleTerrain } from "./terrain-data.js";
 import { startPlannedRescues } from "./simulation-rescue.js";
+import {
+  createShipEffectsState,
+  getFloodingMovementFactor
+} from "./ship-effects-runtime.js";
+
 
 const SIDES = ["ally", "enemy", "neutral"];
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
@@ -254,6 +259,13 @@ export function getObservedScene(scene) {
         if (level === "identified") {
       const observed = clone(unit);
       const observationOwn = unit.side === side;
+            // 从完整运行状态生成白名单式公开词条。
+      // 外方只能看到是否起火，不能看到进水或损管历史。
+      observed.observedEffects = {
+        fire: unit.branch === "navy" &&
+          unit.shipState?.effects?.fire != null
+      };
+
             // 此标记只提供给已识别单位，不公开内部救助任务。
       // 最终资格仍由planRescue和移动后结算重新检查。
       observed.rescueCandidate =
@@ -300,7 +312,12 @@ export function getObservedScene(scene) {
       currentHp: null,
       snapshot: { maxHp: null },
       groupId: null,
-      observationLevel: "shadow"
+      observationLevel: "shadow",
+      // 被发现的影也可见火焰，但不公开真实军种或内部状态。
+      observedEffects: {
+        fire: unit.branch === "navy" &&
+          unit.shipState?.effects?.fire != null
+      }
     });
   }
 
@@ -512,13 +529,29 @@ function movementMembers(scene, ref) {
 }
 
 function limitFor(members) {
-  return Math.min(...members.map(unit =>
-    Math.min(
-      readShipProfile(unit).movementLimit,
+  return Math.min(...members.map(unit => {
+    const profile = readShipProfile(unit);
+
+    // 旧框架尚无词条字段时，仅按无进水计算。
+    // 不在观察或查询函数中写回运行状态。
+    const effects = unit.shipState.effects ??
+      createShipEffectsState();
+
+    const floodingFactor = getFloodingMovementFactor(effects);
+
+    // 减益始终基于原始最大移动力，不逐回合乘当前值。
+    // 最终可移动格数向下取整。
+    const effectiveMovementLimit = Math.floor(
+      profile.movementLimit * floodingFactor
+    );
+
+    return Math.min(
+      effectiveMovementLimit,
       unit.shipState.remainingEndurance
-    )
-  ));
+    );
+  }));
 }
+
 
 function pointOnSegment(point, from, to) {
   const dx = to.x - from.x;
