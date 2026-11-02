@@ -153,16 +153,56 @@ function navalGrade(unit, key) {
 }
 
 /**
- * 其他兵种的侦察字段映射尚未提供，不猜测其字段名。
- * 100以内识别仍可依据已知位置和地形规则执行。
+ * 判断一个侦察来源对一个目标的可见性。
+ * 返回identified、shadow或null。
+ * 不修改观察阵营，不修改场景。
  */
+export function getObserverVisibility(scene, observer, target) {
+  if (!operational(observer) || !positioned(target)) {
+    return null;
+  }
+
+  const range = getReconConditions(scene.environment).normalRange;
+
+  const distance = Math.hypot(
+    observer.x - target.x,
+    observer.y - target.y
+  );
+
+  if (distance > Math.max(100, range)) return null;
+
+  if (isTerrainBlocked(scene.terrain, observer, target)) {
+    return null;
+  }
+
+  if (distance <= 100) return "identified";
+
+  // 当前只有海军双方的通常距离资料适配。
+  if (
+    observer.branch !== "navy" ||
+    target.branch !== "navy" ||
+    distance > range
+  ) {
+    return null;
+  }
+
+  const detection = navalGrade(target, "detection");
+  const recon = navalGrade(observer, "seaRecon");
+
+  return (
+    detection !== null &&
+    recon !== null &&
+    recon >= detection
+  ) ? "shadow" : null;
+}
+
 export function getVisibility(scene) {
   const side = getObservationSide(scene);
+
   const sources = scene.instances.filter(
     unit => unit.side === side && operational(unit)
   );
 
-  const range = getReconConditions(scene.environment).normalRange;
   const result = new Map();
 
   for (const target of scene.instances) {
@@ -171,49 +211,31 @@ export function getVisibility(scene) {
       continue;
     }
 
-    if (!positioned(target)) continue;
-
     let visibility = null;
 
     for (const observer of sources) {
-      const distance = Math.hypot(
-        observer.x - target.x,
-        observer.y - target.y
+      const level = getObserverVisibility(
+        scene,
+        observer,
+        target
       );
 
-      if (distance > Math.max(100, range)) continue;
-      if (isTerrainBlocked(scene.terrain, observer, target)) continue;
-
-      if (distance <= 100) {
-        visibility = "identified";
+      if (level === "identified") {
+        visibility = level;
         break;
       }
 
-      if (
-        observer.branch !== "navy" ||
-        target.branch !== "navy" ||
-        distance > range
-      ) {
-        continue;
-      }
-
-      const detection = navalGrade(target, "detection");
-      const recon = navalGrade(observer, "seaRecon");
-
-      if (
-        detection !== null &&
-        recon !== null &&
-        recon >= detection
-      ) {
-        visibility = "shadow";
-      }
+      if (level === "shadow") visibility = level;
     }
 
-    if (visibility) result.set(target.instanceId, visibility);
+    if (visibility) {
+      result.set(target.instanceId, visibility);
+    }
   }
 
   return result;
 }
+
 
 /**
  * 返回页面可用的观察副本，而不是完整战场。
