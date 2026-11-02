@@ -1,23 +1,10 @@
 // 本模块不修改地图，不执行伤害，不自动推进回合。
 
-export const SIMULATION_PHASES = Object.freeze([
-  { id: "start", label: "ラウンド開始" },
-  { id: "movement-select", label: "移動計画" },
-  { id: "movement-resolve", label: "移動処理" },
-  { id: "order-5-select", label: "次序5・目標選択" },
-  { id: "order-5-resolve", label: "次序5・処理" },
-  { id: "order-4-select", label: "次序4・目標選択" },
-  { id: "order-4-resolve", label: "次序4・処理" },
-  { id: "order-3-select", label: "次序3・目標選択" },
-  { id: "order-3-resolve", label: "次序3・処理" },
-  { id: "order-2-select", label: "次序2・目標選択" },
-  { id: "order-2-resolve", label: "次序2・処理" },
-  { id: "order-1-select", label: "次序1・目標選択" },
-  { id: "order-1-resolve", label: "次序1・処理" },
-  { id: "pas", label: "PAS" },
-  { id: "special", label: "特殊効果判定" },
-  { id: "end", label: "ラウンド終了" }
-]);
+import { TURN_PHASES } from "./rules-engine.js";
+
+// 规则书使用实际存档阶段ID，不另造select／resolve阶段。
+export const SIMULATION_PHASES = TURN_PHASES;
+
 
 export function getPhaseLabel(id) {
   return SIMULATION_PHASES.find(phase => phase.id === id)?.label
@@ -243,6 +230,56 @@ CHAPTERS.push(
     ]
   }
 );
+// 这里只同步说明，不表示对应战斗功能已经接入。
+CHAPTERS[0].paragraphs = [
+  "自律行動が無効の場合、観察陣営を味方・敵・中立から選択し、その陣営のユニットを手動操作します。",
+  "自律行動が有効の場合、観察陣営は味方に固定されます。",
+  "敵・中立のAI計画は未実装です。有効にしても自動攻撃や自動移動は発生しません。",
+  "観察制限は地図、詳細、選択欄、行動草案、書き出しにも適用されます。"
+];
+
+CHAPTERS[3].paragraphs = [
+  "実体攻撃は発動後、攻撃側と目標の間の最短経路上に、選択・撃破可能な実体を生成します。",
+  "発動済みの攻撃は、同じ次序で発射元が行動不能になっても取り消されません。",
+  "迎撃の次序条件を満たすだけでは、迎撃能力や成功は保証されません。",
+  "実体の生成、迎撃、被害処理は現在の推演には未接続です。"
+];
+
+CHAPTERS[4].paragraphs = [
+  "PASは次序0として、次序1～5から残った実体攻撃を処理します。",
+  "PAS段階では、残存実体は目標に限りなく近づいたものとして扱います。",
+  "自動判定で実体を撃破できれば、その攻撃は無効になります。撃破できなければ対応する被害を処理します。",
+  "PAS装備の使用段階はPASに限られます。正式なPAS結算は未接続です。"
+];
+
+CHAPTERS[5].paragraphs = [
+  "接続済み：陣営別の観察、艦船の移動計画・移動処理、移動後の救助開始、装備組ごとの保存状態。",
+  "命中コインの関数は用意されていますが、正式な攻撃結算にはまだ接続していません。",
+  "未接続：正式攻撃、実体・PAS、特殊段階の統合処理、ラウンド終了と時刻更新、敵・中立のAI。",
+  "移動処理後は次序5で停止します。草案保存は攻撃実行ではなく、時刻も進めません。"
+];
+
+CHAPTERS[7].paragraphs = [
+  "移動処理後、距離2以下の沈没寸前の艦船に救助を開始できます。",
+  "開始したラウンドを第1ラウンドと数え、第2ラウンドの特殊効果判定で救助を判定します。",
+  "救助中は、救助艦と対象艦の両方が他の行動を実行できません。",
+  "ARによる救助は必ず成功します。それ以外はコインで判定します。",
+  "成功すると対象艦は大破に戻ります。耐性は回復しません。",
+  "救助中は自然沈没の計時を停止します。中断時は停止期間を補算し、最初に沈没寸前になった時点から4ラウンド経過したか確認します。",
+  "現在は救助計画と開始まで接続済みです。特殊段階への統合、中断時の補算、自然沈没の計時は修正・接続待ちです。"
+];
+
+CHAPTERS[9].paragraphs[
+  CHAPTERS[9].paragraphs.length - 1
+] =
+  "時刻と天候の距離減少は合算します。地形遮蔽は実際の三角形網格を使用します。現在、通常距離での等級判定は海軍同士に接続済みで、他軍種の資料適合は未接続です。";
+
+CHAPTERS[11].paragraphs = [
+  "規則の記載、関数の作成、状態・画面への接続、ブラウザーでの検証は、それぞれ別の進捗です。",
+  "装甲・被害・特殊効果の正式な攻撃処理は未接続です。未実装の行動は結算できません。",
+  "装備の残弾、使用ラウンド、損傷は装備1組ごとに保存します。再読み込みで補充・修復しません。",
+  "全段階の処理が揃うまで、段階の飛ばし処理や時刻の先送りは行いません。"
+];
 
 
 export function mountSimulationRulebook(store) {
@@ -256,65 +293,173 @@ export function mountSimulationRulebook(store) {
     throw new Error("推演画面のサイドバーが見つかりません。");
   }
 
-  function element(tag, text = "") {
+  function element(tag, text = "", className = "") {
     const result = document.createElement(tag);
     result.textContent = text;
+    if (className) result.className = className;
     return result;
   }
 
+  function makeButton(text, action) {
+    const result = element("button", text);
+    result.type = "button";
+    result.addEventListener("click", action);
+    return result;
+  }
+
+  let ownsStyles = false;
+  let styles = document.getElementById("simulation-rulebook-styles");
+
+  if (!styles) {
+    styles = element("link");
+    styles.id = "simulation-rulebook-styles";
+    styles.rel = "stylesheet";
+    styles.href = new URL(
+      "./simulation-rulebook.css",
+      import.meta.url
+    ).href;
+    document.head.append(styles);
+    ownsStyles = true;
+  }
+
+  // 左栏只放控制与入口，不再塞入规则正文。
   const panel = element("section");
   panel.id = "simulationRulesPanel";
-  panel.style.cssText = "padding:12px 0;";
-
-  const heading = element("h3", "推演制御とルール書");
-
-  const label = element("label");
-  label.style.cssText =
-    "display:flex;align-items:center;gap:8px;";
+  panel.append(element("h3", "推演制御"));
 
   const checkbox = element("input");
   checkbox.type = "checkbox";
   checkbox.id = "enemyAutonomy";
+  checkbox.style.width = "auto";
 
-  label.append(checkbox, element("span", "敵側の自律行動"));
+  const label = element("label");
+  label.append(checkbox, element("span", "敵・中立の自律行動"));
 
-  const status = element("p");
-  status.className = "note";
+  const status = element("p", "", "note");
   status.setAttribute("aria-live", "polite");
 
-  const book = element("details");
-  const summary = element("summary", "📖 ルール書");
-  const content = element("div");
+  const dialog = element("dialog", "", "sim-rulebook");
+  dialog.id = "simulationRulebookDialog";
+  dialog.setAttribute("aria-labelledby", "simulationRulebookTitle");
 
-  content.style.cssText =
-    "max-height:55vh;overflow:auto;padding:8px 4px;";
+  const shell = element("div", "", "sim-rulebook-shell");
+  const header = element("header", "", "sim-rulebook-header");
 
-  for (const chapter of CHAPTERS) {
-    const section = element("section");
-    section.append(element("h4", chapter.title));
+  const title = element("h2", "推演ルールブック");
+  title.id = "simulationRulebookTitle";
 
-    for (const paragraph of chapter.paragraphs) {
-      const p = element("p", paragraph);
-      p.className = "note";
-      section.append(p);
+  const close = makeButton("閉じる", () => dialog.close());
+  header.append(title, close);
+
+  const toolbar = element("div", "", "sim-rulebook-toolbar");
+  const search = element("input");
+  search.type = "search";
+  search.placeholder = "規則を検索";
+  search.setAttribute("aria-label", "章のタイトルと本文を検索");
+
+  const count = element("span");
+  count.setAttribute("role", "status");
+  count.setAttribute("aria-live", "polite");
+
+  toolbar.append(
+    search,
+    makeButton("検索をクリア", () => {
+      search.value = "";
+      renderChapters();
+      search.focus();
+    }),
+    count
+  );
+
+  const body = element("div", "", "sim-rulebook-body");
+  const navigation = element("nav", "", "sim-rulebook-nav");
+  navigation.setAttribute("aria-label", "ルールブックの目次");
+
+  const content = element("main", "", "sim-rulebook-content");
+  const notice = element(
+    "p",
+    "規則の説明と実装状況は別です。未接続の処理は実行できません。",
+    "sim-rulebook-notice"
+  );
+
+  const chaptersHost = element("div");
+  content.append(notice, chaptersHost);
+  body.append(navigation, content);
+  shell.append(header, toolbar, body);
+  dialog.append(shell);
+  document.body.append(dialog);
+
+  function renderChapters() {
+    navigation.replaceChildren();
+    chaptersHost.replaceChildren();
+
+    const term = search.value.trim().toLocaleLowerCase();
+    let matched = 0;
+
+    CHAPTERS.forEach((chapter, index) => {
+      const searchable = [
+        chapter.title,
+        ...chapter.paragraphs
+      ].join("\n").toLocaleLowerCase();
+
+      if (term && !searchable.includes(term)) return;
+      matched += 1;
+
+      const section = element("section", "", "sim-rulebook-chapter");
+      const heading = element("h3", chapter.title);
+      heading.id = `simulation-rulebook-chapter-${index}`;
+      heading.tabIndex = -1;
+      section.append(heading);
+
+      const list = element("ul");
+
+      for (const paragraph of chapter.paragraphs) {
+        list.append(element("li", paragraph));
+      }
+
+      section.append(list);
+      chaptersHost.append(section);
+
+      navigation.append(makeButton(chapter.title, () => {
+        heading.scrollIntoView({
+          behavior: "auto",
+          block: "start"
+        });
+        heading.focus({ preventScroll: true });
+      }));
+    });
+
+    count.textContent = `${matched} / ${CHAPTERS.length}章`;
+
+    if (!matched) {
+      chaptersHost.append(element(
+        "p",
+        "一致する規則がありません。"
+      ));
     }
 
-    content.append(section);
+    content.scrollTop = 0;
   }
 
-  book.append(summary, content);
-  panel.append(heading, label, status, book);
+  search.addEventListener("input", renderChapters);
+
+  const open = makeButton("ルールブックを開く", () => {
+    if (!dialog.open) dialog.showModal();
+    search.focus();
+  });
+  open.setAttribute("aria-haspopup", "dialog");
+  open.setAttribute("aria-controls", dialog.id);
+
+  panel.append(label, status, open);
   aside.prepend(panel);
 
   function sync() {
     const enabled = store.getControlSettings().enemyAutonomy;
-
     checkbox.checked = enabled;
 
     status.textContent = enabled
-      ? "味方：手動で手配する。敵、中立：自主的に制御する。" +
-        "自主計画は戦闘規則の補完を待っている。現在は自動的に行動を実行しない。"
-      : "自主計画は戦闘規則の補完を待っている。現在は自動的に行動を実行しない。";
+      ? "観察は味方に固定。敵・中立のAIは未実装です。"
+      : "観察陣営を切り替えて各陣営を手動操作できます。";
   }
 
   checkbox.addEventListener("change", () => {
@@ -329,10 +474,15 @@ export function mountSimulationRulebook(store) {
   });
 
   const unsubscribe = store.subscribe(sync);
+  renderChapters();
   sync();
 
+  // 原调用接口保持不变。
   return () => {
     unsubscribe();
+    dialog.remove();
     panel.remove();
+    if (ownsStyles) styles.remove();
   };
 }
+
