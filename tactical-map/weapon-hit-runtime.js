@@ -76,8 +76,10 @@ export function resolveHitCoins({
   coinsPerGroup,
   guidance,
   bonuses = 0,
-  penalties = 0
+  penalties = 0,
+  standalone = false
 }, coinSource = randomCoin) {
+
   requireInteger(groups, "硬貨の束数", 1);
   requireInteger(coinsPerGroup, "束内の硬貨数", 1);
   requireInteger(bonuses, "有利判定の回数");
@@ -91,6 +93,45 @@ export function resolveHitCoins({
     throw new Error("コイン判定関数がありません。");
   }
 
+    if (typeof standalone !== "boolean") {
+    throw new Error("単独Rの設定が不正です。");
+  }
+
+  if (standalone) {
+    if (groups !== 1 || coinsPerGroup !== 1) {
+      throw new Error("単独Rは硬貨1枚で判定してください。");
+    }
+
+    // 单独R没有X叠，奖励／惩罚不能作用于叠内硬币。
+    // 雷达、数控、射线的硬币必命中效果仍保留。
+    const guaranteed = GUARANTEED_COIN_GUIDANCE.has(guidance);
+    const heads = guaranteed ? true : toss(coinSource);
+
+    return {
+      version: 1,
+      standalone: true,
+      groups: 1,
+      coinsPerGroup: 1,
+      guidance,
+      bonuses,
+      penalties,
+      cancelled: Math.min(bonuses, penalties),
+      remainingBonuses: 0,
+      remainingPenalties: 0,
+      maximumHits: 1,
+      effectiveGroups: [],
+      stackRounds: [],
+      coinResults: [{
+        groupIndex: 0,
+        coinIndex: 0,
+        guaranteed,
+        heads
+      }],
+      hitCount: heads ? 1 : 0
+    };
+  }
+
+  
   const maximumHits = groups * coinsPerGroup;
 
   if (!Number.isSafeInteger(maximumHits)) {
@@ -98,8 +139,10 @@ export function resolveHitCoins({
   }
 
   const cancelled = Math.min(bonuses, penalties);
-  const remainingBonuses = bonuses - cancelled;
-  const remainingPenalties = penalties - cancelled;
+    // 先一对一抵消，剩余次数不得超过原始X叠数。
+  const remainingBonuses = Math.min(groups, bonuses - cancelled);
+  const remainingPenalties = Math.min(groups, penalties - cancelled);
+
 
   const effectiveGroups = new Set();
   let pending = Array.from(
@@ -211,20 +254,33 @@ export function resolveHitCoins({
 }
 
 /**
- * 只支持已明确定义的X·YR表达式。
- * 对没有叠数结构的单独“R”不擅自决定是否免除叠判定。
+ * 单独R：一枚硬币，没有X叠判定。
+ * X·YR：先判X叠，再判有效叠内的Y枚硬币。
+ * 同时接受图鉴显示使用的乘号，避免显示与解析不一致。
  */
 export function parseHitExpression(value) {
   if (typeof value !== "string") {
     throw new Error("命中表記は文字列で指定してください。");
   }
 
-  const match = value.trim().match(
-    /^(\d+)\s*[·・⋅]\s*(\d+)\s*R$/i
+  const expression = value.trim();
+
+  if (/^R$/i.test(expression)) {
+    return {
+      groups: 1,
+      coinsPerGroup: 1,
+      standalone: true
+    };
+  }
+
+  const match = expression.match(
+    /^(\d+)\s*[·・⋅×x*]\s*(\d+)\s*R$/i
   );
 
   if (!match) {
-    throw new Error("命中表記は「5·3R」の形式で指定してください。");
+    throw new Error(
+      "命中表記は「R」または「5·3R」の形式で指定してください。"
+    );
   }
 
   const groups = Number(match[1]);
@@ -235,6 +291,7 @@ export function parseHitExpression(value) {
 
   return { groups, coinsPerGroup };
 }
+
 
 /**
  * 汇总命中修正。
