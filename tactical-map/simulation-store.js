@@ -12,6 +12,8 @@ import { getObserverVisibility } from "./simulation-features.js";
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
 import { sampleTerrain } from "./terrain-data.js";
+import { getArmorPreview } from "./armor-runtime.js";
+
 
 
 
@@ -917,9 +919,21 @@ export function openSimulation(id) {
       const terrainInterior = entersTerrainInterior(trace);
       const tolerance = 1e-7;
 
-      if (relativeHeight < -tolerance) {
-        issues.push("艦船武器は下方の目標を攻撃できません。");
+            const underwaterWeapon =
+        profile.underwater ||
+        /[（(]\s*水下\s*[）)]/.test(profile.powerRule);
+
+      // 普通舰船武器不能向下攻击；
+      // 不能用这个限制一并封死专门的水下武器。
+      if (
+        !underwaterWeapon &&
+        relativeHeight < -tolerance
+      ) {
+        issues.push(
+          "通常の艦船武器は下方の目標を攻撃できません。"
+        );
       }
+
 
       if (
         profile.ceilingU !== null &&
@@ -975,11 +989,18 @@ export function openSimulation(id) {
           );
           break;
 
-        case "ray":
+                case "ray":
+          if (terrainInterior) {
+            issues.push(
+              "三次元の射撃直線が地形内部を通過します。"
+            );
+          }
+
           boundaries.push(
             "射線の1ラウンド1目標ロックは未接続です。"
           );
           break;
+
 
         default:
           issues.push("引導方式を確認できません。");
@@ -991,11 +1012,40 @@ export function openSimulation(id) {
         );
       }
 
+            let armorPreview;
+
+      try {
+        const naval = target.snapshot.naval;
+
+        const effectiveArmor = profile.guidance === "inertial"
+          ? ["F", "E", "D", "C", "B", "A", "S", "U"][
+              naval.strength
+            ]
+          : naval.armor;
+
+        armorPreview = getArmorPreview({
+          penetration: profile.penetration,
+          armor: effectiveArmor,
+          powerRule: profile.powerRule
+        });
+
+        if (profile.guidance === "inertial") {
+          armorPreview.unshift(
+            "慣性攻撃：本来の装甲ではなく、強度対応等級を使用します。"
+          );
+        }
+      } catch (error) {
+        armorPreview = [
+          `装甲比較を確認できません：${error.message}`
+        ];
+      }
+
       return {
         revision: state.revision,
         distance3D: trace.distance3D,
         relativeHeight,
         terrainInterior,
+        armorPreview,
         issues: [...new Set(issues)],
         boundaries: [...new Set(boundaries)],
         settlementConnected: false
