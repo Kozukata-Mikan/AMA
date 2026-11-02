@@ -67,9 +67,10 @@ export function mountAttackUI(store) {
 
   const notice = element(
     "p",
-    "複数の装備組を選び、同じ目標を一括確認できます。" +
-    "選択は攻撃命令として保存されません。" +
-    "正式な攻撃結算は未接続です。弾薬は消費しません。"
+    "装備組を選択し、目標を割り当ててください。" +
+    "別の組には別の目標を割り当てられます。" +
+    "割り当ては確認用で、正式な攻撃命令として保存されません。" +
+    "攻撃結算は未接続です。弾薬は消費しません。"
   );
   notice.className = "note";
 
@@ -81,6 +82,10 @@ export function mountAttackUI(store) {
   let report = null;
   let selectedActorId = "";
   const selectedGroupIds = new Set();
+    // 当前舰船各装备组的目标分配。
+  // 仅用于界面检查，尚未保存为正式攻击命令。
+  const assignedTargets = new Map();
+
 
   function selectableGroups() {
     return report
@@ -133,13 +138,11 @@ export function mountAttackUI(store) {
       return;
     }
 
-    if (target.value) {
-      lines.push(
-        `共通目標：${target.selectedOptions[0]?.textContent ?? ""}`
-      );
-    } else {
-      lines.push("目標を選択すると、全選択装備を一括確認します。");
-    }
+    lines.push(
+      "各装備組に割り当てた目標を確認します。",
+      "目標の選択だけでは割り当ては変更されません。"
+    );
+
 
         // 从观察副本读取环境，不读取完整战场内部状态。
     const environment = store.getScene().environment;
@@ -213,14 +216,34 @@ export function mountAttackUI(store) {
       }
 
       
-      if (!target.value) continue;
+            const assignedTargetId = assignedTargets.get(group.groupId);
+
+      if (!assignedTargetId) {
+        lines.push("", "目標：未割り当て");
+        continue;
+      }
+
+      // 只从当前观察副本读取目标名称。
+      const visibleTarget = store.getScene().instances.find(
+        unit =>
+          unit.instanceId === assignedTargetId &&
+          unit.observationLevel === "identified"
+      );
+
+      if (!visibleTarget) {
+        lines.push("", "割り当てた目標は現在確認できません。");
+        continue;
+      }
+
+      lines.push("", `割り当て目標：${visibleTarget.name}`);
 
       try {
         const check = store.getAttackTargetReport({
           unitId: report.unitId,
           groupId: group.groupId,
-          targetId: target.value
+          targetId: assignedTargetId
         });
+
 
         lines.push("", "【目標・三次元幾何】");
 
@@ -291,11 +314,25 @@ export function mountAttackUI(store) {
       }
       if (group.issues.length) flags.push("確認事項あり");
 
-      const description = element(
+            const assignedTargetId = assignedTargets.get(group.groupId);
+
+      const targetOption = [...target.options].find(
+        option =>
+          assignedTargetId &&
+          option.value === assignedTargetId
+      );
+
+      const assignmentText = targetOption
+        ? ` / 目標：${targetOption.textContent}`
+        : " / 目標：未割り当て";
+
+
+       const description = element(
         "span",
         `${group.position} / ${group.label}` +
         ` / 第${group.groupIndex + 1}組` +
         ` / 残弾 ${group.remainingAmmo ?? "未登録"}` +
+        assignmentText +
         (flags.length ? `［${flags.join("・")}］` : "")
       );
 
@@ -331,6 +368,37 @@ export function mountAttackUI(store) {
     renderReport();
   });
 
+    const assignTarget = button("選択した組に目標を割り当て", () => {
+    const groups = selectedGroups();
+
+    if (!groups.length) {
+      output.textContent = "装備組を選択してください。";
+      return;
+    }
+
+    if (!target.value) {
+      output.textContent = "割り当てる目標を選択してください。";
+      return;
+    }
+
+    for (const group of groups) {
+      assignedTargets.set(group.groupId, target.value);
+    }
+
+    renderEquipmentList();
+    renderReport();
+  });
+
+  const removeAssignment = button("選択した組の目標を解除", () => {
+    for (const group of selectedGroups()) {
+      assignedTargets.delete(group.groupId);
+    }
+
+    renderEquipmentList();
+    renderReport();
+  });
+
+  
   toolbar.append(selectAll, clearAll);
 
   panel.append(
@@ -339,7 +407,9 @@ export function mountAttackUI(store) {
     toolbar,
     selectionInfo,
     equipmentList,
-    labeled("全選択装備に共通の目標", target),
+    labeled("選択した装備組に割り当てる目標", target),
+    assignTarget,
+    removeAssignment,
     notice,
     output
   );
@@ -368,6 +438,20 @@ export function mountAttackUI(store) {
       }
     }
 
+     const visibleTargetIds = new Set(
+      [...target.options]
+        .map(option => option.value)
+        .filter(Boolean)
+    );
+
+    // 目标失去识别或不再出现在候选列表时，清除检查分配。
+    // 当前分配不是正式命令，因此不保留隐藏目标引用。
+    for (const [groupId, targetId] of assignedTargets) {
+      if (!visibleTargetIds.has(targetId)) {
+        assignedTargets.delete(groupId);
+      }
+    }
+
     restoreOption(target, previous);
     target.disabled = !actingUnit;
   }
@@ -392,6 +476,10 @@ export function mountAttackUI(store) {
       // 删除已不在当前单位查询结果中的旧选择。
       for (const id of selectedGroupIds) {
         if (!validIds.has(id)) selectedGroupIds.delete(id);
+      }
+
+      for (const id of assignedTargets.keys()) {
+        if (!validIds.has(id)) assignedTargets.delete(id);
       }
 
       renderEquipmentList();
@@ -424,6 +512,7 @@ export function mountAttackUI(store) {
     if (selectedActorId !== actor.value) {
       // 组ID只在单位内唯一，不跨单位沿用。
       selectedGroupIds.clear();
+      assignedTargets.clear();
       target.value = "";
       selectedActorId = actor.value;
     }
@@ -434,6 +523,7 @@ export function mountAttackUI(store) {
 
   actor.addEventListener("change", () => {
     selectedGroupIds.clear();
+    assignedTargets.clear();
     selectedActorId = actor.value;
     target.value = "";
 
