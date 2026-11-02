@@ -95,6 +95,22 @@ function readState(value) {
     throw new Error("特殊状態の処理済みラウンドが不正です。");
   }
 
+  for (const type of ["fire", "flooding"]) {
+    const effect = value[type];
+    if (!effect) continue;
+
+    // 已经发生恶化，说明至少经历过一次特殊阶段。
+    if (
+      effect.failedControls > 0 &&
+      effect.acquiredTurn > value.lastResolvedTurn
+    ) {
+      throw new Error(
+        "特殊状態の取得ラウンドと処理履歴が一致しません。"
+      );
+    }
+  }
+
+  
   return copy(value);
 }
 
@@ -301,4 +317,47 @@ export function getFloodingMovementFactor(stateValue) {
     0,
     1 - state.flooding.failedControls * 0.25
   );
+}
+
+/**
+ * 校验并返回独立副本。
+ * 供舰船初始化及保存校验调用。
+ */
+export function validateShipEffectsState(value) {
+  return readState(value);
+}
+
+/**
+ * 仅供本方详情显示。
+ * 不应对外方观察副本调用，否则可能暴露进水状态。
+ */
+export function getOwnShipEffectLines(value) {
+  const state = readState(value);
+
+  const fireLabels = {
+    small: "小火",
+    medium: "中火",
+    large: "大火",
+    uncontrolled: "制御不能"
+  };
+
+  const floodingLabels = {
+    light: "軽度浸水",
+    medium: "中度浸水",
+    heavy: "重度浸水",
+    uncontrolled: "制御不能"
+  };
+
+  return [
+    `火災：${state.fire
+      ? fireLabels[state.fire.level]
+      : "なし"}`,
+    `浸水：${state.flooding
+      ? floodingLabels[state.flooding.level]
+      : "なし"}`,
+    `浸水による移動力補正：${
+      getFloodingMovementFactor(state) * 100
+    }%`,
+    "浸水の移動力補正は、移動処理への接続待ちです。"
+  ];
 }
