@@ -2,9 +2,10 @@ import { getPhaseLabel } from "./simulation-rulebook.js";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 
-// 多组选装、共用目标、批量检查。
-// 选择仅属于当前界面，不保存为攻击命令。
-// 不扣弹、不掷随机数、不执行伤害、不推进阶段。
+// 多组选装、逐组目标、批量检查与攻击计划保存。
+// 页面选择和已保存计划分开管理。
+// 保存计划不扣弹、不掷随机数、不执行伤害、不推进阶段。
+
 
 export function mountAttackUI(store) {
   const aside = document.querySelector("aside");
@@ -65,12 +66,13 @@ export function mountAttackUI(store) {
   toolbar.style.flexWrap = "wrap";
   toolbar.style.gap = "6px";
 
-  const notice = element(
+   const notice = element(
     "p",
     "装備組を選択し、目標を割り当ててください。" +
     "別の組には別の目標を割り当てられます。" +
-    "割り当ては確認用で、正式な攻撃命令として保存されません。" +
-    "攻撃結算は未接続です。弾薬は消費しません。"
+    "「攻撃計画を保存」で現在の段階の計画を保存します。" +
+    "計画の保存は発射ではありません。" +
+    "命中・被害・弾薬消費を含む結算は接続待ちです。"
   );
   notice.className = "note";
 
@@ -125,6 +127,42 @@ export function mountAttackUI(store) {
       `選択装備：${groups.length}組`
     ];
 
+       try {
+      const saved = store.getAttackCommands(report.unitId);
+      const visibleScene = store.getScene();
+
+      lines.push(
+        "",
+        `保存済み攻撃計画：${saved.commands.length}組`
+      );
+
+      for (const command of saved.commands) {
+        const group = report.groups.find(
+          item => item.groupId === command.groupId
+        );
+
+        const savedTarget = command.targetId
+          ? visibleScene.instances.find(
+              unit =>
+                unit.instanceId === command.targetId &&
+                unit.observationLevel === "identified"
+            )
+          : null;
+
+        lines.push(
+          `・${group?.label ?? "装備組"}` +
+          ` / 第${(group?.groupIndex ?? 0) + 1}組` +
+          ` → ${savedTarget?.name ?? "現在確認できない目標"}`
+        );
+      }
+
+      lines.push("保存済み計画は未発射です。");
+    } catch (error) {
+      console.error(error);
+      lines.push(`保存計画を確認できません：${error.message}`);
+    }
+
+    
     if (report.unresolvedMountIndexes.length) {
       lines.push(
         `組数未登録の配置：${report.unresolvedMountIndexes.length}件`,
@@ -407,6 +445,77 @@ export function mountAttackUI(store) {
     renderReport();
   });
 
+    const saveCommands = button("攻撃計画を保存", () => {
+    if (!report) {
+      output.textContent = "行動するユニットを選択してください。";
+      return;
+    }
+
+    const groups = selectedGroups();
+
+    if (!groups.length) {
+      output.textContent = "装備組を選択してください。";
+      return;
+    }
+
+    const assignments = groups.map(group => ({
+      groupId: group.groupId,
+      targetId: assignedTargets.get(group.groupId)
+    }));
+
+    if (assignments.some(item => !item.targetId)) {
+      output.textContent =
+        "選択したすべての装備組に目標を割り当ててください。";
+      return;
+    }
+
+    try {
+      store.saveAttackCommands({
+        unitId: report.unitId,
+        assignments
+      }, report.revision);
+
+      output.textContent =
+        "攻撃計画を保存しました。\n" +
+        "発射・コイン判定・弾薬消費・被害適用は行っていません。";
+    } catch (error) {
+      console.error(error);
+      output.textContent = error.message;
+    }
+  });
+
+  const cancelCommands = button(
+    "選択した組の保存計画を取消",
+    () => {
+      if (!report) {
+        output.textContent = "行動するユニットを選択してください。";
+        return;
+      }
+
+      const groupIds = selectedGroups().map(
+        group => group.groupId
+      );
+
+      if (!groupIds.length) {
+        output.textContent = "装備組を選択してください。";
+        return;
+      }
+
+      try {
+        store.cancelAttackCommands({
+          unitId: report.unitId,
+          groupIds
+        }, report.revision);
+
+        output.textContent =
+          "選択した装備組の保存計画を取り消しました。";
+      } catch (error) {
+        console.error(error);
+        output.textContent = error.message;
+      }
+    }
+  );
+
   
   toolbar.append(selectAll, clearAll);
 
@@ -419,6 +528,8 @@ export function mountAttackUI(store) {
     labeled("選択した装備組に割り当てる目標", target),
     assignTarget,
     removeAssignment,
+    saveCommands,
+    cancelCommands,
     notice,
     output
   );
