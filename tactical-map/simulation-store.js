@@ -1281,6 +1281,59 @@ export function openSimulation(id) {
           
        previewDraft,
 
+        getAttackResourceReport(instanceId) {
+      const unit = state.instances.find(
+        item => item.instanceId === instanceId
+      );
+
+      if (!unit) {
+        throw new Error("ユニットが見つかりません。");
+      }
+
+      assertManualControl(state, [unit]);
+
+      // 检查的是全场批次。
+      // 不向页面返回外方命令、装备、目标或具体失败原因。
+      let prepared;
+
+      try {
+        prepared = prepareAttackBatchResources(copy(state));
+      } catch {
+        return {
+          revision: state.revision,
+          resourcePreparationPassed: false,
+          settlementConnected: false,
+          entries: [],
+          reason:
+            "全批次の資源準備条件を満たしていません。" +
+            "段階開始記録、計画、装備、残弾または未接続処理を確認してください。"
+        };
+      }
+
+      const ownEntries = prepared.entries.filter(
+        entry => entry.unitId === instanceId
+      );
+
+      return copy({
+        revision: state.revision,
+        resourcePreparationPassed: true,
+        settlementConnected: false,
+        entries: ownEntries.map(entry => ({
+          groupId: entry.groupId,
+          ammoBefore: entry.ammoBefore,
+          ammoCost: entry.ammoCost,
+          ammoAfter: entry.ammoAfter,
+          groups: entry.projection.groups,
+          coinsPerGroup: entry.projection.coinsPerGroup,
+          standalone: entry.projection.standalone
+        })),
+        reason:
+          "装備・資源の準備のみ完了しています。" +
+          "目標資格の最終照合、命中、被害および段階終了は未実行です。"
+      });
+    },
+
+   
     getAttackCommands(instanceId) {
       const unit = state.instances.find(
         item => item.instanceId === instanceId
