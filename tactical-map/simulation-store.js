@@ -611,7 +611,7 @@ export function openSimulation(id) {
     }
 
     initializeAttackBatchRuntime(candidate);
-    nitializeUnifiedDamageRuntime(candidate);
+    initializeUnifiedDamageRuntime(candidate);
 
 
 
