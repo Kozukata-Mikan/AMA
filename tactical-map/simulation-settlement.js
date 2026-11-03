@@ -553,33 +553,121 @@ function assertEffectAlgorithms(scene, start, entries) {
 }
 
 function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
-  const hits = new Map(
-    hitStep.reports.map(report => [report.commandId, report])
-  );
-
-  const grouped = new Map();
+    // 资源条目仍然是一命令一条；
+  // 命中报告允许同命令包含多个范围出现项。
+  const entries = new Map();
 
   for (const entry of prepared.entries) {
-    const hit = hits.get(entry.commandId);
-
-    if (!hit) fail("命中報告が不足しています。");
-
-    integer(hit.hit.hitCount, "命中数");
-
-    if (hit.hit.hitCount > entry.ammoCost) {
-      fail("命中数が投射数を超えています。");
+    if (entries.has(entry.commandId)) {
+      fail("攻撃資源の命令識別番号が重複しています。");
     }
 
-    if (!grouped.has(entry.targetId)) {
-      grouped.set(entry.targetId, []);
+    entries.set(entry.commandId, entry);
+  }
+
+  if (!Array.isArray(hitStep?.reports)) {
+    fail("命中報告の形式が不正です。");
+  }
+
+  const grouped = new Map();
+  const occurrencesByCommand = new Map();
+
+  for (const hit of hitStep.reports) {
+    const entry = entries.get(hit?.commandId);
+
+    if (!entry) {
+      fail("命中報告に未登録の攻撃命令があります。");
     }
 
-    grouped.get(entry.targetId).push({
-      entry,
-      hitCount: hit.hit.hitCount,
+    const occurrenceIndex =
+      hit.occurrenceIndex === undefined
+        ? 0
+        : hit.occurrenceIndex;
+
+    integer(occurrenceIndex, "範囲の出現番号");
+
+    if (
+      hit.unitId !== entry.unitId ||
+      hit.groupId !== entry.groupId ||
+      hit.turnNumber !== prepared.turnNumber ||
+      hit.phaseId !== prepared.phaseId ||
+      typeof hit.targetId !== "string" ||
+      hit.targetId.trim() === ""
+    ) {
+      fail("命中報告と攻撃命令が一致しません。");
+    }
+
+    let indexes = occurrencesByCommand.get(entry.commandId);
+
+    if (!indexes) {
+      indexes = new Set();
+      occurrencesByCommand.set(entry.commandId, indexes);
+    }
+
+    if (indexes.has(occurrenceIndex)) {
+      fail("同じ攻撃命令の出現番号が重複しています。");
+    }
+
+    indexes.add(occurrenceIndex);
+
+    const hitCount = integer(
+      hit.hit?.hitCount,
+      "命中数"
+    );
+
+    if (hitCount > entry.ammoCost) {
+      fail("一回の命中数が完全投射数を超えています。");
+    }
+
+    // 当前单体路径必须仍与原目标一致。
+    // 范围路径未来使用targetRef，不把编队ID塞入targetId。
+    if (
+      entry.targetId !== undefined &&
+      hit.targetId !== entry.targetId
+    ) {
+      fail("単体命令の目標と命中報告が一致しません。");
+    }
+
+    unitFor(start, hit.targetId);
+
+    if (!grouped.has(hit.targetId)) {
+      grouped.set(hit.targetId, []);
+    }
+
+    // 不用commandId覆盖，不对targetId去重。
+    // 重复目标的每次完整投射都进入同目标伤害集合。
+    grouped.get(hit.targetId).push({
+      entry: {
+        ...entry,
+        targetId: hit.targetId,
+        occurrenceIndex
+      },
+      hitCount,
       rule: parseDamageRule(entry.profile)
     });
   }
+
+  for (const entry of prepared.entries) {
+    const indexes = occurrencesByCommand.get(entry.commandId);
+
+    if (!indexes || indexes.size === 0) {
+      fail("攻撃命令の命中報告が不足しています。");
+    }
+
+    for (let index = 0; index < indexes.size; index++) {
+      if (!indexes.has(index)) {
+        fail("範囲の出現番号が連続していません。");
+      }
+    }
+
+    if (
+      entry.targetId !== undefined &&
+      indexes.size !== 1
+    ) {
+      fail("単体攻撃に複数の投射報告があります。");
+    }
+  }
+
 
   const targetReports = [];
   const effects = [];
@@ -625,9 +713,11 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
 
         cannonImpacts.push({
           commandId: attack.entry.commandId,
+          occurrenceIndex: attack.entry.occurrenceIndex,
           impactIndex: index,
           impact
         });
+
 
         if (impact.fireEligible) {
           effects.push({
@@ -689,8 +779,10 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
 
       numericReports.push({
         commandId: attack.entry.commandId,
+        occurrenceIndex: attack.entry.occurrenceIndex,
         damage
       });
+
     }
 
     const applied = applyShipDamageAttack(
