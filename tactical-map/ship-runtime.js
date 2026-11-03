@@ -458,7 +458,7 @@ function readDamageAttack(attack) {
     throw new Error("攻撃記録の識別番号がありません。");
   }
 
-  if (!["cannon", "numeric", "underwater"].includes(attack.kind)) {
+    if (!["cannon", "numeric", "underwater", "batch"].includes(attack.kind)) {
     throw new Error("この被害処理は耐性への攻撃専用です。");
   }
 
@@ -477,7 +477,7 @@ function readDamageAttack(attack) {
 
   let normalHitRemainder = null;
 
-  if (attack.kind === "cannon") {
+   if (attack.kind === "cannon" || attack.kind === "batch") {
     normalHitRemainder = requireDamageInteger(
       attack.normalHitRemainder,
       "通常命中の累積値"
@@ -488,7 +488,7 @@ function readDamageAttack(attack) {
     }
   } else if (attack.normalHitRemainder !== undefined) {
     throw new Error(
-      "艦砲以外の攻撃では通常命中の累積値を変更できません。"
+      "艦砲または合算批次以外では通常命中の累積値を変更できません。"
     );
   }
 
@@ -555,7 +555,7 @@ export function applyShipDamageAttack(
     // 已沉没单位不再次升级损伤，也不继续累计常命中。
     ignored = true;
   } else {
-    if (attack.kind === "cannon") {
+    if (attack.kind === "cannon" || attack.kind === "batch") {
       // 全碎或没有被害时，不能凭输入改变累计余数。
       if (
         !attack.hasDamageEffect &&
