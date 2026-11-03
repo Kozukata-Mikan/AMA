@@ -24,6 +24,7 @@ import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime
 
 import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands } from "./simulation-attack-runtime.js";
 
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
 
 
 
@@ -286,6 +287,8 @@ function readSaved(id) {
   initializeSpecialRuntime(value);
   initializeRayTargetRuntime(value);
   initializeAttackRuntime(value);
+  initializeAttackBatchRuntime(value);
+
 
 
   return value;
@@ -527,6 +530,8 @@ export function createSimulation(scene, spatialState) {
   initializeSpecialRuntime(value);
   initializeRayTargetRuntime(value);
   initializeAttackRuntime(value);
+  initializeAttackBatchRuntime(value);
+
 
 
   writeSaved(value);
@@ -561,18 +566,49 @@ export function openSimulation(id) {
       );
     }
 
-    const candidate = copy(state);
+        const candidate = copy(state);
+
+    const previousTurn = state.turn.number;
+    const previousPhase = state.turn.phaseId;
 
     change(candidate);
 
     initializeCombatRuntime(candidate);
-        // 检查任务与双方运行状态一致后，才允许保存。
-    // 不在校验阶段自动决定救助中断或补算时间。
+
+    // 状态改变导致救助失效时，正式战斗事务必须先处理中断。
+    // 此处只做保存校验，不自动抽签或补算。
     initializeRescueState(candidate);
     initializeRescueRuntime(candidate);
     initializeSpecialRuntime(candidate);
     initializeRayTargetRuntime(candidate);
     initializeAttackRuntime(candidate);
+
+    const enteredNewPhase =
+      candidate.turn.number !== previousTurn ||
+      candidate.turn.phaseId !== previousPhase;
+
+    if (enteredNewPhase) {
+      // 阶段变更不得遗留未处理攻击计划。
+      if (candidate.attackRuntime.commands.length !== 0) {
+        throw new Error(
+          "未処理の攻撃計画があるため、段階を変更できません。"
+        );
+      }
+
+      // 旧阶段快照不带入下一阶段。
+      // 这只是运行快照，不修改initialScene。
+      candidate.attackBatchRuntime = {
+        version: 1,
+        snapshot: null
+      };
+
+      if (isAttackPhase(candidate.turn.phaseId)) {
+        captureAttackPhaseStart(candidate);
+      }
+    }
+
+    initializeAttackBatchRuntime(candidate);
+
 
 
 
