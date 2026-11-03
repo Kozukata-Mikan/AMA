@@ -1,5 +1,8 @@
 import { readWeaponProfile } from "./weapon-profile-runtime.js";
 import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
+import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
+import { ensureShipRuntime } from "./ship-runtime.js";
+import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ATTACK_PHASE = /^(order-[1-5]|pas)$/;
@@ -143,6 +146,25 @@ export function initializeAttackBatchRuntime(scene) {
     }
 
     ids.add(unit.instanceId);
+        // 在副本上校验，不能在加载校验时补写历史快照。
+    const checked = copy(unit);
+
+    ensureShipRuntime(checked);
+    ensureUnitCombatRuntime(checked);
+
+    // 正式阶段快照必须已经包含完整运行字段。
+    // 若初始化需要补字段，说明它不是完整的阶段开始记录。
+    if (
+      JSON.stringify(checked.shipState) !==
+        JSON.stringify(unit.shipState) ||
+      JSON.stringify(checked.equipmentState) !==
+        JSON.stringify(unit.equipmentState) ||
+      JSON.stringify(checked.trainingState) !==
+        JSON.stringify(unit.trainingState)
+    ) {
+      fail("次序開始スナップショットの実行状態が不足しています。");
+    }
+
   }
 
   // 本项目不在战斗中新增或删除实例。
@@ -153,6 +175,16 @@ export function initializeAttackBatchRuntime(scene) {
   ) {
     fail("次序開始後にユニット構成が変更されています。");
   }
+    const rayScene = {
+    instances: copy(snapshot.instances),
+    turn: {
+      number: snapshot.turnNumber
+    },
+    rayTargetRuntime: copy(snapshot.rayTargetRuntime)
+  };
+
+  initializeRayTargetRuntime(rayScene);
+
 }
 
 /**
@@ -408,62 +440,109 @@ export function prepareAttackBatchResources(scene) {
 }
 
 /**
- * 正式整批事务内部的资源应用步骤。
+ * 正式批次事务内部的资源应用步骤。
  *
- * 只允许对尚未应用本批伤害的候选副本调用。
- * 命中、伤害、报告和计划终结必须随后同事务完成。
+ * 在独立候选副本中完成检查和扣弹。
+ * 任意失败都不修改传入场景。
  *
- * 不导出为页面按钮；单独调用不等于攻击完成。
+ * 必须先应用资源，再应用本批伤害：
+ * 攻击者随后被击沉，不取消已经发动的攻击。
+ *
+ * 本函数不保存，不终结计划，不推进阶段。
+ * 不能作为页面独立操作入口。
  */
 export function applyAttackBatchResources(scene, prepared) {
-  const expected = prepareAttackBatchResources(scene);
+  const working = copy(scene);
+  const expected = prepareAttackBatchResources(working);
 
-  // 不信任页面或调用方传入的扣弹数字。
-  if (JSON.stringify(prepared) !== JSON.stringify(expected)) {
+  if (
+    JSON.stringify(prepared) !== JSON.stringify(expected)
+  ) {
     fail("攻撃批次の資源準備結果が現在の計画と一致しません。");
   }
 
-  const changes = [];
+  const startScene = getAttackPhaseStartScene(working);
+  const reports = [];
   const used = new Set();
 
+  // 先完成整批检查，不在循环中扣弹。
   for (const entry of expected.entries) {
-    const actor = findUnit(scene, entry.unitId);
+    const actor = findUnit(working, entry.unitId);
+    const startActor = findUnit(startScene, entry.unitId);
+
+    ensureShipRuntime(actor);
+    ensureUnitCombatRuntime(actor);
+
     const group = findGroup(actor, entry.groupId);
+    const startGroup = findGroup(startActor, entry.groupId);
     const key = groupKey(entry.unitId, entry.groupId);
 
     if (
       used.has(key) ||
+      group.equipmentId !== startGroup.equipmentId ||
+      group.mountIndex !== startGroup.mountIndex ||
+      group.groupIndex !== startGroup.groupIndex ||
+      group.position !== startGroup.position ||
+      group.initialAmmo !== startGroup.initialAmmo ||
+      group.profileAvailable !== startGroup.profileAvailable ||
       group.remainingAmmo !== entry.ammoBefore ||
       group.lastUsedTurn !== entry.lastUsedTurnBefore ||
-      group.damaged
+      group.damaged !== startGroup.damaged
     ) {
-      fail("攻撃資源が変更済み、またはこの批次で使用済みです。");
+      fail(
+        "段階開始後に装備構成または攻撃資源が変更されています。"
+      );
     }
 
     used.add(key);
+  }
 
-    changes.push({
-      group,
-      entry
+  // 整批检查成功后，在独立候选副本中扣弹。
+  for (const entry of expected.entries) {
+    const actor = findUnit(working, entry.unitId);
+    const group = findGroup(actor, entry.groupId);
+
+    group.remainingAmmo = entry.ammoAfter;
+    group.lastUsedTurn = expected.turnNumber;
+
+    reports.push({
+      version: 1,
+      commandId: entry.commandId,
+      unitId: entry.unitId,
+      groupId: entry.groupId,
+      turnNumber: expected.turnNumber,
+      phaseId: expected.phaseId,
+      ammoBefore: entry.ammoBefore,
+      ammoCost: entry.ammoCost,
+      ammoAfter: entry.ammoAfter,
+      lastUsedTurnBefore: entry.lastUsedTurnBefore,
+      lastUsedTurnAfter: expected.turnNumber
     });
   }
 
-  // 全组检查成功后才更新，不产生前几组扣弹的半结果。
-  for (const { group, entry } of changes) {
-    group.remainingAmmo = entry.ammoAfter;
-    group.lastUsedTurn = expected.turnNumber;
+  // 扣弹后的保存约束仍须成立。
+  const checkedActors = new Set();
+
+  for (const entry of expected.entries) {
+    if (checkedActors.has(entry.unitId)) continue;
+
+    const actor = findUnit(working, entry.unitId);
+
+    ensureShipRuntime(actor);
+    ensureUnitCombatRuntime(actor);
+
+    checkedActors.add(entry.unitId);
   }
 
-  return expected.entries.map(entry => ({
-    commandId: entry.commandId,
-    unitId: entry.unitId,
-    groupId: entry.groupId,
-    turnNumber: expected.turnNumber,
-    phaseId: expected.phaseId,
-    ammoBefore: entry.ammoBefore,
-    ammoCost: entry.ammoCost,
-    ammoAfter: entry.ammoAfter,
-    lastUsedTurnBefore: entry.lastUsedTurnBefore,
-    lastUsedTurnAfter: expected.turnNumber
-  }));
+  // 所有检查通过后，只写回本步骤负责的装备运行状态。
+  // 不替换整场instances，不覆盖其他事务步骤的数据。
+  for (const unitId of checkedActors) {
+    const source = findUnit(working, unitId);
+    const destination = findUnit(scene, unitId);
+
+    destination.equipmentState = copy(source.equipmentState);
+  }
+
+  return copy(reports);
 }
+
