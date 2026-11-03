@@ -7,7 +7,7 @@ import {initializeSimulationFeatures,getObservedScene,assertManualControl,assert
 import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
 import { readWeaponProfile } from "./weapon-profile-runtime.js";
-import { getObserverVisibility } from "./simulation-features.js";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -22,6 +22,7 @@ import { initializeRescueRuntime } from "./simulation-rescue-runtime.js";
 import { initializeSpecialRuntime } from "./simulation-special-runtime.js";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands } from "./simulation-attack-runtime.js";
 
 
 
@@ -284,6 +285,8 @@ function readSaved(id) {
   initializeRescueRuntime(value);
   initializeSpecialRuntime(value);
   initializeRayTargetRuntime(value);
+  initializeAttackRuntime(value);
+
 
   return value;
 
@@ -523,6 +526,8 @@ export function createSimulation(scene, spatialState) {
   initializeRescueRuntime(value);
   initializeSpecialRuntime(value);
   initializeRayTargetRuntime(value);
+  initializeAttackRuntime(value);
+
 
   writeSaved(value);
 
@@ -567,6 +572,9 @@ export function openSimulation(id) {
     initializeRescueRuntime(candidate);
     initializeSpecialRuntime(candidate);
     initializeRayTargetRuntime(candidate);
+    initializeAttackRuntime(candidate);
+
+
 
         if (
       !Number.isSafeInteger(candidate.revision) ||
@@ -673,7 +681,7 @@ export function openSimulation(id) {
     };
   }
 
-        return {
+         const api = {
     ...createSimulationFeatures(() => state, commit),
     ...createRescueFeatures(() => state, commit),
 
@@ -1235,7 +1243,180 @@ export function openSimulation(id) {
 
 
           
-    previewDraft,
+       previewDraft,
+
+    getAttackCommands(instanceId) {
+      const unit = state.instances.find(
+        item => item.instanceId === instanceId
+      );
+
+      if (!unit) {
+        throw new Error("ユニットが見つかりません。");
+      }
+
+      assertManualControl(state, [unit]);
+
+      const visibility = getVisibility(state);
+
+      return copy({
+        revision: state.revision,
+        turnNumber: state.turn.number,
+        phaseId: state.turn.phaseId,
+        commands: state.attackRuntime.commands
+          .filter(command => command.unitId === instanceId)
+          .map(command => ({
+            id: command.id,
+            groupId: command.groupId,
+            turnNumber: command.turnNumber,
+            phaseId: command.phaseId,
+            status: command.status,
+
+            // 失去识别后，不返回隐藏目标引用。
+            targetId:
+              visibility.get(command.targetId) === "identified"
+                ? command.targetId
+                : null
+          }))
+      });
+    },
+
+    saveAttackCommands(request, expectedRevision) {
+      if (expectedRevision !== state.revision) {
+        throw new Error(
+          "状態が変更されています。もう一度確認してください。"
+        );
+      }
+
+      if (
+        !request ||
+        typeof request.unitId !== "string" ||
+        !Array.isArray(request.assignments) ||
+        !request.assignments.length
+      ) {
+        throw new Error("攻撃計画の指定が不正です。");
+      }
+
+      // 防止调用方在检查与保存之间修改请求对象。
+      const input = copy(request);
+
+      commit(candidate => {
+        if (!isAttackPhase(candidate.turn.phaseId)) {
+          throw new Error(
+            "攻撃計画は次序1～5またはPASで登録してください。"
+          );
+        }
+
+        // 当前commit是同步事务。
+        // 此时candidate尚未修改，与state具有相同版本和阶段。
+        // 复用现有检查入口，不另写一套宽松资格规则。
+        const groupReport = api.getAttackGroupReport(input.unitId);
+        const checked = [];
+        const usedGroups = new Set();
+
+        for (const assignment of input.assignments) {
+          if (
+            !assignment ||
+            typeof assignment.groupId !== "string" ||
+            typeof assignment.targetId !== "string" ||
+            usedGroups.has(assignment.groupId)
+          ) {
+            throw new Error(
+              "攻撃計画の装備組または目標指定が不正です。"
+            );
+          }
+
+          usedGroups.add(assignment.groupId);
+
+          const group = groupReport.groups.find(
+            item => item.groupId === assignment.groupId
+          );
+
+          if (!group || group.profile?.kind !== "weapon") {
+            throw new Error("指定した武器組を確認できません。");
+          }
+
+          if (group.issues.length) {
+            throw new Error(
+              "攻撃計画を登録できません。\n" +
+              group.issues.join("\n")
+            );
+          }
+
+          const targetReport = api.getAttackTargetReport({
+            unitId: input.unitId,
+            groupId: assignment.groupId,
+            targetId: assignment.targetId
+          });
+
+          if (targetReport.issues.length) {
+            throw new Error(
+              "攻撃目標の条件を満たしていません。\n" +
+              targetReport.issues.join("\n")
+            );
+          }
+
+          checked.push({
+            groupId: assignment.groupId,
+            targetId: assignment.targetId,
+            boundaries: [...targetReport.boundaries]
+          });
+        }
+
+        // 全组选装检查成功后，才修改候选状态。
+        replaceAttackCommands(
+          candidate,
+          input.unitId,
+          checked,
+          newId
+        );
+      });
+    },
+
+    cancelAttackCommands(
+      { unitId, groupIds },
+      expectedRevision
+    ) {
+      if (expectedRevision !== state.revision) {
+        throw new Error(
+          "状態が変更されています。もう一度確認してください。"
+        );
+      }
+
+      if (
+        typeof unitId !== "string" ||
+        !Array.isArray(groupIds) ||
+        !groupIds.length ||
+        groupIds.some(id => typeof id !== "string") ||
+        new Set(groupIds).size !== groupIds.length
+      ) {
+        throw new Error("攻撃計画の取消指定が不正です。");
+      }
+
+      const selected = new Set(groupIds);
+
+      commit(candidate => {
+        if (!isAttackPhase(candidate.turn.phaseId)) {
+          throw new Error("攻撃計画を取り消せる段階ではありません。");
+        }
+
+        const unit = candidate.instances.find(
+          item => item.instanceId === unitId
+        );
+
+        if (!unit) {
+          throw new Error("ユニットが見つかりません。");
+        }
+
+        assertManualControl(candidate, [unit]);
+
+        candidate.attackRuntime.commands =
+          candidate.attackRuntime.commands.filter(
+            command =>
+              command.unitId !== unitId ||
+              !selected.has(command.groupId)
+          );
+      });
+    },
 
     saveDraft(request, expectedRevision) {
       if (expectedRevision !== state.revision) {
@@ -1436,4 +1617,7 @@ export function openSimulation(id) {
       return () => listeners.delete(listener);
     }
   };
+
+  return api;
 }
+
