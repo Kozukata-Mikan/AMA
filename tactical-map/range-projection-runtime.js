@@ -575,49 +575,115 @@ export function validateRangeSelection(prepared, selected) {
  * 重复抽中同一目标也不合并命中掷币。
  * 之后的伤害计算才能按目标统一合算。
  */
+/**
+ * 范围命中：
+ * 1. 完整检查准备数据和目标选择记录；
+ * 2. 对所有出现项执行不消耗随机数的参数检查；
+ * 3. 全部通过后，各出现项独立执行完整投射。
+ *
+ * 不扣弹、不保存、不应用舰船伤害。
+ */
 export function resolveRangeProjectionHits(
   prepared,
   selected,
   coinSource
 ) {
-  // 先完整验证目标和抽取次数，再允许产生命中随机数。
-  validateRangeSelection(prepared, selected);
+  // 在访问prepared内部字段前先检查对象结构。
   if (
-    !selected ||
-    selected.version !== 1 ||
-    selected.commandId !== prepared.commandId ||
-    !Array.isArray(selected.occurrences) ||
-    selected.occurrences.length === 0 ||
+    !prepared ||
+    prepared.version !== 1 ||
+    !Array.isArray(prepared.checks) ||
+    !Array.isArray(prepared.eligibleIds) ||
+    !prepared.projection ||
+    typeof prepared.projection.standalone !== "boolean" ||
     (
       coinSource !== undefined &&
       typeof coinSource !== "function"
     )
   ) {
-    fail("範囲攻撃の目標選択結果が不正です。");
+    fail("範囲攻撃の命中準備が不正です。");
   }
 
-  const checks = new Map(
-    prepared.checks
-      .filter(check => check.allowed)
-      .map(check => [check.targetId, check])
+  // 校验目标集合、人数上限、抽签次数和重复记录。
+  validateRangeSelection(prepared, selected);
+
+  const groups = integer(
+    prepared.projection.groups,
+    "投射束数",
+    1
   );
 
-  // 全出现项先校验，再开始正式命中随机。
-  const inputs = selected.occurrences.map((occurrence, index) => {
+  const coinsPerGroup = integer(
+    prepared.projection.coinsPerGroup,
+    "束内投射数",
+    1
+  );
+
+  const ammoCost = integer(
+    groups * coinsPerGroup,
+    "一回分の消費弾数",
+    1
+  );
+
+  if (prepared.ammoCost !== ammoCost) {
+    fail("範囲攻撃の消費弾数が投射定義と一致しません。");
+  }
+
+  if (
+    prepared.projection.standalone &&
+    (groups !== 1 || coinsPerGroup !== 1)
+  ) {
+    fail("単独Rの投射設定が不正です。");
+  }
+
+  const checks = new Map();
+
+  // 不允许重复检查记录覆盖同一目标的正式修正。
+  for (const rawCheck of prepared.checks) {
+    if (
+      !rawCheck ||
+      typeof rawCheck.targetId !== "string" ||
+      rawCheck.targetId.trim() === "" ||
+      checks.has(rawCheck.targetId)
+    ) {
+      fail("範囲メンバーの条件照合記録が不正、または重複しています。");
+    }
+
+    const check = validateCheck(
+      rawCheck,
+      rawCheck.targetId
+    );
+
+    checks.set(check.targetId, check);
+  }
+
+  // 合格候选集合必须与检查记录完全一致。
+  const allowedIds = [...checks.values()]
+    .filter(check => check.allowed)
+    .map(check => check.targetId);
+
+  if (
+    allowedIds.length !== prepared.eligibleIds.length ||
+    allowedIds.some(
+      targetId => !prepared.eligibleIds.includes(targetId)
+    )
+  ) {
+    fail("範囲候補と正式条件照合が一致しません。");
+  }
+
+  const inputs = selected.occurrences.map(occurrence => {
     const check = checks.get(occurrence.targetId);
 
-    if (
-      occurrence.commandId !== prepared.commandId ||
-      occurrence.occurrenceIndex !== index ||
-      !check
-    ) {
-      fail("範囲攻撃の対象と正式条件照合が一致しません。");
+    if (!check || check.allowed !== true) {
+      fail("範囲攻撃の対象条件が確定していません。");
     }
 
     return {
       occurrence: copy(occurrence),
       input: {
-        ...prepared.projection,
+        groups,
+        coinsPerGroup,
+        standalone: prepared.projection.standalone,
         guidance: prepared.guidance,
         bonuses: check.bonuses,
         penalties: check.penalties
@@ -625,11 +691,20 @@ export function resolveRangeProjectionHits(
     };
   });
 
-  const reports = inputs.map(({ occurrence, input }) => ({
-    ...occurrence,
+  // 所有出现项先做确定性检查。
+  // 固定返回false的硬币源只用于参数验证，
+  // 不消耗正式随机数，结果不写入报告。
+  for (const entry of inputs) {
+    resolveHitCoins(entry.input, () => false);
+  }
+
+  // 全部参数确认后，才开始正式命中判定。
+  // 不去重：重复抽中同一目标也分别执行完整投射。
+  const reports = inputs.map(entry => ({
+    ...entry.occurrence,
     hit: coinSource === undefined
-      ? resolveHitCoins(input)
-      : resolveHitCoins(input, coinSource)
+      ? resolveHitCoins(entry.input)
+      : resolveHitCoins(entry.input, coinSource)
   }));
 
   return {
@@ -637,10 +712,12 @@ export function resolveRangeProjectionHits(
     step: "range-hit",
     commandId: prepared.commandId,
 
-    // 仅报告一次资源需求；本函数不执行扣弹。
-    ammoCost: prepared.ammoCost,
+    // 整条命令只有一次资源需求。
+    // 不能把这里的弹药数按reports.length再次倍增。
+    ammoCost,
 
     selection: copy(selected),
     reports
   };
 }
+
