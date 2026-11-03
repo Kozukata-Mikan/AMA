@@ -54,6 +54,10 @@ import {
   reconcileActiveRescues
 } from "./simulation-rescue.js";
 
+import {
+  recordSinkingStarts
+} from "./simulation-phase-finish.js";
+
 const copy = value => JSON.parse(JSON.stringify(value));
 const EPSILON = 1e-7;
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
@@ -207,7 +211,9 @@ function navalPoint(scene, unit) {
 }
 
 function parseDamageRule(profile) {
-  if (/舰炮规则|艦砲規則|艦砲ルール/.test(profile.powerRule)) {
+    if (/^(舰炮规则|艦砲規則|艦砲ルール)$/.test(
+    profile.powerRule.trim()
+  )) {
     return { kind: "cannon", underwater: false };
   }
 
@@ -807,6 +813,10 @@ export function settleAttackPhase(scene, coinSource) {
     coinSource
   );
 
+  recordSinkingStarts(
+    working,
+    damage.targetReports.map(report => report.applied)
+  );
   const rayReports = [];
 
   // 发射即锁定，与是否命中无关。
@@ -878,6 +888,7 @@ export function settleAttackPhase(scene, coinSource) {
   scene.rayTargetRuntime = working.rayTargetRuntime;
   scene.attackRuntime = working.attackRuntime;
   scene.settlementRuntime = working.settlementRuntime;
+  scene.phaseFinishRuntime = working.phaseFinishRuntime;
   scene.turn = working.turn;
 
   // 下一阶段快照由store.commit统一建立。
