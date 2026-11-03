@@ -5,6 +5,7 @@ import { ensureShipRuntime } from "./ship-runtime.js";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
 import { assertIdentifiedTargets  } from "./simulation-features.js";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
+import { validateFormationTopology } from "./formation-target-runtime.js";
 
 
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -410,9 +411,14 @@ export function prepareAttackBatchResources(scene) {
     fail("敵・中立の自律攻撃計画が未実装のため、結算できません。");
   }
 
-  const startScene = getAttackPhaseStartScene(scene);
+    const startScene = getAttackPhaseStartScene(scene);
+
+  // 用次序开始编队树检查，不能用当前列表临时补造。
+  // 全批预检时执行，错误发生在扣弹与随机数之前。
+  validateFormationTopology(startScene);
 
   const commands = [...scene.attackRuntime.commands].sort(
+
     (a, b) =>
       compareText(a.unitId, b.unitId) ||
       compareText(a.groupId, b.groupId)
