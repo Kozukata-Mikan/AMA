@@ -27,6 +27,7 @@ import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands } from ".
 import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
 
 import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
+import { initializeSettlementRuntime, settleAttackPhase } from "./simulation-settlement.js";
 
 
 
@@ -290,6 +291,7 @@ function readSaved(id) {
   initializeAttackRuntime(value);
   initializeAttackBatchRuntime(value);
   initializeUnifiedDamageRuntime(value);
+  initializeSettlementRuntime(value);
 
 
 
@@ -534,6 +536,7 @@ export function createSimulation(scene, spatialState) {
   initializeAttackRuntime(value);
   initializeAttackBatchRuntime(value);
   initializeUnifiedDamageRuntime(value);
+  initializeSettlementRuntime(value);
 
 
 
@@ -688,6 +691,8 @@ export function openSimulation(id) {
     // 修复原代码缺少首字母i的问题。
     // 这里只校验既有记录，不执行旧统一伤害模块。
     initializeUnifiedDamageRuntime(candidate);
+      initializeSettlementRuntime(value);
+
 
     if (
       !Number.isSafeInteger(previousRevision) ||
@@ -1458,6 +1463,36 @@ export function openSimulation(id) {
                 : null
           }))
       });
+    },
+
+        settleAttackPhase(expectedRevision) {
+      if (expectedRevision !== state.revision) {
+        throw new Error(
+          "状態が変更されています。もう一度確認してください。"
+        );
+      }
+
+      if (!isAttackPhase(state.turn.phaseId)) {
+        throw new Error(
+          "正式攻撃は次序1～5またはPASで実行してください。"
+        );
+      }
+
+      let receipt;
+
+      commit(candidate => {
+        receipt = settleAttackPhase(candidate);
+      });
+
+      // 不返回内部命中、目标耐性或外方计划。
+      // 完整报告保留在存档根字段，不进入观察白名单。
+      return {
+        ...receipt,
+        revision: state.revision,
+        message:
+          "この段階の全陣営の攻撃計画を結算しました。" +
+          "次の段階へ移りました。時刻は進めていません。"
+      };
     },
 
     saveAttackCommands(request, expectedRevision) {
