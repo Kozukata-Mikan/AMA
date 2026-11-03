@@ -3,6 +3,9 @@ import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
+import { assertIdentifiedTargets  } from "./simulation-features.js";
+import { resolveHitCoins } from "./weapon-hit-runtime.js";
+
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ATTACK_PHASE = /^(order-[1-5]|pas)$/;
@@ -291,6 +294,20 @@ function prepareCommand(startScene, command) {
   if (target.shipState?.status === "sunk") {
     fail("段階開始時に沈没している目標は攻撃できません。");
   }
+    // 每个阵营分别使用自己的阶段开始观察权限。
+  // 只新建controls，不修改开始快照或页面观察阵营。
+  const actorObservationScene = {
+    ...startScene,
+    controls: {
+      ...startScene.controls,
+      observationSide: actor.side
+    }
+  };
+
+  assertIdentifiedTargets(
+    actorObservationScene,
+    [target]
+  );
 
   if (profile.kind !== "weapon" || profile.issues.length) {
     fail(
@@ -545,4 +562,192 @@ export function applyAttackBatchResources(scene, prepared) {
 
   return copy(reports);
 }
+
+/**
+ * 正式预检函数必须返回：
+ *
+ * {
+ *   allowed: true,
+ *   commandId: entry.commandId,
+ *   bonuses: 非负安全整数,
+ *   penalties: 非负安全整数
+ * }
+ *
+ * bonuses / penalties必须已经包含本次命中所需修正。
+ * 不提供默认零值，避免漏掉练度、词条或环境效果。
+ */
+function validateHitPreflight(result, entry) {
+  if (
+    !result ||
+    typeof result !== "object" ||
+    Array.isArray(result) ||
+    result.allowed !== true ||
+    result.commandId !== entry.commandId ||
+    !Number.isSafeInteger(result.bonuses) ||
+    result.bonuses < 0 ||
+    !Number.isSafeInteger(result.penalties) ||
+    result.penalties < 0
+  ) {
+    fail(
+      "正式な攻撃条件または命中修正が確定していません。" +
+      "未確定の条件を省略せず、結算を停止します。"
+    );
+  }
+
+  return {
+    commandId: entry.commandId,
+    bonuses: result.bonuses,
+    penalties: result.penalties
+  };
+}
+
+/**
+ * 在隔离副本上对全批次执行正式预检。
+ *
+ * 正式预检只能查询：
+ * 不允许修改快照、计划或资源，不应掷随机数。
+ *
+ * 实际几何、词条、范围与威力支持检查由正式预检负责。
+ * 此处不能只传入“始终allowed”的占位函数。
+ */
+function prepareBatchHitChecks(
+  scene,
+  prepared,
+  finalPreflight
+) {
+  if (typeof finalPreflight !== "function") {
+    fail(
+      "正式な攻撃条件照合が未接続です。" +
+      "命中コインは投げません。"
+    );
+  }
+
+  const expected = prepareAttackBatchResources(
+    copy(scene)
+  );
+
+  if (
+    JSON.stringify(prepared) !== JSON.stringify(expected)
+  ) {
+    fail("命中判定の批次と現在の攻撃計画が一致しません。");
+  }
+
+  const startScene = getAttackPhaseStartScene(
+    copy(scene)
+  );
+
+  const checks = [];
+
+  // 必须全部通过后才能进入命中掷币步骤。
+  for (const entry of expected.entries) {
+    const input = {
+      startScene: {
+        ...copy(startScene),
+        controls: {
+          ...copy(startScene.controls),
+          observationSide: entry.side
+        }
+      },
+      entry: copy(entry)
+    };
+
+    const before = JSON.stringify(input);
+
+    const result = finalPreflight(
+      input.startScene,
+      input.entry
+    );
+
+    if (JSON.stringify(input) !== before) {
+      fail(
+        "攻撃条件照合が入力状態を変更しました。" +
+        "命中判定を停止します。"
+      );
+    }
+
+    checks.push(
+      validateHitPreflight(result, entry)
+    );
+  }
+
+  return {
+    prepared: expected,
+    checks
+  };
+}
+
+/**
+ * 整批命中处理：不修改scene，不扣弹，不造成伤害。
+ *
+ * 只允许由完整攻击事务内部调用。
+ * 返回的报告必须与弹药、伤害及计划终结同事务保存。
+ *
+ * 任意失败都不返回半批报告。
+ * 随机源的已调用次数不能“回滚”，但失败时不得保存
+ * 半结果、扣弹或推进阶段。
+ */
+export function resolveAttackBatchHitStep(
+  scene,
+  prepared,
+  finalPreflight,
+  coinSource
+) {
+  if (
+    coinSource !== undefined &&
+    typeof coinSource !== "function"
+  ) {
+    fail("命中判定のコイン関数が不正です。");
+  }
+
+  const checked = prepareBatchHitChecks(
+    scene,
+    prepared,
+    finalPreflight
+  );
+
+  const reports = [];
+
+  for (
+    let index = 0;
+    index < checked.prepared.entries.length;
+    index++
+  ) {
+    const entry = checked.prepared.entries[index];
+    const modifiers = checked.checks[index];
+
+    const input = {
+      groups: entry.projection.groups,
+      coinsPerGroup: entry.projection.coinsPerGroup,
+      standalone: entry.projection.standalone,
+      guidance: entry.profile.guidance,
+      bonuses: modifiers.bonuses,
+      penalties: modifiers.penalties
+    };
+
+    const hit = coinSource === undefined
+      ? resolveHitCoins(input)
+      : resolveHitCoins(input, coinSource);
+
+    reports.push({
+      version: 1,
+      commandId: entry.commandId,
+      unitId: entry.unitId,
+      groupId: entry.groupId,
+      targetId: entry.targetId,
+      turnNumber: checked.prepared.turnNumber,
+      phaseId: checked.prepared.phaseId,
+      modifiers: copy(modifiers),
+      hit: copy(hit)
+    });
+  }
+
+  return {
+    version: 1,
+    step: "attack-hit",
+    turnNumber: checked.prepared.turnNumber,
+    phaseId: checked.prepared.phaseId,
+    reports
+  };
+}
+
 
