@@ -338,13 +338,23 @@ export function interruptRescueTask(
 /**
  * 正式攻击／特殊效果应用后调用，清理不能继续的救助。
  * 必须和导致状态变化的处理处于同一个保存事务。
+ *
+ * 不调用initializeRescueState：
+ * 状态刚发生变化时，失效任务尚未清理，
+ * 应先处理中断，再进行完整保存校验。
  */
 export function reconcileActiveRescues(scene) {
-   const results = reconcileActiveRescues(scene).map(result => ({
-    ...result,
-    resultType: "interruption"
-  }));
+  if (
+    !scene ||
+    !Array.isArray(scene.instances) ||
+    !Array.isArray(scene.rescueTasks) ||
+    !Number.isSafeInteger(scene.turn?.number) ||
+    scene.turn.number < 1
+  ) {
+    fail("救助継続判定の推演状態が不正です。");
+  }
 
+  const results = [];
 
   for (const task of scene.rescueTasks) {
     if (task.status !== "active") continue;
@@ -365,6 +375,7 @@ export function reconcileActiveRescues(scene) {
 
   return results;
 }
+
 
 
 /**
