@@ -72,7 +72,9 @@ export function mountAttackUI(store) {
     "別の組には別の目標を割り当てられます。" +
     "「攻撃計画を保存」で現在の段階の計画を保存します。" +
     "計画の保存は発射ではありません。" +
-    "命中・被害・弾薬消費を含む結算は接続待ちです。"
+    "「現在の攻撃段階を一括結算」で全陣営の保存計画を処理します。" +
+    "未対応の範囲・支援効果・特殊能力がある場合は停止します。"
+
   );
   notice.className = "note";
 
@@ -543,7 +545,53 @@ export function mountAttackUI(store) {
     }
   );
 
-  
+    const executeBatch = button("現在の攻撃段階を一括結算", () => {
+    const scene = store.getScene();
+    executeBatch.disabled =
+    !/^(order-[1-5]|pas)$/.test(scene.turn.phaseId);
+
+
+    if (!/^(order-[1-5]|pas)$/.test(scene.turn.phaseId)) {
+      output.textContent =
+        "次序1～5またはPASで実行してください。";
+      return;
+    }
+
+    if (!window.confirm(
+      "現在の段階に保存された全陣営の攻撃計画を一括結算します。\n" +
+      "画面で選択した装備組だけの実行ではありません。\n" +
+      "成功すると弾薬・被害・射線固定・履歴をまとめて保存し、" +
+      "次の段階へ移ります。\n" +
+      "未対応の条件がある場合は、保存せず停止します。"
+    )) {
+      return;
+    }
+
+    executeBatch.disabled = true;
+
+    try {
+      const result = store.settleAttackPhase(scene.revision);
+
+      output.textContent =
+        result.message + "\n" +
+        `次の段階：${getPhaseLabel(result.nextPhaseId)}`;
+    } catch (error) {
+      console.error(error);
+
+      // 不把完整内部异常直接显示给其他观察阵营。
+      output.textContent =
+        "一括結算を完了できませんでした。\n" +
+        "今回の弾薬・被害・履歴・段階変更は保存していません。\n" +
+        "装備資料、攻撃範囲、支援効果、特殊能力、" +
+        "開始記録を確認してください。";
+    } finally {
+      executeBatch.disabled =
+        !/^(order-[1-5]|pas)$/.test(
+          store.getScene().turn.phaseId
+        );
+    }
+  });
+
   toolbar.append(selectAll, clearAll);
 
   panel.append(
@@ -557,6 +605,7 @@ export function mountAttackUI(store) {
     removeAssignment,
     saveCommands,
     cancelCommands,
+    executeBatch,
     notice,
     output
   );
