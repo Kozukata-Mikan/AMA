@@ -29,6 +29,7 @@ import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatc
 import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
 import { initializeSettlementRuntime, settleAttackPhase } from "./simulation-settlement.js";
 
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js";
 
 
 
@@ -292,6 +293,8 @@ function readSaved(id) {
   initializeAttackBatchRuntime(value);
   initializeUnifiedDamageRuntime(value);
   initializeSettlementRuntime(value);
+  initializePhaseFinishRuntime(value);
+
 
 
 
@@ -526,8 +529,6 @@ export function createSimulation(scene, spatialState) {
   };
 
   initializeCombatRuntime(value);
-
-
   initializeSimulationFeatures(value);
   initializeRescueState(value);
   initializeRescueRuntime(value);
@@ -537,6 +538,8 @@ export function createSimulation(scene, spatialState) {
   initializeAttackBatchRuntime(value);
   initializeUnifiedDamageRuntime(value);
   initializeSettlementRuntime(value);
+  initializePhaseFinishRuntime(value);
+
 
 
 
@@ -662,6 +665,9 @@ export function openSimulation(id) {
     initializeSpecialRuntime(candidate);
     initializeRayTargetRuntime(candidate);
     initializeAttackRuntime(candidate);
+    initializeSettlementRuntime(candidate);
+    initializePhaseFinishRuntime(candidate);
+
 
     const enteredNewPhase =
       candidate.turn.number !== previousTurn ||
@@ -1494,6 +1500,45 @@ export function openSimulation(id) {
           "次の段階へ移りました。時刻は進めていません。"
       };
     },
+
+        finishSpecialPhase(expectedRevision) {
+      if (expectedRevision !== state.revision) {
+        throw new Error(
+          "状態が変更されています。もう一度確認してください。"
+        );
+      }
+
+      let receipt;
+
+      commit(candidate => {
+        receipt = finishSpecialPhase(candidate);
+      });
+
+      return {
+        ...receipt,
+        revision: state.revision
+      };
+    },
+
+    finishTurn(expectedRevision) {
+      if (expectedRevision !== state.revision) {
+        throw new Error(
+          "状態が変更されています。もう一度確認してください。"
+        );
+      }
+
+      let receipt;
+
+      commit(candidate => {
+        receipt = finishTurn(candidate);
+      });
+
+      return {
+        ...receipt,
+        revision: state.revision
+      };
+    },
+
 
     saveAttackCommands(request, expectedRevision) {
       if (expectedRevision !== state.revision) {
