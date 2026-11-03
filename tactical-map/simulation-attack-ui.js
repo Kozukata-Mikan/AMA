@@ -549,6 +549,9 @@ export function mountAttackUI(store) {
     const scene = store.getScene();
     executeBatch.disabled =
     !/^(order-[1-5]|pas)$/.test(scene.turn.phaseId);
+    finishPhase.disabled =
+    !["special", "end"].includes(scene.turn.phaseId);
+
 
 
     if (!/^(order-[1-5]|pas)$/.test(scene.turn.phaseId)) {
@@ -592,6 +595,48 @@ export function mountAttackUI(store) {
     }
   });
 
+    const finishPhase = button("特殊段階・回合終了を処理", () => {
+    const scene = store.getScene();
+    const phaseId = scene.turn.phaseId;
+
+    if (!["special", "end"].includes(phaseId)) {
+      output.textContent =
+        "特殊詞条判定または回合終了段階で実行してください。";
+      return;
+    }
+
+    const confirmation = phaseId === "special"
+      ? "全艦の火災・浸水・救助判定をまとめて処理します。\n" +
+        "成功すると回合終了段階へ移ります。時刻は進めません。"
+      : "自然沈没の計時と回合終了処理をまとめて保存します。\n" +
+        "成功した場合だけ30分進めて次のラウンドへ移ります。";
+
+    if (!window.confirm(confirmation)) return;
+
+    finishPhase.disabled = true;
+
+    try {
+      const result = phaseId === "special"
+        ? store.finishSpecialPhase(scene.revision)
+        : store.finishTurn(scene.revision);
+
+      output.textContent = result.message;
+    } catch (error) {
+      console.error(error);
+
+      output.textContent =
+        "段階終了処理を完了できませんでした。\n" +
+        "今回の状態・履歴・段階・時刻変更は保存していません。\n" +
+        "未対応の特殊能力、装備損管、開始記録、" +
+        "または保存状態を確認してください。";
+    } finally {
+      finishPhase.disabled =
+        !["special", "end"].includes(
+          store.getScene().turn.phaseId
+        );
+    }
+  });
+
   toolbar.append(selectAll, clearAll);
 
   panel.append(
@@ -606,6 +651,7 @@ export function mountAttackUI(store) {
     saveCommands,
     cancelCommands,
     executeBatch,
+    finishPhase,
     notice,
     output
   );
