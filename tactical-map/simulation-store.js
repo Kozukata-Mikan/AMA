@@ -1002,20 +1002,59 @@ export function openSimulation(id) {
       const terrainInterior = entersTerrainInterior(trace);
       const tolerance = 1e-7;
 
-            const underwaterWeapon =
-        profile.underwater ||
-        /[（(]\s*水下\s*[）)]/.test(profile.powerRule);
+                  // “数字（水下）”威力或“平射（水下）”引导，
+      // 任一条件成立即属于水下武器。
+      // 同时兼容标准化后的profile和部署快照原始引导文本。
+      const underwaterPower =
+        typeof profile.powerRule === "string" &&
+        /^\s*\d+(?:\.\d+)?\s*[（(]\s*水下\s*[）)]\s*$/
+          .test(profile.powerRule);
 
-      // 普通舰船武器不能向下攻击；
-      // 不能用这个限制一并封死专门的水下武器。
-      if (
-        !underwaterWeapon &&
-        relativeHeight < -tolerance
-      ) {
-        issues.push(
-          "通常の艦船武器は下方の目標を攻撃できません。"
-        );
+      const underwaterDirect = [
+        profile.guidance,
+        source.guidance
+      ].some(value =>
+        typeof value === "string" &&
+        /^\s*平射\s*[（(]\s*水下\s*[）)]\s*$/.test(value)
+      );
+
+      const underwaterWeapon =
+        profile.underwater === true ||
+        underwaterPower ||
+        underwaterDirect;
+
+      // 水下平射仍按平射检查真实地形。
+      // 只有“平射（水下）”需要在这里归一为direct；
+      // 不把其他引导方式的水下数字武器强行改为平射。
+      const attackGuidance = underwaterDirect
+        ? "direct"
+        : profile.guidance;
+
+      if (underwaterWeapon) {
+        // 海平面是高度0，而不是发射舰自身的高度。
+        // 水下武器可以攻击水面和水下，不能攻击海平面以上。
+        if (to.z > tolerance) {
+          issues.push(
+            "水中武器は海面より上の目標を攻撃できません。"
+          );
+        }
+      } else {
+        // 普通舰船武器保持现有向下攻击限制。
+        if (relativeHeight < -tolerance) {
+          issues.push(
+            "通常の艦船武器は下方の目標を攻撃できません。"
+          );
+        }
+
+        // 明确禁止普通武器攻击水下单位。
+        // 即使发射者也在水下，不能因相对高度不为负而绕过。
+        if (target.underwater === true) {
+          issues.push(
+            "通常の艦船武器は水中の目標を攻撃できません。"
+          );
+        }
       }
+
 
 
       if (
@@ -1032,7 +1071,7 @@ export function openSimulation(id) {
         issues.push("三次元距離が射距を超えています。");
       }
 
-      switch (profile.guidance) {
+      switch (attackGuidance) {
         case "direct":
           if (terrainInterior) {
             issues.push("三次元の射撃直線が地形内部を通過します。");
