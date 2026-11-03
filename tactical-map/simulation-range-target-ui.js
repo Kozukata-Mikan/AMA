@@ -151,7 +151,11 @@ export function createRangeTargetEditor({
   errorBox.setAttribute("role", "alert");
   root.append(errorBox);
 
-  let checks = [];
+    let checks = [];
+
+  // 旧目标失去观察权限时，必须明确重新指定。
+  // 不允许保存时静默删除不可见成员。
+  let requiresReselection = false;
 
   function selectedOption() {
     if (select.value === "") return null;
@@ -212,9 +216,13 @@ export function createRangeTargetEditor({
     }
   }
 
-  select.addEventListener("change", () => renderMembers());
+    select.addEventListener("change", () => {
+    requiresReselection = false;
+    renderMembers();
+  });
 
-  if (initial) {
+
+   if (initial) {
     const saved = readRangeCommandTarget(initial, scope);
 
     const index = options.findIndex(option =>
@@ -222,32 +230,50 @@ export function createRangeTargetEditor({
       option.targetRef.id === saved.targetRef.id
     );
 
-    // 不把已失去观察权限的旧目标重新塞回选项。
     if (index >= 0) {
-      select.value = String(index);
-      renderMembers(saved.specifiedTargetIds);
-
       const visibleIds = new Set(
         options[index].members.map(member => member.id)
       );
 
-      if (
-        saved.specifiedTargetIds.some(id => !visibleIds.has(id))
-      ) {
+      const hasUnavailableMember =
+        saved.specifiedTargetIds.some(
+          memberId => !visibleIds.has(memberId)
+        );
+
+      if (hasUnavailableMember) {
+        // 不恢复部分集合，也不显示隐藏成员的名称或数量。
+        // 保持主目标未选择，要求用户明确重新指定。
+        requiresReselection = true;
+        select.value = "";
+        renderMembers();
+
         errorBox.textContent =
-          "以前の指定対象を表示できません。対象を再指定してください。";
+          "以前の指定対象を表示できません。主目標と対象を再指定してください。";
+      } else {
+        select.value = String(index);
+        renderMembers(saved.specifiedTargetIds);
       }
     } else {
+      requiresReselection = true;
+      select.value = "";
+      renderMembers();
+
       errorBox.textContent =
         "以前の主目標を表示できません。主目標を再指定してください。";
     }
   }
 
+
   return {
     element: root,
 
     read() {
+      if (requiresReselection) {
+        fail("以前の対象を保存できません。主目標と対象を再指定してください。");
+      }
+
       const option = selectedOption();
+
 
       if (!option) {
         fail("主目標を選択してください。");
