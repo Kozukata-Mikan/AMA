@@ -20,6 +20,8 @@ import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runt
 import { initializeRescueRuntime } from "./simulation-rescue-runtime.js";
 
 import { initializeSpecialRuntime } from "./simulation-special-runtime.js";
+import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
+
 
 
 
@@ -281,6 +283,7 @@ function readSaved(id) {
   initializeRescueState(value);
   initializeRescueRuntime(value);
   initializeSpecialRuntime(value);
+  initializeRayTargetRuntime(value);
 
   return value;
 
@@ -519,6 +522,7 @@ export function createSimulation(scene, spatialState) {
   initializeRescueState(value);
   initializeRescueRuntime(value);
   initializeSpecialRuntime(value);
+  initializeRayTargetRuntime(value);
 
   writeSaved(value);
 
@@ -562,6 +566,7 @@ export function openSimulation(id) {
     initializeRescueState(candidate);
     initializeRescueRuntime(candidate);
     initializeSpecialRuntime(candidate);
+    initializeRayTargetRuntime(candidate);
 
         if (
       !Number.isSafeInteger(candidate.revision) ||
@@ -1067,17 +1072,32 @@ export function openSimulation(id) {
           );
           break;
 
-                case "ray":
+                        case "ray": {
           if (terrainInterior) {
             issues.push(
               "三次元の射撃直線が地形内部を通過します。"
             );
           }
 
+          const rayCheck = checkRayTarget({
+            scene: state,
+            unitId: actor.instanceId,
+            targetId: target.instanceId,
+            turnNumber: state.turn.number
+          });
+
+          if (!rayCheck.allowed) {
+            issues.push(rayCheck.reason);
+          }
+
           boundaries.push(
-            "射線の1ラウンド1目標ロックは未接続です。"
+            "射線の目標固定チェックは実装済みです。" +
+            "正式発射時の固定記録は攻撃結算への接続待ちです。"
           );
+
           break;
+        }
+
 
 
         default:
