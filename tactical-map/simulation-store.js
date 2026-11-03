@@ -26,6 +26,7 @@ import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands } from ".
 
 import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
 
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
 
 
 
@@ -288,6 +289,7 @@ function readSaved(id) {
   initializeRayTargetRuntime(value);
   initializeAttackRuntime(value);
   initializeAttackBatchRuntime(value);
+  initializeUnifiedDamageRuntime(value);
 
 
 
@@ -531,6 +533,7 @@ export function createSimulation(scene, spatialState) {
   initializeRayTargetRuntime(value);
   initializeAttackRuntime(value);
   initializeAttackBatchRuntime(value);
+  initializeUnifiedDamageRuntime(value);
 
 
 
@@ -608,6 +611,7 @@ export function openSimulation(id) {
     }
 
     initializeAttackBatchRuntime(candidate);
+    nitializeUnifiedDamageRuntime(candidate);
 
 
 
