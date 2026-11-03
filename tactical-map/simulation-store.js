@@ -694,10 +694,9 @@ export function openSimulation(id) {
 
     initializeAttackBatchRuntime(candidate);
 
-    // 修复原代码缺少首字母i的问题。
     // 这里只校验既有记录，不执行旧统一伤害模块。
     initializeUnifiedDamageRuntime(candidate);
-      initializeSettlementRuntime(value);
+
 
 
     if (
