@@ -428,6 +428,147 @@ export function selectRangeOccurrences(
   };
 }
 
+
+/**
+ * 检查正式目标选择记录。
+ *
+ * 不产生随机数，不修改输入。
+ * 允许随机重复，但禁止超次数、改目标、丢抽签记录。
+ *
+ * 只检查记录的内部一致性；
+ * 正式预检结果仍必须来自本次事务，不能信任外部导入。
+ */
+export function validateRangeSelection(prepared, selected) {
+  if (
+    !prepared ||
+    prepared.version !== 1 ||
+    typeof prepared.commandId !== "string" ||
+    prepared.commandId.trim() === "" ||
+    !Array.isArray(prepared.eligibleIds) ||
+    prepared.eligibleIds.length === 0 ||
+    prepared.eligibleIds.some(
+      id => typeof id !== "string" || id.trim() === ""
+    ) ||
+    new Set(prepared.eligibleIds).size !==
+      prepared.eligibleIds.length
+  ) {
+    fail("範囲攻撃の準備結果が不正です。");
+  }
+
+  const scope = readScope(prepared.scope);
+  const candidates = prepared.eligibleIds;
+
+  if (
+    !selected ||
+    selected.version !== 1 ||
+    selected.commandId !== prepared.commandId ||
+    selected.mode !== scope.mode ||
+    !Array.isArray(selected.candidateIds) ||
+    !Array.isArray(selected.selections) ||
+    !Array.isArray(selected.occurrences) ||
+    selected.occurrences.length === 0
+  ) {
+    fail("範囲攻撃の目標選択記録が不正です。");
+  }
+
+  if (
+    selected.candidateIds.length !== candidates.length ||
+    selected.candidateIds.some(
+      (id, index) => id !== candidates[index]
+    )
+  ) {
+    fail("範囲攻撃の候補一覧が正式照合と一致しません。");
+  }
+
+  for (
+    let index = 0;
+    index < selected.occurrences.length;
+    index++
+  ) {
+    const occurrence = selected.occurrences[index];
+
+    if (
+      !occurrence ||
+      occurrence.commandId !== prepared.commandId ||
+      occurrence.occurrenceIndex !== index ||
+      !candidates.includes(occurrence.targetId)
+    ) {
+      fail("範囲攻撃の対象が正式候補と一致しません。");
+    }
+  }
+
+  if (scope.mode === "random") {
+    const expectedCount = Math.min(
+      scope.maximumTargets,
+      candidates.length
+    );
+
+    if (
+      selected.occurrences.length !== expectedCount ||
+      selected.selections.length !== expectedCount
+    ) {
+      fail("範囲攻撃の抽選回数が正式上限と一致しません。");
+    }
+
+    for (let index = 0; index < expectedCount; index++) {
+      const draw = selected.selections[index];
+      const occurrence = selected.occurrences[index];
+
+      if (
+        !draw ||
+        draw.drawIndex !== index ||
+        !Number.isSafeInteger(draw.candidateIndex) ||
+        draw.candidateIndex < 0 ||
+        draw.candidateIndex >= candidates.length ||
+        draw.targetId !== candidates[draw.candidateIndex] ||
+        draw.targetId !== occurrence.targetId
+      ) {
+        fail("範囲攻撃の抽選記録と対象が一致しません。");
+      }
+    }
+
+    // 刻意不检查目标唯一性：
+    // 随机允许同一单位重复被选。
+    return true;
+  }
+
+  if (selected.selections.length !== 0) {
+    fail("非抽選の範囲攻撃に抽選記録が含まれています。");
+  }
+
+  let expectedIds;
+
+  if (scope.mode === "all") {
+    expectedIds = candidates;
+  } else {
+    const ids = prepared.specifiedTargetIds;
+
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      ids.length > scope.maximumTargets ||
+      new Set(ids).size !== ids.length ||
+      ids.some(id => !candidates.includes(id))
+    ) {
+      fail("正式な指定メンバー一覧が不正です。");
+    }
+
+    expectedIds = ids;
+  }
+
+  if (
+    selected.occurrences.length !== expectedIds.length ||
+    selected.occurrences.some(
+      (occurrence, index) =>
+        occurrence.targetId !== expectedIds[index]
+    )
+  ) {
+    fail("範囲攻撃の対象集合が正式指定と一致しません。");
+  }
+
+  return true;
+}
+
 /**
  * 每次范围命中独立执行完整X·YR。
  *
@@ -439,6 +580,8 @@ export function resolveRangeProjectionHits(
   selected,
   coinSource
 ) {
+  // 先完整验证目标和抽取次数，再允许产生命中随机数。
+  validateRangeSelection(prepared, selected);
   if (
     !selected ||
     selected.version !== 1 ||
