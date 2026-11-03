@@ -308,6 +308,21 @@ export function prepareRangeProjection({
     specifiedIds = [...specifiedTargetIds].sort(compareText);
   }
 
+    // 抽取目标之前，验证全部合格候选的真实命中修正。
+  // 不能只用零修正验证结构，否则可能抽签后才发现参数错误。
+  for (const check of checks) {
+    if (!check.allowed) continue;
+
+    resolveHitCoins({
+      groups,
+      coinsPerGroup,
+      standalone: projection.standalone,
+      guidance,
+      bonuses: check.bonuses,
+      penalties: check.penalties
+    }, () => false);
+  }
+
   // 用既有命中算法验证引导与投射结构。
   // 隔离支持检查，不消耗正式随机数。
   resolveHitCoins({
