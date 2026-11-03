@@ -157,6 +157,33 @@ export function mountAttackUI(store) {
       }
 
       lines.push("保存済み計画は未発射です。");
+
+            const resources = store.getAttackResourceReport(
+        report.unitId
+      );
+
+      lines.push(
+        "",
+        "【批次資源準備】",
+        resources.reason
+      );
+
+      for (const entry of resources.entries) {
+        const resourceGroup = report.groups.find(
+          item => item.groupId === entry.groupId
+        );
+
+        lines.push(
+          `・${resourceGroup?.label ?? "装備組"}` +
+          ` / 第${(resourceGroup?.groupIndex ?? 0) + 1}組` +
+          `：残弾 ${entry.ammoBefore}` +
+          ` → 使用予定 ${entry.ammoCost}` +
+          ` → 使用後予定 ${entry.ammoAfter}`
+        );
+      }
+
+      lines.push("予定値です。残弾は変更していません。");
+
     } catch (error) {
       console.error(error);
       lines.push(`保存計画を確認できません：${error.message}`);
