@@ -559,27 +559,101 @@ export function openSimulation(id) {
     }
   }
 
-  function commit(change) {
+    function commit(change) {
+    if (typeof change !== "function") {
+      throw new Error("保存処理の指定が不正です。");
+    }
+
     const latest = readSaved(id);
 
-    // 防止两个页面同时修改同一次推演，后保存者覆盖前者。
+    // 防止其他页面覆盖当前页面的修改。
     if (latest.revision !== state.revision) {
       throw new Error(
-        "別の画面で推演が更新されています。ページを再読み込みしてください。"
+        "別の画面で推演が更新されています。" +
+        "ページを再読み込みしてください。"
       );
     }
 
-        const candidate = copy(state);
+    // 所有修改只发生在独立候选副本。
+    const candidate = copy(state);
 
     const previousTurn = state.turn.number;
     const previousPhase = state.turn.phaseId;
+    const previousRevision = state.revision;
 
-    change(candidate);
+    // 初始场景包含原始部署资料与图鉴快照，禁止事务修改。
+    const initialSceneBefore = JSON.stringify(state.initialScene);
+
+    const snapshotBefore = JSON.stringify(
+      state.instances.map(unit => ({
+        instanceId: unit.instanceId,
+        snapshot: unit.snapshot
+      }))
+    );
+
+    const result = change(candidate);
+
+    // 当前localStorage事务必须同步完成。
+    // 不允许异步回调先返回，再修改候选状态。
+    if (
+      result !== null &&
+      result !== undefined &&
+      typeof result.then === "function"
+    ) {
+      throw new Error(
+        "非同期の処理は、この保存トランザクションでは実行できません。"
+      );
+    }
+
+    // 事务不能变更存档身份或自行递增更新号。
+    if (
+      candidate.id !== state.id ||
+      candidate.mode !== state.mode ||
+      candidate.version !== state.version ||
+      candidate.createdAt !== state.createdAt ||
+      candidate.revision !== previousRevision
+    ) {
+      throw new Error(
+        "保存データの識別情報または更新番号を変更できません。"
+      );
+    }
+
+    if (
+      JSON.stringify(candidate.initialScene) !== initialSceneBefore
+    ) {
+      throw new Error(
+        "初期場面のスナップショットは変更できません。"
+      );
+    }
+
+    // 正式战斗通过运行状态记录损伤，不改部署图鉴快照。
+    const snapshotAfter = JSON.stringify(
+      candidate.instances?.map(unit => ({
+        instanceId: unit.instanceId,
+        snapshot: unit.snapshot
+      }))
+    );
+
+    if (snapshotAfter !== snapshotBefore) {
+      throw new Error(
+        "配置ユニットの一覧または図鑑スナップショットを変更できません。"
+      );
+    }
+
+    // 规则未完整实现时，不能通过保存事务宣称已就绪。
+    if (
+      RULESET.ready !== false ||
+      candidate.ruleset?.ready !== false
+    ) {
+      throw new Error(
+        "規則の実装が完了していないため、準備完了には変更できません。"
+      );
+    }
 
     initializeCombatRuntime(candidate);
 
-    // 状态改变导致救助失效时，正式战斗事务必须先处理中断。
-    // 此处只做保存校验，不自动抽签或补算。
+    // 正式伤害事务必须先协调救助中断。
+    // 保存层只校验，不擅自抽签、补算或修复战斗结果。
     initializeRescueState(candidate);
     initializeRescueRuntime(candidate);
     initializeSpecialRuntime(candidate);
@@ -591,50 +665,59 @@ export function openSimulation(id) {
       candidate.turn.phaseId !== previousPhase;
 
     if (enteredNewPhase) {
-      // 阶段变更不得遗留未处理攻击计划。
       if (candidate.attackRuntime.commands.length !== 0) {
         throw new Error(
           "未処理の攻撃計画があるため、段階を変更できません。"
         );
       }
 
-      // 旧阶段快照不带入下一阶段。
-      // 这只是运行快照，不修改initialScene。
+      // 只重建运行快照，不修改initialScene。
       candidate.attackBatchRuntime = {
         version: 1,
         snapshot: null
       };
 
+      // 移动结束及后续攻击次序入口在此统一捕获快照。
       if (isAttackPhase(candidate.turn.phaseId)) {
         captureAttackPhaseStart(candidate);
       }
     }
 
     initializeAttackBatchRuntime(candidate);
+
+    // 修复原代码缺少首字母i的问题。
+    // 这里只校验既有记录，不执行旧统一伤害模块。
     initializeUnifiedDamageRuntime(candidate);
 
-
-
-
-        if (
-      !Number.isSafeInteger(candidate.revision) ||
-      candidate.revision < 0 ||
-      candidate.revision >= Number.MAX_SAFE_INTEGER
+    if (
+      !Number.isSafeInteger(previousRevision) ||
+      previousRevision < 0 ||
+      previousRevision >= Number.MAX_SAFE_INTEGER
     ) {
       throw new Error("推演の保存更新番号が範囲外です。");
     }
 
-    candidate.revision += 1;
-
-
+    candidate.revision = previousRevision + 1;
     candidate.updatedAt = new Date().toISOString();
 
-    // 保存成功后才改变内存状态。
-    writeSaved(candidate);
-    state = candidate;
+    // 回调可能触发其他同步保存，写入前再次检查。
+    const beforeWrite = readSaved(id);
 
+    if (beforeWrite.revision !== previousRevision) {
+      throw new Error(
+        "保存処理中に推演が更新されました。" +
+        "今回の変更は保存していません。"
+      );
+    }
+
+    // 沿用现有压缩、容量不足重试与存档键。
+    // 写入失败会抛出错误，不更新内存、不通知界面。
+    writeSaved(candidate);
+
+    state = candidate;
     notify();
   }
+
 
   function previewDraft({
     attacker,
