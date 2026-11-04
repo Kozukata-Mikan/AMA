@@ -293,9 +293,10 @@ function preflightSpecial(scene) {
       );
     }
 
-       const damagedCount = unit.equipmentState.groups
-      .filter(group => group.damaged)
+      const damagedCount = unit.equipmentState.groups
+      .filter(group => group.damaged && !group.destroyed)
       .length;
+
 
     const context = {
       turnNumber: scene.turn.number,
