@@ -6,7 +6,7 @@ import {initializeSimulationFeatures,getObservedScene,assertManualControl,assert
 
 import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
-import { readWeaponProfile } from "./weapon-profile-runtime.js";
+import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js";
 import { getObserverVisibility , getVisibility} from "./simulation-features.js";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
@@ -22,15 +22,17 @@ import { initializeRescueRuntime } from "./simulation-rescue-runtime.js";
 import { initializeSpecialRuntime } from "./simulation-special-runtime.js";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands } from "./simulation-attack-runtime.js";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands, readAttackCommandTarget } from "./simulation-attack-runtime.js";
 
 import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
 
 import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
-import { initializeSettlementRuntime, settleAttackPhase } from "./simulation-settlement.js";
+import { initializeSettlementRuntime, settleAttackPhase,prepareSettlementAttackPlan } from "./simulation-settlement.js";
 
 import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js";
 
+import { readRangeCommandTarget } from "./simulation-range-command.js";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js";
 
 
 
@@ -1435,7 +1437,7 @@ export function openSimulation(id) {
     },
 
    
-    getAttackCommands(instanceId) {
+        getAttackCommands(instanceId) {
       const unit = state.instances.find(
         item => item.instanceId === instanceId
       );
@@ -1447,6 +1449,10 @@ export function openSimulation(id) {
       assertManualControl(state, [unit]);
 
       const visibility = getVisibility(state);
+      const observed = getObservedScene(state);
+      const visibleGroups = new Set(
+        observed.groups.map(group => group.id)
+      );
 
       return copy({
         revision: state.revision,
@@ -1454,21 +1460,49 @@ export function openSimulation(id) {
         phaseId: state.turn.phaseId,
         commands: state.attackRuntime.commands
           .filter(command => command.unitId === instanceId)
-          .map(command => ({
-            id: command.id,
-            groupId: command.groupId,
-            turnNumber: command.turnNumber,
-            phaseId: command.phaseId,
-            status: command.status,
+          .map(command => {
+            const target = readAttackCommandTarget(command);
 
-            // 失去识别后，不返回隐藏目标引用。
-            targetId:
-              visibility.get(command.targetId) === "identified"
-                ? command.targetId
-                : null
-          }))
+            let visible =
+              target.targetRef.kind === "unit"
+                ? visibility.get(target.targetRef.id) === "identified"
+                : visibleGroups.has(target.targetRef.id);
+
+            if (visible && target.targetRef.kind === "group") {
+              try {
+                const entity = resolveEntity(state, target.targetRef);
+
+                visible = entity.members.every(member =>
+                  visibility.get(member.instanceId) === "identified"
+                );
+              } catch {
+                visible = false;
+              }
+            }
+
+            visible &&= target.specifiedTargetIds.every(id =>
+              visibility.get(id) === "identified"
+            );
+
+            return {
+              id: command.id,
+              groupId: command.groupId,
+              turnNumber: command.turnNumber,
+              phaseId: command.phaseId,
+              status: command.status,
+              targetId:
+                visible && target.targetRef.kind === "unit"
+                  ? target.targetRef.id
+                  : null,
+              targetRef: visible ? target.targetRef : null,
+              specifiedTargetIds:
+                visible ? target.specifiedTargetIds : [],
+              requiresReselection: !visible
+            };
+          })
       });
     },
+
 
         settleAttackPhase(expectedRevision) {
       if (expectedRevision !== state.revision) {
@@ -1538,8 +1572,78 @@ export function openSimulation(id) {
       };
     },
 
+    getRangeAttackTargetOptions(instanceId) {
+      const actor = state.instances.find(
+        unit => unit.instanceId === instanceId
+      );
 
-    saveAttackCommands(request, expectedRevision) {
+      if (!actor) {
+        throw new Error("行動艦を確認できません。");
+      }
+
+      assertManualControl(state, [actor]);
+
+      const observed = getObservedScene(state);
+      const visibility = getVisibility(state);
+      const options = [];
+
+      for (const group of observed.groups) {
+        let entity;
+
+        try {
+          entity = resolveEntity(state, {
+            kind: "group",
+            id: group.id
+          });
+        } catch {
+          continue;
+        }
+
+        if (!entity.members.every(member =>
+          visibility.get(member.instanceId) === "identified"
+        )) {
+          continue;
+        }
+
+        // 不显示包含己方成员的攻击主编队。
+        if (entity.members.some(member =>
+          member.side === actor.side
+        )) {
+          continue;
+        }
+
+        options.push({
+          targetRef: { kind: "group", id: group.id },
+          label: group.name,
+          members: entity.members.map(member => ({
+            id: member.instanceId,
+            label: member.name
+          }))
+        });
+      }
+
+      return copy({
+        revision: state.revision,
+        options
+      });
+    },
+
+    mountRangeAttackPanel(container, instanceId) {
+      if (!(container instanceof Element)) {
+        throw new Error("攻撃画面の表示先が不正です。");
+      }
+
+      const panel = createRangeAttackPanel({
+        store: api,
+        unitId: instanceId
+      });
+
+      container.append(panel.element);
+      return panel;
+    },
+
+           
+       saveAttackCommands(request, expectedRevision) {
       if (expectedRevision !== state.revision) {
         throw new Error(
           "状態が変更されています。もう一度確認してください。"
@@ -1550,12 +1654,11 @@ export function openSimulation(id) {
         !request ||
         typeof request.unitId !== "string" ||
         !Array.isArray(request.assignments) ||
-        !request.assignments.length
+        request.assignments.length === 0
       ) {
         throw new Error("攻撃計画の指定が不正です。");
       }
 
-      // 防止调用方在检查与保存之间修改请求对象。
       const input = copy(request);
 
       commit(candidate => {
@@ -1565,22 +1668,19 @@ export function openSimulation(id) {
           );
         }
 
-        // 当前commit是同步事务。
-        // 此时candidate尚未修改，与state具有相同版本和阶段。
-        // 复用现有检查入口，不另写一套宽松资格规则。
         const groupReport = api.getAttackGroupReport(input.unitId);
-        const checked = [];
+        const observed = getObservedScene(candidate);
         const usedGroups = new Set();
+        const checked = [];
 
         for (const assignment of input.assignments) {
           if (
             !assignment ||
             typeof assignment.groupId !== "string" ||
-            typeof assignment.targetId !== "string" ||
             usedGroups.has(assignment.groupId)
           ) {
             throw new Error(
-              "攻撃計画の装備組または目標指定が不正です。"
+              "装備組の指定が不正、または重複しています。"
             );
           }
 
@@ -1601,35 +1701,89 @@ export function openSimulation(id) {
             );
           }
 
-          const targetReport = api.getAttackTargetReport({
-            unitId: input.unitId,
-            groupId: assignment.groupId,
-            targetId: assignment.targetId
-          });
+          const scope = readWeaponTargetScope(
+            group.profile.targetScope
+          );
 
-          if (targetReport.issues.length) {
-            throw new Error(
-              "攻撃目標の条件を満たしていません。\n" +
-              targetReport.issues.join("\n")
+          const target = readAttackCommandTarget(assignment);
+
+          if (scope.kind === "single") {
+            if (
+              target.targetRef.kind !== "unit" ||
+              target.specifiedTargetIds.length !== 0
+            ) {
+              throw new Error(
+                "単体武器には一つのユニットを指定してください。"
+              );
+            }
+          } else {
+            if (target.targetRef.kind !== "group") {
+              throw new Error(
+                "範囲武器には一つの編隊を指定してください。"
+              );
+            }
+
+            readRangeCommandTarget(assignment, scope);
+
+            if (!observed.groups.some(
+              group => group.id === target.targetRef.id
+            )) {
+              throw new Error("主目標を確認できません。");
+            }
+          }
+
+          // 先检查玩家当前观察权限。
+          // 正式预检随后另查攻击阵营的阶段开始权限。
+          if (target.targetRef.kind === "unit") {
+            const unit = candidate.instances.find(
+              item => item.instanceId === target.targetRef.id
             );
+
+            if (!unit) {
+              throw new Error("主目標を確認できません。");
+            }
+
+            assertIdentifiedTargets(candidate, [unit]);
+          } else {
+            const entity = resolveEntity(
+              candidate,
+              target.targetRef
+            );
+
+            assertIdentifiedTargets(candidate, entity.members);
           }
 
           checked.push({
             groupId: assignment.groupId,
-            targetId: assignment.targetId,
-            boundaries: [...targetReport.boundaries]
+            targetRef: target.targetRef,
+            specifiedTargetIds: target.specifiedTargetIds,
+            boundaries: []
           });
         }
 
-        // 全组选装检查成功后，才修改候选状态。
         replaceAttackCommands(
           candidate,
           input.unitId,
           checked,
           newId
         );
+
+        // 草案也必须经过真实范围、几何与算法支持检查。
+        // 捕获通用错误，避免泄露全批外方计划或内部资料。
+        try {
+          prepareSettlementAttackPlan(candidate);
+        } catch {
+          throw new Error(
+            "全批次の正式条件を満たしていません。" +
+            "段階開始記録、主目標、指定メンバー、" +
+            "射距・射高・地形、装備性能、残弾、" +
+            "または未対応の効果を確認してください。" +
+            "今回の計画は保存していません。"
+          );
+        }
       });
     },
+
 
     cancelAttackCommands(
       { unitId, groupIds },
