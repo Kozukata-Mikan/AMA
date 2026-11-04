@@ -1,11 +1,15 @@
-import { readWeaponProfile } from "./weapon-profile-runtime.js";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
 import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
 import { assertIdentifiedTargets  } from "./simulation-features.js";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology } from "./formation-target-runtime.js";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js";
+import { readRangeCommandTarget } from "./simulation-range-command.js";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js";
+
 
 
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -270,11 +274,11 @@ export function getAttackPhaseStartScene(scene) {
  */
 function prepareCommand(startScene, command) {
   const actor = findUnit(startScene, command.unitId);
-  const target = findUnit(startScene, command.targetId);
   const group = findGroup(actor, command.groupId);
   const profile = profileFor(actor, group);
+  const scope = readWeaponTargetScope(profile.targetScope);
 
-  if (actor.branch !== "navy" || target.branch !== "navy") {
+  if (actor.branch !== "navy") {
     fail("この軍種の正式な攻撃批次処理は未接続です。");
   }
 
@@ -285,31 +289,6 @@ function prepareCommand(startScene, command) {
     fail("段階開始時に行動不能または救助中の艦船があります。");
   }
 
-  if (
-    actor.instanceId === target.instanceId ||
-    actor.side === target.side
-  ) {
-    fail("自分自身または同一陣営への攻撃は結算できません。");
-  }
-
-  if (target.shipState?.status === "sunk") {
-    fail("段階開始時に沈没している目標は攻撃できません。");
-  }
-    // 每个阵营分别使用自己的阶段开始观察权限。
-  // 只新建controls，不修改开始快照或页面观察阵营。
-  const actorObservationScene = {
-    ...startScene,
-    controls: {
-      ...startScene.controls,
-      observationSide: actor.side
-    }
-  };
-
-  assertIdentifiedTargets(
-    actorObservationScene,
-    [target]
-  );
-
   if (profile.kind !== "weapon" || profile.issues.length) {
     fail(
       "攻撃装備の性能を確認できません。" +
@@ -317,6 +296,67 @@ function prepareCommand(startScene, command) {
         ? "\n" + profile.issues.join("\n")
         : "")
     );
+  }
+
+  const target = readAttackCommandTarget(command);
+  let memberIds;
+
+  if (scope.kind === "single") {
+    if (
+      target.targetRef.kind !== "unit" ||
+      target.specifiedTargetIds.length !== 0
+    ) {
+      fail("単体武器には一つのユニットを指定してください。");
+    }
+
+    memberIds = [target.targetRef.id];
+  } else {
+    if (target.targetRef.kind !== "group") {
+      fail("範囲武器には一つの編隊を主目標として指定してください。");
+    }
+
+    readRangeCommandTarget(command, scope);
+
+    memberIds = expandFormationMemberIds(
+      startScene,
+      target.targetRef
+    );
+  }
+
+  if (!memberIds.length) {
+    fail("主目標の編隊にメンバーがいません。");
+  }
+
+  const members = memberIds.map(id => findUnit(startScene, id));
+
+  // 未接入军种不能当作“不合格成员”静默跳过。
+  if (members.some(unit => unit.branch !== "navy")) {
+    fail("範囲に未対応の軍種が含まれているため、結算できません。");
+  }
+
+  const observationScene = {
+    ...startScene,
+    controls: {
+      ...startScene.controls,
+      observationSide: actor.side
+    }
+  };
+
+  assertIdentifiedTargets(observationScene, members);
+
+  if (scope.kind === "single") {
+    const singleTarget = members[0];
+
+    if (
+      actor.instanceId === singleTarget.instanceId ||
+      actor.side === singleTarget.side
+    ) {
+      fail("自分自身または同一陣営への攻撃は結算できません。");
+    }
+
+    if (singleTarget.shipState.status === "sunk") {
+      fail("段階開始時に沈没している目標は攻撃できません。");
+    }
   }
 
   if (group.damaged) {
@@ -338,14 +378,12 @@ function prepareCommand(startScene, command) {
     if (startScene.turn.phaseId !== "pas") {
       fail("PAS装備はPAS段階に限り使用できます。");
     }
-  } else {
-    if (
-      !orderMatch ||
-      profile.maxOrder === null ||
-      Number(orderMatch[1]) > profile.maxOrder
-    ) {
-      fail("この装備組は現在の次序で使用できません。");
-    }
+  } else if (
+    !orderMatch ||
+    profile.maxOrder === null ||
+    Number(orderMatch[1]) > profile.maxOrder
+  ) {
+    fail("この装備組は現在の次序で使用できません。");
   }
 
   if (
@@ -358,12 +396,10 @@ function prepareCommand(startScene, command) {
     fail("装備組の残弾または投射率が不正です。");
   }
 
-  // 减量投射尚未整合：
-  // 不能根据剩余弹数随意改变X或Y。
   if (group.remainingAmmo < profile.fullAmmoCost) {
     fail(
       "完全投射には残弾が不足しています。" +
-      "減量投射の割り当て処理が未接続のため、結算を停止します。"
+      "減量投射は未接続のため、結算を停止します。"
     );
   }
 
@@ -378,13 +414,16 @@ function prepareCommand(startScene, command) {
     fail("投射率と消費弾数が一致しません。");
   }
 
-  return {
+  const entry = {
     commandId: command.id,
     unitId: actor.instanceId,
     groupId: group.id,
-    targetId: target.instanceId,
     side: actor.side,
     profile: copy(profile),
+    targetRef: copy(target.targetRef),
+    specifiedTargetIds: [...target.specifiedTargetIds],
+    scope: copy(scope),
+    memberIds: [...memberIds],
     projection: {
       groups: profile.projection.groups,
       coinsPerGroup: profile.projection.coinsPerGroup,
@@ -395,7 +434,20 @@ function prepareCommand(startScene, command) {
     ammoAfter: group.remainingAmmo - profile.fullAmmoCost,
     lastUsedTurnBefore: group.lastUsedTurn
   };
+
+  if (scope.kind === "single") {
+    entry.targetId = target.targetRef.id;
+  } else if (profile.guidance === "ray") {
+    // 射线当前固定的是单位目标，不具有编队锁定契约。
+    fail(
+      "射線の編隊目標固定が未接続です。" +
+      "範囲射線を単体射線として代用できません。"
+    );
+  }
+
+  return entry;
 }
+
 
 /**
  * 准备整个次序的资源清单。
@@ -616,64 +668,117 @@ function validateHitPreflight(result, entry) {
  * 实际几何、词条、范围与威力支持检查由正式预检负责。
  * 此处不能只传入“始终allowed”的占位函数。
  */
-function prepareBatchHitChecks(
+export function prepareBatchHitChecks(
   scene,
   prepared,
   finalPreflight
 ) {
   if (typeof finalPreflight !== "function") {
-    fail(
-      "正式な攻撃条件照合が未接続です。" +
-      "命中コインは投げません。"
-    );
+    fail("正式な攻撃条件照合が未接続です。");
   }
 
-  const expected = prepareAttackBatchResources(
-    copy(scene)
-  );
+  const expected = prepareAttackBatchResources(copy(scene));
 
-  if (
-    JSON.stringify(prepared) !== JSON.stringify(expected)
-  ) {
+  if (JSON.stringify(prepared) !== JSON.stringify(expected)) {
     fail("命中判定の批次と現在の攻撃計画が一致しません。");
   }
 
-  const startScene = getAttackPhaseStartScene(
-    copy(scene)
-  );
-
+  const startScene = getAttackPhaseStartScene(copy(scene));
   const checks = [];
 
-  // 必须全部通过后才能进入命中掷币步骤。
   for (const entry of expected.entries) {
-    const input = {
-      startScene: {
-        ...copy(startScene),
-        controls: {
-          ...copy(startScene.controls),
-          observationSide: entry.side
+    const observedStart = {
+      ...copy(startScene),
+      controls: {
+        ...copy(startScene.controls),
+        observationSide: entry.side
+      }
+    };
+
+    if (entry.scope.kind === "range") {
+      const range = prepareRangeProjection({
+        startScene: observedStart,
+        commandId: entry.commandId,
+        actorId: entry.unitId,
+        targetRef: entry.targetRef,
+        scope: entry.scope,
+        projection: entry.projection,
+        guidance: entry.profile.guidance,
+        specifiedTargetIds: entry.specifiedTargetIds
+      }, (memberScene, actor, target) => {
+        const memberEntry = {
+          ...copy(entry),
+          targetId: target.instanceId
+        };
+
+        try {
+          const result = finalPreflight(
+            memberScene,
+            memberEntry
+          );
+
+          const checked = validateHitPreflight(
+            result,
+            memberEntry
+          );
+
+          return {
+            targetId: target.instanceId,
+            allowed: true,
+            bonuses: checked.bonuses,
+            penalties: checked.penalties
+          };
+        } catch (error) {
+          // 只有明确资格失败可排除。
+          // 未实现、坏数据和算法错误继续整批抛出。
+          if (error.code !== "TARGET_INELIGIBLE") {
+            throw error;
+          }
+
+          return {
+            targetId: target.instanceId,
+            allowed: false,
+            code: error.code,
+            reason: error.message
+          };
         }
-      },
+      });
+
+      checks.push({
+        commandId: entry.commandId,
+        kind: "range",
+        range
+      });
+
+      continue;
+    }
+
+    const input = {
+      startScene: observedStart,
       entry: copy(entry)
     };
 
     const before = JSON.stringify(input);
-
-    const result = finalPreflight(
-      input.startScene,
-      input.entry
-    );
+    const result = finalPreflight(input.startScene, input.entry);
 
     if (JSON.stringify(input) !== before) {
-      fail(
-        "攻撃条件照合が入力状態を変更しました。" +
-        "命中判定を停止します。"
-      );
+      fail("攻撃条件照合が入力状態を変更しました。");
     }
 
-    checks.push(
-      validateHitPreflight(result, entry)
-    );
+    const checked = validateHitPreflight(result, entry);
+
+    // 单体参数也在整批随机前验证。
+    resolveHitCoins({
+      ...entry.projection,
+      guidance: entry.profile.guidance,
+      bonuses: checked.bonuses,
+      penalties: checked.penalties
+    }, () => false);
+
+    checks.push({
+      ...checked,
+      kind: "single"
+    });
   }
 
   return {
@@ -681,6 +786,7 @@ function prepareBatchHitChecks(
     checks
   };
 }
+
 
 /**
  * 整批命中处理：不修改scene，不扣弹，不造成伤害。
@@ -696,43 +802,77 @@ export function resolveAttackBatchHitStep(
   scene,
   prepared,
   finalPreflight,
-  coinSource
+  coinSource,
+  indexSource
 ) {
   if (
-    coinSource !== undefined &&
-    typeof coinSource !== "function"
+    (coinSource !== undefined && typeof coinSource !== "function") ||
+    (indexSource !== undefined && typeof indexSource !== "function")
   ) {
-    fail("命中判定のコイン関数が不正です。");
+    fail("命中または範囲抽選の乱数関数が不正です。");
   }
 
+  // 全部命令、全部成员先预检，再进行任何正式随机。
   const checked = prepareBatchHitChecks(
     scene,
     prepared,
     finalPreflight
   );
 
-  const reports = [];
+  const selections = new Map();
 
-  for (
-    let index = 0;
-    index < checked.prepared.entries.length;
-    index++
-  ) {
+  // 先完成范围目标选择；保留每一次重复结果。
+  for (const check of checked.checks) {
+    if (check.kind !== "range") continue;
+
+    const selected = indexSource === undefined
+      ? selectRangeOccurrences(check.range)
+      : selectRangeOccurrences(check.range, indexSource);
+
+    selections.set(check.commandId, selected);
+  }
+
+  const reports = [];
+  const rangeSelections = [];
+
+  for (let index = 0; index < checked.prepared.entries.length; index++) {
     const entry = checked.prepared.entries[index];
-    const modifiers = checked.checks[index];
+    const check = checked.checks[index];
+
+    if (check.kind === "range") {
+      const selected = selections.get(entry.commandId);
+
+      const rangeHit = resolveRangeProjectionHits(
+        check.range,
+        selected,
+        coinSource
+      );
+
+      rangeSelections.push(copy(selected));
+
+      for (const occurrence of rangeHit.reports) {
+        reports.push({
+          version: 1,
+          commandId: entry.commandId,
+          unitId: entry.unitId,
+          groupId: entry.groupId,
+          targetId: occurrence.targetId,
+          occurrenceIndex: occurrence.occurrenceIndex,
+          turnNumber: checked.prepared.turnNumber,
+          phaseId: checked.prepared.phaseId,
+          hit: copy(occurrence.hit)
+        });
+      }
+
+      continue;
+    }
 
     const input = {
-      groups: entry.projection.groups,
-      coinsPerGroup: entry.projection.coinsPerGroup,
-      standalone: entry.projection.standalone,
+      ...entry.projection,
       guidance: entry.profile.guidance,
-      bonuses: modifiers.bonuses,
-      penalties: modifiers.penalties
+      bonuses: check.bonuses,
+      penalties: check.penalties
     };
-
-    const hit = coinSource === undefined
-      ? resolveHitCoins(input)
-      : resolveHitCoins(input, coinSource);
 
     reports.push({
       version: 1,
@@ -740,10 +880,19 @@ export function resolveAttackBatchHitStep(
       unitId: entry.unitId,
       groupId: entry.groupId,
       targetId: entry.targetId,
+      occurrenceIndex: 0,
       turnNumber: checked.prepared.turnNumber,
       phaseId: checked.prepared.phaseId,
-      modifiers: copy(modifiers),
-      hit: copy(hit)
+      modifiers: {
+        commandId: entry.commandId,
+        bonuses: check.bonuses,
+        penalties: check.penalties
+      },
+      hit: copy(
+        coinSource === undefined
+          ? resolveHitCoins(input)
+          : resolveHitCoins(input, coinSource)
+      )
     });
   }
 
@@ -752,8 +901,10 @@ export function resolveAttackBatchHitStep(
     step: "attack-hit",
     turnNumber: checked.prepared.turnNumber,
     phaseId: checked.prepared.phaseId,
+    rangeSelections,
     reports
   };
 }
+
 
 
