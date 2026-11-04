@@ -361,3 +361,167 @@ export function getOwnShipEffectLines(value) {
     "浸水補正は元の最大移動力に適用します。修復すると解除されます。"
   ];
 }
+
+// 均匀随机抽选一个候选位置。
+// 使用拒绝采样，避免直接取余产生偏差。
+function randomEquipmentRepairIndex(candidateCount) {
+  if (
+    !Number.isSafeInteger(candidateCount) ||
+    candidateCount < 1 ||
+    candidateCount > 0x100000000
+  ) {
+    throw new Error("設備修理の抽選対象数が不正です。");
+  }
+
+  if (!globalThis.crypto?.getRandomValues) {
+    throw new Error("設備修理に必要な乱数機能がありません。");
+  }
+
+  const range = 0x100000000;
+  const limit =
+    range - (range % candidateCount);
+
+  const buffer = new Uint32Array(1);
+
+  do {
+    globalThis.crypto.getRandomValues(buffer);
+  } while (buffer[0] >= limit);
+
+  return buffer[0] % candidateCount;
+}
+
+/**
+ * 同一回合的火灾、浸水、设备损管。
+ *
+ * R就是硬币：true为正面成功，false为反面失败。
+ *
+ * damagedEquipmentIds：
+ *   当前可修复的损坏设备的稳定ID。
+ *   调用方从现有设备运行时提取，不另建设备存档。
+ *   不得包含已彻底损坏的设备。
+ *
+ * 三类状态分别判定一次：
+ * - 火灾：一次R。
+ * - 浸水：一次R。
+ * - 设备损坏：无论损坏数量多少，只判定一次R；
+ *   成功后随机修复一个。
+ *
+ * 不修改输入、不保存、不推进阶段。
+ * 调用方在同一个候选事务内应用全部结果。
+ */
+export function resolveShipDamageControlPhase({
+  state: stateValue,
+  turnNumber,
+  damagedEquipmentIds
+}, {
+  coinSource = randomCoin,
+  selectRepairIndex = randomEquipmentRepairIndex
+} = {}) {
+  requireTurn(turnNumber);
+
+  if (typeof coinSource !== "function") {
+    throw new Error("損傷管制のコイン判定関数がありません。");
+  }
+
+  if (
+    !Array.isArray(damagedEquipmentIds) ||
+    damagedEquipmentIds.some(
+      id => typeof id !== "string" || id.trim() === ""
+    ) ||
+    new Set(damagedEquipmentIds).size !==
+      damagedEquipmentIds.length
+  ) {
+    throw new Error("修理可能な損傷設備の一覧が不正です。");
+  }
+
+  // 固定候选顺序，便于保存抽选记录和复核。
+  // 不修改输入数组。
+  const repairCandidates = [...damagedEquipmentIds]
+    .sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+
+  if (
+    repairCandidates.length > 0 &&
+    typeof selectRepairIndex !== "function"
+  ) {
+    throw new Error("設備修理の抽選関数がありません。");
+  }
+
+  // 复用现有算法和同回合重复处理检查。
+  // 本回合刚获得的火灾、浸水也会参与损管。
+  const fireFlooding = resolveShipFireFloodingPhase({
+    state: stateValue,
+    turnNumber
+  }, coinSource);
+
+  const rolls = copy(fireFlooding.rolls);
+  const events = copy(fireFlooding.events);
+
+  let equipmentControl = {
+    skipped: true,
+    coin: null,
+    success: null,
+    candidateIds: repairCandidates,
+    selectedIndex: null,
+    repairedEquipmentId: null
+  };
+
+  if (repairCandidates.length > 0) {
+    // 设备损坏整体只掷一枚硬币。
+    const coin = toss(coinSource);
+
+    rolls.push({
+      type: "equipment",
+      coin,
+      success: coin
+    });
+
+    equipmentControl = {
+      skipped: false,
+      coin,
+      success: coin,
+      candidateIds: repairCandidates,
+      selectedIndex: null,
+      repairedEquipmentId: null
+    };
+
+    if (coin) {
+      const index = selectRepairIndex(
+        repairCandidates.length
+      );
+
+      if (
+        !Number.isSafeInteger(index) ||
+        index < 0 ||
+        index >= repairCandidates.length
+      ) {
+        throw new Error("設備修理の抽選結果が範囲外です。");
+      }
+
+      const equipmentId = repairCandidates[index];
+
+      equipmentControl.selectedIndex = index;
+      equipmentControl.repairedEquipmentId = equipmentId;
+
+      events.push({
+        type: "equipment-repaired",
+        equipmentId,
+        method: "damage-control"
+      });
+    } else {
+      // 普通损管失败只是修复无效，
+      // 不升级为彻底损坏，也不抽选修复对象。
+      events.push({
+        type: "equipment-control-failed"
+      });
+    }
+  }
+
+  return {
+    version: 1,
+    state: fireFlooding.state,
+    rolls,
+    events,
+    equipmentControl
+  };
+}
+
