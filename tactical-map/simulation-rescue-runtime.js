@@ -230,7 +230,16 @@ export function applySinkingEndStep(scene) {
 
     const state = unit.shipState;
     const beforeMinutes = state.sinkingElapsedMinutes;
+
+    if (
+      !Number.isSafeInteger(beforeMinutes) ||
+      beforeMinutes < 0
+    ) {
+      fail("沈没寸前の経過時間が不正です。");
+    }
+
     const paused = isSinkingTimerPaused(working, unit);
+
 
     if (paused) {
       results.push({
@@ -248,7 +257,7 @@ export function applySinkingEndStep(scene) {
     const afterMinutes =
       beforeMinutes + TURN_DURATION_MINUTES;
 
-    if (!Number.isFinite(afterMinutes)) {
+    if (!Number.isSafeInteger(afterMinutes)) {
       fail("沈没寸前の経過時間が範囲外です。");
     }
 
