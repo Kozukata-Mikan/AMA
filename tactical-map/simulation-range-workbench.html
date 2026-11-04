@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>推演・範囲攻撃</title>
+
+  <style>
+    body {
+      max-width: 1000px;
+      margin: 24px auto;
+      padding: 0 16px;
+      font-family: sans-serif;
+      line-height: 1.6;
+      color: #17212b;
+      background: #f4f6f8;
+    }
+
+    section, fieldset {
+      margin: 16px 0;
+      padding: 16px;
+      border: 1px solid #cbd3dc;
+      border-radius: 8px;
+      background: white;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0;
+    }
+
+    button, select {
+      max-width: 100%;
+      margin: 4px;
+      padding: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      padding: 8px;
+      border: 1px solid #cbd3dc;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    [role="alert"] {
+      color: #a92323;
+      white-space: pre-wrap;
+    }
+
+    .notice {
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>推演・範囲攻撃</h1>
+
+  <p>
+    既存の推演データと正式な保存処理を使用します。
+    開くだけでは攻撃・弾薬消費・段階変更を実行しません。
+  </p>
+
+  <div id="simulation-range-workbench"></div>
+
+  <script type="module">
+    import {
+      mountSimulationRangeWorkbench
+    } from "./simulation-range-workbench.js";
+
+    mountSimulationRangeWorkbench(
+      document.getElementById("simulation-range-workbench")
+    );
+  </script>
+</body>
+</html>
