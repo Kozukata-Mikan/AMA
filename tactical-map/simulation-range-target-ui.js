@@ -2,6 +2,11 @@ import {
   readRangeCommandTarget
 } from "./simulation-range-command.js";
 
+import {
+  readWeaponTargetScope
+} from "./weapon-profile-runtime.js";
+
+
 function fail(message) {
   throw new Error(message);
 }
@@ -297,6 +302,171 @@ export function createRangeTargetEditor({
 
     setDisabled(disabled) {
       root.disabled = Boolean(disabled);
+    }
+  };
+}
+
+/**
+ * 正式范围攻击面板：
+ * 使用store原事务保存，不直接调用内部结算函数。
+ *
+ * store.mountRangeAttackPanel(container, unitId)是挂载入口。
+ * dispose()移除订阅及面板。
+ */
+export function createRangeAttackPanel({ store, unitId }) {
+  const root = document.createElement("section");
+  root.className = "simulation-range-attack-panel";
+
+  const heading = document.createElement("h3");
+  heading.textContent = "範囲攻撃計画";
+
+  const body = document.createElement("div");
+  const message = document.createElement("p");
+  message.setAttribute("role", "status");
+
+  root.append(heading, body, message);
+
+  let disposed = false;
+
+  function render() {
+    if (disposed) return;
+
+    body.replaceChildren();
+
+    try {
+      const report = store.getAttackGroupReport(unitId);
+      const targets = store.getRangeAttackTargetOptions(unitId);
+      const plans = store.getAttackCommands(unitId);
+
+      if (
+        report.revision !== targets.revision ||
+        report.revision !== plans.revision
+      ) {
+        throw new Error("状態が変更されています。再表示してください。");
+      }
+
+      let count = 0;
+
+      for (const group of report.groups) {
+        if (group.profile?.kind !== "weapon") continue;
+
+        let scope;
+
+        try {
+          scope = readWeaponTargetScope(
+            group.profile.targetScope
+          );
+        } catch (error) {
+          const warning = document.createElement("p");
+          warning.textContent =
+            `${group.label}：${error.message}`;
+          body.append(warning);
+          continue;
+        }
+
+        if (scope.kind !== "range") continue;
+        count++;
+
+        const box = document.createElement("section");
+        const title = document.createElement("h4");
+        title.textContent =
+          `${group.label}／${group.position}／${group.groupIndex}`;
+
+        const current = plans.commands.find(
+          command => command.groupId === group.groupId
+        );
+
+        const editor = createRangeTargetEditor({
+          options: targets.options,
+          scope,
+          initial: current?.targetRef ? current : null
+        });
+
+        const warning = document.createElement("p");
+
+        if (current?.requiresReselection) {
+          warning.textContent =
+            "以前の対象を表示できません。主目標と対象を再指定してください。";
+        } else if (group.issues.length) {
+          warning.textContent = group.issues.join("\n");
+        }
+
+        const save = document.createElement("button");
+        save.type = "button";
+        save.textContent = "この装備組の計画を保存";
+        save.disabled = group.issues.length > 0;
+        editor.setDisabled(save.disabled);
+
+        save.addEventListener("click", () => {
+          try {
+            const selection = editor.read();
+
+            store.saveAttackCommands({
+              unitId,
+              assignments: [{
+                groupId: group.groupId,
+                ...selection
+              }]
+            }, report.revision);
+
+            message.textContent =
+              "攻撃計画を保存しました。抽選・命中・弾薬消費はまだ実行していません。";
+          } catch (error) {
+            message.textContent = error.message;
+          }
+        });
+
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.textContent = "この装備組の計画を取消";
+        cancel.disabled = !current;
+
+        cancel.addEventListener("click", () => {
+          try {
+            store.cancelAttackCommands({
+              unitId,
+              groupIds: [group.groupId]
+            }, report.revision);
+
+            message.textContent = "攻撃計画を取り消しました。";
+          } catch (error) {
+            message.textContent = error.message;
+          }
+        });
+
+        box.append(
+          title,
+          warning,
+          editor.element,
+          save,
+          cancel
+        );
+
+        body.append(box);
+      }
+
+      if (count === 0) {
+        const note = document.createElement("p");
+        note.textContent =
+          "正式に解釈できる範囲武器がありません。";
+        body.append(note);
+      }
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  }
+
+  const unsubscribe = store.subscribe(render);
+  render();
+
+  return {
+    element: root,
+
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      unsubscribe();
+      root.remove();
     }
   };
 }
