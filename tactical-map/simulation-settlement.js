@@ -2,8 +2,10 @@ import {
   prepareAttackBatchResources,
   getAttackPhaseStartScene,
   applyAttackBatchResources,
-  resolveAttackBatchHitStep
+  resolveAttackBatchHitStep,
+  prepareBatchHitChecks
 } from "./simulation-attack-batch.js";
+
 
 import {
   ensureShipRuntime,
@@ -58,13 +60,6 @@ import {
   recordSinkingStarts
 } from "./simulation-phase-finish.js";
 
-import {
-  prepareAttackBatchResources,
-  getAttackPhaseStartScene,
-  applyAttackBatchResources,
-  resolveAttackBatchHitStep,
-  prepareBatchHitChecks
-} from "./simulation-attack-batch.js";
 
 import {
   readWeaponTargetScope
