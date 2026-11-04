@@ -184,3 +184,59 @@ export function readWeaponProfile(equipment) {
 
   return result;
 }
+
+// 正式范围解析：只接受语义明确的表记。
+// 不读玩家请求中的scope，不修改装备快照。
+export function readWeaponTargetScope(value) {
+  if (typeof value !== "string") {
+    throw new Error("装備の攻撃範囲が未登録です。");
+  }
+
+  const source = value.trim();
+
+  if (/^(单体|單體|単体)$/.test(source)) {
+    return { kind: "single" };
+  }
+
+  const match = source.match(
+    /^(?:范围|範圍|範囲|集群)\s*[（(]\s*(全体|全體|指定|随机|隨機|ランダム)\s*(\d+)?\s*(?:名|体|體)?\s*[）)]$/
+  );
+
+  if (!match) {
+    throw new Error(
+      "装備の攻撃範囲を正式に解釈できません。" +
+      "範囲方式・人数上限を推測せず、処理を停止します。"
+    );
+  }
+
+  const modeText = match[1];
+  const numberText = match[2];
+
+  if (/^(全体|全體)$/.test(modeText)) {
+    if (numberText !== undefined) {
+      throw new Error("全体範囲には人数上限を指定できません。");
+    }
+
+    return {
+      kind: "range",
+      mode: "all",
+      maximumTargets: null
+    };
+  }
+
+  const maximumTargets = Number(numberText);
+
+  if (
+    numberText === undefined ||
+    !Number.isSafeInteger(maximumTargets) ||
+    maximumTargets < 1
+  ) {
+    throw new Error("範囲攻撃の人数上限が不正です。");
+  }
+
+  return {
+    kind: "range",
+    mode: modeText === "指定" ? "specified" : "random",
+    maximumTargets
+  };
+}
