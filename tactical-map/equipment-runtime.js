@@ -127,7 +127,8 @@ export function ensureEquipmentRuntime(unit) {
         ...group,
         remainingAmmo: group.initialAmmo,
         lastUsedTurn: null,
-        damaged: false
+        damaged: false,
+        destroyed: false
       }))
     };
   }
@@ -198,8 +199,21 @@ export function ensureEquipmentRuntime(unit) {
       throw new Error("装備組の使用ラウンドが不正です。");
     }
 
-    if (typeof group.damaged !== "boolean") {
+        if (typeof group.damaged !== "boolean") {
       throw new Error("装備組の損傷状態が不正です。");
+    }
+
+    // 旧存档没有记录彻底损坏时，仅补false。
+    // 不凭已有damaged猜测损坏历史。
+    if (group.destroyed === undefined) {
+      group.destroyed = false;
+    }
+
+    if (
+      typeof group.destroyed !== "boolean" ||
+      (group.destroyed && !group.damaged)
+    ) {
+      throw new Error("装備組の完全破損状態が不正です。");
     }
   }
 }
