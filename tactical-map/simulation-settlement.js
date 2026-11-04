@@ -58,6 +58,19 @@ import {
   recordSinkingStarts
 } from "./simulation-phase-finish.js";
 
+import {
+  prepareAttackBatchResources,
+  getAttackPhaseStartScene,
+  applyAttackBatchResources,
+  resolveAttackBatchHitStep,
+  prepareBatchHitChecks
+} from "./simulation-attack-batch.js";
+
+import {
+  readWeaponTargetScope
+} from "./weapon-profile-runtime.js";
+
+
 const copy = value => JSON.parse(JSON.stringify(value));
 const EPSILON = 1e-7;
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
@@ -354,13 +367,44 @@ function finalPreflight(start, entry) {
   const profile = entry.profile;
   const targetProfile = readShipProfile(target);
 
-  if (!/^(单体|單體|単体)$/.test(profile.targetScope.trim())) {
-    fail(
-      "単体以外の攻撃範囲は正式割り当てが未接続です。" +
-      "集群攻撃を単体攻撃へ置き換えず、結算を停止します。"
+  const scope = readWeaponTargetScope(
+    profile.targetScope
+  );
+
+  // 明确的目标资格失败：
+  // 范围预检可以排除该成员。
+  // 单体攻击没有替代目标，仍然拒绝。
+  function ineligible(message) {
+    const error = new Error(message);
+    error.code = "TARGET_INELIGIBLE";
+    throw error;
+  }
+
+  if (
+    actor.instanceId === target.instanceId ||
+    actor.side === target.side ||
+    target.shipState.status === "sunk"
+  ) {
+    ineligible(
+      "自艦・同一陣営・沈没艦は攻撃対象外です。"
     );
   }
 
+  if (
+    scope.kind === "single" &&
+    entry.targetRef?.kind !== "unit"
+  ) {
+    fail("単体武器の主目標が不正です。");
+  }
+
+  if (
+    scope.kind === "range" &&
+    entry.targetRef?.kind !== "group"
+  ) {
+    fail("範囲武器の主目標が不正です。");
+  }
+
+  // 未接入的效果必须整批拒绝，不能排除成员后继续。
   if (profile.large) {
     fail(
       "大型武器の専用効果が未接続です。" +
@@ -370,45 +414,61 @@ function finalPreflight(start, entry) {
 
   const damageRule = parseDamageRule(profile);
 
-  // 目标资格和伤害规则严格分开。
+  // 目标资格与伤害规则分开检查。
   const underwaterWeapon =
     profile.underwater === true ||
     damageRule.underwater;
 
   const from = navalPoint(start, actor);
   const to = navalPoint(start, target);
-  const trace = traceAttackTerrainLine(start.terrain, from, to);
+
+  const trace = traceAttackTerrainLine(
+    start.terrain,
+    from,
+    to
+  );
+
   const relativeHeight = to.z - from.z;
 
   if (underwaterWeapon) {
     if (to.z > EPSILON) {
-      fail("水中武器は海面より上の目標を攻撃できません。");
+      ineligible(
+        "水中武器は海面より上の目標を攻撃できません。"
+      );
     }
   } else if (
     target.underwater === true ||
     relativeHeight < -EPSILON
   ) {
-    fail("通常武器は水中・下方の目標を攻撃できません。");
+    ineligible(
+      "通常武器は水中・下方の目標を攻撃できません。"
+    );
   }
 
   if (
     trace.distance3D > profile.range + EPSILON ||
     relativeHeight > profile.ceilingU + EPSILON
   ) {
-    fail("射距または射高の条件を満たしていません。");
+    ineligible(
+      "射距または射高の条件を満たしていません。"
+    );
   }
 
   switch (profile.guidance) {
     case "direct":
     case "ray":
       if (entersTerrainInterior(trace)) {
-        fail("攻撃直線が地形内部を通過します。");
+        ineligible(
+          "攻撃直線が地形内部を通過します。"
+        );
       }
       break;
 
     case "lobbed":
       if (trace.maxGroundHeight > 30 + EPSILON) {
-        fail("高度30を超える地形を越えられません。");
+        ineligible(
+          "高度30を超える地形を越えられません。"
+        );
       }
       break;
 
@@ -416,8 +476,16 @@ function finalPreflight(start, entry) {
       break;
 
     case "radar":
-      if (getObserverVisibility(start, actor, target) === null) {
-        fail("レーダー誘導には発射艦自身の目標発見が必要です。");
+      if (
+        getObserverVisibility(
+          start,
+          actor,
+          target
+        ) === null
+      ) {
+        ineligible(
+          "レーダー誘導には発射艦自身の目標発見が必要です。"
+        );
       }
       break;
 
@@ -437,10 +505,14 @@ function finalPreflight(start, entry) {
       turnNumber: start.turn.number
     });
 
-    if (!check.allowed) fail(check.reason);
+    // 射线锁定冲突不作为范围成员排除条件。
+    if (!check.allowed) {
+      fail(check.reason);
+    }
   }
 
-  // 随机前验证真实伤害算法支持全部资料。
+  // 正式随机之前验证真实伤害算法。
+  // 算法不支持或资料错误必须整批拒绝。
   if (damageRule.kind === "cannon") {
     getCannonDamagePreview({
       penetration: profile.penetration,
@@ -487,6 +559,7 @@ function finalPreflight(start, entry) {
     penalties: modifiers.penalties
   };
 }
+
 
 function assertStartStateUnchanged(scene, start) {
   for (const oldUnit of start.instances) {
@@ -829,6 +902,59 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
   return { targetReports, effects };
 }
 
+export function prepareSettlementAttackPlan(scene) {
+  const working = copy(scene);
+
+  initializeSettlementRuntime(working);
+
+  for (const unit of working.instances) {
+    ensureShipRuntime(unit);
+    ensureUnitCombatRuntime(unit);
+  }
+
+  initializeRescueState(working);
+  initializeRayTargetRuntime(working);
+
+  const prepared = prepareAttackBatchResources(working);
+  const start = getAttackPhaseStartScene(working);
+
+  assertStartStateUnchanged(working, start);
+
+  if (prepared.entries.length > 0) {
+    assertNoUnconnectedSupport(start);
+  }
+
+  const checked = prepareBatchHitChecks(
+    working,
+    prepared,
+    finalPreflight
+  );
+
+  const effectEntries = [];
+
+  for (let index = 0; index < prepared.entries.length; index++) {
+    const entry = prepared.entries[index];
+    const check = checked.checks[index];
+
+    if (check.kind === "single") {
+      effectEntries.push(entry);
+      continue;
+    }
+
+    // 所有合格候选在随机抽选前检查特殊效果算法。
+    for (const targetId of check.range.eligibleIds) {
+      effectEntries.push({
+        ...entry,
+        targetId
+      });
+    }
+  }
+
+  assertEffectAlgorithms(working, start, effectEntries);
+
+  return { prepared, start };
+}
+
 // 只能从store的完整保存事务内部调用。
 // 本函数另用工作副本，内部失败也不留下半结算。
 export function settleAttackPhase(scene, coinSource) {
@@ -866,21 +992,9 @@ export function settleAttackPhase(scene, coinSource) {
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
 
-  const prepared = prepareAttackBatchResources(working);
-  const start = getAttackPhaseStartScene(working);
+  const { prepared, start } =
+    prepareSettlementAttackPlan(working);
 
-  assertStartStateUnchanged(working, start);
-
-  // 空次序允许完成，不把无攻击伪造为命中。
-  if (prepared.entries.length > 0) {
-    assertNoUnconnectedSupport(start);
-
-    for (const entry of prepared.entries) {
-      finalPreflight(start, entry);
-    }
-
-    assertEffectAlgorithms(working, start, prepared.entries);
-  }
 
   // 先验证全批当前装备资源并在候选副本扣弹。
   // 后续失败时，候选副本被丢弃，不保存扣弹。
@@ -958,6 +1072,7 @@ export function settleAttackPhase(scene, coinSource) {
     elapsedMinutes: working.turn.elapsedMinutes,
     resourceReports,
     hitReports: hitStep.reports,
+    rangeSelections: copy(hitStep.rangeSelections),
     targetReports: damage.targetReports,
     effectReports,
     rayReports,
