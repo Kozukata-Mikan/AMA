@@ -269,14 +269,7 @@ function preflightSpecial(scene) {
   }
 
   for (const unit of scene.instances) {
-    // 设备损管未实现：存在实际损坏时不能跳过。
-    if (unit.equipmentState.groups.some(group => group.damaged)) {
-      fail(
-        "装備損管が未接続です。" +
-        "損傷装備を無視して特殊段階を終了できません。"
-      );
-    }
-
+    
     const traits = new Set([
       ...unit.trainingState.baseTraits,
       ...unit.trainingState.acquiredTraits
@@ -300,16 +293,55 @@ function preflightSpecial(scene) {
       );
     }
 
-    for (const heads of [true, false]) {
+       const damagedCount = unit.equipmentState.groups
+      .filter(group => group.damaged)
+      .length;
+
+    const context = {
+      turnNumber: scene.turn.number,
+      phaseId: "special"
+    };
+
+    // 所有硬币反面：覆盖恶化和设备修复失败。
+    // 如果失败分支错误地抽选修复目标，立即拒绝。
+    applyShipFireFloodingPhase(
+      copy(unit),
+      context,
+      () => false,
+      () => {
+        fail("設備損管の失敗時に修理抽選が呼ばれました。");
+      }
+    );
+
+    if (damagedCount === 0) {
+      // 所有硬币正面，但没有设备候选时不得抽选。
       applyShipFireFloodingPhase(
         copy(unit),
-        {
-          turnNumber: scene.turn.number,
-          phaseId: "special"
-        },
-        () => heads
+        context,
+        () => true,
+        () => {
+          fail("修理対象がない状態で設備抽選が呼ばれました。");
+        }
       );
+    } else {
+      // 成功分支逐个覆盖可能被修复的装备。
+      // 所有试算都使用隔离副本和确定性随机源。
+      for (let index = 0; index < damagedCount; index++) {
+        applyShipFireFloodingPhase(
+          copy(unit),
+          context,
+          () => true,
+          candidateCount => {
+            if (candidateCount !== damagedCount) {
+              fail("設備修理の候補数が事前検査と一致しません。");
+            }
+
+            return index;
+          }
+        );
+      }
     }
+
   }
 
   // 救助抽签前验证所有即将到期的救助舰性能。
@@ -446,7 +478,7 @@ export function finishSpecialPhase(scene) {
   return {
     nextPhaseId: "end",
     message:
-      "火災・浸水・救助判定をまとめて保存しました。" +
+      "火災・浸水・装備損管・救助判定をまとめて保存しました。" +
       "回合終了段階へ移りました。時刻は進めていません。"
   };
 }
