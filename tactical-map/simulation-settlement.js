@@ -168,6 +168,117 @@ export function initializeSettlementRuntime(scene) {
     ) {
       fail("正式攻撃の履歴が不正です。");
     }
+        // 兼容旧记录：旧单体报告可以没有该字段。
+    // 新范围报告保留抽签和重复出现项。
+    if (record.rangeSelections !== undefined) {
+      if (!Array.isArray(record.rangeSelections)) {
+        fail("範囲攻撃の選択履歴が不正です。");
+      }
+
+      const selectionCommands = new Set();
+
+      for (const selection of record.rangeSelections) {
+        if (
+          !selection ||
+          selection.version !== 1 ||
+          typeof selection.commandId !== "string" ||
+          selection.commandId.trim() === "" ||
+          selectionCommands.has(selection.commandId) ||
+          !["all", "specified", "random"].includes(selection.mode) ||
+          !Array.isArray(selection.candidateIds) ||
+          selection.candidateIds.length === 0 ||
+          selection.candidateIds.some(
+            id => typeof id !== "string" || id.trim() === ""
+          ) ||
+          new Set(selection.candidateIds).size !==
+            selection.candidateIds.length ||
+          !Array.isArray(selection.selections) ||
+          !Array.isArray(selection.occurrences) ||
+          selection.occurrences.length === 0
+        ) {
+          fail("範囲攻撃の選択履歴が不正です。");
+        }
+
+        selectionCommands.add(selection.commandId);
+
+        for (
+          let index = 0;
+          index < selection.occurrences.length;
+          index++
+        ) {
+          const occurrence = selection.occurrences[index];
+
+          if (
+            !occurrence ||
+            occurrence.commandId !== selection.commandId ||
+            occurrence.occurrenceIndex !== index ||
+            !selection.candidateIds.includes(occurrence.targetId)
+          ) {
+            fail("範囲攻撃の出現履歴が不正です。");
+          }
+
+          const matchingHits = record.hitReports.filter(hit =>
+            hit.commandId === selection.commandId &&
+            hit.occurrenceIndex === index
+          );
+
+          if (
+            matchingHits.length !== 1 ||
+            matchingHits[0].targetId !== occurrence.targetId
+          ) {
+            fail("範囲選択と命中履歴が一致しません。");
+          }
+        }
+
+        if (selection.mode === "random") {
+          if (
+            selection.selections.length !==
+              selection.occurrences.length
+          ) {
+            fail("範囲攻撃の抽選履歴が不足しています。");
+          }
+
+          selection.selections.forEach((draw, index) => {
+            if (
+              !draw ||
+              draw.drawIndex !== index ||
+              !Number.isSafeInteger(draw.candidateIndex) ||
+              draw.candidateIndex < 0 ||
+              draw.candidateIndex >= selection.candidateIds.length ||
+              draw.targetId !==
+                selection.candidateIds[draw.candidateIndex] ||
+              draw.targetId !==
+                selection.occurrences[index].targetId
+            ) {
+              fail("範囲攻撃の抽選履歴が一致しません。");
+            }
+          });
+        } else {
+          if (selection.selections.length !== 0) {
+            fail("非抽選の範囲攻撃に抽選履歴があります。");
+          }
+
+          const selectedIds = selection.occurrences.map(
+            occurrence => occurrence.targetId
+          );
+
+          if (
+            new Set(selectedIds).size !== selectedIds.length ||
+            (
+              selection.mode === "all" &&
+              (
+                selectedIds.length !== selection.candidateIds.length ||
+                selectedIds.some(
+                  (id, index) => id !== selection.candidateIds[index]
+                )
+              )
+            )
+          ) {
+            fail("範囲攻撃の対象集合が不正です。");
+          }
+        }
+      }
+    }
 
     const key = recordKey(record.turnNumber, record.phaseId);
 
@@ -564,6 +675,8 @@ function assertStartStateUnchanged(scene, start) {
       JSON.stringify(current.shipState) !==
         JSON.stringify(oldUnit.shipState) ||
       current.currentHp !== oldUnit.currentHp ||
+      current.groupId !== oldUnit.groupId ||
+      current.heading !== oldUnit.heading ||
       current.x !== oldUnit.x ||
       current.y !== oldUnit.y ||
       current.underwater !== oldUnit.underwater ||
@@ -758,8 +871,10 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
     // 硬币调用顺序按稳定装备键，而非传入计划列表。
     attacks.sort((a, b) =>
       compareText(a.entry.unitId, b.entry.unitId) ||
-      compareText(a.entry.groupId, b.entry.groupId)
+      compareText(a.entry.groupId, b.entry.groupId) ||
+      a.entry.occurrenceIndex - b.entry.occurrenceIndex
     );
+
 
     for (const attack of attacks) {
       if (attack.rule.kind !== "cannon") continue;
@@ -813,8 +928,10 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         Number(b.rule.underwater) - Number(a.rule.underwater) ||
         (a.rule.underwater ? b.rule.power - a.rule.power : 0) ||
         compareText(a.entry.unitId, b.entry.unitId) ||
-        compareText(a.entry.groupId, b.entry.groupId)
+        compareText(a.entry.groupId, b.entry.groupId) ||
+        a.entry.occurrenceIndex - b.entry.occurrenceIndex
       );
+
 
     for (const attack of numeric) {
       const damage = resolveNumericDamage({
