@@ -47,7 +47,16 @@ function coin() {
 }
 
 export function initializeRescueState(scene) {
-  // 旧存档仅补缺失字段，不清除既有任务。
+  if (
+    !scene ||
+    !Array.isArray(scene.instances) ||
+    !Number.isSafeInteger(scene.turn?.number) ||
+    scene.turn.number < 1
+  ) {
+    fail("救助の現在ラウンドまたは場面が不正です。");
+  }
+
+  // 只补缺失字段，不清除既有任务和计划。
   scene.rescuePlans ??= [];
   scene.rescueTasks ??= [];
 
@@ -59,43 +68,28 @@ export function initializeRescueState(scene) {
   }
 
   const taskIds = new Set();
+  const activeParticipants = new Set();
 
   for (const task of scene.rescueTasks) {
     if (
       !task ||
+      typeof task !== "object" ||
+      Array.isArray(task) ||
       typeof task.id !== "string" ||
+      !task.id.trim() ||
       taskIds.has(task.id) ||
+      typeof task.rescuerId !== "string" ||
+      !task.rescuerId.trim() ||
+      typeof task.targetId !== "string" ||
+      !task.targetId.trim() ||
+      task.rescuerId === task.targetId ||
       !Number.isSafeInteger(task.startedTurn) ||
       task.startedTurn < 1 ||
+      task.startedTurn > scene.turn.number ||
       !["active", "success", "failure", "interrupted"]
-      .includes(task.status)
-
+        .includes(task.status)
     ) {
       fail("救助任務の保存値が不正です。");
-    }
-
-        if (
-      !task.id.trim() ||
-      task.startedTurn > scene.turn.number
-    ) {
-      fail("救助任務の識別番号または開始ラウンドが不正です。");
-    }
-
-    if (task.status === "interrupted") {
-      if (
-        !Number.isSafeInteger(task.resolvedTurn) ||
-        task.resolvedTurn < task.startedTurn ||
-        task.resolvedTurn > scene.turn.number ||
-        typeof task.interruptionReason !== "string" ||
-        !task.interruptionReason.trim() ||
-        !Number.isSafeInteger(task.pausedMinutesBackfilled) ||
-        task.pausedMinutesBackfilled !==
-          (task.resolvedTurn - task.startedTurn) *
-          TURN_DURATION_MINUTES ||
-        task.coinHeads !== null
-      ) {
-        fail("救助中断の保存記録が不正です。");
-      }
     }
 
     taskIds.add(task.id);
@@ -103,28 +97,120 @@ export function initializeRescueState(scene) {
     const rescuer = findUnit(scene, task.rescuerId);
     const target = findUnit(scene, task.targetId);
 
+    if (task.status === "active") {
+      if (
+        task.resolvedTurn !== null ||
+        task.coinHeads !== null ||
+        task.guaranteed !== false ||
+        task.interruptionReason !== undefined ||
+        task.pausedMinutesBackfilled !== undefined
+      ) {
+        fail("継続中の救助任務に終了記録があります。");
+      }
+
+      for (const id of [task.rescuerId, task.targetId]) {
+        if (activeParticipants.has(id)) {
+          fail("同じ艦船が複数の救助任務に参加しています。");
+        }
+
+        activeParticipants.add(id);
+      }
+
+      if (!rescueCanContinue(task, rescuer, target)) {
+        fail("救助任務と艦船の保存状態が一致していません。");
+      }
+
+      continue;
+    }
+
     if (
-      task.status === "active" &&
-      !rescueCanContinue(task, rescuer, target)
+      !Number.isSafeInteger(task.resolvedTurn) ||
+      task.resolvedTurn < task.startedTurn ||
+      task.resolvedTurn > scene.turn.number
     ) {
-      fail("救助任務と艦船の保存状態が一致していません。");
+      fail("救助任務の終了ラウンドが不正です。");
+    }
+
+    // 已结束任务不能继续锁住任一方。
+    // 允许双方已经参加其他的新任务。
+    if (
+      rescuer.shipState.rescueTaskId === task.id ||
+      target.shipState.rescueTaskId === task.id
+    ) {
+      fail("終了した救助任務が艦船を拘束しています。");
+    }
+
+    if (task.status === "interrupted") {
+      const expectedBackfill =
+        (task.resolvedTurn - task.startedTurn) *
+        TURN_DURATION_MINUTES;
+
+      if (
+        typeof task.interruptionReason !== "string" ||
+        !task.interruptionReason.trim() ||
+        !Number.isSafeInteger(expectedBackfill) ||
+        !Number.isSafeInteger(task.pausedMinutesBackfilled) ||
+        task.pausedMinutesBackfilled !== expectedBackfill ||
+        task.coinHeads !== null ||
+        task.guaranteed !== false
+      ) {
+        fail("救助中断の保存記録が不正です。");
+      }
+
+      continue;
+    }
+
+    // 正常救助最早在开始后的下一回合判定。
+    // 校验历史结果，不重新掷硬币，也不重新判定当前舰种。
+    if (
+      task.resolvedTurn < task.startedTurn + 1 ||
+      typeof task.guaranteed !== "boolean" ||
+      task.interruptionReason !== undefined ||
+      task.pausedMinutesBackfilled !== undefined
+    ) {
+      fail("救助判定の終了記録が不正です。");
+    }
+
+    if (task.guaranteed) {
+      if (
+        task.coinHeads !== null ||
+        task.status !== "success"
+      ) {
+        fail("必ず成功する救助の記録が不正です。");
+      }
+    } else if (
+      typeof task.coinHeads !== "boolean" ||
+      task.status !== (
+        task.coinHeads ? "success" : "failure"
+      )
+    ) {
+      fail("救助のコイン結果と終了状態が一致しません。");
     }
   }
 
   for (const unit of scene.instances) {
+    if (unit.branch !== "navy") continue;
+
+    if (!unit.shipState) {
+      fail("艦船の救助状態が初期化されていません。");
+    }
+
+    const taskId = unit.shipState.rescueTaskId;
+
     if (
-      unit.branch === "navy" &&
-      unit.shipState.rescueTaskId !== null &&
+      taskId !== null &&
       !scene.rescueTasks.some(task =>
-        task.id === unit.shipState.rescueTaskId &&
+        task.id === taskId &&
         task.status === "active" &&
-        [task.rescuerId, task.targetId].includes(unit.instanceId)
+        [task.rescuerId, task.targetId]
+          .includes(unit.instanceId)
       )
     ) {
       fail("艦船に対応する救助任務がありません。");
     }
   }
 }
+
 
 /**
  * 移动成功后调用。
@@ -273,7 +359,7 @@ export function interruptRescueTask(
   const elapsedBefore = target.shipState.sinkingElapsedMinutes;
 
   if (
-    !Number.isFinite(elapsedBefore) ||
+    !Number.isSafeInteger(elapsedBefore) ||
     elapsedBefore < 0
   ) {
     fail("沈没寸前の経過時間が不正です。");
@@ -287,7 +373,8 @@ export function interruptRescueTask(
 
   if (
     !Number.isSafeInteger(pausedMinutes) ||
-    !Number.isFinite(elapsedAfter)
+    !Number.isSafeInteger(elapsedAfter) ||
+    elapsedAfter < 0
   ) {
     fail("救助の停止期間の換算結果が範囲外です。");
   }
