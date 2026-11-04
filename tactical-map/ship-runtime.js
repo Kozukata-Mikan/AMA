@@ -9,9 +9,12 @@ import {
   validateShipEffectsState,
   getOwnShipEffectLines,
   resolveShipEffectAcquisition,
-  resolveShipFireFloodingPhase
-
+  resolveShipDamageControlPhase
 } from "./ship-effects-runtime.js";
+
+import {
+  ensureEquipmentRuntime
+} from "./equipment-runtime.js";
 
 
 // ===== 舰船数据与推演状态接入 =====
@@ -787,11 +790,15 @@ export function applyShipEffectAcquisition(
 // 不独立保存、不推进阶段。
 // 不把火灾伤害伪装成武器攻击。
 
+// 保留旧入口名，避免破坏已有调用。
+// 现在统一处理火灾、浸水和已安装装备组的内部损管。
 export function applyShipFireFloodingPhase(
   unit,
   context,
-  coinSource
+  coinSource,
+  selectRepairIndex
 ) {
+
   if (
     !context ||
     !Number.isSafeInteger(context.turnNumber) ||
@@ -810,13 +817,26 @@ export function applyShipFireFloodingPhase(
     throw new Error("特殊状態のコイン関数が不正です。");
   }
 
+  if (
+    selectRepairIndex !== undefined &&
+    typeof selectRepairIndex !== "function"
+  ) {
+    throw new Error("設備修理の抽選関数が不正です。");
+  }
+
   const working = JSON.parse(JSON.stringify(unit));
+
 
   if (working?.branch !== "navy") {
     throw new Error("火災・浸水の処理対象が艦船ではありません。");
   }
 
   ensureShipRuntime(working);
+  ensureEquipmentRuntime(working);
+
+  const beforeEquipmentState = JSON.parse(
+    JSON.stringify(working.equipmentState)
+  );
 
   const profile = readShipProfile(working);
   const beforeHp = working.currentHp;
@@ -845,14 +865,25 @@ export function applyShipFireFloodingPhase(
     };
   }
 
-  // 事件由本模块内部算法生成，不接受页面传入的伤害事件。
-  const result = resolveShipFireFloodingPhase(
+    // 候选来自现有运行状态，不接受页面提交的修复目标。
+  const damagedEquipmentIds = working.equipmentState.groups
+    .filter(group => group.damaged)
+    .map(group => group.id);
+
+  // 火灾、浸水、设备分别判定一次R。
+  // 未传入随机函数时，由算法模块使用默认随机源。
+  const result = resolveShipDamageControlPhase(
     {
       state: working.shipState.effects,
-      turnNumber: context.turnNumber
+      turnNumber: context.turnNumber,
+      damagedEquipmentIds
     },
-    coinSource
+    {
+      coinSource,
+      selectRepairIndex
+    }
   );
+
 
   const state = working.shipState;
   state.effects = result.state;
@@ -896,6 +927,31 @@ export function applyShipFireFloodingPhase(
 
         break;
 
+              case "equipment-repaired": {
+        const group = working.equipmentState.groups.find(
+          item => item.id === event.equipmentId
+        );
+
+        if (
+          !group ||
+          group.damaged !== true ||
+          event.method !== "damage-control" ||
+          event.equipmentId !==
+            result.equipmentControl.repairedEquipmentId
+        ) {
+          throw new Error("設備修理の結果と損傷状態が一致しません。");
+        }
+
+        // 只解除损坏。
+        // 不恢复弹药，不重置lastUsedTurn，不修改图鉴快照。
+        group.damaged = false;
+        break;
+      }
+
+      case "equipment-control-failed":
+        // 损管失败只是修复无效，不使装备彻底损坏。
+        break;
+
       case "effect-cleared":
       case "effect-worsened":
       case "flooding-movement-reduction":
@@ -905,11 +961,13 @@ export function applyShipFireFloodingPhase(
         break;
 
       default:
-        throw new Error("未対応の火災・浸水イベントがあります。");
+        throw new Error("未対応の損傷管制イベントがあります。");
     }
   }
 
   ensureShipRuntime(working);
+  ensureEquipmentRuntime(working);
+
 
   const enteredSinking =
     beforeStatus !== "sinking" &&
@@ -923,6 +981,13 @@ export function applyShipFireFloodingPhase(
     skipped: false,
     rolls: result.rolls,
     events: result.events,
+    equipmentControl: JSON.parse(
+      JSON.stringify(result.equipmentControl)
+    ),
+    beforeEquipmentState,
+    afterEquipmentState: JSON.parse(
+      JSON.stringify(working.equipmentState)
+    ),
     beforeEffects,
     afterEffects: JSON.parse(JSON.stringify(state.effects)),
     beforeHp,
@@ -944,7 +1009,13 @@ export function applyShipFireFloodingPhase(
 
   // 所有处理及校验成功后才写回。
   unit.currentHp = working.currentHp;
+    // 所有处理及校验成功后才写回。
+  unit.currentHp = working.currentHp;
   unit.shipState = JSON.parse(JSON.stringify(state));
+  unit.equipmentState = JSON.parse(
+    JSON.stringify(working.equipmentState)
+  );
 
   return report;
+
 }
