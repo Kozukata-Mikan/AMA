@@ -867,8 +867,9 @@ export function applyShipFireFloodingPhase(
 
     // 候选来自现有运行状态，不接受页面提交的修复目标。
   const damagedEquipmentIds = working.equipmentState.groups
-    .filter(group => group.damaged)
+    .filter(group => group.damaged && !group.destroyed)
     .map(group => group.id);
+
 
   // 火灾、浸水、设备分别判定一次R。
   // 未传入随机函数时，由算法模块使用默认随机源。
@@ -935,6 +936,7 @@ export function applyShipFireFloodingPhase(
         if (
           !group ||
           group.damaged !== true ||
+          group.destroyed !== false ||
           event.method !== "damage-control" ||
           event.equipmentId !==
             result.equipmentControl.repairedEquipmentId
