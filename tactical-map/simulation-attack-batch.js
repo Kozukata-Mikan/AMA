@@ -850,7 +850,21 @@ export function resolveAttackBatchHitStep(
 
       rangeSelections.push(copy(selected));
 
+           const memberChecks = new Map(
+        check.range.checks
+          .filter(member => member.allowed)
+          .map(member => [member.targetId, member])
+      );
+
       for (const occurrence of rangeHit.reports) {
+        const modifiers = memberChecks.get(
+          occurrence.targetId
+        );
+
+        if (!modifiers) {
+          fail("範囲命中の正式な修正記録が不足しています。");
+        }
+
         reports.push({
           version: 1,
           commandId: entry.commandId,
@@ -860,9 +874,15 @@ export function resolveAttackBatchHitStep(
           occurrenceIndex: occurrence.occurrenceIndex,
           turnNumber: checked.prepared.turnNumber,
           phaseId: checked.prepared.phaseId,
+          modifiers: {
+            commandId: entry.commandId,
+            bonuses: modifiers.bonuses,
+            penalties: modifiers.penalties
+          },
           hit: copy(occurrence.hit)
         });
       }
+
 
       continue;
     }
