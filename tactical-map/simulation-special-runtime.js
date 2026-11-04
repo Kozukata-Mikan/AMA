@@ -8,7 +8,123 @@ import {
   reconcileActiveRescues
 } from "./simulation-rescue.js";
 
+import {
+  ensureEquipmentRuntime
+} from "./equipment-runtime.js";
+
+
 const copy = value => JSON.parse(JSON.stringify(value));
+// 只校验本次新增的设备损管记录。
+// 旧报告没有equipmentControl时保留，不补造历史。
+function validateEquipmentControlReport(report) {
+  const control = report.equipmentControl;
+
+  const equipmentRolls = report.rolls.filter(
+    roll => roll.type === "equipment"
+  );
+
+  const repairEvents = report.events.filter(
+    event => event.type === "equipment-repaired"
+  );
+
+  const failureEvents = report.events.filter(
+    event => event.type === "equipment-control-failed"
+  );
+
+  function invalid() {
+    throw new Error("設備損管の処理記録が不正です。");
+  }
+
+  if (control === undefined) {
+    if (
+      equipmentRolls.length ||
+      repairEvents.length ||
+      failureEvents.length
+    ) {
+      invalid();
+    }
+
+    return;
+  }
+
+  if (
+    !control ||
+    typeof control !== "object" ||
+    Array.isArray(control) ||
+    report.skipped ||
+    typeof control.skipped !== "boolean" ||
+    !Array.isArray(control.candidateIds) ||
+    control.candidateIds.some(
+      id => typeof id !== "string" || id.trim() === ""
+    ) ||
+    new Set(control.candidateIds).size !==
+      control.candidateIds.length
+  ) {
+    invalid();
+  }
+
+  const sortedIds = [...control.candidateIds]
+    .sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+
+  if (
+    JSON.stringify(sortedIds) !==
+      JSON.stringify(control.candidateIds)
+  ) {
+    invalid();
+  }
+
+  if (control.skipped) {
+    if (
+      control.candidateIds.length !== 0 ||
+      control.coin !== null ||
+      control.success !== null ||
+      control.selectedIndex !== null ||
+      control.repairedEquipmentId !== null ||
+      equipmentRolls.length !== 0 ||
+      repairEvents.length !== 0 ||
+      failureEvents.length !== 0
+    ) {
+      invalid();
+    }
+
+    return;
+  }
+
+  if (
+    control.candidateIds.length === 0 ||
+    typeof control.coin !== "boolean" ||
+    control.success !== control.coin ||
+    equipmentRolls.length !== 1 ||
+    equipmentRolls[0].coin !== control.coin
+  ) {
+    invalid();
+  }
+
+  if (control.success) {
+    if (
+      !Number.isSafeInteger(control.selectedIndex) ||
+      control.selectedIndex < 0 ||
+      control.selectedIndex >= control.candidateIds.length ||
+      control.repairedEquipmentId !==
+        control.candidateIds[control.selectedIndex] ||
+      repairEvents.length !== 1 ||
+      repairEvents[0].equipmentId !==
+        control.repairedEquipmentId ||
+      repairEvents[0].method !== "damage-control" ||
+      failureEvents.length !== 0
+    ) {
+      invalid();
+    }
+  } else if (
+    control.selectedIndex !== null ||
+    control.repairedEquipmentId !== null ||
+    repairEvents.length !== 0 ||
+    failureEvents.length !== 1
+  ) {
+    invalid();
+  }
+}
+
 /**
  * 起火／进水子流程的场景级记录。
  * 仅补缺失字段，不清空既有记录。
@@ -93,7 +209,7 @@ export function initializeSpecialRuntime(scene) {
       for (const roll of report.rolls) {
         if (
           !roll ||
-          !["fire", "flooding"].includes(roll.type) ||
+          !["fire", "flooding", "equipment"].includes(roll.type) ||
           rolledTypes.has(roll.type) ||
           typeof roll.coin !== "boolean" ||
           roll.success !== roll.coin
@@ -103,6 +219,8 @@ export function initializeSpecialRuntime(scene) {
 
         rolledTypes.add(roll.type);
       }
+    validateEquipmentControlReport(report);
+
 
       if (
         report.skipped &&
@@ -154,7 +272,7 @@ export function initializeSpecialRuntime(scene) {
  *
  * 不处理：
  * - 正常到期的救助抽签；
- * - 设备损管；
+ * 特殊阶段中的火灾／浸水／装备组内部损管子流程。
  * - 回合结束自然沉没计时；
  * - 阶段推进与场景时间推进。
  *
@@ -162,7 +280,8 @@ export function initializeSpecialRuntime(scene) {
  */
 export function applyFireFloodingSpecialStep(
   scene,
-  coinSource
+  coinSource,
+  selectRepairIndex
 ) {
   if (
     !scene ||
@@ -182,6 +301,14 @@ export function applyFireFloodingSpecialStep(
     throw new Error("特殊状態のコイン関数が不正です。");
   }
 
+    if (
+    selectRepairIndex !== undefined &&
+    typeof selectRepairIndex !== "function"
+  ) {
+    throw new Error("設備修理の抽選関数が不正です。");
+  }
+
+
   const working = copy(scene);
 
     initializeSpecialRuntime(working);
@@ -198,6 +325,7 @@ export function applyFireFloodingSpecialStep(
   
   for (const unit of working.instances) {
     ensureShipRuntime(unit);
+    ensureEquipmentRuntime(unit);
   }
 
   // 先检查原任务有效，不能靠本次处理掩盖损坏的保存数据。
@@ -215,7 +343,8 @@ export function applyFireFloodingSpecialStep(
           turnNumber: working.turn.number,
           phaseId: working.turn.phaseId
         },
-        coinSource
+        coinSource,
+        selectRepairIndex
       )
     );
   }
@@ -226,6 +355,7 @@ export function applyFireFloodingSpecialStep(
 
   for (const unit of working.instances) {
     ensureShipRuntime(unit);
+    ensureEquipmentRuntime(unit);
   }
 
   initializeRescueState(working);
