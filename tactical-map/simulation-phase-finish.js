@@ -28,6 +28,11 @@ import {
 } from "./simulation-rescue-runtime.js";
 
 import {
+  getEquipmentControlCandidates
+} from "./equipment-item-runtime.js";
+
+
+import {
   initializeRescueState
 } from "./simulation-rescue.js";
 
@@ -293,55 +298,49 @@ function preflightSpecial(scene) {
       );
     }
 
-      const damagedCount = unit.equipmentState.groups
-      .filter(group => group.damaged && !group.destroyed)
-      .length;
+      const damagedCount =
+  getEquipmentControlCandidates(unit).length;
 
+const context = {
+  turnNumber: scene.turn.number,
+  phaseId: "special"
+};
 
-    const context = {
-      turnNumber: scene.turn.number,
-      phaseId: "special"
-    };
-
-    // 所有硬币反面：覆盖恶化和设备修复失败。
-    // 如果失败分支错误地抽选修复目标，立即拒绝。
+if (
+  damagedCount === 0 ||
+  unit.shipState.status === "sunk"
+) {
+  for (const heads of [false, true]) {
     applyShipFireFloodingPhase(
       copy(unit),
       context,
-      () => false,
+      () => heads,
       () => {
-        fail("設備損管の失敗時に修理抽選が呼ばれました。");
+        fail("損管対象がない状態で設備抽選が呼ばれました。");
       }
     );
-
-    if (damagedCount === 0) {
-      // 所有硬币正面，但没有设备候选时不得抽选。
+  }
+} else {
+  // 成功和失败都必须先选择同一个项目。
+  // 每个候选的两个硬币分支均在隔离副本验证。
+  for (let index = 0; index < damagedCount; index++) {
+    for (const heads of [false, true]) {
       applyShipFireFloodingPhase(
         copy(unit),
         context,
-        () => true,
-        () => {
-          fail("修理対象がない状態で設備抽選が呼ばれました。");
+        () => heads,
+        candidateCount => {
+          if (candidateCount !== damagedCount) {
+            fail("設備損管の候補数が事前検査と一致しません。");
+          }
+
+          return index;
         }
       );
-    } else {
-      // 成功分支逐个覆盖可能被修复的装备。
-      // 所有试算都使用隔离副本和确定性随机源。
-      for (let index = 0; index < damagedCount; index++) {
-        applyShipFireFloodingPhase(
-          copy(unit),
-          context,
-          () => true,
-          candidateCount => {
-            if (candidateCount !== damagedCount) {
-              fail("設備修理の候補数が事前検査と一致しません。");
-            }
-
-            return index;
-          }
-        );
-      }
     }
+  }
+}
+
 
   }
 
