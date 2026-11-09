@@ -511,6 +511,13 @@ export function getObservedScene(scene) {
         unit.side === side
       )
     ).map(plan => ({
+      kind: plan.kind ?? "rescue",
+
+     itemId: scene.instances.some(unit =>
+      unit.instanceId === plan.rescuerId &&
+       unit.side === side
+     ) ? (plan.itemId ?? null) : null,
+
       rescuerId: plan.rescuerId,
       turnNumber: plan.turnNumber,
 
@@ -527,6 +534,11 @@ export function getObservedScene(scene) {
       )
     ).map(task => ({
       id: task.id,
+      kind: task.kind ?? "rescue",
+  itemId: scene.instances.some(unit =>
+    unit.instanceId === task.targetId &&
+    unit.side === side
+  ) ? (task.itemId ?? null) : null,
       startedTurn: task.startedTurn,
       status: task.status,
       resolvedTurn: task.resolvedTurn,
