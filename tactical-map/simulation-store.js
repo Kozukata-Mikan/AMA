@@ -34,6 +34,13 @@ import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./
 import { readRangeCommandTarget } from "./simulation-range-command.js";
 import { createRangeAttackPanel } from "./simulation-range-target-ui.js";
 
+import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js";
+
+import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-runtime.js";
+
+import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
+
+
 
 
 // ===== 独立推演状态 =====
@@ -74,7 +81,19 @@ function initializeCombatRuntime(scene) {
 
     if (unit.branch !== "navy") continue;
 
-    const effects = unit.shipState.effects;
+const itemRuntime = ensureEquipmentItemRuntime(unit);
+
+for (const item of Object.values(itemRuntime.items)) {
+  if (
+    item.damagedTurn !== null &&
+    item.damagedTurn > turn.number
+  ) {
+    throw new Error("設備損傷の記録が未来のラウンドになっています。");
+  }
+}
+
+const effects = unit.shipState.effects;
+
 
     // 兼容尚未应用特殊状态初始化补丁的文件。
     // 正式特殊阶段接入时会要求该字段存在。
