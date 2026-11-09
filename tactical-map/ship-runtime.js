@@ -16,6 +16,11 @@ import {
   ensureEquipmentRuntime
 } from "./equipment-runtime.js";
 
+import {
+  ensureEquipmentItemRuntime,
+  applyEquipmentItemDamageControl
+} from "./equipment-item-runtime.js";
+
 
 // ===== 舰船数据与推演状态接入 =====
 // 不修改图鉴快照，不推进时间，不执行战斗。
@@ -832,7 +837,8 @@ export function applyShipFireFloodingPhase(
   }
 
   ensureShipRuntime(working);
-  ensureEquipmentRuntime(working);
+  ensureEquipmentItemRuntime(working);
+
 
   const beforeEquipmentState = JSON.parse(
     JSON.stringify(working.equipmentState)
@@ -865,25 +871,25 @@ export function applyShipFireFloodingPhase(
     };
   }
 
-    // 候选来自现有运行状态，不接受页面提交的修复目标。
-  const damagedEquipmentIds = working.equipmentState.groups
-    .filter(group => group.damaged && !group.destroyed)
-    .map(group => group.id);
+
 
 
   // 火灾、浸水、设备分别判定一次R。
   // 未传入随机函数时，由算法模块使用默认随机源。
-  const result = resolveShipDamageControlPhase(
-    {
-      state: working.shipState.effects,
-      turnNumber: context.turnNumber,
-      damagedEquipmentIds
-    },
-    {
-      coinSource,
-      selectRepairIndex
-    }
-  );
+ // 旧统一算法只负责火灾、进水。
+// 不再把装备组ID交给它，避免旧设备判定重复执行。
+const result = resolveShipDamageControlPhase(
+  {
+    state: working.shipState.effects,
+    turnNumber: context.turnNumber,
+    damagedEquipmentIds: []
+  },
+  {
+    coinSource,
+    selectRepairIndex
+  }
+);
+
 
 
   const state = working.shipState;
@@ -928,31 +934,13 @@ export function applyShipFireFloodingPhase(
 
         break;
 
-              case "equipment-repaired": {
-        const group = working.equipmentState.groups.find(
-          item => item.id === event.equipmentId
-        );
-
-        if (
-          !group ||
-          group.damaged !== true ||
-          group.destroyed !== false ||
-          event.method !== "damage-control" ||
-          event.equipmentId !==
-            result.equipmentControl.repairedEquipmentId
-        ) {
-          throw new Error("設備修理の結果と損傷状態が一致しません。");
-        }
-
-        // 只解除损坏。
-        // 不恢复弹药，不重置lastUsedTurn，不修改图鉴快照。
-        group.damaged = false;
-        break;
-      }
-
+             
+      case "equipment-repaired":
       case "equipment-control-failed":
-        // 损管失败只是修复无效，不使装备彻底损坏。
-        break;
+      throw new Error(
+    "旧装備組の損管処理が重複して実行されました。"
+  );
+
 
       case "effect-cleared":
       case "effect-worsened":
@@ -967,8 +955,37 @@ export function applyShipFireFloodingPhase(
     }
   }
 
+
+  const equipmentControl =
+  applyEquipmentItemDamageControl(
+    working,
+    {
+      coinSource,
+      selectIndex: selectRepairIndex
+    }
+  );
+
+if (!equipmentControl.skipped) {
+  result.rolls.push({
+    type: "equipment",
+    coin: equipmentControl.coinHeads,
+    success: equipmentControl.success
+  });
+
+  result.events.push({
+    type: equipmentControl.success
+      ? "equipment-repaired"
+      : "equipment-control-failed",
+    itemId: equipmentControl.itemId,
+    equipmentId: equipmentControl.itemId,
+    method: "damage-control",
+    outcome: equipmentControl.outcome
+  });
+}
+
   ensureShipRuntime(working);
-  ensureEquipmentRuntime(working);
+  ensureEquipmentItemRuntime(working);
+
 
 
   const enteredSinking =
@@ -984,7 +1001,7 @@ export function applyShipFireFloodingPhase(
     rolls: result.rolls,
     events: result.events,
     equipmentControl: JSON.parse(
-      JSON.stringify(result.equipmentControl)
+    JSON.stringify(equipmentControl)
     ),
     beforeEquipmentState,
     afterEquipmentState: JSON.parse(
@@ -1009,8 +1026,7 @@ export function applyShipFireFloodingPhase(
       state.rescueTaskId !== null
   };
 
-  // 所有处理及校验成功后才写回。
-  unit.currentHp = working.currentHp;
+
     // 所有处理及校验成功后才写回。
   unit.currentHp = working.currentHp;
   unit.shipState = JSON.parse(JSON.stringify(state));
