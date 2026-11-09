@@ -666,6 +666,39 @@ function finalPreflight(start, entry) {
   };
 }
 
+// 只比较装备损伤，不比较允许由正式资源流程改变的残弹和使用记录。
+// 旧阶段快照没有destroyed字段时，按旧状态语义视为false。
+function equipmentDamageSignature(unit) {
+  const groups = unit.equipmentState?.groups;
+
+  if (!Array.isArray(groups)) {
+    fail("段階開始時の装備損傷記録がありません。");
+  }
+
+  return JSON.stringify(
+    groups.map(group => {
+      if (
+        !group ||
+        typeof group.id !== "string" ||
+        typeof group.damaged !== "boolean" ||
+        (
+          group.destroyed !== undefined &&
+          typeof group.destroyed !== "boolean"
+        ) ||
+        (group.destroyed === true && !group.damaged)
+      ) {
+        fail("段階開始時の装備損傷記録が不正です。");
+      }
+
+      return {
+        id: group.id,
+        damaged: group.damaged,
+        destroyed: group.destroyed ?? false
+      };
+    }).sort((a, b) => compareText(a.id, b.id))
+  );
+}
+
 
 function assertStartStateUnchanged(scene, start) {
   for (const oldUnit of start.instances) {
@@ -675,6 +708,8 @@ function assertStartStateUnchanged(scene, start) {
       JSON.stringify(current.shipState) !==
         JSON.stringify(oldUnit.shipState) ||
       current.currentHp !== oldUnit.currentHp ||
+      equipmentDamageSignature(current) !==
+      equipmentDamageSignature(oldUnit) ||
       current.groupId !== oldUnit.groupId ||
       current.heading !== oldUnit.heading ||
       current.x !== oldUnit.x ||
