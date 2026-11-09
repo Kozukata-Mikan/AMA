@@ -320,3 +320,237 @@ export function validateEquipmentImpactReport(report) {
     }
   }
 }
+// ===== 八项项目内部损管 =====
+// 候选单位是舰船六个位置及两项侦察，不是装备组。
+// 先选对象，再对同一对象判定一次R。
+// 失败使选中对象彻底损坏。
+
+function randomEquipmentControlIndex(candidateCount) {
+  requireInteger(candidateCount, "設備損管の候補数", 1);
+
+  if (candidateCount > EQUIPMENT_HIT_ITEMS.length) {
+    fail("設備損管の候補数が範囲外です。");
+  }
+
+  if (!globalThis.crypto?.getRandomValues) {
+    fail("設備損管の抽選に必要な乱数機能を利用できません。");
+  }
+
+  // 候选数量不一定能整除32位随机数范围。
+  // 使用拒绝采样，避免直接取模造成概率偏差。
+  const range = 0x100000000;
+  const limit = range - range % candidateCount;
+  const value = new Uint32Array(1);
+
+  do {
+    globalThis.crypto.getRandomValues(value);
+  } while (value[0] >= limit);
+
+  return value[0] % candidateCount;
+}
+
+function equipmentControlCoin() {
+  if (!globalThis.crypto?.getRandomValues) {
+    fail("設備損管のコイン判定に必要な乱数機能を利用できません。");
+  }
+
+  const value = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(value);
+
+  // R：正面成功，反面失败。
+  return (value[0] & 1) === 1;
+}
+
+/**
+ * 将内部损管候选固定为八项顺序。
+ *
+ * 输入只能包含已损坏且未彻底损坏的项目ID。
+ * 实际损伤资格由调用方从运行状态中生成；
+ * 不允许直接采用页面传入的候选列表。
+ */
+function normalizeEquipmentControlCandidates(value) {
+  const allowedIds = new Set(
+    EQUIPMENT_HIT_ITEMS.map(item => item.id)
+  );
+
+  if (
+    !Array.isArray(value) ||
+    value.some(id =>
+      typeof id !== "string" ||
+      !allowedIds.has(id)
+    ) ||
+    new Set(value).size !== value.length
+  ) {
+    fail("設備損管の対象一覧が不正です。");
+  }
+
+  const selectedIds = new Set(value);
+
+  return EQUIPMENT_HIT_ITEMS
+    .filter(item => selectedIds.has(item.id))
+    .map(item => item.id);
+}
+
+/**
+ * 八项项目的内部损管算法。
+ *
+ * input:
+ * {
+ *   candidateIds: ["front", "sea-recon"]
+ * }
+ *
+ * sources:
+ * {
+ *   selectIndex: candidateCount => index,
+ *   coinSource: () => boolean
+ * }
+ *
+ * 随机源可供隔离预检和测试注入。
+ * 本函数不修改舰船或保存状态，也不推进阶段。
+ */
+export function resolveEquipmentItemDamageControl(
+  input,
+  sources = {}
+) {
+  if (
+    !input ||
+    typeof input !== "object" ||
+    Array.isArray(input) ||
+    !sources ||
+    typeof sources !== "object" ||
+    Array.isArray(sources)
+  ) {
+    fail("設備損管の入力が不正です。");
+  }
+
+  const { selectIndex, coinSource } = sources;
+
+  if (
+    selectIndex !== undefined &&
+    typeof selectIndex !== "function"
+  ) {
+    fail("設備損管の抽選関数が不正です。");
+  }
+
+  if (
+    coinSource !== undefined &&
+    typeof coinSource !== "function"
+  ) {
+    fail("設備損管のコイン関数が不正です。");
+  }
+
+  const candidateIds =
+    normalizeEquipmentControlCandidates(
+      input.candidateIds
+    );
+
+  if (candidateIds.length === 0) {
+    return {
+      version: 1,
+      kind: "equipment-item-control",
+      skipped: true,
+      candidateIds,
+      selectedIndex: null,
+      itemId: null,
+      coinHeads: null,
+      success: null,
+      outcome: null
+    };
+  }
+
+  // 无论最后成功还是失败，都先确定同一个处理对象。
+  const selectedIndex = selectIndex === undefined
+    ? randomEquipmentControlIndex(candidateIds.length)
+    : selectIndex(candidateIds.length);
+
+  if (
+    !Number.isSafeInteger(selectedIndex) ||
+    selectedIndex < 0 ||
+    selectedIndex >= candidateIds.length
+  ) {
+    fail("設備損管の抽選結果が範囲外です。");
+  }
+
+  const itemId = candidateIds[selectedIndex];
+
+  const coinHeads = coinSource === undefined
+    ? equipmentControlCoin()
+    : coinSource();
+
+  if (typeof coinHeads !== "boolean") {
+    fail("設備損管のコイン結果が不正です。");
+  }
+
+  return {
+    version: 1,
+    kind: "equipment-item-control",
+    skipped: false,
+    candidateIds,
+    selectedIndex,
+    itemId,
+    coinHeads,
+    success: coinHeads,
+    outcome: coinHeads ? "repaired" : "destroyed"
+  };
+}
+
+/**
+ * 校验内部损管报告。
+ * 不重新抽选，不重新掷硬币，不补造历史结果。
+ */
+export function validateEquipmentItemControlReport(report) {
+  if (
+    !report ||
+    typeof report !== "object" ||
+    Array.isArray(report) ||
+    report.version !== 1 ||
+    report.kind !== "equipment-item-control" ||
+    typeof report.skipped !== "boolean"
+  ) {
+    fail("設備損管の処理記録が不正です。");
+  }
+
+  const candidateIds =
+    normalizeEquipmentControlCandidates(
+      report.candidateIds
+    );
+
+  if (
+    JSON.stringify(candidateIds) !==
+      JSON.stringify(report.candidateIds)
+  ) {
+    fail("設備損管の候補順序が不正です。");
+  }
+
+  if (report.skipped) {
+    if (
+      candidateIds.length !== 0 ||
+      report.selectedIndex !== null ||
+      report.itemId !== null ||
+      report.coinHeads !== null ||
+      report.success !== null ||
+      report.outcome !== null
+    ) {
+      fail("設備損管の未実施記録が不正です。");
+    }
+
+    return;
+  }
+
+  if (
+    candidateIds.length === 0 ||
+    !Number.isSafeInteger(report.selectedIndex) ||
+    report.selectedIndex < 0 ||
+    report.selectedIndex >= candidateIds.length ||
+    report.itemId !==
+      candidateIds[report.selectedIndex] ||
+    typeof report.coinHeads !== "boolean" ||
+    report.success !== report.coinHeads ||
+    report.outcome !== (
+      report.coinHeads ? "repaired" : "destroyed"
+    )
+  ) {
+    fail("設備損管の対象と判定結果が一致しません。");
+  }
+}
+
