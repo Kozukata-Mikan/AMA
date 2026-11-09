@@ -20,6 +20,8 @@ const POSITION_NAMES = new Map([
   ["中部１", "middle-1"],
   ["中部2", "middle-2"],
   ["中部２", "middle-2"],
+  ["中部①", "middle-1"],
+  ["中部②", "middle-2"],
   ["两舷", "both-sides"],
   ["兩舷", "both-sides"],
   ["両舷", "both-sides"],
