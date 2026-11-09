@@ -839,6 +839,61 @@ export function openSimulation(id) {
     ...createSimulationFeatures(() => state, commit),
     ...createRescueFeatures(() => state, commit),
 
+    getEquipmentRepairOptions(rescuerId) {
+  const rescuer = state.instances.find(
+    unit => unit.instanceId === rescuerId
+  );
+
+  if (!rescuer || rescuer.branch !== "navy") {
+    throw new Error("修復艦を確認できません。");
+  }
+
+  assertManualControl(state, [rescuer]);
+
+  const observed = getObservedScene(state);
+  const labels = new Map(
+    EQUIPMENT_HIT_ITEMS.map(item => [item.id, item.label])
+  );
+
+  // 面板不枚举外方内部损伤。
+  const targets = observed.instances.filter(unit =>
+    unit.observationOwn === true &&
+    unit.branch === "navy" &&
+    unit.instanceId !== rescuerId &&
+    unit.shipState?.status !== "sunk" &&
+    unit.shipState?.rescueTaskId === null
+  ).map(unit => ({
+    id: unit.instanceId,
+    label: unit.name,
+    items: getEquipmentControlCandidates(unit).map(id => ({
+      id,
+      label: labels.get(id)
+    }))
+  })).filter(target => target.items.length > 0);
+
+  return copy({
+    revision: state.revision,
+    phaseId: state.turn.phaseId,
+    targets
+  });
+},
+
+mountEquipmentRepairPanel(container, rescuerId) {
+  if (!(container instanceof Element)) {
+    throw new Error("修復画面の表示先が不正です。");
+  }
+
+  const panel = createEquipmentRepairPanel({
+    store: api,
+    rescuerId
+  });
+
+  container.append(panel.element);
+  return panel;
+},
+
+           
+
 
     getControlSettings() {
 
