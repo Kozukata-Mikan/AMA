@@ -12,6 +12,9 @@ import {
   ensureEquipmentRuntime
 } from "./equipment-runtime.js";
 
+import {
+  validateEquipmentItemControlReport
+} from "./equipment-damage-runtime.js";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 // 只校验本次新增的设备损管记录。
@@ -30,6 +33,53 @@ function validateEquipmentControlReport(report) {
   const failureEvents = report.events.filter(
     event => event.type === "equipment-control-failed"
   );
+
+
+  // 新八项报告走独立校验；旧装备组报告继续原校验。
+if (control?.kind === "equipment-item-control") {
+  validateEquipmentItemControlReport(control);
+
+  if (report.skipped) {
+    throw new Error("省略した艦船に設備損管記録があります。");
+  }
+
+  if (control.skipped) {
+    if (
+      equipmentRolls.length ||
+      repairEvents.length ||
+      failureEvents.length ||
+      control.application !== null
+    ) {
+      throw new Error("設備損管の未実施記録が不正です。");
+    }
+
+    return;
+  }
+
+  const expectedEvents = control.success
+    ? repairEvents
+    : failureEvents;
+
+  const otherEvents = control.success
+    ? failureEvents
+    : repairEvents;
+
+  if (
+    equipmentRolls.length !== 1 ||
+    equipmentRolls[0].coin !== control.coinHeads ||
+    expectedEvents.length !== 1 ||
+    otherEvents.length !== 0 ||
+    expectedEvents[0].itemId !== control.itemId ||
+    expectedEvents[0].outcome !== control.outcome ||
+    control.application?.itemId !== control.itemId ||
+    control.application?.success !== control.success ||
+    control.application?.outcome !== control.outcome
+  ) {
+    throw new Error("設備損管の対象と適用履歴が一致しません。");
+  }
+
+  return;
+}
 
   function invalid() {
     throw new Error("設備損管の処理記録が不正です。");
