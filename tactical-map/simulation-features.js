@@ -9,6 +9,11 @@ import {
   getFloodingMovementFactor
 } from "./ship-effects-runtime.js";
 
+import {
+  ensureEquipmentItemRuntime,
+  isEquipmentReconAvailable,
+  getRetainedEquipmentDiscovery
+} from "./equipment-item-runtime.js";
 
 const SIDES = ["ally", "enemy", "neutral"];
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
@@ -59,6 +64,16 @@ export function initializeSimulationFeatures(scene) {
   if (!Array.isArray(scene.movementPlans)) {
     fail("移動計画の保存形式が不正です。");
   }
+  if (!Array.isArray(scene.instances)) {
+  fail("ユニットの保存形式が不正です。");
+}
+
+for (const unit of scene.instances) {
+  if (unit.branch === "navy") {
+    ensureEquipmentItemRuntime(unit);
+  }
+}
+
 }
 
 export function getObservationSide(scene) {
@@ -162,12 +177,17 @@ function navalGrade(unit, key) {
  * 返回identified、shadow或null。
  * 不修改观察阵营，不修改场景。
  */
-export function getObserverVisibility(scene, observer, target) {
+/**
+ * 原有侦察算法。
+ * 仅计算正常能力下的结果，不应用设备损伤或历史保持。
+ */
+function getNormalObserverVisibility(scene, observer, target) {
   if (!operational(observer) || !positioned(target)) {
     return null;
   }
 
-  const range = getReconConditions(scene.environment).normalRange;
+  const range =
+    getReconConditions(scene.environment).normalRange;
 
   const distance = Math.hypot(
     observer.x - target.x,
@@ -182,7 +202,6 @@ export function getObserverVisibility(scene, observer, target) {
 
   if (distance <= 100) return "identified";
 
-  // 当前只有海军双方的通常距离资料适配。
   if (
     observer.branch !== "navy" ||
     target.branch !== "navy" ||
@@ -200,6 +219,89 @@ export function getObserverVisibility(scene, observer, target) {
     recon >= detection
   ) ? "shadow" : null;
 }
+
+/**
+ * 设备攻击前读取单一侦察来源。
+ *
+ * 目前正式源码只实现海军对海军的对海侦察。
+ * 对空适配没有定义，不能伪造空中发现结果。
+ */
+export function getEquipmentReconSourceVisibility(
+  scene,
+  observer,
+  target,
+  itemId
+) {
+  if (
+    observer.branch !== "navy" ||
+    !operational(observer) ||
+    !positioned(target)
+  ) {
+    return null;
+  }
+
+  if (itemId === "sea-recon") {
+    if (target.branch !== "navy") return null;
+
+    if (
+      !isEquipmentReconAvailable(observer, "sea-recon")
+    ) {
+      return null;
+    }
+
+    return getNormalObserverVisibility(
+      scene,
+      observer,
+      target
+    );
+  }
+
+  if (itemId === "air-recon") {
+    // 当前文件没有对空侦察算法。
+    return null;
+  }
+
+  fail("偵察項目の指定が不正です。");
+}
+
+/**
+ * 正式观察查询。
+ *
+ * 对海能力损坏：
+ * - 不再产生新的对海发现；
+ * - 当回合保留该来源在受损前发现的目标；
+ * - 下一回合不再返回保留结果。
+ *
+ * 多观察者合并仍由getVisibility负责。
+ */
+export function getObserverVisibility(scene, observer, target) {
+  if (!operational(observer) || !positioned(target)) {
+    return null;
+  }
+
+  if (
+    observer.branch === "navy" &&
+    target.branch === "navy"
+  ) {
+    if (
+      !isEquipmentReconAvailable(observer, "sea-recon")
+    ) {
+      return getRetainedEquipmentDiscovery(
+        scene,
+        observer,
+        target,
+        "sea-recon"
+      );
+    }
+  }
+
+  return getNormalObserverVisibility(
+    scene,
+    observer,
+    target
+  );
+}
+
 
 export function getVisibility(scene) {
   const side = getObservationSide(scene);
