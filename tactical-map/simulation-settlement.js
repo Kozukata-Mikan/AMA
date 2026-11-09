@@ -20,8 +20,21 @@ import {
 } from "./equipment-runtime.js";
 
 import {
-  getObserverVisibility
+  getObserverVisibility,
+  getEquipmentReconSourceVisibility
 } from "./simulation-features.js";
+
+import {
+  tryReadEquipmentPower,
+  getEquipmentDamagePlan,
+  validateEquipmentImpactReport
+} from "./equipment-damage-runtime.js";
+
+import {
+  ensureEquipmentItemRuntime,
+  applyEquipmentAttack
+} from "./equipment-item-runtime.js";
+
 
 import {
   traceAttackTerrainLine,
@@ -64,6 +77,7 @@ import {
 import {
   readWeaponTargetScope
 } from "./weapon-profile-runtime.js";
+
 
 
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -280,6 +294,74 @@ export function initializeSettlementRuntime(scene) {
       }
     }
 
+    // 兼容旧目标报告没有equipmentReports的存档。
+// 新设备报告必须与正式武器命中对应。
+for (const targetReport of record.targetReports) {
+  if (targetReport.equipmentReports === undefined) continue;
+
+  if (!Array.isArray(targetReport.equipmentReports)) {
+    fail("設備攻撃の履歴形式が不正です。");
+  }
+
+  const equipmentKeys = new Set();
+
+  for (const equipment of targetReport.equipmentReports) {
+    if (
+      !equipment ||
+      typeof equipment.commandId !== "string" ||
+      !Number.isSafeInteger(equipment.occurrenceIndex) ||
+      equipment.occurrenceIndex < 0
+    ) {
+      fail("設備攻撃の命令履歴が不正です。");
+    }
+
+    const equipmentKey = JSON.stringify([
+      equipment.commandId,
+      equipment.occurrenceIndex
+    ]);
+
+    if (equipmentKeys.has(equipmentKey)) {
+      fail("設備攻撃の出現履歴が重複しています。");
+    }
+
+    equipmentKeys.add(equipmentKey);
+
+    validateEquipmentImpactReport(equipment.damage);
+
+    const hits = record.hitReports.filter(hit =>
+      hit.commandId === equipment.commandId &&
+      (hit.occurrenceIndex ?? 0) ===
+        equipment.occurrenceIndex &&
+      hit.targetId === targetReport.targetId
+    );
+
+    if (
+      hits.length !== 1 ||
+      equipment.damage.hitCount !== hits[0].hit?.hitCount ||
+      equipment.damage.turnNumber !== record.turnNumber ||
+      !Array.isArray(equipment.damage.applications) ||
+      equipment.damage.applications.length !==
+        equipment.damage.allocationCount
+    ) {
+      fail("設備被害と正式命中の履歴が一致しません。");
+    }
+
+    equipment.damage.applications.forEach((application, index) => {
+      if (
+        !application ||
+        application.allocationIndex !== index ||
+        application.itemId !==
+          equipment.damage.draws[index].itemId ||
+        typeof application.empty !== "boolean" ||
+        typeof application.changed !== "boolean" ||
+        !Array.isArray(application.groupIds)
+      ) {
+        fail("設備被害の適用履歴が不正です。");
+      }
+    });
+  }
+}
+
     const key = recordKey(record.turnNumber, record.phaseId);
 
     if (keys.has(key)) {
@@ -330,10 +412,22 @@ function navalPoint(scene, unit) {
 }
 
 function parseDamageRule(profile) {
-    if (/^(舰炮规则|艦砲規則|艦砲ルール)$/.test(
+  if (/^(舰炮规则|艦砲規則|艦砲ルール)$/.test(
     profile.powerRule.trim()
   )) {
     return { kind: "cannon", underwater: false };
+  }
+
+  const equipment = tryReadEquipmentPower(
+    profile.powerRule
+  );
+
+  if (equipment) {
+    return {
+      kind: "equipment",
+      underwater: false,
+      power: equipment.power
+    };
   }
 
   const parsed = readNumericPower(profile.powerRule);
@@ -344,6 +438,7 @@ function parseDamageRule(profile) {
     power: parsed.power
   };
 }
+
 
 function trainingModifiers(scene, actor, target, underwaterWeapon) {
   const traits = new Set([
@@ -620,13 +715,37 @@ function finalPreflight(start, entry) {
   // 正式随机之前验证真实伤害算法。
   // 算法不支持或资料错误必须整批拒绝。
   if (damageRule.kind === "cannon") {
-    getCannonDamagePreview({
-      penetration: profile.penetration,
-      armor: profile.guidance === "inertial"
-        ? targetProfile.strengthArmor
-        : targetProfile.armor
-    });
-  } else {
+  getCannonDamagePreview({
+    penetration: profile.penetration,
+    armor: profile.guidance === "inertial"
+      ? targetProfile.strengthArmor
+      : targetProfile.armor
+  });
+} else if (damageRule.kind === "equipment") {
+  getEquipmentDamagePlan({
+    powerRule: profile.powerRule,
+    hitCount: entry.ammoCost
+  });
+
+  const checkedTarget = copy(target);
+  ensureEquipmentItemRuntime(checkedTarget);
+
+  if (
+    checkedTarget.equipmentState
+      .unresolvedMountIndexes.length
+  ) {
+    fail(
+      "装備組数が未登録のため、設備損傷を適用できません。"
+    );
+  }
+
+  if (
+    typeof getEquipmentReconSourceVisibility !==
+      "function"
+  ) {
+    fail("設備攻撃の偵察処理が接続されていません。");
+  }
+} else {
     resolveNumericDamage({
       powerRule: profile.powerRule,
       hitCount: entry.ammoCost,
@@ -669,35 +788,20 @@ function finalPreflight(start, entry) {
 // 只比较装备损伤，不比较允许由正式资源流程改变的残弹和使用记录。
 // 旧阶段快照没有destroyed字段时，按旧状态语义视为false。
 function equipmentDamageSignature(unit) {
-  const groups = unit.equipmentState?.groups;
+  const checked = copy(unit);
+  const runtime = ensureEquipmentItemRuntime(checked);
 
-  if (!Array.isArray(groups)) {
-    fail("段階開始時の装備損傷記録がありません。");
-  }
+  return JSON.stringify({
+    groups: checked.equipmentState.groups.map(group => ({
+      id: group.id,
+      damaged: group.damaged,
+      destroyed: group.destroyed
+    })).sort((a, b) => compareText(a.id, b.id)),
 
-  return JSON.stringify(
-    groups.map(group => {
-      if (
-        !group ||
-        typeof group.id !== "string" ||
-        typeof group.damaged !== "boolean" ||
-        (
-          group.destroyed !== undefined &&
-          typeof group.destroyed !== "boolean"
-        ) ||
-        (group.destroyed === true && !group.damaged)
-      ) {
-        fail("段階開始時の装備損傷記録が不正です。");
-      }
-
-      return {
-        id: group.id,
-        damaged: group.damaged,
-        destroyed: group.destroyed ?? false
-      };
-    }).sort((a, b) => compareText(a.id, b.id))
-  );
+    itemDamage: runtime
+  });
 }
+
 
 
 function assertStartStateUnchanged(scene, start) {
@@ -897,6 +1001,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
 
     const cannonImpacts = [];
     const numericReports = [];
+    const equipmentReports = [];
     let hpDamage = 0;
     let hasDamageEffect = false;
     let strengthRemaining =
@@ -958,7 +1063,9 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
     // 高威力优先获得剩余强度防御。
     // 同威力仅用稳定键排序，伤害总量不受其影响。
     const numeric = attacks
-      .filter(attack => attack.rule.kind !== "cannon")
+      .filter(attack =>
+  ["numeric", "underwater"].includes(attack.rule.kind)
+)
       .sort((a, b) =>
         Number(b.rule.underwater) - Number(a.rule.underwater) ||
         (a.rule.underwater ? b.rule.power - a.rule.power : 0) ||
@@ -1004,6 +1111,37 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
       });
 
     }
+    // 全批资源和武器命中已确定。
+// 八项抽选属于伤害步骤，不重新计算武器命中数。
+for (const attack of attacks) {
+  if (attack.rule.kind !== "equipment") continue;
+
+  const damage = applyEquipmentAttack(
+    scene,
+    target,
+    {
+      powerRule: attack.entry.profile.powerRule,
+      hitCount: attack.hitCount
+    },
+    {
+      // 发现来源读取次序开始场景，避免目标处理顺序
+      // 影响同次序设备攻击的侦察来源记录。
+      observeBeforeDamage: (observer, observedTarget, itemId) =>
+        getEquipmentReconSourceVisibility(
+          start,
+          unitFor(start, observer.instanceId),
+          unitFor(start, observedTarget.instanceId),
+          itemId
+        )
+    }
+  );
+
+  equipmentReports.push({
+    commandId: attack.entry.commandId,
+    occurrenceIndex: attack.entry.occurrenceIndex,
+    damage
+  });
+}
 
     const applied = applyShipDamageAttack(
       target,
@@ -1030,6 +1168,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
       cannonImpacts,
       cannonSummary: cannon,
       numericReports,
+      equipmentReports,
       strengthUsesBefore:
         startTarget.shipState.underwaterStrengthUses,
       strengthUsesAfter:
