@@ -386,11 +386,13 @@ function preflightSinkingTime(scene) {
 
     for (const task of scene.rescueTasks) {
       if (
-        task.status !== "active" ||
-        task.targetId !== unit.instanceId
+      (task.kind ?? "rescue") !== "rescue" ||
+       task.status !== "active" ||
+       task.targetId !== unit.instanceId
       ) {
-        continue;
-      }
+     continue;
+     }
+
 
       if (task.startedTurn < episode.turnNumber) {
         fail("救助開始と沈没開始の記録が一致しません。");
