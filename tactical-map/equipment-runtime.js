@@ -256,3 +256,123 @@ export function ensureUnitCombatRuntime(unit) {
   ensureEquipmentRuntime(unit);
   ensureTrainingRuntime(unit);
 }
+/**
+ * 应用已经由正式设备分配算法生成的装备组损坏结果。
+ *
+ * assignments:
+ * [
+ *   {
+ *     groupId: "mount-0-group-0",
+ *     outcome: "damaged" // 或 "destroyed"
+ *   }
+ * ]
+ *
+ * 必须在正式保存事务的工作副本上调用。
+ * 不允许页面请求直接充当正式分配结果。
+ *
+ * 本函数不决定：
+ * - 命中位置和损坏数量；
+ * - 重复命中的分配规则；
+ * - 何时产生彻底损坏；
+ * - 侦察项和空槽的处理。
+ *
+ * 同一组可以在列表中重复出现，逐项保留报告。
+ * 是否允许这种分配，由上游正式规则算法决定。
+ */
+export function applyEquipmentDamageAssignments(
+  unit,
+  assignments
+) {
+  if (
+    !isObject(unit) ||
+    !Array.isArray(assignments)
+  ) {
+    throw new Error("装備損傷の適用データが不正です。");
+  }
+
+  // 使用单位副本，避免初始化或中途错误修改原单位。
+  const working = copy(unit);
+  ensureEquipmentRuntime(working);
+
+  const groups = new Map(
+    working.equipmentState.groups.map(
+      group => [group.id, group]
+    )
+  );
+
+  // 先检查全部输入，再进行状态应用。
+  for (const assignment of assignments) {
+    if (
+      !isObject(assignment) ||
+      typeof assignment.groupId !== "string" ||
+      !assignment.groupId.trim() ||
+      !["damaged", "destroyed"].includes(
+        assignment.outcome
+      ) ||
+      !groups.has(assignment.groupId)
+    ) {
+      throw new Error("装備損傷の割当結果が不正です。");
+    }
+  }
+
+  const results = [];
+
+  for (
+    let assignmentIndex = 0;
+    assignmentIndex < assignments.length;
+    assignmentIndex++
+  ) {
+    const assignment = assignments[assignmentIndex];
+    const group = groups.get(assignment.groupId);
+
+    const before = {
+      damaged: group.damaged,
+      destroyed: group.destroyed
+    };
+
+    group.damaged = true;
+
+    // 不允许一次普通损坏覆盖既有的彻底损坏。
+    // 是否应彻底损坏必须由上游明确提供，不能在这里猜测。
+    if (assignment.outcome === "destroyed") {
+      group.destroyed = true;
+    }
+
+    const after = {
+      damaged: group.damaged,
+      destroyed: group.destroyed
+    };
+
+    results.push({
+      assignmentIndex,
+      groupId: group.id,
+      equipmentId: group.equipmentId,
+      position: group.position,
+      outcome: assignment.outcome,
+      before,
+      after,
+      changed:
+        before.damaged !== after.damaged ||
+        before.destroyed !== after.destroyed
+    });
+  }
+
+  ensureEquipmentRuntime(working);
+
+  // 只写装备运行状态。
+  // 不修改耐性、弹药、使用记录、图鉴快照或初始场景。
+  unit.equipmentState = copy(working.equipmentState);
+
+  return {
+    version: 1,
+    kind: "equipment-damage",
+    assignmentCount: assignments.length,
+    changedGroupCount: new Set(
+      results
+        .filter(result => result.changed)
+        .map(result => result.groupId)
+    ).size,
+    results
+  };
+}
+
