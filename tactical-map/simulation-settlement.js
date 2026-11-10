@@ -606,12 +606,31 @@ function assertNoUnconnectedSupport(scene) {
       }
     }
 
-    if (unit.equipmentState.unresolvedMountIndexes.length) {
-      fail(
-        "組数未登録の装備配置があります。" +
-        "支援・追加効果の有無を確定できないため結算を停止します。"
+   if (unit.equipmentState.unresolvedMountIndexes.length) {
+  const details =
+    unit.equipmentState.unresolvedMountIndexes.map(index => {
+      const mount = unit.snapshot.mounts[index];
+      const source = equipment.get(mount?.equipmentId);
+
+      const unitLabel = unit.name || unit.instanceId;
+      const equipmentLabel =
+        source?.name || mount?.equipmentId || "装備不明";
+      const position = mount?.position || "位置未登録";
+
+      return (
+        `${unitLabel} / ${position} / ${equipmentLabel}` +
+        ` / 配置番号：${index + 1}` +
+        " / 組数：未登録"
       );
-    }
+    });
+
+  fail(
+    "次の装備配置の組数が未登録です。\n" +
+    details.join("\n") +
+    "\n砲身数ではなく、配置する装備の組数を登録してください。"
+  );
+}
+
   }
 }
 
