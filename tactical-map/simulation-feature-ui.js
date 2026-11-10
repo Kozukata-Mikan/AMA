@@ -111,8 +111,8 @@ export function mountSimulationFeatures(store, context) {
     store.resolveMovement();
 
     status.textContent =
-      "移動を処理し、次序5へ進みました。" +
-      "武器処理は未接続のため、これ以降は自動進行しません。";
+       "移動を保存し、次序5へ進みました。" +
+       "攻撃段階は専用の一括結算操作で処理します。時刻は進めていません。";
   });
 
   panel.append(
