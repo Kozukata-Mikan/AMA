@@ -1,6 +1,6 @@
 import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
 import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
-import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
 import { assertIdentifiedTargets  } from "./simulation-features.js";
@@ -253,6 +253,73 @@ export function getAttackPhaseStartScene(scene) {
   }
 
   const start = copy(snapshot);
+
+  // 原始阶段快照不变。
+// 仅在独立规则场景副本上应用明确登记的缺失资料补完。
+// 不把当前损伤、位置、编队或其他资源覆盖进历史场景。
+for (const startUnit of start.instances) {
+  const currentUnit = scene.instances.find(
+    unit => unit.instanceId === startUnit.instanceId
+  );
+
+  if (!currentUnit) {
+    fail("弾薬補完のユニットを確認できません。");
+  }
+
+  for (const startGroup of startUnit.equipmentState.groups) {
+    const currentGroup = currentUnit.equipmentState.groups.find(
+      group => group.id === startGroup.id
+    );
+
+    if (!currentGroup) {
+      fail("弾薬補完の装備組を確認できません。");
+    }
+
+    const oldRecord = startGroup.ammoRegistration;
+    const newRecord = currentGroup.ammoRegistration;
+
+    if (oldRecord !== undefined) {
+      if (
+        JSON.stringify(oldRecord) !== JSON.stringify(newRecord)
+      ) {
+        fail("段階開始後に弾薬補完記録が変更されています。");
+      }
+
+      continue;
+    }
+
+    if (newRecord === undefined) continue;
+
+    const ammo = readEffectiveInitialAmmo(currentGroup);
+
+    if (
+      startGroup.initialAmmo !== null ||
+      startGroup.remainingAmmo !== null ||
+      startGroup.lastUsedTurn !== null ||
+      currentGroup.initialAmmo !== null ||
+      currentGroup.remainingAmmo !== ammo ||
+      currentGroup.lastUsedTurn !== null ||
+      currentGroup.equipmentId !== startGroup.equipmentId ||
+      currentGroup.mountIndex !== startGroup.mountIndex ||
+      currentGroup.groupIndex !== startGroup.groupIndex ||
+      currentGroup.position !== startGroup.position ||
+      currentGroup.profileAvailable !== startGroup.profileAvailable ||
+      newRecord.turnNumber !== start.turnNumber ||
+      newRecord.phaseId !== start.phaseId
+    ) {
+      fail(
+        "この段階に適用できない弾薬補完記録があります。" +
+        "過去の消費弾数は推測しません。"
+      );
+    }
+
+    startGroup.ammoRegistration = copy(newRecord);
+    startGroup.remainingAmmo = ammo;
+  }
+
+  ensureUnitCombatRuntime(startUnit);
+}
+
 
   return {
     terrain: scene.terrain,
@@ -587,8 +654,11 @@ export function applyAttackBatchResources(scene, prepared) {
       group.profileAvailable !== startGroup.profileAvailable ||
       group.remainingAmmo !== entry.ammoBefore ||
       group.lastUsedTurn !== entry.lastUsedTurnBefore ||
-      group.damaged !== startGroup.damaged
-      (group.destroyed === true) !== (startGroup.destroyed === true)
+      group.damaged !== startGroup.damaged ||
+      (group.destroyed === true) !== (startGroup.destroyed === true) ||
+      JSON.stringify(group.ammoRegistration ?? null) !==
+      JSON.stringify(startGroup.ammoRegistration ?? null)
+
     ) {
       fail(
         "段階開始後に装備構成または攻撃資源が変更されています。"
