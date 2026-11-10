@@ -118,6 +118,19 @@ const NEXT_ATTACK_PHASE = {
 function fail(message) {
   throw new Error(message);
 }
+// 只公开固定步骤提示，不公开内部异常资料。
+// 不重试、不吞掉异常、不改变事务回滚行为。
+function settlementStep(publicMessage, action) {
+  try {
+    return action();
+  } catch (cause) {
+    const error = new Error(publicMessage);
+    error.name = "SimulationSettlementError";
+    error.publicMessage = publicMessage;
+    error.cause = cause;
+    throw error;
+  }
+}
 
 function integer(value, label) {
   if (!Number.isSafeInteger(value) || value < 0) {
@@ -1588,23 +1601,38 @@ export function prepareSettlementAttackPlan(scene) {
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
 
-  appendAutonomousAttackCommands(working);
+  settlementStep(
+  "自律攻撃計画の作成・候補照合を完了できませんでした。",
+  () => appendAutonomousAttackCommands(working)
+);
 
-  const prepared = prepareAttackBatchResources(working);
+
+  const prepared = settlementStep(
+  "全陣営の攻撃計画・段階開始記録・資源条件を確認できませんでした。",
+  () => prepareAttackBatchResources(working)
+);
+
 
   const start = getAttackPhaseStartScene(working);
 
   assertStartStateUnchanged(working, start);
 
-  if (prepared.entries.length > 0) {
-    assertNoUnconnectedSupport(start);
-  }
+   if (prepared.entries.length > 0) {
+  settlementStep(
+    "支援装備または組数未登録の配置があるため、正式結算を停止しました。",
+    () => assertNoUnconnectedSupport(start)
+  );
+}
 
-  const checked = prepareBatchHitChecks(
+
+  const checked = settlementStep(
+  "射界・射距・目標資格・命中修正・威力処理の正式照合を完了できませんでした。",
+  () => prepareBatchHitChecks(
     working,
     prepared,
     finalPreflight
-  );
+  )
+);
 
   const effectEntries = [];
 
@@ -1689,12 +1717,15 @@ working.attackRuntime.commands = commands;
   );
 
   // 该接口重新执行全批正式预检，通过后才开始掷币。
-  const hitStep = resolveAttackBatchHitStep(
+  const hitStep = settlementStep(
+  "範囲対象の選択・左右別使用数・正式命中判定を完了できませんでした。",
+  () => resolveAttackBatchHitStep(
     working,
     prepared,
     finalPreflight,
     coinSource
-  );
+  )
+);
 
   const firingByCommand = new Map(
   hitStep.firingReports.map(report => [
