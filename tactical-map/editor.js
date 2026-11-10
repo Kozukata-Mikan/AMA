@@ -5,6 +5,7 @@ import { assessCluster } from "./cluster-engine.js";
 import { mountCatalogEditor } from "./catalog-editor.js";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js";
 
 
 
