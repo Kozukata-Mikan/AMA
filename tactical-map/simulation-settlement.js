@@ -1396,7 +1396,8 @@ function appendAutonomousAttackCommands(scene) {
       // 支援装备不是攻击命令；原整批支援门禁仍保留。
       if (source.kind === "support") continue;
 
-     const profile = readWeaponProfile(source);
+     const profile = readWeaponProfile(source, group);
+
 
 if (profile.kind !== "weapon") continue;
 
