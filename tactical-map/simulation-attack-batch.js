@@ -212,9 +212,7 @@ export function captureAttackPhaseStart(scene) {
     fail("この攻撃段階の開始状態はすでに保存されています。");
   }
 
-  if (scene.attackRuntime.commands.length !== 0) {
-    fail("未処理の攻撃計画があるため、段階開始を記録できません。");
-  }
+  
 
   scene.attackBatchRuntime.snapshot = copy({
     version: 1,
@@ -561,12 +559,16 @@ export function prepareAttackBatchResources(scene) {
   // 全批预检时执行，错误发生在扣弹与随机数之前。
   validateFormationTopology(startScene);
 
-  const commands = [...scene.attackRuntime.commands].sort(
-
-    (a, b) =>
-      compareText(a.unitId, b.unitId) ||
-      compareText(a.groupId, b.groupId)
+ const commands = scene.attackRuntime.commands
+  .filter(command =>
+    command.turnNumber === scene.turn.number &&
+    command.phaseId === scene.turn.phaseId
+  )
+  .sort((a, b) =>
+    compareText(a.unitId, b.unitId) ||
+    compareText(a.groupId, b.groupId)
   );
+
 
   const entries = commands.map(
     command => prepareCommand(startScene, command)
@@ -1075,6 +1077,34 @@ const firingReports = assertBroadsideQuotas(
     firingReports,
     rangeSelections,
     reports
+  };
+}
+
+/**
+ * 只检查登记时的当前状态。
+ * 改变的是预览副本的规则上下文，不创建阶段开始快照。
+ * 不可用于正式扣弹、命中或结算。
+ */
+export function prepareAttackCommandPreview(scene, command) {
+  initializeAttackRuntime(scene);
+
+  const current = copy({
+    terrain: scene.terrain,
+    environment: scene.environment,
+    controls: scene.controls,
+    turn: scene.turn,
+    instances: scene.instances,
+    groups: scene.groups,
+    rayTargetRuntime: scene.rayTargetRuntime
+  });
+
+  current.turn.phaseId = command.phaseId;
+
+  validateFormationTopology(current);
+
+  return {
+    current,
+    entry: prepareCommand(current, command)
   };
 }
 
