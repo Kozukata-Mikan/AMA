@@ -1573,14 +1573,12 @@ if (profile.issues.length) {
         } catch (error) {
           // 射程、射高、地形等明确资格失败允许换目标。
           // 坏数据、未实现效果和算法错误不得静默吞掉。
-          if (
-         error.code === "TARGET_INELIGIBLE" ||
-         error.code === "BROADSIDE_QUOTA"
-         ) {
+         if (error.code === "TARGET_INELIGIBLE") {
          continue;
-          }
- 
-          throw error;
+         }
+
+           // 两舷配额超限必须整批拒绝并回滚，不能换目标重试。
+         throw error;
 
         }
 
