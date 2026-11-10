@@ -4,7 +4,7 @@ import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
 import { mountCatalogEditor } from "./catalog-editor.js";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
-
+import { createCampaignIntroEditor } from "./campaign-intro.js";
 
 
 
@@ -184,6 +184,10 @@ export function mountEditor({
 
       onSceneLoaded();
       refresh();
+
+      // 即使两个存档的介绍内容相同，也不保留上一份草稿。
+      syncCampaignIntro(true);
+
     }
   });
 
@@ -243,6 +247,7 @@ export function mountEditor({
       selectedId = "";
       selectedGroupId = "";
       store.clear();
+      syncCampaignIntro(true);
       message("作戦を初期化しました。");
     }))
   );
@@ -264,6 +269,7 @@ export function mountEditor({
 
       // 存储层先完整验证，失败时不修改当前场景。
       store.importScene(text);
+      syncCampaignIntro(true);
       message(
         "作戦データを読み込みました。配置条件に合わないユニットは一覧から修正してください。"
       );
@@ -273,6 +279,58 @@ export function mountEditor({
   });
 
   sceneSection.append(sceneActions, fileInput);
+
+  // ===== 战役开场介绍 =====
+
+const introSection = section("戦役紹介");
+
+introSection.append(node(
+  "p",
+  "徽章と紹介文を編集できます。" +
+  "紹介を保存してから、保存スロットへの保存や推演開始を行ってください。",
+  "editor-note"
+));
+
+const introHost = node("div");
+introSection.append(introHost);
+
+let introEditor = null;
+let introSavedKey = "";
+
+function syncCampaignIntro(force = false) {
+  const value = store.getScene().campaignIntro ?? {};
+  const key = JSON.stringify(value);
+
+  // 普通单位、地形及视角更新不清掉介绍的未保存输入。
+  if (!force && introEditor && key === introSavedKey) return;
+
+  introEditor = createCampaignIntroEditor(value);
+  introSavedKey = key;
+  introHost.replaceChildren(introEditor.element);
+}
+
+introSection.append(
+  button("紹介を保存", safely(() => {
+    const value = introEditor.read();
+
+    store.setCampaignIntro(value);
+
+    // 即使保存内容没有变化，也明确重新读取正式场景值。
+    syncCampaignIntro(true);
+
+    message(
+      store.getStorageWarning()
+        ? "紹介を作戦に反映しましたが、ブラウザー保存に失敗しました。"
+        : "戦役紹介を保存しました。"
+    );
+  })),
+
+  button("未保存の編集を戻す", safely(() => {
+    syncCampaignIntro(true);
+    message("保存済みの戦役紹介を再表示しました。");
+  }))
+);
+
 
   // ===== 图鉴新增 =====
 
@@ -1037,6 +1095,7 @@ export function mountEditor({
     }
 
     sceneName.value = scene.name;
+    syncCampaignIntro();
     unitList.replaceChildren();
 
     for (const unit of instances) {
