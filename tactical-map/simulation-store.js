@@ -1800,30 +1800,53 @@ if (equipmentPower) {
 
           const target = readAttackCommandTarget(assignment);
 
-          if (scope.kind === "single") {
-            if (
-              target.targetRef.kind !== "unit" ||
-              target.specifiedTargetIds.length !== 0
-            ) {
-              throw new Error(
-                "単体武器には一つのユニットを指定してください。"
-              );
-            }
-          } else {
-            if (target.targetRef.kind !== "group") {
-              throw new Error(
-                "範囲武器には一つの編隊を指定してください。"
-              );
-            }
+          // 正式规则：原始范围为“集群”的武器，
+// 可以攻击一个单体，也可以同时攻击一个集群中的每个单体。
+// 不把其他指定人数、随机抽选范围擅自扩展为同一规则。
+const clusterWeapon =
+  group.profile.targetScope.trim() === "集群";
 
-            readRangeCommandTarget(assignment, scope);
+if (scope.kind === "single") {
+  if (
+    target.targetRef.kind !== "unit" ||
+    target.specifiedTargetIds.length !== 0
+  ) {
+    throw new Error(
+      "単体武器には一つのユニットを指定してください。"
+    );
+  }
+} else if (
+  clusterWeapon &&
+  target.targetRef.kind === "unit"
+) {
+  // 集群武器直接指定单体：
+  // 只攻击该单体，不展开其所属集群。
+  if (target.specifiedTargetIds.length !== 0) {
+    throw new Error(
+      "単体を主目標にする場合、編隊メンバーは指定できません。"
+    );
+  }
 
-            if (!observed.groups.some(
-              group => group.id === target.targetRef.id
-            )) {
-              throw new Error("主目標を確認できません。");
-            }
-          }
+  // 不调用要求编队目标的readRangeCommandTarget。
+  // 后续沿用单体目标的存在性与观察权限检查。
+} else {
+  if (target.targetRef.kind !== "group") {
+    throw new Error(
+      clusterWeapon
+        ? "集群武器には一つのユニットまたは一つの編隊を指定してください。"
+        : "範囲武器には一つの編隊を指定してください。"
+    );
+  }
+
+  readRangeCommandTarget(assignment, scope);
+
+  if (!observed.groups.some(
+    item => item.id === target.targetRef.id
+  )) {
+    throw new Error("主目標を確認できません。");
+  }
+}
+
 
           // 先检查玩家当前观察权限。
           // 正式预检随后另查攻击阵营的阶段开始权限。
