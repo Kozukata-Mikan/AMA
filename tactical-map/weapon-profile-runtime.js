@@ -195,8 +195,19 @@ export function readWeaponTargetScope(value) {
   const source = value.trim();
 
   if (/^(单体|單體|単体)$/.test(source)) {
-    return { kind: "single" };
-  }
+  return { kind: "single" };
+}
+
+// 正式规则：以一个集群为目标，同时攻击其中每个单体。
+// 沿用已有全体范围接口，不增加人数限制或随机抽选。
+if (source === "集群") {
+  return {
+    kind: "range",
+    mode: "all",
+    maximumTargets: null
+  };
+}
+
 
   const match = source.match(
     /^(?:范围|範圍|範囲|集群)\s*[（(]\s*(全体|全體|指定|随机|隨機|ランダム)\s*(\d+)?\s*(?:名|体|體)?\s*[）)]$/
