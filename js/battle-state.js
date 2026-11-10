@@ -20,6 +20,8 @@ import { normalizeFaction } from "./faction-data.js";
 
 import { assessCluster } from "../tactical-map/cluster-engine.js";
 
+import { normalizeCampaignIntro } from "../tactical-map/campaign-intro-data.js";
+
 const STORAGE_KEY = "junqi-battle-scene-v2";
 const LEGACY_KEY = "junqi-battle-state-v1";
 const VERSION = 2;
@@ -84,6 +86,7 @@ function emptyScene() {
     terrainId: "demo-islands-v1",
     terrain: createDemoTerrain(),
     environment: createDefaultEnvironment(),
+    campaignIntro: normalizeCampaignIntro(),
     instances: [],
     groups: [],
     actions: [],
@@ -459,6 +462,7 @@ export function createBattleStore(units) {
       terrainId: input.terrainId,
       terrain: validateTerrain(input.terrain ?? createDemoTerrain()),
       environment: normalizeEnvironment(input.environment),
+      campaignIntro: normalizeCampaignIntro(input.campaignIntro),
       instances,
       groups,
       actions,
@@ -811,6 +815,14 @@ export function createBattleStore(units) {
       candidate.environment = environment;
     });
   }
+  
+  function setCampaignIntro(value) {
+  const intro = normalizeCampaignIntro(value);
+
+  change(candidate => {
+    candidate.campaignIntro = intro;
+  });
+}
 
   
   function updateHp(instanceId, currentHp) {
@@ -1093,6 +1105,7 @@ export function createBattleStore(units) {
     addUnit,
     updateHp,
     setEnvironment,
+    setCampaignIntro,
     removeUnit,
     clear,
     subscribe,
