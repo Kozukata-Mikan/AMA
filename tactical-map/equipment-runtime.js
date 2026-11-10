@@ -410,3 +410,130 @@ export function applyEquipmentDamageAssignments(
   };
 }
 
+/**
+ * 创建新推演前，补齐输入副本中缺失的装备备弹。
+ *
+ * catalogUnits：main.js 中共享的图鉴单位数组。
+ * 不修改传入场景、部署快照、图鉴或已有推演。
+ * 不猜弹药；图鉴缺值或存在冲突时明确拒绝。
+ */
+export function prepareSimulationAmmoSource(
+  source,
+  catalogUnits
+) {
+  if (
+    !isObject(source) ||
+    !Array.isArray(source.instances) ||
+    !Array.isArray(catalogUnits)
+  ) {
+    throw new Error("推演開始用の装備資料が不正です。");
+  }
+
+  const registeredAmmo = new Map();
+
+  for (const unit of catalogUnits) {
+    const equipment = unit.equipmentSnapshots ?? [];
+
+    if (!Array.isArray(equipment)) {
+      throw new Error("図鑑の装備資料が不正です。");
+    }
+
+    for (const item of equipment) {
+      if (
+        !isObject(item) ||
+        typeof item.id !== "string" ||
+        !item.id.trim()
+      ) {
+        throw new Error("図鑑の装備IDが不正です。");
+      }
+
+      if (item.kind !== "weapon") continue;
+
+      const ammo = readAmmo(item.ammo);
+
+      // 未登记不是0，也不覆盖其他单位中的有效登记。
+      if (ammo === null) continue;
+
+      if (
+        registeredAmmo.has(item.id) &&
+        registeredAmmo.get(item.id) !== ammo
+      ) {
+        throw new Error(
+          "図鑑内で同一装備の予備弾数が一致しません。"
+        );
+      }
+
+      registeredAmmo.set(item.id, ammo);
+    }
+  }
+
+  const working = copy(source);
+
+  for (const unit of working.instances) {
+    // 不能拿运行中的推演当成新部署资料进行补齐。
+    if (unit.equipmentState !== undefined) {
+      throw new Error(
+        "戦闘中の保存状態から初期弾薬を変更できません。"
+      );
+    }
+
+    if (
+      !isObject(unit.snapshot) ||
+      !Array.isArray(unit.snapshot.equipmentSnapshots)
+    ) {
+      throw new Error(
+        "配置された部隊の装備スナップショットがありません。"
+      );
+    }
+
+    const equipment = new Map();
+
+    for (const item of unit.snapshot.equipmentSnapshots) {
+      if (
+        !isObject(item) ||
+        typeof item.id !== "string" ||
+        !item.id.trim() ||
+        equipment.has(item.id)
+      ) {
+        throw new Error(
+          "配置された装備の識別情報が不正です。"
+        );
+      }
+
+      equipment.set(item.id, item);
+    }
+
+    const mounts = unit.snapshot.mounts ?? [];
+
+    if (!Array.isArray(mounts)) {
+      throw new Error("装備配置の書式が不正です。");
+    }
+
+    for (const mount of mounts) {
+      const item = equipment.get(mount?.equipmentId);
+
+      if (!item) {
+        throw new Error(
+          "配置された装備の性能資料がありません。"
+        );
+      }
+
+      if (item.kind !== "weapon") continue;
+
+      // 已有初始登记保持原样，0也必须保留。
+      if (readAmmo(item.ammo) !== null) continue;
+
+      if (!registeredAmmo.has(item.id)) {
+        throw new Error(
+          "図鑑の予備弾数が未登録のため、" +
+          "推演を開始できません。"
+        );
+      }
+
+      item.ammo = registeredAmmo.get(item.id);
+    }
+  }
+
+  return working;
+}
+
