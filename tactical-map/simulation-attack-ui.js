@@ -678,7 +678,15 @@ export function mountAttackUI(store) {
     output
   );
   panel.append(phaseOutput);
-  aside.append(panel);
+  // 在布局模块查询之前，统一注册阶段操作元素。
+executeBatch.id = "attackExecuteBatch";
+finishPhase.id = "attackFinishPhase";
+phaseOutput.id = "phaseCommandFeedback";
+
+// append会移动已有节点，不会重复创建反馈区。
+panel.append(phaseOutput);
+aside.append(panel);
+
 
   function refillTargets(scene) {
     const previous = target.value;
