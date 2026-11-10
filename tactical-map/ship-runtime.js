@@ -1,4 +1,13 @@
 import {
+  EQUIPMENT_HIT_ITEMS
+} from "./equipment-damage-runtime.js";
+
+import {
+  readEquipmentItemState
+} from "./equipment-item-runtime.js";
+
+
+import {
   normalizeEnvironment,
   getTimePeriod,
   getWeatherInfo
@@ -407,6 +416,21 @@ export function getShipDetailLines(unit, environment) {
   const strengthRemaining =
     profile.strength - state.underwaterStrengthUses;
 
+  // 此处已经通过observationOwn === false的外方分支。
+// 只为己方详情读取八项内部状态。
+const equipmentLines = EQUIPMENT_HIT_ITEMS.map(item => {
+  const itemState = readEquipmentItemState(unit, item.id);
+
+  const status = itemState.destroyed
+    ? "完全破損・修復不可"
+    : itemState.damaged
+      ? "損傷"
+      : "正常";
+
+  return `${item.label}：${status}`;
+});
+
+
   return [
     `艦種：${profile.type}`,
     `損傷状態：${SHIP_STATUS_LABELS[state.status]}`,
@@ -417,6 +441,8 @@ export function getShipDetailLines(unit, environment) {
     `探測強度：${profile.detection}`,
     `対海偵察：${profile.seaRecon}`,
     `対空偵察：${profile.airRecon}`,
+    "【設備状態】",
+    ...equipmentLines,
     ...getOwnShipEffectLines(
       state.effects ?? createShipEffectsState()
     ),
@@ -431,9 +457,9 @@ export function getShipDetailLines(unit, environment) {
       ? "ARによる救助は必ず成功"
       : "コインによる判定"}`,
         `救助状態：${state.rescueTaskId
-      ? "救助中・他の行動は不可"
-      : "救助中ではありません"}`,
-    "移動と救助開始を接続済み。攻撃と正式な特殊段階処理は接続待ちです。"
+      ? "救助／設備修復中・他の行動は不可"
+      : "継続中の任務はありません"}`,
+    "正式攻撃・損管・救助／設備修復は対応済みの規則に限り結算します。未対応の効果は結算前に停止します。"
   ];
 }
 
