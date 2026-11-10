@@ -1007,7 +1007,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
       }
 
       return {
-        profiles: equipment.map(readWeaponProfile),
+        profiles: equipment.map(item => readWeaponProfile(item)),
         issues: []
       };
     },
@@ -1053,9 +1053,12 @@ mountEquipmentRepairPanel(container, rescuerId) {
         );
       }
 
-      const groups = unit.equipmentState.groups.map(group => {
-        const source = equipment.get(group.equipmentId);
-        const profile = source ? readWeaponProfile(source) : null;
+     const groups = unit.equipmentState.groups.map(group => {
+     const source = equipment.get(group.equipmentId);
+     const profile = source
+    ? readWeaponProfile(source, group)
+    : null;
+
         const issues = [...unitIssues];
 
         if (!profile) {
