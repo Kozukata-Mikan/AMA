@@ -1,5 +1,6 @@
 import { getPhaseLabel } from "./simulation-rulebook.js";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
+import { readWeaponTargetScope } from "./weapon-profile-runtime.js";
 
 
 // 多组选装、逐组目标、批量检查与攻击计划保存。
@@ -49,7 +50,8 @@ export function mountAttackUI(store) {
   }
 
   const panel = element("details");
-  panel.append(element("summary", "攻撃装備・一括確認"));
+  panel.append(element("summary", "単体攻撃・段階結算"));
+
 
   const actor = element("select");
   const target = element("select");
@@ -73,7 +75,9 @@ export function mountAttackUI(store) {
     "「攻撃計画を保存」で現在の段階の計画を保存します。" +
     "計画の保存は発射ではありません。" +
     "「現在の攻撃段階を一括結算」で全陣営の保存計画を処理します。" +
-    "未対応の範囲・支援効果・特殊能力がある場合は停止します。"
+    "範囲武器は、参戦ユニットから自艦を選択して表示する専用面板で指定します。" +
+    "未対応の効果・特殊能力がある場合は、正式結算を停止します。"
+
 
   );
   notice.className = "note";
@@ -92,12 +96,22 @@ export function mountAttackUI(store) {
 
 
   function selectableGroups() {
-    return report
-      ? report.groups.filter(
-        group => group.profile?.kind !== "support"
-      )
-      : [];
-  }
+  if (!report) return [];
+
+  return report.groups.filter(group => {
+    if (group.profile?.kind !== "weapon") return false;
+
+    try {
+      return readWeaponTargetScope(
+        group.profile.targetScope
+      ).kind === "single";
+    } catch {
+      // 未解释成功的范围不猜作单体。
+      return false;
+    }
+  });
+}
+
 
   function selectedGroups() {
     return selectableGroups().filter(
@@ -227,7 +241,7 @@ export function mountAttackUI(store) {
         `最終使用：${group.lastUsedTurn === null
           ? "未使用"
           : `ラウンド${group.lastUsedTurn}`}`,
-        `状態：${group.damaged ? "損傷" : "正常"}`,
+        `状態：${group.destroyed ? "完全破損・修復不可": group.damaged? "損傷": "正常"}`,
         `投射率：${projectionText(profile)}`,
         `完全投射時の消費：${profile?.fullAmmoCost ?? "未登録"}`,
         "",
@@ -327,7 +341,7 @@ export function mountAttackUI(store) {
                if (check.armorPreview?.length) {
           lines.push(
             "",
-            "【装甲・貫通の基本比較】",
+           "【威力・被害処理の確認】",
             ...check.armorPreview
           );
         }
@@ -384,7 +398,7 @@ export function mountAttackUI(store) {
 
       const flags = [];
 
-      if (group.damaged) flags.push("損傷");
+    if (group.destroyed) { flags.push("完全破損");} else if (group.damaged) {flags.push("損傷");}
       if (group.lastUsedTurn === report.turnNumber) {
         flags.push("使用済み");
       }
@@ -606,7 +620,7 @@ export function mountAttackUI(store) {
     }
 
     const confirmation = phaseId === "special"
-      ? "全艦の火災・浸水・救助判定をまとめて処理します。\n" +
+      ? "全艦の火災・浸水・設備損管と、対応済みの到期任務をまとめて処理します。\n" +
         "成功すると回合終了段階へ移ります。時刻は進めません。"
       : "自然沈没の計時と回合終了処理をまとめて保存します。\n" +
         "成功した場合だけ30分進めて次のラウンドへ移ります。";
@@ -737,6 +751,19 @@ export function mountAttackUI(store) {
   function sync() {
     const scene = store.getScene();
     const previous = actor.value;
+    const attackPhase = /^(order-[1-5]|pas)$/.test(
+  scene.turn.phaseId
+);
+
+executeBatch.disabled = !attackPhase;
+
+finishPhase.disabled =
+  !["special", "end"].includes(scene.turn.phaseId);
+
+finishPhase.textContent = scene.turn.phaseId === "end"
+  ? "ラウンド終了を処理（30分進行）"
+  : "特殊段階を処理";
+
 
     actor.replaceChildren(
       new Option("選択してください", "")
