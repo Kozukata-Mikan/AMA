@@ -27,6 +27,9 @@ function groupFor(unit, id) {
 
 function positionKind(value) {
   const key = String(value ?? "")
+    // ① → 1、② → 2、全角数字 → 半角数字。
+    // 只规范解析用字符串，不改装备保存的位置名称。
+    .normalize("NFKC")
     .trim()
     .toLowerCase()
     .replace(/[\s_-]/g, "");
@@ -36,6 +39,11 @@ function positionKind(value) {
     bow: "front",
     前部: "front",
 
+    middle: "middle",
+    mid: "middle",
+    center: "middle",
+    中部: "middle",
+
     middle1: "middle",
     middle2: "middle",
     mid1: "middle",
@@ -44,8 +52,6 @@ function positionKind(value) {
     center2: "middle",
     中部1: "middle",
     中部2: "middle",
-    中部１: "middle",
-    中部２: "middle",
 
     sides: "sides",
     side: "sides",
@@ -63,7 +69,9 @@ function positionKind(value) {
     尾部: "tail"
   };
 
-  const kind = aliases[key];
+  const kind = Object.prototype.hasOwnProperty.call(aliases, key)
+    ? aliases[key]
+    : null;
 
   if (!kind) {
     fail(
@@ -74,6 +82,7 @@ function positionKind(value) {
 
   return kind;
 }
+
 
 /**
  * 与projectIconPoint使用相同地图旋转：
