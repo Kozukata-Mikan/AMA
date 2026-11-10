@@ -43,6 +43,7 @@ import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
 import { readFiringArc } from "./weapon-firing-arc.js";
 import { normalizeCampaignIntro } from "./campaign-intro-data.js";
 
+import { createAmmoRegistrationFeatures } from "./simulation-ammo-registration.js";
 
 
 
@@ -844,9 +845,11 @@ export function openSimulation(id) {
     };
   }
 
-         const api = {
-    ...createSimulationFeatures(() => state, commit),
-    ...createRescueFeatures(() => state, commit),
+       const api = {
+  ...createSimulationFeatures(() => state, commit),
+  ...createRescueFeatures(() => state, commit),
+  ...createAmmoRegistrationFeatures(() => state, commit),
+
 
     getEquipmentRepairOptions(rescuerId) {
   const rescuer = state.instances.find(
