@@ -1181,7 +1181,8 @@ mountEquipmentRepairPanel(container, rescuerId) {
         throw new Error("装備性能のスナップショットがありません。");
       }
 
-      const profile = readWeaponProfile(source);
+      const profile = readWeaponProfile(source, group);
+
 
       if (profile.kind !== "weapon") {
         throw new Error("この装備は武器ではありません。");
