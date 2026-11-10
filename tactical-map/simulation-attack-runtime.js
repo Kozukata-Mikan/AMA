@@ -1,3 +1,7 @@
+import { resolveAttackExecutionPhase } from "./attack-order-runtime.js";
+import { readWeaponProfile } from "./weapon-profile-runtime.js";
+
+
 // 攻击计划的持久化与结构校验。
 // 不处理命中、资源消耗、伤害或阶段推进。
 // 权限、装备范围和成员资格由正式入口检查。
@@ -20,6 +24,67 @@ function copy(value) {
 export function isAttackPhase(phaseId) {
   return typeof phaseId === "string" &&
     ATTACK_PHASE.test(phaseId);
+}
+
+/**
+ * 只允许本回合当前或尚未到达的执行次序。
+ * 普通武器不通过此函数提前登记PAS计划。
+ */
+export function isPendingAttackPhase(currentPhaseId, plannedPhaseId) {
+  if (!isAttackPhase(currentPhaseId)) return false;
+
+  if (currentPhaseId === "pas") {
+    return plannedPhaseId === "pas";
+  }
+
+  const current = /^order-([1-5])$/.exec(currentPhaseId);
+  const planned = /^order-([1-5])$/.exec(plannedPhaseId);
+
+  return Boolean(
+    current &&
+    planned &&
+    Number(planned[1]) <= Number(current[1])
+  );
+}
+
+/**
+ * 从真实装备性能计算执行阶段，不接受页面指定的次序。
+ */
+export function getAttackExecutionPhase(scene, unitId, groupId) {
+  const actor = scene.instances.find(
+    unit => unit.instanceId === unitId
+  );
+
+  const group = actor?.equipmentState?.groups?.find(
+    item => item.id === groupId
+  );
+
+  const source = actor?.snapshot?.equipmentSnapshots?.find(
+    item => item.id === group?.equipmentId
+  );
+
+  if (!actor || !group || !source) {
+    fail("攻撃次序を分類する装備資料がありません。");
+  }
+
+  const profile = readWeaponProfile(source, group);
+
+  if (profile.kind !== "weapon") {
+    fail("武器以外の装備には攻撃計画を登録できません。");
+  }
+
+  if (profile.pasOnly) {
+    if (scene.turn.phaseId !== "pas") {
+      fail("PAS装備はPAS段階で登録してください。");
+    }
+
+    return "pas";
+  }
+
+  return resolveAttackExecutionPhase(
+    scene.turn.phaseId,
+    profile.maxOrder
+  ).executionPhaseId;
 }
 
 /**
