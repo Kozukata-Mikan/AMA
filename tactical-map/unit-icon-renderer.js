@@ -252,14 +252,14 @@ function projectIconPath(unit, pathData) {
     }
 
     if (command !== "M" && command !== "L") {
-      throw new Error("图标路径暂时只支持 M、L、Z 指令。");
+      throw new Error("アイコンの経路はM・L・Z命令に限り対応しています。");
     }
 
     const x = Number(tokens[index++]);
     const y = Number(tokens[index++]);
 
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      throw new Error("图标顶点数据不正确。");
+      throw new Error("アイコンの頂点データが不正です。");
     }
 
     const point = projectIconPoint(unit, x, y);
