@@ -83,6 +83,11 @@ export function mountAttackUI(store) {
   notice.className = "note";
 
   const output = element("p");
+  const phaseOutput = element("p");
+  phaseOutput.id = "phaseCommandFeedback";
+  phaseOutput.className = "note";
+  phaseOutput.setAttribute("role", "status");
+  phaseOutput.setAttribute("aria-live", "polite");
   output.className = "note";
   output.style.whiteSpace = "pre-wrap";
   output.setAttribute("aria-live", "polite");
@@ -569,7 +574,7 @@ export function mountAttackUI(store) {
 
 
     if (!/^(order-[1-5]|pas)$/.test(scene.turn.phaseId)) {
-      output.textContent =
+      phaseOutput.textContent =
         "次序1～5またはPASで実行してください。";
       return;
     }
@@ -614,7 +619,7 @@ export function mountAttackUI(store) {
     const phaseId = scene.turn.phaseId;
 
     if (!["special", "end"].includes(phaseId)) {
-      output.textContent =
+      phaseOutput.textContent =
         "特殊詞条判定または回合終了段階で実行してください。";
       return;
     }
@@ -651,6 +656,9 @@ export function mountAttackUI(store) {
     }
   });
 
+  executeBatch.id = "attackExecuteBatch";
+  finishPhase.id = "attackFinishPhase";
+
   toolbar.append(selectAll, clearAll);
 
   panel.append(
@@ -669,7 +677,7 @@ export function mountAttackUI(store) {
     notice,
     output
   );
-
+  panel.append(phaseOutput);
   aside.append(panel);
 
   function refillTargets(scene) {
