@@ -405,7 +405,7 @@
       <button id="fit" type="button">地図全体を表示</button>
       <button id="axesToggle" type="button" aria-pressed="false">XYZ 軸を表示</button>
       <button id="colorToggle" type="button" aria-pressed="true">地形着色を非表示</button>
-      <button id="export" type="button">推演JSONを書き出し</button>
+      <button id="export" type="button">観察JSONを書き出し</button>
     </div>
   </header>
 
@@ -428,8 +428,9 @@
         </p>
 
         <p class="note">
-          1回合は30分です。具体的な行動ルールが未登録のため、
-          現在は時間と段階を進めません。
+          1ラウンドは30分です。対応済みの段階は専用操作で処理します。
+          時刻はラウンド終了の保存に成功した場合だけ30分進みます。
+          未対応の規則は、正式結算前に停止します。
         </p>
       </details>
 
@@ -500,8 +501,10 @@
         <summary>行動・記録</summary>
 
         <p class="note">
-          現在は草案のみです。推演ルールが未登録のため、
-          移動・命中・傷害・回合進行は実行しません。
+          この欄は行動メモの草案保存専用です。
+          移動・攻撃・段階終了は、それぞれの専用操作欄から実行します。
+          草案を保存しても、位置・弾薬・被害・時刻は変化しません。
+
         </p>
 
         <label>
