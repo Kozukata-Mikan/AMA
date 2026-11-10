@@ -912,15 +912,47 @@ mountEquipmentRepairPanel(container, rescuerId) {
       }
 
       commit(candidate => {
-                candidate.controls = {
-          ...candidate.controls,
-          enemyAutonomy: enabled,
-          observationSide: enabled
-            ? "ally"
-            : candidate.controls.observationSide
-        };
+  if (!["start", "movement"].includes(candidate.turn.phaseId)) {
+    throw new Error(
+      "自律行動の切替はラウンド開始または移動段階で行ってください。"
+    );
+  }
 
-      });
+  if (enabled) {
+    const unitSide = id =>
+      candidate.instances.find(
+        unit => unit.instanceId === id
+      )?.side;
+
+    const foreignMovement = candidate.movementPlans.some(
+      plan => plan.memberIds.some(id => unitSide(id) !== "ally")
+    );
+
+    const foreignRescue = candidate.rescuePlans.some(
+      plan => unitSide(plan.rescuerId) !== "ally"
+    );
+
+    const foreignAttack = candidate.attackRuntime.commands.some(
+      command => unitSide(command.unitId) !== "ally"
+    );
+
+    if (foreignMovement || foreignRescue || foreignAttack) {
+      throw new Error(
+        "敵・中立の手動計画が残っています。" +
+        "その計画を取り消してから自律行動を有効にしてください。"
+      );
+    }
+  }
+
+  candidate.controls = {
+    ...candidate.controls,
+    enemyAutonomy: enabled,
+    observationSide: enabled
+      ? "ally"
+      : candidate.controls.observationSide
+  };
+});
+
     },
 
     getScene() {
