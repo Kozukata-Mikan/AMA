@@ -13,36 +13,7 @@ const TEXT_FIELDS = [
   ["declaration", "宣言", 1000]
 ];
 
-function normalize(value = {}) {
-  const result = {
-    version: 1,
-    enabled: value.enabled === true,
-    badge: typeof value.badge === "string" ? value.badge : ""
-  };
 
-  if (
-    result.badge &&
-    (
-      result.badge.length > 1500000 ||
-      !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
-        .test(result.badge)
-    )
-  ) {
-    throw new Error("徽章画像の保存形式が不正です。");
-  }
-
-  for (const [key, label, limit] of TEXT_FIELDS) {
-    const text = value[key] ?? "";
-
-    if (typeof text !== "string" || text.length > limit) {
-      throw new Error(`${label}は${limit}文字以内にしてください。`);
-    }
-
-    result[key] = text;
-  }
-
-  return result;
-}
 
 function installStyle() {
   if (document.getElementById("campaign-intro-style")) return;
