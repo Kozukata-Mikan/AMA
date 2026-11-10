@@ -168,14 +168,6 @@ export function mountSimulationWorkflow(store) {
     movementSection.body
   );
 
-  const rangeNote = element(
-    "p",
-    "範囲攻撃：参戦ユニットで発射する自艦を選択してください。" +
-    "専用パネルで主目標の編隊を選び、武器の方式に応じて対象を指定します。"
-  );
-  rangeNote.className = "note";
-
-  attackSection.body.append(rangeNote);
   const rangeSlot = slot(
     "rangeAttackPanelSlot",
     attackSection.body
@@ -284,7 +276,8 @@ export function mountSimulationWorkflow(store) {
   startSection.body.append(environment);
   movementSection.body.insertBefore(movement, repairNote);
   movementSection.body.insertBefore(rescue, repairNote);
-  attackSection.body.insertBefore(attack, rangeNote);
+  attackSection.body.prepend(attack);
+
 
   attackActions.append(execute);
   feedbackBox.append(feedback);
