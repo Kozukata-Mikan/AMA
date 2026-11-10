@@ -649,11 +649,16 @@ function selectableGroups() {
     console.error(error);
 
     // 不向其他观察阵营直接显示完整内部异常。
-    phaseOutput.textContent =
-      "一括結算を完了できませんでした。\n" +
-      "今回の弾薬・被害・履歴・段階変更は保存していません。\n" +
-      "装備資料、攻撃範囲、支援効果、特殊能力、" +
-      "開始記録を確認してください。";
+   const safeMessage =
+  error?.name === "SimulationSettlementError" &&
+  typeof error.publicMessage === "string"
+    ? error.publicMessage
+    : "一括結算または保存処理を完了できませんでした。";
+
+phaseOutput.textContent =
+  safeMessage + "\n" +
+  "今回の弾薬・被害・履歴・段階変更は保存していません。";
+
   } finally {
     executeBatch.disabled =
       !/^(order-[1-5]|pas)$/.test(
