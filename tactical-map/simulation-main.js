@@ -62,6 +62,60 @@ function getRenderScene() {
 }
 
 let selectedId = "";
+let selectedPanelKey = "";
+let selectedRangePanel = null;
+let selectedRepairPanel = null;
+
+function clearSelectedUnitPanels() {
+  selectedRangePanel?.dispose();
+  selectedRepairPanel?.destroy();
+
+  selectedRangePanel = null;
+  selectedRepairPanel = null;
+  selectedPanelKey = "";
+
+  $("selectedUnitPanels").replaceChildren();
+}
+
+function syncSelectedUnitPanels(scene, unit) {
+  const allowed =
+    unit?.observationOwn === true &&
+    unit.observationLevel === "identified" &&
+    unit.branch === "navy";
+
+  if (!allowed) {
+    clearSelectedUnitPanels();
+    return;
+  }
+
+  // 同一舰船的普通保存通知不重建面板。
+  // 面板自己的订阅负责刷新，避免丢失消息和重复订阅。
+  const key = JSON.stringify([
+    scene.controls.observationSide,
+    unit.instanceId
+  ]);
+
+  if (key === selectedPanelKey) return;
+
+  clearSelectedUnitPanels();
+
+  try {
+    selectedRangePanel = store.mountRangeAttackPanel(
+      $("selectedUnitPanels"),
+      unit.instanceId
+    );
+
+    selectedRepairPanel = store.mountEquipmentRepairPanel(
+      $("selectedUnitPanels"),
+      unit.instanceId
+    );
+
+    selectedPanelKey = key;
+  } catch (error) {
+    clearSelectedUnitPanels();
+    throw error;
+  }
+}
 let draftPreview = null;
 let axesVisible = false;
 let terrainColorVisible = true;
@@ -364,10 +418,17 @@ function getOwnCombatDetailLines(unit, turnNumber) {
         ? "未使用"
         : `最終使用：ラウンド${group.lastUsedTurn}`;
 
-    lines.push(
-      `${group.position} / ${name} / 第${group.groupIndex + 1}組`,
-      `残弾：${ammo} / ${group.damaged ? "損傷" : "正常"} / ${use}`
-    );
+   const equipmentStatus = group.destroyed
+  ? "完全破損・修復不可"
+  : group.damaged
+    ? "損傷"
+    : "正常";
+
+lines.push(
+  `${group.position} / ${name} / 第${group.groupIndex + 1}組`,
+  `残弾：${ammo} / ${equipmentStatus} / ${use}`
+);
+
   }
 
   if (equipmentState.unresolvedMountIndexes.length) {
@@ -440,8 +501,29 @@ function selectUnit(id) {
     item => item.instanceId === id
   );
 
-  if (!unit) return;
-  if (unit.observationLevel === "shadow") {
+if (!unit) {
+  selectedId = "";
+  $("unitInfo").textContent = "";
+  clearSelectedUnitPanels();
+
+  for (const element of $("unitLayer").querySelectorAll(".unit")) {
+    element.classList.remove("selected");
+  }
+
+  return;
+}
+
+syncSelectedUnitPanels(getRenderScene(), unit);
+
+// 先清理旧高亮，避免选择未识别影时保留旧舰船高亮。
+for (const element of $("unitLayer").querySelectorAll(".unit")) {
+  element.classList.toggle(
+    "selected",
+    element.dataset.instanceId === selectedId
+  );
+}
+
+if (unit.observationLevel === "shadow") {
     $("unitInfo").textContent =
       "未識別の影です。名称・性能・損傷状態は確認できません。";
     return;
@@ -703,6 +785,43 @@ function drawMap() {
     }, group);
 
     label.textContent = unit.name;
+    // 集群代理只汇总观察副本中允许显示的己方状态。
+// 不读取或推断外方装备损伤、任务种类。
+const statusMembers = unit.clusterMembers?.length
+  ? unit.clusterMembers
+  : [unit];
+
+const ownMembers = statusMembers.filter(member =>
+  member.observationOwn === true &&
+  member.observationLevel === "identified"
+);
+
+const statusFlags = [];
+
+if (ownMembers.some(member =>
+  member.equipmentState?.groups?.some(group =>
+    group.damaged || group.destroyed
+  )
+)) {
+  statusFlags.push("設備損傷");
+}
+
+if (ownMembers.some(member =>
+  member.shipState?.rescueTaskId != null
+)) {
+  statusFlags.push("任務中");
+}
+
+if (statusFlags.length) {
+  const statusLabel = svgNode("text", {
+    x: 7,
+    y: -labelHeight + 18,
+    class: "unit-status-label"
+  }, group);
+
+  statusLabel.textContent = statusFlags.join(" / ");
+}
+
 
     svgNode("circle", {
       cx: 0,
@@ -779,8 +898,10 @@ function refillEntities(id) {
     $("unitInfo").textContent = "";
 
   if (!scene.instances.some(unit => unit.instanceId === selectedId)) {
-    selectedId = "";
-  }
+  selectedId = "";
+  clearSelectedUnitPanels();
+}
+
 
 
   control.replaceChildren(new Option("選択してください", ""));
