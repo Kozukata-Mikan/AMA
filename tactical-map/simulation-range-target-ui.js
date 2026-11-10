@@ -370,7 +370,8 @@ export function createRangeAttackPanel({ store, unitId }) {
         const box = document.createElement("section");
         const title = document.createElement("h4");
         title.textContent =
-          `${group.label}／${group.position}／${group.groupIndex}`;
+          `${group.label}／${group.position}／第${group.groupIndex + 1}組`;
+
 
         const current = plans.commands.find(
           command => command.groupId === group.groupId
