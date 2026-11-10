@@ -9,6 +9,7 @@ import { validateFormationTopology, expandFormationMemberIds} from "./formation-
 import { readAttackCommandTarget } from "./simulation-attack-runtime.js";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
 import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
 
 
 
@@ -802,6 +803,23 @@ export function prepareBatchHitChecks(
     });
   }
 
+ // 单体命令的左右侧在随机前已经确定。
+// 提前检查，供手动保存和自主选目标使用。
+// 范围命令的实际侧向在目标选择后统一检查。
+const singleEntries = expected.entries.filter(
+  (_, index) => checks[index].kind === "single"
+);
+
+assertBroadsideQuotas(
+  startScene,
+  singleEntries,
+  singleEntries.map(entry => ({
+    commandId: entry.commandId,
+    targetIds: [entry.targetId]
+  })),
+  scene.settlementRuntime?.attackRecords ?? []
+);
+
   return {
     prepared: expected,
     checks
@@ -852,6 +870,42 @@ export function resolveAttackBatchHitStep(
 
     selections.set(check.commandId, selected);
   }
+
+
+ // 范围目标已经选择，但尚未掷正式命中硬币。
+// 用真实投射出现项检查左右配额，不能用编队中心代替。
+const firingAssignments = checked.prepared.entries.map(
+  (entry, index) => {
+    const check = checked.checks[index];
+
+    if (check.kind === "single") {
+      return {
+        commandId: entry.commandId,
+        targetIds: [entry.targetId]
+      };
+    }
+
+    const selected = selections.get(entry.commandId);
+
+    if (!Array.isArray(selected?.occurrences)) {
+      fail("範囲射撃の対象記録が不足しています。");
+    }
+
+    return {
+      commandId: entry.commandId,
+      targetIds: selected.occurrences.map(
+        occurrence => occurrence.targetId
+      )
+    };
+  }
+);
+
+const firingReports = assertBroadsideQuotas(
+  getAttackPhaseStartScene(copy(scene)),
+  checked.prepared.entries,
+  firingAssignments,
+  scene.settlementRuntime?.attackRecords ?? []
+);
 
   const reports = [];
   const rangeSelections = [];
@@ -942,6 +996,7 @@ export function resolveAttackBatchHitStep(
     step: "attack-hit",
     turnNumber: checked.prepared.turnNumber,
     phaseId: checked.prepared.phaseId,
+    firingReports,
     rangeSelections,
     reports
   };
