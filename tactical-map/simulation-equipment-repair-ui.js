@@ -1,6 +1,6 @@
 // 外部设备修复的资格、距离和耗时尚未正式确认。
 // 第三阶段按正式规则实现后，才解除页面注册门禁。
-const EQUIPMENT_REPAIR_RULES_CONFIRMED = false;
+const EQUIPMENT_REPAIR_RULES_CONFIRMED = ture;
 
 
 export function createEquipmentRepairPanel({
@@ -32,9 +32,9 @@ export function createEquipmentRepairPanel({
 
   const description = document.createElement("p");
   description.textContent =
-    "移動後に距離2以内で開始します。" +
-    "次ラウンドの特殊段階で1項目を判定します。" +
-    "双方は任務中、他の行動を実行できません。";
+    "自陣営の損傷項目だけを表示します。完全破損した項目は修復できません。" +
+    "外部設備修復の資格・距離・所要時間は規則確認待ちのため、" +
+    "現在は新しい修復計画を登録できません。既存の未開始計画は取消できます。";
 
   element.append(
     title,
@@ -47,6 +47,8 @@ export function createEquipmentRepairPanel({
   );
 
   let report = null;
+  let destroyed = false;
+
 
   function addOption(select, value, label) {
     const option = document.createElement("option");
@@ -72,17 +74,25 @@ export function createEquipmentRepairPanel({
       itemSelect.value = preferredItem;
     }
 
-    save.disabled =
-      report?.phaseId !== "movement" ||
-      !target ||
-      !itemSelect.value;
+   save.disabled =
+  !EQUIPMENT_REPAIR_RULES_CONFIRMED ||
+  report?.phaseId !== "movement" ||
+  !target ||
+  !itemSelect.value;
+
   }
 
   function refresh() {
+    if (destroyed) return;
     const targetId = targetSelect.value;
     const itemId = itemSelect.value;
 
     try {
+      if (!EQUIPMENT_REPAIR_RULES_CONFIRMED) {
+  throw new Error(
+    "外部設備修復の正式規則が未確認のため、計画を登録できません。"
+  );
+}
       report = store.getEquipmentRepairOptions(rescuerId);
       targetSelect.replaceChildren();
 
@@ -144,9 +154,13 @@ export function createEquipmentRepairPanel({
   return {
     element,
     refresh,
-    destroy() {
-      unsubscribe();
-      element.remove();
-    }
+   destroy() {
+  if (destroyed) return;
+
+  destroyed = true;
+  unsubscribe();
+  element.remove();
+}
+
   };
 }
