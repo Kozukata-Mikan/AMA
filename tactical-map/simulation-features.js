@@ -496,6 +496,12 @@ export function getObservedScene(scene) {
     createdAt: scene.createdAt,
     updatedAt: scene.updatedAt,
     ruleset: scene.ruleset,
+    // 战役公开介绍，不包含外方内部战斗资料。
+// 兼容旧推演：只读取其原始快照已有的介绍，不写回历史。
+    campaignIntro:
+    scene.campaignIntro ??
+    scene.initialScene?.campaignIntro ??
+    null,
     terrain: scene.terrain,
     environment: scene.environment,
     turn: scene.turn,
