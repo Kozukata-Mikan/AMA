@@ -48,6 +48,26 @@ import { getFactionName } from "../js/faction-data.js";
 const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
 
+const pageDisposers = [];
+
+function registerPageDisposer(disposer) {
+  if (typeof disposer === "function") {
+    pageDisposers.push(disposer);
+  }
+}
+
+window.addEventListener("pagehide", event => {
+  // 浏览器后退缓存保留页面时，不拆掉仍将恢复的界面。
+  if (event.persisted) return;
+
+  clearSelectedUnitPanels();
+
+  for (const dispose of pageDisposers.splice(0).reverse()) {
+    dispose();
+  }
+});
+
+
 let store = null;
 // 只供界面读取，不修改缓存中的数据。
 // 所有写入仍然通过simulation-store的方法完成。
@@ -1481,14 +1501,14 @@ try {
   store = openSimulation(id);
   mountSimulationRulebook(store);
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
-  mountRescueUI(store);
-  mountAttackUI(store);
+registerPageDisposer(mountRescueUI(store));
+registerPageDisposer(mountAttackUI(store));
 
+registerPageDisposer(store.subscribe(() => {
+  renderSceneCache = null;
+  refresh();
+}));
 
-    store.subscribe(() => {
-    renderSceneCache = null;
-    refresh();
-  });
 
 
   refresh();
