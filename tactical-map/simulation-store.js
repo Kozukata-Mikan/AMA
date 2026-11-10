@@ -1148,7 +1148,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
 
       const issues = [];
       const boundaries = [
-        "これは現在状態の確認です。正式結算では段階開始状態と全批次の条件を再確認します。。"
+        "これは現在状態の確認です。正式結算では段階開始状態と全批次の条件を再確認します。"
       ];
 
       if (actor.instanceId === target.instanceId) {
