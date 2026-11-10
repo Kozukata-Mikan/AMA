@@ -28,6 +28,38 @@ function readAmmo(value) {
   return value;
 }
 
+// 原始 initialAmmo 始终保留部署快照中的值。
+// 补录只保存于独立运行字段 ammoRegistration。
+export function readEffectiveInitialAmmo(group) {
+  const initial = readAmmo(group.initialAmmo);
+  const registration = group.ammoRegistration;
+
+  if (registration === undefined) return initial;
+
+  if (
+    initial !== null ||
+    !isObject(registration) ||
+    registration.version !== 1 ||
+    !Number.isSafeInteger(registration.ammo) ||
+    registration.ammo < 0 ||
+    !Number.isSafeInteger(registration.turnNumber) ||
+    registration.turnNumber < 1 ||
+    typeof registration.phaseId !== "string" ||
+    !registration.phaseId.trim() ||
+    !Number.isSafeInteger(registration.revisionBefore) ||
+    registration.revisionBefore < 0 ||
+    typeof registration.registeredAt !== "string" ||
+    !Number.isFinite(Date.parse(registration.registeredAt)) ||
+    typeof registration.note !== "string" ||
+    !registration.note.trim()
+  ) {
+    throw new Error("装備組の弾薬補完記録が不正です。");
+  }
+
+  return registration.ammo;
+}
+
+
 function readTraits(value, label) {
   if (value === undefined) return [];
 
@@ -175,19 +207,21 @@ export function ensureEquipmentRuntime(unit) {
       throw new Error("装備組の保存状態がスナップショットと一致しません。");
     }
 
-    const remainingAmmo = readAmmo(group.remainingAmmo);
+   const effectiveInitialAmmo = readEffectiveInitialAmmo(group);
+  const remainingAmmo = readAmmo(group.remainingAmmo);
 
-    if (
-      group.remainingAmmo === undefined ||
-      (
-        group.initialAmmo === null
-          ? remainingAmmo !== null
-          : remainingAmmo === null ||
-            remainingAmmo > group.initialAmmo
-      )
-    ) {
-      throw new Error("装備組の残弾数が不正です。");
-    }
+  if (
+  group.remainingAmmo === undefined ||
+  (
+    effectiveInitialAmmo === null
+      ? remainingAmmo !== null
+      : remainingAmmo === null ||
+        remainingAmmo > effectiveInitialAmmo
+  )
+) {
+  throw new Error("装備組の残弾数が不正です。");
+}
+
 
     if (
       group.lastUsedTurn !== null &&
