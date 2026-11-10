@@ -1036,8 +1036,10 @@ mountEquipmentRepairPanel(container, rescuerId) {
           }
         }
 
-        if (group.damaged) {
-          issues.push("この装備組は損傷しています。");
+        if (group.destroyed) {
+        issues.push("この装備組は完全破損しています。修復できません。");
+        } else if (group.damaged) {
+        issues.push("この装備組は損傷しています。");
         }
 
         if (group.lastUsedTurn === turnNumber) {
@@ -1076,6 +1078,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           remainingAmmo: group.remainingAmmo,
           lastUsedTurn: group.lastUsedTurn,
           damaged: group.damaged,
+          destroyed: group.destroyed,
           profile,
           issues: [...new Set(issues)]
         };
@@ -1091,7 +1094,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
         unresolvedMountIndexes:
           unit.equipmentState.unresolvedMountIndexes,
         groups,
-        settlementConnected: false
+        settlementConnected: true
       });
     },
 
@@ -1145,7 +1148,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
 
       const issues = [];
       const boundaries = [
-        "命中・被害・弾薬消費を含む正式な攻撃結算は未接続です。"
+        "これは現在状態の確認です。正式結算では段階開始状態と全批次の条件を再確認します。。"
       ];
 
       if (actor.instanceId === target.instanceId) {
@@ -1168,7 +1171,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
             ...boundaries,
             "この確認は海軍から海軍への攻撃に限ります。"
           ],
-          settlementConnected: false
+          settlementConnected: true
         };
       }
 
@@ -1316,7 +1319,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           }
 
           boundaries.push(
-            "レーダー誘導のその他の攻撃資格は統合待ちです。"
+            "正式結算では発射艦自身の発見状態を段階開始記録で再確認します。"
           );
           break;
 
@@ -1324,7 +1327,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           // 上のassertIdentifiedTargetsにより、
           // 現在の陣営が識別した対象であることは確認済み。
           boundaries.push(
-            "数控誘導のその他の攻撃資格は統合待ちです。"
+            "正式結算では攻撃陣営の目標識別を段階開始記録で再確認します。"
           );
           break;
 
@@ -1347,8 +1350,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           }
 
           boundaries.push(
-            "射線の目標固定チェックは実装済みです。" +
-            "正式発射時の固定記録は攻撃結算への接続待ちです。"
+            "正式発射時に、このラウンドの射線目標を固定します。命中の有無には依存しません。"
           );
 
           break;
@@ -1368,7 +1370,22 @@ mountEquipmentRepairPanel(container, rescuerId) {
 
             let armorPreview;
 
-      try {
+const equipmentPower = tryReadEquipmentPower(
+  profile.powerRule
+);
+
+if (equipmentPower) {
+  armorPreview = [
+    "【設備威力】",
+    `武器1枚の命中につき${equipmentPower.power}回、設備項目を抽選します。`,
+    "六つの装備位置と対海・対空偵察の固定8項目から、等確率で抽選します。",
+    "空位置・損傷済み・完全破損済みの項目も抽選対象です。",
+    "同じ項目への重複命中は損傷を重ねません。",
+    "耐性を減らさず、貫通・装甲・慣性防御を適用しません。"
+  ];
+} else {
+  try {
+
         const naval = target.snapshot.naval;
 
         const effectiveArmor = profile.guidance === "inertial"
@@ -1432,13 +1449,15 @@ mountEquipmentRepairPanel(container, rescuerId) {
             "慣性攻撃：本来の装甲ではなく、強度対応等級を使用します。"
           );
         }
-      } catch (error) {
-        armorPreview = [
-          `装甲比較を確認できません：${error.message}`
-        ];
+        } catch (error) {
+    armorPreview = [
+      `装甲比較を確認できません：${error.message}`
+      ];
       }
+     }
 
-      return {
+     return {
+
         revision: state.revision,
         distance3D: trace.distance3D,
         relativeHeight,
@@ -1446,7 +1465,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
         armorPreview,
         issues: [...new Set(issues)],
         boundaries: [...new Set(boundaries)],
-        settlementConnected: false
+        settlementConnected: true
       };
     },
 
@@ -1475,7 +1494,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
         return {
           revision: state.revision,
           resourcePreparationPassed: false,
-          settlementConnected: false,
+          settlementConnected: true,
           entries: [],
           reason:
             "全批次の準備条件を満たしていません。" +
@@ -1492,7 +1511,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
       return copy({
         revision: state.revision,
         resourcePreparationPassed: true,
-        settlementConnected: false,
+        settlementConnected: true,
         entries: ownEntries.map(entry => ({
           groupId: entry.groupId,
           ammoBefore: entry.ammoBefore,
