@@ -1,3 +1,8 @@
+import {
+  normalizeCampaignIntro as normalize
+} from "./campaign-intro-data.js";
+
+
 const MAX_IMAGE_BYTES = 1024 * 1024;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
