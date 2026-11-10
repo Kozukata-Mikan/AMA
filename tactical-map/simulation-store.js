@@ -22,12 +22,12 @@ import { initializeRescueRuntime } from "./simulation-rescue-runtime.js";
 import { initializeSpecialRuntime } from "./simulation-special-runtime.js";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands, readAttackCommandTarget } from "./simulation-attack-runtime.js";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js";
 
 import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
 
 import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
-import { initializeSettlementRuntime, settleAttackPhase,prepareSettlementAttackPlan } from "./simulation-settlement.js";
+import { initializeSettlementRuntime, settleAttackPhase,prepareSettlementAttackPlan , validateDeferredAttackPlans } from "./simulation-settlement.js";
 
 import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js";
 
@@ -705,11 +705,10 @@ export function openSimulation(id) {
       candidate.turn.phaseId !== previousPhase;
 
     if (enteredNewPhase) {
-      if (candidate.attackRuntime.commands.length !== 0) {
-        throw new Error(
-          "未処理の攻撃計画があるため、段階を変更できません。"
-        );
-      }
+      // 允许合法未来计划和刚到执行次序的计划。
+     // 已错过次序、非攻击阶段残留、跨回合计划均拒绝。
+     initializeAttackRuntime(candidate);
+
 
       // 只重建运行快照，不修改initialScene。
       candidate.attackBatchRuntime = {
@@ -1075,11 +1074,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           } else if (profile.maxOrder !== null) {
             if (currentOrder === null) {
               issues.push("通常武器は次序1～5で使用します。");
-            } else if (currentOrder > profile.maxOrder) {
-              issues.push(
-                `この武器の最高次序は${profile.maxOrder}です。`
-              );
-            }
+            } 
           }
         }
 
@@ -1819,6 +1814,8 @@ if (equipmentPower) {
       }
 
       const input = copy(request);
+         let savedOrders = [];
+
 
       commit(candidate => {
         if (!isAttackPhase(candidate.turn.phaseId)) {
@@ -1944,17 +1941,45 @@ if (scope.kind === "single") {
         }
 
         replaceAttackCommands(
-          candidate,
-          input.unitId,
-          checked,
-          newId
-        );
+        candidate,
+        input.unitId,
+        checked,
+        newId
+         );
+
+        // 记录本次保存的各装备组实际执行次序，供界面显示。
+       savedOrders = checked.map(item => ({
+       groupId: item.groupId,
+       phaseId: getAttackExecutionPhase(
+        candidate,
+        input.unitId,
+       item.groupId
+  )
+}));
+
 
         // 草案也必须经过真实范围、几何与算法支持检查。
         // 捕获通用错误，避免泄露全批外方计划或内部资料。
-        try {
-          prepareSettlementAttackPlan(candidate);
+       try {
+  const selectedIds = new Set(
+    checked.map(item => item.groupId)
+  );
+
+  const savedSelection =
+    candidate.attackRuntime.commands.filter(command =>
+      command.unitId === input.unitId &&
+      selectedIds.has(command.groupId)
+    );
+
+  validateDeferredAttackPlans(
+    candidate,
+    savedSelection
+  );
+
+  prepareSettlementAttackPlan(candidate);
+
         } catch {
+                  } catch {
           throw new Error(
             "全批次の正式条件を満たしていません。" +
             "段階開始記録、主目標、指定メンバー、" +
@@ -1963,6 +1988,12 @@ if (scope.kind === "single") {
             "今回の計画は保存していません。"
           );
         }
+      });
+
+      // commit成功并完成保存之后，才向界面返回结果。
+      return copy({
+        revision: state.revision,
+        commands: savedOrders
       });
     },
 
