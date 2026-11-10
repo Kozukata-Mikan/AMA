@@ -764,7 +764,168 @@ function buildPlan(scene, ref, x, y) {
  * 决策使用隔离副本，并按行动者阵营计算观察结果。
  * 不修改正式场景的观察阵营或手动权限。
  */
-function createAutonomousMovementPlans(scene) {
+/**
+ * 移动前选择救助配对，并规划接近目标。
+ * 任务仍由移动后的startPlannedRescues正式启动。
+ */
+function createAutonomousRescueApproachPlans(scene) {
+  if (!scene.controls.enemyAutonomy) return [];
+
+  const planning = clone(scene);
+  planning.controls.enemyAutonomy = false;
+
+  const reserved = new Set();
+
+  for (const plan of scene.rescuePlans ?? []) {
+    reserved.add(plan.rescuerId);
+    reserved.add(plan.targetId);
+  }
+
+  for (const task of scene.rescueTasks ?? []) {
+    if (task.status !== "active") continue;
+
+    reserved.add(task.rescuerId);
+    reserved.add(task.targetId);
+  }
+
+  const movementPlans = [];
+  const rescuePlans = [];
+
+  for (const side of ["enemy", "neutral"]) {
+    planning.controls.observationSide = side;
+
+    const visibility = getVisibility(planning);
+
+    const threats = planning.instances.filter(unit =>
+      unit.side !== side &&
+      positioned(unit) &&
+      visibility.has(unit.instanceId) &&
+      unit.shipState?.status !== "sunk"
+    );
+
+    const targets = planning.instances.filter(unit =>
+      unit.side === side &&
+      unit.branch === "navy" &&
+      positioned(unit) &&
+      unit.shipState.status === "sinking" &&
+      unit.shipState.rescueTaskId === null &&
+      !reserved.has(unit.instanceId)
+    ).sort((a, b) =>
+      b.shipState.sinkingElapsedMinutes -
+        a.shipState.sinkingElapsedMinutes ||
+      (a.instanceId < b.instanceId ? -1 :
+        a.instanceId > b.instanceId ? 1 : 0)
+    );
+
+    for (const target of targets) {
+      if (reserved.has(target.instanceId)) continue;
+
+      const rescuers = planning.instances.filter(unit =>
+        unit.side === side &&
+        unit.branch === "navy" &&
+        operational(unit) &&
+        !reserved.has(unit.instanceId) &&
+        unit.instanceId !== target.instanceId
+      ).sort((a, b) =>
+        Number(readShipProfile(b).isRepairShip) -
+          Number(readShipProfile(a).isRepairShip) ||
+        Math.hypot(a.x - target.x, a.y - target.y) -
+          Math.hypot(b.x - target.x, b.y - target.y) ||
+        (a.instanceId < b.instanceId ? -1 :
+          a.instanceId > b.instanceId ? 1 : 0)
+      );
+
+      for (const rescuer of rescuers) {
+        const dx = target.x - rescuer.x;
+        const dy = target.y - rescuer.y;
+        const distance = Math.hypot(dx, dy);
+
+        // 本回合必须能够到达救助有效距离，才登记配对。
+        const travel = Math.max(0, distance - 1.5);
+
+        if (travel > limitFor([rescuer]) + EPSILON) continue;
+
+        const destination = distance > EPSILON
+          ? {
+              x: rescuer.x + dx / distance * travel,
+              y: rescuer.y + dy / distance * travel
+            }
+          : { x: rescuer.x, y: rescuer.y };
+
+        // 中立优先自身存活：
+        // 不向已发现威胁靠近，也不在近邻威胁旁锁定行动。
+        if (
+          side === "neutral" &&
+          threats.some(threat => {
+            const before = Math.hypot(
+              threat.x - rescuer.x,
+              threat.y - rescuer.y
+            );
+
+            const after = Math.hypot(
+              threat.x - destination.x,
+              threat.y - destination.y
+            );
+
+            return (
+              after <= 2 ||
+              Math.hypot(
+                threat.x - target.x,
+                threat.y - target.y
+              ) <= 2 ||
+              after < before - EPSILON
+            );
+          })
+        ) {
+          continue;
+        }
+
+        let move;
+
+        try {
+          move = buildPlan(
+            planning,
+            { kind: "unit", id: rescuer.instanceId },
+            destination.x,
+            destination.y
+          );
+        } catch (error) {
+          if (
+            error.message === "移動先が地図の範囲外です。" ||
+            error.message === "この位置への移動は完了できません。"
+          ) {
+            continue;
+          }
+
+          throw error;
+        }
+
+        movementPlans.push(move);
+
+        rescuePlans.push({
+          kind: "rescue",
+          rescuerId: rescuer.instanceId,
+          targetId: target.instanceId,
+          turnNumber: scene.turn.number
+        });
+
+        reserved.add(rescuer.instanceId);
+        reserved.add(target.instanceId);
+        break;
+      }
+    }
+  }
+
+  scene.rescuePlans.push(...rescuePlans);
+
+  return movementPlans;
+}
+
+function createAutonomousMovementPlans(
+  scene,
+  excludedIds = new Set()
+) {
+
   if (!scene.controls.enemyAutonomy) return [];
 
   const planning = clone(scene);
@@ -776,8 +937,10 @@ function createAutonomousMovementPlans(scene) {
   const plans = [];
   const autonomousUnits = planning.instances
     .filter(unit =>
-      ["enemy", "neutral"].includes(unit.side)
-    )
+    ["enemy", "neutral"].includes(unit.side) &&
+    !excludedIds.has(unit.instanceId)
+  )
+
     .sort((a, b) =>
       a.instanceId < b.instanceId
         ? -1
@@ -1045,10 +1208,19 @@ if (autonomyEnabled) {
   }
 }
 
+const rescueApproachPlans =
+  createAutonomousRescueApproachPlans(scene);
+
+const rescueMovingIds = new Set(
+  rescueApproachPlans.flatMap(plan => plan.memberIds)
+);
+
 const movementPlans = [
   ...scene.movementPlans,
-  ...createAutonomousMovementPlans(scene)
+  ...rescueApproachPlans,
+  ...createAutonomousMovementPlans(scene, rescueMovingIds)
 ];
+
 
 // 下面的重新校验在独立副本上进行，
 // 不放宽正式场景的观察与手动权限。
