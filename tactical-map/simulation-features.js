@@ -750,6 +750,201 @@ function buildPlan(scene, ref, x, y) {
   };
 }
 
+
+/**
+ * 自动移动策略。
+ *
+ * 正式规则仍由buildPlan校验：
+ * 不修改图鉴、不放宽移动力、不绕过终点限制。
+ *
+ * 决策使用隔离副本，并按行动者阵营计算观察结果。
+ * 不修改正式场景的观察阵营或手动权限。
+ */
+function createAutonomousMovementPlans(scene) {
+  if (!scene.controls.enemyAutonomy) return [];
+
+  const planning = clone(scene);
+
+  // 只在内部隔离副本关闭手动操作门禁。
+  // 正式场景仍保持自主开启、玩家仅操作我方。
+  planning.controls.enemyAutonomy = false;
+
+  const plans = [];
+  const autonomousUnits = planning.instances
+    .filter(unit =>
+      ["enemy", "neutral"].includes(unit.side)
+    )
+    .sort((a, b) =>
+      a.instanceId < b.instanceId
+        ? -1
+        : a.instanceId > b.instanceId
+          ? 1
+          : 0
+    );
+
+  for (const unit of autonomousUnits) {
+    if (unit.branch !== "navy") {
+      fail(
+        "海軍以外の自律移動は未接続です。" +
+        "未対応のユニットを省略して移動処理できません。"
+      );
+    }
+
+    // 濒临沉没、沉没、正在执行任务的舰船不生成移动。
+    if (!operational(unit)) continue;
+
+    planning.controls.observationSide = unit.side;
+
+    const visibility = getVisibility(planning);
+
+    const relevantTargets = planning.instances.filter(target => {
+      if (
+        target.instanceId === unit.instanceId ||
+        target.side === unit.side ||
+        !positioned(target) ||
+        target.shipState?.status === "sunk" ||
+        !visibility.has(target.instanceId)
+      ) {
+        return false;
+      }
+
+      // 敌方只追踪我方；中立保守地避开其他阵营。
+      return unit.side === "enemy"
+        ? target.side === "ally"
+        : true;
+    });
+
+    // 不使用未发现单位的真实位置。
+    // 暂无可见目标时保持位置，不伪造追踪情报。
+    if (!relevantTargets.length) continue;
+
+    const movementLimit = limitFor([unit]);
+
+    if (
+      !Number.isFinite(movementLimit) ||
+      movementLimit < 0
+    ) {
+      fail("自律移動の移動上限が不正です。");
+    }
+
+    if (movementLimit === 0) continue;
+
+    function nearestDistance(x, y) {
+      return Math.min(
+        ...relevantTargets.map(target =>
+          Math.hypot(target.x - x, target.y - y)
+        )
+      );
+    }
+
+    // 候选采样属于决策策略，不是新增移动规则。
+    const candidates = [{ x: unit.x, y: unit.y }];
+
+    function addDirection(dx, dy) {
+      const length = Math.hypot(dx, dy);
+      if (length <= EPSILON) return;
+
+      for (const fraction of [0.25, 0.5, 0.75, 1]) {
+        const distance = movementLimit * fraction;
+
+        candidates.push({
+          x: unit.x + dx / length * distance,
+          y: unit.y + dy / length * distance
+        });
+      }
+    }
+
+    for (let index = 0; index < 16; index++) {
+      const angle = index * Math.PI * 2 / 16;
+      addDirection(Math.cos(angle), Math.sin(angle));
+    }
+
+    for (const target of relevantTargets) {
+      const dx = target.x - unit.x;
+      const dy = target.y - unit.y;
+
+      addDirection(dx, dy);
+      addDirection(-dx, -dy);
+
+      // 敌方可接近到目标附近，但不把目标位置
+      // 当作必须占据的位置。
+      if (unit.side === "enemy") {
+        const distance = Math.hypot(dx, dy);
+        const travel = Math.min(
+          movementLimit,
+          Math.max(0, distance - 1)
+        );
+
+        if (distance > EPSILON && travel > EPSILON) {
+          candidates.push({
+            x: unit.x + dx / distance * travel,
+            y: unit.y + dy / distance * travel
+          });
+        }
+      }
+    }
+
+    let bestPlan = null;
+    let bestDistance = nearestDistance(unit.x, unit.y);
+    let bestTravel = 0;
+
+    for (const destination of candidates) {
+      let plan;
+
+      try {
+        plan = buildPlan(
+          planning,
+          { kind: "unit", id: unit.instanceId },
+          destination.x,
+          destination.y
+        );
+      } catch (error) {
+        // 只排除当前正式移动检查中明确非法的候选位置。
+        // 数据、装备、性能或未实现规则错误必须向上抛出。
+        const invalidDestination =
+          error.message === "移動先が地図の範囲外です。" ||
+          error.message === "この位置への移動は完了できません。" ||
+          error.message ===
+            "速力または残り航続距離の上限を超えています。";
+
+        if (invalidDestination) continue;
+        throw error;
+      }
+
+      const distance = nearestDistance(
+        destination.x,
+        destination.y
+      );
+
+      const improved = unit.side === "enemy"
+        ? distance < bestDistance - EPSILON
+        : distance > bestDistance + EPSILON;
+
+      const equivalent =
+        Math.abs(distance - bestDistance) <= EPSILON;
+
+      if (
+        improved ||
+        (
+          bestPlan &&
+          equivalent &&
+          plan.distance < bestTravel - EPSILON
+        )
+      ) {
+        bestPlan = plan;
+        bestDistance = distance;
+        bestTravel = plan.distance;
+      }
+    }
+
+    if (bestPlan && bestPlan.distance > EPSILON) {
+      plans.push(bestPlan);
+    }
+  }
+
+  return plans;
+}
+
 export function createSimulationFeatures(getState, commit) {
   return {
     getMovementInfo(ref) {
@@ -823,18 +1018,45 @@ export function createSimulationFeatures(getState, commit) {
           fail("移動段階ではありません。");
         }
 
-        if (scene.controls.enemyAutonomy) {
-          fail(
-            "敵・中立の自律移動計画は未実装です。" +
-            "自律行動を無効にして各陣営の移動を指定してください。"
-          );
-        }
+        const autonomyEnabled = scene.controls.enemyAutonomy;
+
+if (autonomyEnabled) {
+  // 开启前手动保存的非我方计划不能静默覆盖或删除。
+  // 明确停止，由玩家先处理旧计划。
+  const hasNonAllyManualPlan = scene.movementPlans.some(
+    plan => plan.memberIds.some(id => {
+      const unit = scene.instances.find(
+        item => item.instanceId === id
+      );
+
+      return unit && unit.side !== "ally";
+    })
+  );
+
+  if (hasNonAllyManualPlan) {
+    fail(
+      "敵・中立の手動移動計画が残っています。" +
+      "自律行動を一度無効にして、その計画を取り消してください。"
+    );
+  }
+}
+
+const movementPlans = [
+  ...scene.movementPlans,
+  ...createAutonomousMovementPlans(scene)
+];
+
+// 下面的重新校验在独立副本上进行，
+// 不放宽正式场景的观察与手动权限。
+const validationScene = clone(scene);
+validationScene.controls.enemyAutonomy = false;
+
 
         const originalSide = scene.controls.observationSide;
         const checked = [];
         const used = new Set();
 
-        for (const saved of scene.movementPlans) {
+        for (const saved of movementPlans) {
           if (saved.turnNumber !== scene.turn.number) {
             fail("別ラウンドの移動計画が混在しています。");
           }
@@ -848,7 +1070,7 @@ export function createSimulationFeatures(getState, commit) {
             fail("編隊構成が変更されています。移動計画を再指定してください。");
           }
 
-          scene.controls.observationSide = members[0].side;
+          validationScene.controls.observationSide = members[0].side;
 
           const anchor = saved.destinations.find(
             item => item.instanceId === members[0].instanceId
@@ -873,7 +1095,7 @@ export function createSimulationFeatures(getState, commit) {
             used.add(unit.instanceId);
           }
 
-          checked.push(buildPlan(scene, saved.ref, anchor.x, anchor.y));
+          checked.push(buildPlan(validationScene, saved.ref, anchor.x, anchor.y));
         }
 
         scene.controls.observationSide = originalSide;
