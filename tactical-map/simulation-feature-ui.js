@@ -150,7 +150,11 @@ if (!confirm(
   function drawRange() {
     layer.replaceChildren();
 
-    if (!actor.value) return;
+    if (
+     store.getScene().turn.phaseId !== "movement" ||
+     !actor.value
+    ) return;
+
 
     try {
       const info = store.getMovementInfo(ref());
@@ -268,9 +272,23 @@ if (!confirm(
     const movement = scene.turn.phaseId === "movement";
 
     begin.disabled = scene.turn.phaseId !== "start";
-    save.disabled = cancel.disabled = !movement;
-   // 自主行动限制外方手动编辑，不限制全阵营移动结算。
-   resolve.disabled = !movement;
+
+actor.disabled = !movement;
+x.disabled = !movement;
+y.disabled = !movement;
+
+save.disabled = cancel.disabled =
+  !movement || !actor.value;
+
+// 自主行动不禁止全阵营移动结算。
+resolve.disabled = !movement;
+
+if (!movement) {
+  x.value = "";
+  y.value = "";
+  status.textContent =
+    "艦船移動は移動段階でのみ指定できます。";
+}
 
 
     drawRange();
@@ -282,14 +300,34 @@ if (!confirm(
   }));
 
   actor.addEventListener("change", () => {
-    run(() => {
-      const info = store.getMovementInfo(ref());
-      x.value = info.x;
-      y.value = info.y;
-      status.textContent = `最大移動距離：${info.limit}`;
-    });
-    drawRange();
+  const movement =
+    store.getScene().turn.phaseId === "movement";
+
+  save.disabled = cancel.disabled =
+    !movement || !actor.value;
+
+  if (!movement || !actor.value) {
+    x.value = "";
+    y.value = "";
+    layer.replaceChildren();
+
+    status.textContent = movement
+      ? "移動する艦船または編隊を選択してください。"
+      : "艦船移動は移動段階でのみ指定できます。";
+
+    return;
+  }
+
+  run(() => {
+    const info = store.getMovementInfo(ref());
+    x.value = info.x;
+    y.value = info.y;
+    status.textContent = `最大移動距離：${info.limit}`;
   });
+
+  drawRange();
+});
+
 
   let drag = null;
   let suppressClickUntil = 0;
