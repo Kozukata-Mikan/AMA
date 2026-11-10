@@ -591,19 +591,29 @@ function finalPreflight(start, entry) {
     );
   }
 
+ const clusterSingleTarget =
+  profile.targetScope.trim() === "集群" &&
+  entry.targetRef?.kind === "unit";
+
+if (scope.kind === "single" || clusterSingleTarget) {
   if (
-    scope.kind === "single" &&
-    entry.targetRef?.kind !== "unit"
+    entry.targetRef?.kind !== "unit" ||
+    entry.targetId !== entry.targetRef.id ||
+    !Array.isArray(entry.specifiedTargetIds) ||
+    entry.specifiedTargetIds.length !== 0
   ) {
-    fail("単体武器の主目標が不正です。");
+    fail("単体目標の指定が不正です。");
   }
 
-  if (
-    scope.kind === "range" &&
-    entry.targetRef?.kind !== "group"
-  ) {
-    fail("範囲武器の主目標が不正です。");
-  }
+  // 集群武器指定单体时，正式检查和结算的目标
+  // 必须就是该单体，不能自动扩展所属集群。
+} else if (
+  scope.kind === "range" &&
+  entry.targetRef?.kind !== "group"
+) {
+  fail("範囲武器の主目標が不正です。");
+}
+
 
   // 未接入的效果必须整批拒绝，不能排除成员后继续。
   if (profile.large) {
