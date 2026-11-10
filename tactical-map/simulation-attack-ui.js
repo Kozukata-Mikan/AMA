@@ -274,7 +274,8 @@ function selectableGroups() {
     if (report.unresolvedMountIndexes.length) {
       lines.push(
         `組数未登録の配置：${report.unresolvedMountIndexes.length}件`,
-        "組数未登録の配置は選択一覧に追加していません。"
+        "組数未登録の配置は暫定的に戦闘対象外です。" +
+        "攻撃・装備組としての損傷処理には参加しません。"
       );
     }
 
