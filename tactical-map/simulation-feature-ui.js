@@ -103,10 +103,17 @@ export function mountSimulationFeatures(store, context) {
   });
 
   const resolve = addButton("全陣営の移動を処理", () => {
-    if (!confirm(
-      "全陣営の移動計画をまとめて処理しますか？" +
-      "計画のない艦船は待機します。"
-    )) return;
+ const autonomy = store.getScene().controls.enemyAutonomy;
+
+if (!confirm(
+  "全陣営の移動をまとめて処理しますか？" +
+  (
+    autonomy
+      ? "敵・中立の艦船は自主行動規則に従って移動し、" +
+        "移動しない艦船は待機します。"
+      : "計画のない艦船は待機します。"
+  )
+)) return;
 
     store.resolveMovement();
 
@@ -262,7 +269,9 @@ export function mountSimulationFeatures(store, context) {
 
     begin.disabled = scene.turn.phaseId !== "start";
     save.disabled = cancel.disabled = !movement;
-    resolve.disabled = !movement || scene.controls.enemyAutonomy;
+   // 自主行动限制外方手动编辑，不限制全阵营移动结算。
+   resolve.disabled = !movement;
+
 
     drawRange();
   }
