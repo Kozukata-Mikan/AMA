@@ -3,6 +3,10 @@ import {
   renderEnvironmentBadge
 } from "./map-display.js";
 
+import {
+  showCampaignIntro
+} from "./campaign-intro.js";
+
 import { drawUnitIcon } from "./unit-icon-renderer.js";
 
 import { getDisplayUnits } from "./cluster-engine.js";
@@ -1506,7 +1510,15 @@ try {
   }
 
   store = openSimulation(id);
-  mountSimulationRulebook(store);
+
+// 开场关闭前，不挂载战斗操作面板，也不绘制战场单位。
+// 模块支持顶层await，当前HTML已使用type="module"。
+await showCampaignIntro(
+  store.getScene().campaignIntro ?? {}
+);
+
+mountSimulationRulebook(store);
+
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
 registerPageDisposer(mountRescueUI(store));
 registerPageDisposer(mountAttackUI(store));
