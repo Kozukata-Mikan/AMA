@@ -584,7 +584,11 @@ function trainingModifiers(scene, actor, target, underwaterWeapon) {
 }
 
 function assertNoUnconnectedSupport(scene) {
-  // 支援装备可能改变其他舰船命中，必须检查整场而非仅攻击者。
+  // 组数未登记的安装记录暂不参与战斗。
+  // 不补造组数、不生成装备组、不修改部署快照。
+  //
+  // 已生成装备组的支援效果仍保留原有保护，
+  // 避免把真实存在的支援修正擅自当成0。
   for (const unit of scene.instances) {
     if (
       unit.branch === "navy" &&
@@ -611,33 +615,10 @@ function assertNoUnconnectedSupport(scene) {
       }
     }
 
-   if (unit.equipmentState.unresolvedMountIndexes.length) {
-  const details =
-    unit.equipmentState.unresolvedMountIndexes.map(index => {
-      const mount = unit.snapshot.mounts[index];
-      const source = equipment.get(mount?.equipmentId);
-
-      const unitLabel = unit.name || unit.instanceId;
-      const equipmentLabel =
-        source?.name || mount?.equipmentId || "装備不明";
-      const position = mount?.position || "位置未登録";
-
-      return (
-        `${unitLabel} / ${position} / ${equipmentLabel}` +
-        ` / 配置番号：${index + 1}` +
-        " / 組数：未登録"
-      );
-    });
-
-  fail(
-    "次の装備配置の組数が未登録です。\n" +
-    details.join("\n") +
-    "\n砲身数ではなく、配置する装備の組数を登録してください。"
-  );
-}
-
+    // unresolvedMountIndexes中的安装记录不参与结算。
   }
 }
+
 
 function finalPreflight(start, entry) {
   const actor = unitFor(start, entry.unitId);
@@ -827,15 +808,7 @@ readFiringArc(actor, firingGroup, target);
   const checkedTarget = copy(target);
   ensureEquipmentItemRuntime(checkedTarget);
 
-  if (
-    checkedTarget.equipmentState
-      .unresolvedMountIndexes.length
-  ) {
-    fail(
-      "装備組数が未登録のため、設備損傷を適用できません。"
-    );
-  }
-
+  
   if (
     typeof getEquipmentReconSourceVisibility !==
       "function"
@@ -1740,7 +1713,7 @@ export function prepareSettlementAttackPlan(scene) {
 
    if (prepared.entries.length > 0) {
   settlementStep(
-    "支援装備または組数未登録の配置があるため、正式結算を停止しました。",
+    "支援装備の未対応効果があるため、正式結算を停止しました。",
     () => assertNoUnconnectedSupport(start)
   );
 }
