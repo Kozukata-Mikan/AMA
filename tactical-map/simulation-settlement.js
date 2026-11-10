@@ -3,6 +3,7 @@ import {
   getAttackPhaseStartScene,
   applyAttackBatchResources,
   resolveAttackBatchHitStep,
+  prepareAttackCommandPreview,
   prepareBatchHitChecks
 } from "./simulation-attack-batch.js";
 
@@ -101,6 +102,10 @@ import {
 import {
   readFiringArc
 } from "./weapon-firing-arc.js";
+
+import {
+  prepareRangeProjection
+} from "./range-projection-runtime.js";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const EPSILON = 1e-7;
@@ -1393,6 +1398,14 @@ function appendAutonomousAttackCommands(scene) {
       .sort((a, b) => compareText(a.id, b.id));
 
     for (const group of groups) {
+
+      if (scene.attackRuntime.commands.some(command =>
+      command.unitId === actor.instanceId &&
+      command.groupId === group.id
+      )) {
+      continue;
+      }
+
       if (group.damaged || group.destroyed) continue;
 
       if (
@@ -1614,6 +1627,86 @@ if (profile.issues.length) {
   }
 
   initializeAttackRuntime(scene);
+}
+
+/**
+ * 对未来计划执行当前状态检查。
+ * 不生成未来阶段快照，不掷正式随机数，不扣弹。
+ * 到执行次序时仍须重新执行全部正式检查。
+ */
+export function validateDeferredAttackPlans(scene, commands) {
+  for (const command of commands) {
+    if (command.phaseId === scene.turn.phaseId) continue;
+
+    const { current, entry } =
+      prepareAttackCommandPreview(scene, command);
+
+    const observedCurrent = {
+      ...current,
+      controls: {
+        ...current.controls,
+        enemyAutonomy: false,
+        observationSide: entry.side
+      }
+    };
+
+    const effectEntries = [];
+
+    if (entry.scope.kind === "single") {
+      finalPreflight(observedCurrent, entry);
+      effectEntries.push(entry);
+    } else {
+      const range = prepareRangeProjection({
+        startScene: observedCurrent,
+        commandId: entry.commandId,
+        actorId: entry.unitId,
+        targetRef: entry.targetRef,
+        scope: entry.scope,
+        projection: entry.projection,
+        guidance: entry.profile.guidance,
+        specifiedTargetIds: entry.specifiedTargetIds
+      }, (memberScene, actor, target) => {
+        const memberEntry = {
+          ...copy(entry),
+          targetId: target.instanceId
+        };
+
+        try {
+          const result = finalPreflight(
+            memberScene,
+            memberEntry
+          );
+
+          return {
+            targetId: target.instanceId,
+            allowed: true,
+            bonuses: result.bonuses,
+            penalties: result.penalties
+          };
+        } catch (error) {
+          if (error.code !== "TARGET_INELIGIBLE") {
+            throw error;
+          }
+
+          return {
+            targetId: target.instanceId,
+            allowed: false,
+            code: error.code,
+            reason: error.message
+          };
+        }
+      });
+
+      for (const targetId of range.eligibleIds) {
+        effectEntries.push({
+          ...entry,
+          targetId
+        });
+      }
+    }
+
+    assertEffectAlgorithms(current, current, effectEntries);
+  }
 }
 
 export function prepareSettlementAttackPlan(scene) {
@@ -1842,11 +1935,17 @@ for (const report of resourceReports) {
 
   working.settlementRuntime.attackRecords.push(copy(report));
 
-  // 所有计划一起终结，绝不只清除当前观察阵营的计划。
-  working.attackRuntime.commands = [];
+  /// 终结当前次序的全阵营计划，保留未来次序计划。
+    working.attackRuntime.commands =
+    working.attackRuntime.commands.filter(command =>
+    command.turnNumber !== context.turnNumber ||
+    command.phaseId !== context.phaseId
+  );
+
 
   // 不推进回合号码，不推进30分钟。
   working.turn.phaseId = NEXT_ATTACK_PHASE[context.phaseId];
+  initializeAttackRuntime(working);
 
   initializeSettlementRuntime(working);
 
