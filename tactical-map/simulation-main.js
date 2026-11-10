@@ -124,10 +124,7 @@ function syncSelectedUnitPanels(scene, unit) {
   clearSelectedUnitPanels();
 
   try {
-    selectedRangePanel = store.mountRangeAttackPanel(
-    $("rangeAttackPanelSlot"),
-    unit.instanceId
-    );
+  
 
    selectedRepairPanel = store.mountEquipmentRepairPanel(
    $("equipmentRepairPanelSlot"),
