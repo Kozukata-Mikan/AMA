@@ -280,14 +280,26 @@ export function applySinkingEndStep(scene) {
     });
   }
 
-  const report = {
-    version: 1,
-    step: "sinking-end",
-    turnNumber: working.turn.number,
-    results
-  };
+  // 自然沉没可能使设备修复任务失去持续条件。
+// 先统一释放双方任务引用，再进行完整保存校验。
+// 已结束任务不会被重复中断或重复补算。
+const interruptions = reconcileActiveRescues(working);
 
-  validateUnits(working);
+const report = {
+  version: 1,
+  step: "sinking-end",
+  turnNumber: working.turn.number,
+  results: [
+    ...results,
+    ...interruptions.map(result => ({
+      ...result,
+      resultType: "interruption"
+    }))
+  ]
+};
+
+validateUnits(working);
+
 
   working.rescueRuntime.records.push(copy(report));
   working.rescueRuntime.lastEndTurn = working.turn.number;
