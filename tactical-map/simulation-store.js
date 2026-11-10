@@ -1067,11 +1067,14 @@ mountEquipmentRepairPanel(container, rescuerId) {
         } else {
           issues.push(...profile.issues);
 
-          if (profile.pasOnly) {
-            if (phaseId !== "pas") {
-              issues.push("PAS装備はPAS段階に限り使用できます。");
-            }
-          } else if (profile.maxOrder !== null) {
+        if (profile.pasOnly) {
+        if (!isAttackPhase(phaseId)) {
+        issues.push(
+        "PAS装備の計画は次序1～5またはPASで登録してください。"
+         );
+       }
+           } else if (profile.maxOrder !== null) {
+
             if (currentOrder === null) {
               issues.push("通常武器は次序1～5で使用します。");
             } 
