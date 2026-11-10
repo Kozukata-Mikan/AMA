@@ -98,6 +98,9 @@ import {
   readRangeCommandTarget
 } from "./simulation-range-command.js";
 
+import {
+  readFiringArc
+} from "./weapon-firing-arc.js";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const EPSILON = 1e-7;
@@ -641,6 +644,16 @@ if (scope.kind === "single" || clusterSingleTarget) {
       "通常武器として代用せず、結算を停止します。"
     );
   }
+
+  const firingGroup = actor.equipmentState.groups.find(
+  group => group.id === entry.groupId
+);
+
+if (!firingGroup) {
+  fail("射界判定の装備組を確認できません。");
+}
+
+readFiringArc(actor, firingGroup, target);
 
   const damageRule = parseDamageRule(profile);
 
