@@ -19,7 +19,9 @@ import {
   getEquipmentLabel
 } from "../js/catalog-seed.js";
 import { mountAttackUI } from "./simulation-attack-ui.js";
-
+import {
+  mountSimulationWorkflow
+} from "./simulation-workflow-ui.js";
 
 
 
@@ -94,7 +96,9 @@ function clearSelectedUnitPanels() {
   selectedRepairPanel = null;
   selectedPanelKey = "";
 
-  $("selectedUnitPanels").replaceChildren();
+  $("rangeAttackPanelSlot")?.replaceChildren();
+  $("equipmentRepairPanelSlot")?.replaceChildren();
+  $("selectedUnitPanels")?.replaceChildren();
 }
 
 function syncSelectedUnitPanels(scene, unit) {
@@ -121,14 +125,15 @@ function syncSelectedUnitPanels(scene, unit) {
 
   try {
     selectedRangePanel = store.mountRangeAttackPanel(
-      $("selectedUnitPanels"),
-      unit.instanceId
+    $("rangeAttackPanelSlot"),
+    unit.instanceId
     );
 
-    selectedRepairPanel = store.mountEquipmentRepairPanel(
-      $("selectedUnitPanels"),
-      unit.instanceId
+   selectedRepairPanel = store.mountEquipmentRepairPanel(
+   $("equipmentRepairPanelSlot"),
+   unit.instanceId
     );
+
 
     selectedPanelKey = key;
   } catch (error) {
@@ -1508,6 +1513,7 @@ try {
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
 registerPageDisposer(mountRescueUI(store));
 registerPageDisposer(mountAttackUI(store));
+registerPageDisposer(mountSimulationWorkflow(store));
 
 registerPageDisposer(store.subscribe(() => {
   renderSceneCache = null;
