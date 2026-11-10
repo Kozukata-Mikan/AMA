@@ -536,6 +536,11 @@ export function createSimulation(scene, spatialState) {
 
     terrain: copy(scene.terrain),
     environment: normalizeEnvironment(scene.environment),
+    // 从自定义战役复制，不修改initialScene。
+    campaignIntro: scene.campaignIntro
+    ? copy(scene.campaignIntro)
+    : null,
+
 
     turn: {
       number: 1,
