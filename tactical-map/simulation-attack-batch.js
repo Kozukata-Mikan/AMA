@@ -353,9 +353,14 @@ let memberIds;
   const observationScene = {
     ...startScene,
     controls: {
-      ...startScene.controls,
-      observationSide: actor.side
-    }
+  ...startScene.controls,
+
+  // 仅内部规则查询使用攻击阵营视野。
+  // 不修改正式自主开关，也不开放玩家操作权限。
+  enemyAutonomy: false,
+  observationSide: actor.side
+}
+
   };
 
   assertIdentifiedTargets(observationScene, members);
@@ -475,9 +480,7 @@ export function prepareAttackBatchResources(scene) {
   requireAttackPhase(scene);
   initializeAttackRuntime(scene);
 
-  if (scene.controls?.enemyAutonomy === true) {
-    fail("敵・中立の自律攻撃計画が未実装のため、結算できません。");
-  }
+
 
     const startScene = getAttackPhaseStartScene(scene);
 
@@ -706,9 +709,11 @@ export function prepareBatchHitChecks(
     const observedStart = {
       ...copy(startScene),
       controls: {
-        ...copy(startScene.controls),
-        observationSide: entry.side
+      ...copy(startScene.controls),
+      enemyAutonomy: false,
+      observationSide: entry.side
       }
+
     };
 
     if (entry.scope.kind === "range") {
