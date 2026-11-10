@@ -1797,7 +1797,7 @@ if (equipmentPower) {
     },
 
            
-       saveAttackCommands(request, expectedRevision) {
+           saveAttackCommands(request, expectedRevision) {
       if (expectedRevision !== state.revision) {
         throw new Error(
           "状態が変更されています。もう一度確認してください。"
@@ -1814,8 +1814,7 @@ if (equipmentPower) {
       }
 
       const input = copy(request);
-         let savedOrders = [];
-
+      let savedOrders = [];
 
       commit(candidate => {
         if (!isAttackPhase(candidate.turn.phaseId)) {
@@ -1824,7 +1823,8 @@ if (equipmentPower) {
           );
         }
 
-        const groupReport = api.getAttackGroupReport(input.unitId);
+        const groupReport =
+          api.getAttackGroupReport(input.unitId);
         const observed = getObservedScene(candidate);
         const usedGroups = new Set();
         const checked = [];
@@ -1861,61 +1861,52 @@ if (equipmentPower) {
             group.profile.targetScope
           );
 
-          const target = readAttackCommandTarget(assignment);
+          const target =
+            readAttackCommandTarget(assignment);
 
-          // 正式规则：原始范围为“集群”的武器，
-// 可以攻击一个单体，也可以同时攻击一个集群中的每个单体。
-// 不把其他指定人数、随机抽选范围擅自扩展为同一规则。
-const clusterWeapon =
-  group.profile.targetScope.trim() === "集群";
+          const clusterWeapon =
+            group.profile.targetScope.trim() === "集群";
 
-if (scope.kind === "single") {
-  if (
-    target.targetRef.kind !== "unit" ||
-    target.specifiedTargetIds.length !== 0
-  ) {
-    throw new Error(
-      "単体武器には一つのユニットを指定してください。"
-    );
-  }
-} else if (
-  clusterWeapon &&
-  target.targetRef.kind === "unit"
-) {
-  // 集群武器直接指定单体：
-  // 只攻击该单体，不展开其所属集群。
-  if (target.specifiedTargetIds.length !== 0) {
-    throw new Error(
-      "単体を主目標にする場合、編隊メンバーは指定できません。"
-    );
-  }
+          if (scope.kind === "single") {
+            if (
+              target.targetRef.kind !== "unit" ||
+              target.specifiedTargetIds.length !== 0
+            ) {
+              throw new Error(
+                "単体武器には一つのユニットを指定してください。"
+              );
+            }
+          } else if (
+            clusterWeapon &&
+            target.targetRef.kind === "unit"
+          ) {
+            if (target.specifiedTargetIds.length !== 0) {
+              throw new Error(
+                "単体を主目標にする場合、編隊メンバーは指定できません。"
+              );
+            }
+          } else {
+            if (target.targetRef.kind !== "group") {
+              throw new Error(
+                clusterWeapon
+                  ? "集群武器には一つのユニットまたは一つの編隊を指定してください。"
+                  : "範囲武器には一つの編隊を指定してください。"
+              );
+            }
 
-  // 不调用要求编队目标的readRangeCommandTarget。
-  // 后续沿用单体目标的存在性与观察权限检查。
-} else {
-  if (target.targetRef.kind !== "group") {
-    throw new Error(
-      clusterWeapon
-        ? "集群武器には一つのユニットまたは一つの編隊を指定してください。"
-        : "範囲武器には一つの編隊を指定してください。"
-    );
-  }
+            readRangeCommandTarget(assignment, scope);
 
-  readRangeCommandTarget(assignment, scope);
+            if (!observed.groups.some(
+              item => item.id === target.targetRef.id
+            )) {
+              throw new Error("主目標を確認できません。");
+            }
+          }
 
-  if (!observed.groups.some(
-    item => item.id === target.targetRef.id
-  )) {
-    throw new Error("主目標を確認できません。");
-  }
-}
-
-
-          // 先检查玩家当前观察权限。
-          // 正式预检随后另查攻击阵营的阶段开始权限。
           if (target.targetRef.kind === "unit") {
             const unit = candidate.instances.find(
-              item => item.instanceId === target.targetRef.id
+              item =>
+                item.instanceId === target.targetRef.id
             );
 
             if (!unit) {
@@ -1929,7 +1920,10 @@ if (scope.kind === "single") {
               target.targetRef
             );
 
-            assertIdentifiedTargets(candidate, entity.members);
+            assertIdentifiedTargets(
+              candidate,
+              entity.members
+            );
           }
 
           checked.push({
@@ -1941,45 +1935,42 @@ if (scope.kind === "single") {
         }
 
         replaceAttackCommands(
-        candidate,
-        input.unitId,
-        checked,
-        newId
-         );
+          candidate,
+          input.unitId,
+          checked,
+          newId
+        );
 
-        // 记录本次保存的各装备组实际执行次序，供界面显示。
-       savedOrders = checked.map(item => ({
-       groupId: item.groupId,
-       phaseId: getAttackExecutionPhase(
-        candidate,
-        input.unitId,
-       item.groupId
-  )
-}));
+        savedOrders = checked.map(item => ({
+          groupId: item.groupId,
+          phaseId: getAttackExecutionPhase(
+            candidate,
+            input.unitId,
+            item.groupId
+          )
+        }));
 
+        // 当前计划正式预检；
+        // 未来计划只检查登记时状态，到执行次序再正式复核。
+        try {
+          const selectedIds = new Set(
+            checked.map(item => item.groupId)
+          );
 
-        // 草案也必须经过真实范围、几何与算法支持检查。
-        // 捕获通用错误，避免泄露全批外方计划或内部资料。
-       try {
-  const selectedIds = new Set(
-    checked.map(item => item.groupId)
-  );
+          const savedSelection =
+            candidate.attackRuntime.commands.filter(
+              command =>
+                command.unitId === input.unitId &&
+                selectedIds.has(command.groupId)
+            );
 
-  const savedSelection =
-    candidate.attackRuntime.commands.filter(command =>
-      command.unitId === input.unitId &&
-      selectedIds.has(command.groupId)
-    );
+          validateDeferredAttackPlans(
+            candidate,
+            savedSelection
+          );
 
-  validateDeferredAttackPlans(
-    candidate,
-    savedSelection
-  );
-
-  prepareSettlementAttackPlan(candidate);
-
+          prepareSettlementAttackPlan(candidate);
         } catch {
-                  } catch {
           throw new Error(
             "全批次の正式条件を満たしていません。" +
             "段階開始記録、主目標、指定メンバー、" +
@@ -1990,13 +1981,12 @@ if (scope.kind === "single") {
         }
       });
 
-      // commit成功并完成保存之后，才向界面返回结果。
+      // 只有事务保存成功，才返回给界面。
       return copy({
         revision: state.revision,
         commands: savedOrders
       });
     },
-
 
     cancelAttackCommands(
       { unitId, groupIds },
