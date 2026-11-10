@@ -1,4 +1,4 @@
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
+ import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
 import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
@@ -276,7 +276,10 @@ function prepareCommand(startScene, command) {
   const actor = findUnit(startScene, command.unitId);
   const group = findGroup(actor, command.groupId);
   const profile = profileFor(actor, group);
-  const scope = readWeaponTargetScope(profile.targetScope);
+  const weaponScope = readWeaponTargetScope(
+  profile.targetScope
+);
+
 
   if (actor.branch !== "navy") {
     fail("この軍種の正式な攻撃批次処理は未接続です。");
@@ -299,7 +302,20 @@ function prepareCommand(startScene, command) {
   }
 
   const target = readAttackCommandTarget(command);
-  let memberIds;
+
+// 武器性能范围不变；本次执行范围由实际指定的目标决定。
+// 集群武器直接指定单体时，只攻击该单体，
+// 不展开该单体所属的集群。
+const clusterSingleTarget =
+  profile.targetScope.trim() === "集群" &&
+  target.targetRef.kind === "unit";
+
+const scope = clusterSingleTarget
+  ? { kind: "single" }
+  : weaponScope;
+
+let memberIds;
+
 
   if (scope.kind === "single") {
     if (
