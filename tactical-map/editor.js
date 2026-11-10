@@ -1067,7 +1067,7 @@ introSection.append(
       // 但不触发自定义场景的写入与表单重绘。
       source.view = getView();
 
-      const id = createSimulation(source, spatialState);
+      const id = createSimulation( prepareSimulationAmmoSource(source, catalog),spatialState);
 
       const url = new URL("./simulation.html", import.meta.url);
       url.searchParams.set("id", id);
