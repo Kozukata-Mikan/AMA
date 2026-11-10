@@ -204,6 +204,24 @@ export function initializeSettlementRuntime(scene) {
     ) {
       fail("正式攻撃の履歴が不正です。");
     }
+    // 旧记录允许缺失；实际需要本回合两舷历史时，
+// 配额检查会明确拒绝缺失数据，不补造历史。
+for (const resource of record.resourceReports) {
+  if (resource.firingSides === undefined) continue;
+
+  if (
+    !Array.isArray(resource.firingSides) ||
+    resource.firingSides.length > 2 ||
+    resource.firingSides.some(
+      side => !["left", "right"].includes(side)
+    ) ||
+    new Set(resource.firingSides).size !==
+      resource.firingSides.length
+  ) {
+    fail("攻撃資源の側別使用履歴が不正です。");
+  }
+}
+
         // 兼容旧记录：旧单体报告可以没有该字段。
     // 新范围报告保留抽签和重复出现项。
     if (record.rangeSelections !== undefined) {
@@ -1531,8 +1549,15 @@ function appendAutonomousAttackCommands(scene) {
         } catch (error) {
           // 射程、射高、地形等明确资格失败允许换目标。
           // 坏数据、未实现效果和算法错误不得静默吞掉。
-          if (error.code === "TARGET_INELIGIBLE") continue;
+          if (
+         error.code === "TARGET_INELIGIBLE" ||
+         error.code === "BROADSIDE_QUOTA"
+         ) {
+         continue;
+          }
+ 
           throw error;
+
         }
 
         scene.attackRuntime.commands.push(command);
@@ -1671,6 +1696,23 @@ working.attackRuntime.commands = commands;
     coinSource
   );
 
+  const firingByCommand = new Map(
+  hitStep.firingReports.map(report => [
+    report.commandId,
+    report.firingSides
+  ])
+);
+
+for (const report of resourceReports) {
+  const sides = firingByCommand.get(report.commandId);
+
+  if (!sides) {
+    fail("攻撃資源の射撃方向記録が不足しています。");
+  }
+
+  report.firingSides = copy(sides);
+}
+
   const damage = summarizeTargets(
     working,
     start,
@@ -1757,6 +1799,7 @@ working.attackRuntime.commands = commands;
   scene.settlementRuntime = working.settlementRuntime;
   scene.phaseFinishRuntime = working.phaseFinishRuntime;
   scene.turn = working.turn;
+  
 
   // 下一阶段快照由store.commit统一建立。
   return {
