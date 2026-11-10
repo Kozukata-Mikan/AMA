@@ -1419,13 +1419,13 @@ function appendAutonomousAttackCommands(scene) {
 
       if (group.remainingAmmo === 0) continue;
 
-      // 部分投射仍未实现，不能伪造减量投射。
+      // 自主决策只选择能够完成正式投射的装备组。
+     // 剩余弹药不足时，本组待机，不生成减量攻击命令。
+    // 不影响其他装备组，也不阻塞全阵营阶段结算。
       if (group.remainingAmmo < profile.fullAmmoCost) {
-        fail(
-          "自律攻撃の完全投射に残弾が不足しています。" +
-          "減量投射は未接続です。"
-        );
+     continue;
       }
+
 
       const scope = readWeaponTargetScope(profile.targetScope);
       const candidates = [];
