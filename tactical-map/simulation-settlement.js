@@ -78,6 +78,25 @@ import {
   readWeaponTargetScope
 } from "./weapon-profile-runtime.js";
 
+import {
+  initializeAttackRuntime
+} from "./simulation-attack-runtime.js";
+
+import {
+  readWeaponProfile
+} from "./weapon-profile-runtime.js";
+
+import {
+  getVisibility
+} from "./simulation-features.js";
+
+import {
+  expandFormationMemberIds
+} from "./formation-target-runtime.js";
+
+import {
+  readRangeCommandTarget
+} from "./simulation-range-command.js";
 
 
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -1198,6 +1217,326 @@ for (const attack of attacks) {
   return { targetReports, effects };
 }
 
+/**
+ * 自主攻击决策：
+ * - 敌方攻击已识别的我方目标。
+ * - 中立只反击曾攻击本阵营的、当前已识别的单位。
+ * - 使用阶段开始状态，不使用本次序尚未结算的伤害。
+ * - 候选命令经过原整批资源及命中预检。
+ * - 不掷正式随机数、不扣弹、不保存。
+ */
+function appendAutonomousAttackCommands(scene) {
+  if (!scene.controls?.enemyAutonomy) return;
+
+  initializeAttackRuntime(scene);
+
+  const start = getAttackPhaseStartScene(scene);
+
+  // 不静默删除开启自主行动前保存的外方手动计划。
+  if (scene.attackRuntime.commands.some(command => {
+    const actor = unitFor(start, command.unitId);
+    return actor.side !== "ally";
+  })) {
+    fail(
+      "敵・中立の手動攻撃計画が残っています。" +
+      "自律行動を無効にして、その計画を取り消してください。"
+    );
+  }
+
+  const neutralAggressors = new Set();
+
+  // 中立知道自身阵营遭到的攻击，不读取其他阵营私有计划。
+  for (const record of scene.settlementRuntime.attackRecords) {
+    for (const hit of record.hitReports) {
+      const victim = start.instances.find(
+        unit => unit.instanceId === hit.targetId
+      );
+
+      if (victim?.side === "neutral") {
+        neutralAggressors.add(hit.unitId);
+      }
+    }
+  }
+
+  const actors = start.instances
+    .filter(unit =>
+      unit.side === "enemy" || unit.side === "neutral"
+    )
+    .sort((a, b) =>
+      compareText(a.instanceId, b.instanceId)
+    );
+
+  // 已有锁定和本次序选定的射线目标统一管理。
+  const rayTargets = new Map(
+    start.rayTargetRuntime.locks
+      .filter(lock => lock.turnNumber === start.turn.number)
+      .map(lock => [lock.unitId, lock.targetId])
+  );
+
+  for (const actor of actors) {
+    if (actor.branch !== "navy") {
+      fail("海軍以外の自律攻撃は未接続です。");
+    }
+
+    if (
+      ["sinking", "sunk"].includes(actor.shipState.status) ||
+      actor.shipState.rescueTaskId !== null
+    ) {
+      continue;
+    }
+
+    const observedStart = {
+      ...start,
+      controls: {
+        ...start.controls,
+        enemyAutonomy: false,
+        observationSide: actor.side
+      }
+    };
+
+    const visibility = getVisibility(observedStart);
+
+    const targets = start.instances.filter(target =>
+      target.instanceId !== actor.instanceId &&
+      target.side !== actor.side &&
+      visibility.get(target.instanceId) === "identified" &&
+      target.shipState?.status !== "sunk" &&
+      (
+        actor.side === "enemy"
+          ? target.side === "ally"
+          : neutralAggressors.has(target.instanceId)
+      )
+    ).sort((a, b) => {
+      // 优先完成击沉，再以距离和稳定ID排序。
+      const priority = unit =>
+        unit.shipState?.status === "sinking" ? 0 :
+        unit.shipState?.status === "heavy" ? 1 : 2;
+
+      return (
+        priority(a) - priority(b) ||
+        Math.hypot(a.x - actor.x, a.y - actor.y) -
+          Math.hypot(b.x - actor.x, b.y - actor.y) ||
+        compareText(a.instanceId, b.instanceId)
+      );
+    });
+
+    if (!targets.length) continue;
+
+    const targetIds = new Set(
+      targets.map(target => target.instanceId)
+    );
+
+    const groups = [...actor.equipmentState.groups]
+      .sort((a, b) => compareText(a.id, b.id));
+
+    for (const group of groups) {
+      if (group.damaged || group.destroyed) continue;
+
+      if (
+        group.lastUsedTurn !== null &&
+        group.lastUsedTurn > start.turn.number
+      ) {
+        fail("自律攻撃装備の使用記録が未来になっています。");
+      }
+
+      if (group.lastUsedTurn === start.turn.number) continue;
+
+      const source = actor.snapshot.equipmentSnapshots.find(
+        item => item.id === group.equipmentId
+      );
+
+      if (!source) {
+        fail("自律攻撃装備の性能スナップショットがありません。");
+      }
+
+      // 支援装备不是攻击命令；原整批支援门禁仍保留。
+      if (source.kind === "support") continue;
+
+      const profile = readWeaponProfile(source);
+
+      if (profile.kind !== "weapon") continue;
+
+      if (profile.issues.length) {
+        fail(
+          "自律攻撃装備の性能を確認できません。\n" +
+          profile.issues.join("\n")
+        );
+      }
+
+      const order = /^order-([1-5])$/.exec(start.turn.phaseId);
+
+      if (profile.pasOnly) {
+        if (start.turn.phaseId !== "pas") continue;
+      } else {
+        if (!order) continue;
+
+        if (profile.maxOrder === null) {
+          fail("自律攻撃装備の最高次序がありません。");
+        }
+
+        if (Number(order[1]) > profile.maxOrder) continue;
+      }
+
+      if (
+        !Number.isSafeInteger(group.remainingAmmo) ||
+        group.remainingAmmo < 0 ||
+        !Number.isSafeInteger(profile.fullAmmoCost) ||
+        profile.fullAmmoCost < 1
+      ) {
+        fail("自律攻撃装備の残弾または投射率が不正です。");
+      }
+
+      if (group.remainingAmmo === 0) continue;
+
+      // 部分投射仍未实现，不能伪造减量投射。
+      if (group.remainingAmmo < profile.fullAmmoCost) {
+        fail(
+          "自律攻撃の完全投射に残弾が不足しています。" +
+          "減量投射は未接続です。"
+        );
+      }
+
+      const scope = readWeaponTargetScope(profile.targetScope);
+      const candidates = [];
+
+      const singleAllowed =
+        scope.kind === "single" ||
+        profile.targetScope.trim() === "集群";
+
+      if (singleAllowed) {
+        for (const target of targets) {
+          const locked = rayTargets.get(actor.instanceId);
+
+          if (
+            profile.guidance === "ray" &&
+            locked &&
+            locked !== target.instanceId
+          ) {
+            continue;
+          }
+
+          candidates.push({
+            targetRef: {
+              kind: "unit",
+              id: target.instanceId
+            },
+            specifiedTargetIds: []
+          });
+        }
+      }
+
+      if (scope.kind === "range") {
+        for (const formation of [...start.groups].sort(
+          (a, b) => compareText(a.id, b.id)
+        )) {
+          const ref = { kind: "group", id: formation.id };
+          const members = expandFormationMemberIds(start, ref);
+
+          // 保留原主编队识别门禁：
+          // 不采用含己方、未识别或其他战略目标的编队。
+          if (
+            !members.length ||
+            members.some(id => !targetIds.has(id))
+          ) {
+            continue;
+          }
+
+          /*
+           * 用现有目标解析器确定合法指定人数。
+           * 不猜测scope的人数字段，不改变范围规则。
+           */
+          const specifications = [[]];
+
+          for (let count = 1; count <= members.length; count++) {
+            specifications.push(members.slice(0, count));
+          }
+
+          let validShape = null;
+
+          for (const specifiedTargetIds of specifications) {
+            const candidate = {
+              targetRef: ref,
+              specifiedTargetIds
+            };
+
+            try {
+              readRangeCommandTarget(candidate, scope);
+              validShape = candidate;
+              break;
+            } catch {
+              // 这里只尝试纯目标结构，不运行规则或随机算法。
+              // 若所有结构均失败，下面明确拒绝。
+            }
+          }
+
+          if (!validShape) {
+            fail(
+              "範囲武器の自律目標指定を構成できません。" +
+              "未対応の指定を省略して結算できません。"
+            );
+          }
+
+          candidates.push(validShape);
+        }
+      }
+
+      for (const target of candidates) {
+        const command = {
+          id: "autonomy:" + JSON.stringify([
+            start.turn.number,
+            start.turn.phaseId,
+            actor.instanceId,
+            group.id
+          ]),
+          status: "planned",
+          turnNumber: start.turn.number,
+          phaseId: start.turn.phaseId,
+          unitId: actor.instanceId,
+          groupId: group.id,
+          ...copy(target),
+          createdAt: scene.updatedAt,
+          boundaries: []
+        };
+
+        if (target.targetRef.kind === "unit") {
+          command.targetId = target.targetRef.id;
+        }
+
+        const trial = copy(scene);
+        trial.attackRuntime.commands.push(command);
+
+        try {
+          initializeAttackRuntime(trial);
+
+          const prepared = prepareAttackBatchResources(trial);
+
+          prepareBatchHitChecks(
+            trial,
+            prepared,
+            finalPreflight
+          );
+        } catch (error) {
+          // 射程、射高、地形等明确资格失败允许换目标。
+          // 坏数据、未实现效果和算法错误不得静默吞掉。
+          if (error.code === "TARGET_INELIGIBLE") continue;
+          throw error;
+        }
+
+        scene.attackRuntime.commands.push(command);
+
+        if (profile.guidance === "ray") {
+          rayTargets.set(actor.instanceId, command.targetId);
+        }
+
+        // 每个装备组只生成一个命令。
+        break;
+      }
+    }
+  }
+
+  initializeAttackRuntime(scene);
+}
+
 export function prepareSettlementAttackPlan(scene) {
   const working = copy(scene);
 
@@ -1211,7 +1550,10 @@ export function prepareSettlementAttackPlan(scene) {
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
 
+  appendAutonomousAttackCommands(working);
+
   const prepared = prepareAttackBatchResources(working);
+
   const start = getAttackPhaseStartScene(working);
 
   assertStartStateUnchanged(working, start);
@@ -1248,7 +1590,12 @@ export function prepareSettlementAttackPlan(scene) {
 
   assertEffectAlgorithms(working, start, effectEntries);
 
-  return { prepared, start };
+  return {
+  prepared,
+  start,
+  commands: copy(working.attackRuntime.commands)
+};
+
 }
 
 // 只能从store的完整保存事务内部调用。
@@ -1288,8 +1635,12 @@ export function settleAttackPhase(scene, coinSource) {
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
 
-  const { prepared, start } =
-    prepareSettlementAttackPlan(working);
+ const { prepared, start, commands } =
+  prepareSettlementAttackPlan(working);
+
+// 将确定性生成的自主计划放入同一个事务候选。
+// 后续资源应用及命中复核都读取同一份命令。
+working.attackRuntime.commands = commands;
 
 
   // 先验证全批当前装备资源并在候选副本扣弹。
