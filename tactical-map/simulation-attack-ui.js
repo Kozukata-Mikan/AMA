@@ -554,9 +554,10 @@ function selectableGroups() {
     renderReport();
   });
 
-    const saveCommands = button("攻撃計画を保存", () => {
+      const saveCommands = button("攻撃計画を保存", () => {
     if (!report) {
-      output.textContent = "行動するユニットを選択してください。";
+      output.textContent =
+        "行動するユニットを選択してください。";
       return;
     }
 
@@ -578,27 +579,28 @@ function selectableGroups() {
       return;
     }
 
-    const receipt = store.saveAttackCommands({
-  unitId: report.unitId,
-  assignments
-}, report.revision);
+    try {
+      const receipt = store.saveAttackCommands({
+        unitId: report.unitId,
+        assignments
+      }, report.revision);
 
-const phases = [...new Set(
-  receipt.commands.map(command => command.phaseId)
-)];
+      const phases = [...new Set(
+        receipt.commands.map(command => command.phaseId)
+      )];
 
-output.textContent =
-  "攻撃計画を保存しました。\n" +
-  "実行段階：" +
-  phases.map(getPhaseLabel).join("、") +
-  "\n未来の次序の計画は、その次序まで待機します。" +
-  "\n発射・コイン判定・弾薬消費・被害適用は行っていません。";
-
+      output.textContent =
+        "攻撃計画を保存しました。\n" +
+        "実行段階：" +
+        phases.map(phaseId => getPhaseLabel(phaseId)).join("、") +
+        "\n未来の次序の計画は、その次序まで待機します。" +
+        "\n発射・コイン判定・弾薬消費・被害適用は行っていません。";
     } catch (error) {
       console.error(error);
       output.textContent = error.message;
     }
   });
+
 
   const cancelCommands = button(
     "選択した組の保存計画を取消",
