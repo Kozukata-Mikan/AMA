@@ -1,4 +1,4 @@
- import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
 import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
@@ -381,9 +381,14 @@ let memberIds;
     }
   }
 
+  if (group.destroyed === true) {
+  fail("段階開始時に完全破損している装備組は使用できません。");
+}
+
   if (group.damaged) {
-    fail("段階開始時に損傷している装備組は使用できません。");
-  }
+  fail("段階開始時に損傷している装備組は使用できません。");
+}
+
 
   if (
     group.lastUsedTurn !== null &&
@@ -583,6 +588,7 @@ export function applyAttackBatchResources(scene, prepared) {
       group.remainingAmmo !== entry.ammoBefore ||
       group.lastUsedTurn !== entry.lastUsedTurnBefore ||
       group.damaged !== startGroup.damaged
+      (group.destroyed === true) !== (startGroup.destroyed === true)
     ) {
       fail(
         "段階開始後に装備構成または攻撃資源が変更されています。"
