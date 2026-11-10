@@ -341,6 +341,56 @@
   stroke-width: 2.8;
 }
 
+
+
+  /* 仅作用于推演页面，不改自定义模式样式。 */
+#selectedUnitPanels {
+  display: grid;
+  gap: 12px;
+}
+
+#selectedUnitPanels > section {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #294259;
+  border-radius: 5px;
+}
+
+#selectedUnitPanels h3,
+#selectedUnitPanels h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+#selectedUnitPanels p {
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#selectedUnitPanels select {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+#selectedUnitPanels button {
+  margin: 4px 4px 4px 0;
+}
+
+#selectedUnitPanels fieldset {
+  min-width: 0;
+  margin: 10px 0;
+  border: 1px solid #35516a;
+}
+
+#unitLayer .unit .unit-status-label {
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
   </style>
 
   <script type="module" src="./simulation-main.js"></script>
@@ -412,6 +462,8 @@
 
         <div id="units"></div>
         <p id="unitInfo" class="note"></p>
+        <div id="selectedUnitPanels"></div>
+
       </details>
 
       <details>
