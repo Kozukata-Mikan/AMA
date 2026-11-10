@@ -30,7 +30,10 @@ export function isAttackPhase(phaseId) {
  * 只允许本回合当前或尚未到达的执行次序。
  * 普通武器不通过此函数提前登记PAS计划。
  */
-export function isPendingAttackPhase(currentPhaseId, plannedPhaseId) {
+export function isPendingAttackPhase(
+  currentPhaseId,
+  plannedPhaseId
+) {
   if (!isAttackPhase(currentPhaseId)) return false;
 
   if (currentPhaseId === "pas") {
@@ -38,14 +41,20 @@ export function isPendingAttackPhase(currentPhaseId, plannedPhaseId) {
   }
 
   const current = /^order-([1-5])$/.exec(currentPhaseId);
+
+  if (!current) return false;
+
+  // PAS在所有普通攻击次序之后，允许提前保存。
+  if (plannedPhaseId === "pas") return true;
+
   const planned = /^order-([1-5])$/.exec(plannedPhaseId);
 
   return Boolean(
-    current &&
     planned &&
     Number(planned[1]) <= Number(current[1])
   );
 }
+
 
 /**
  * 从真实装备性能计算执行阶段，不接受页面指定的次序。
@@ -74,12 +83,15 @@ export function getAttackExecutionPhase(scene, unitId, groupId) {
   }
 
   if (profile.pasOnly) {
-    if (scene.turn.phaseId !== "pas") {
-      fail("PAS装備はPAS段階で登録してください。");
-    }
-
-    return "pas";
+  if (!isAttackPhase(scene.turn.phaseId)) {
+    fail(
+      "PAS装備の計画は次序1～5またはPASで登録してください。"
+    );
   }
+
+  return "pas";
+}
+
 
   return resolveAttackExecutionPhase(
     scene.turn.phaseId,
