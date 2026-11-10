@@ -69,7 +69,7 @@ function profileFor(unit, group) {
     fail("装備性能の配置スナップショットがありません。");
   }
 
-  return readWeaponProfile(source);
+  return readWeaponProfile(source, group);
 }
 
 function groupKey(unitId, groupId) {
