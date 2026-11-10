@@ -564,128 +564,119 @@ export function mountAttackUI(store) {
     }
   );
 
-    const executeBatch = button("現在の攻撃段階を一括結算", () => {
-    const scene = store.getScene();
+  const executeBatch = button("現在の攻撃段階を一括結算", () => {
+  const scene = store.getScene();
+
+  if (!/^(order-[1-5]|pas)$/.test(scene.turn.phaseId)) {
+    phaseOutput.textContent =
+      "次序1～5またはPASで実行してください。";
+    return;
+  }
+
+  if (!window.confirm(
+    "現在の段階に保存された全陣営の攻撃計画を一括結算します。\n" +
+    "画面で選択した装備組だけの実行ではありません。\n" +
+    "成功すると弾薬・被害・射線固定・履歴をまとめて保存し、" +
+    "次の段階へ移ります。\n" +
+    "未対応の条件がある場合は、保存せず停止します。"
+  )) {
+    return;
+  }
+
+  executeBatch.disabled = true;
+
+  try {
+    const result = store.settleAttackPhase(scene.revision);
+
+    phaseOutput.textContent =
+      result.message + "\n" +
+      `次の段階：${getPhaseLabel(result.nextPhaseId)}`;
+  } catch (error) {
+    console.error(error);
+
+    // 不向其他观察阵营直接显示完整内部异常。
+    phaseOutput.textContent =
+      "一括結算を完了できませんでした。\n" +
+      "今回の弾薬・被害・履歴・段階変更は保存していません。\n" +
+      "装備資料、攻撃範囲、支援効果、特殊能力、" +
+      "開始記録を確認してください。";
+  } finally {
     executeBatch.disabled =
-    !/^(order-[1-5]|pas)$/.test(scene.turn.phaseId);
+      !/^(order-[1-5]|pas)$/.test(
+        store.getScene().turn.phaseId
+      );
+  }
+});
+
+const finishPhase = button("特殊段階・回合終了を処理", () => {
+  const scene = store.getScene();
+  const phaseId = scene.turn.phaseId;
+
+  if (!["special", "end"].includes(phaseId)) {
+    phaseOutput.textContent =
+      "特殊効果チェックまたはラウンド終了段階で実行してください。";
+    return;
+  }
+
+  const confirmation = phaseId === "special"
+    ? "全艦の火災・浸水・設備損管と、対応済みの判定時期に達した任務をまとめて処理します。\n" +
+      "成功するとラウンド終了段階へ移ります。時刻は進めません。"
+    : "自然沈没の計時とラウンド終了処理をまとめて保存します。\n" +
+      "成功した場合だけ30分進めて次のラウンドへ移ります。";
+
+  if (!window.confirm(confirmation)) return;
+
+  finishPhase.disabled = true;
+
+  try {
+    const result = phaseId === "special"
+      ? store.finishSpecialPhase(scene.revision)
+      : store.finishTurn(scene.revision);
+
+    phaseOutput.textContent = result.message;
+  } catch (error) {
+    console.error(error);
+
+    phaseOutput.textContent =
+      "段階終了処理を完了できませんでした。\n" +
+      "今回の状態・履歴・段階・時刻変更は保存していません。\n" +
+      "未対応の特殊能力、装備損管、開始記録、" +
+      "または保存状態を確認してください。";
+  } finally {
     finishPhase.disabled =
-    !["special", "end"].includes(scene.turn.phaseId);
+      !["special", "end"].includes(
+        store.getScene().turn.phaseId
+      );
+  }
+});
 
-
-
-    if (!/^(order-[1-5]|pas)$/.test(scene.turn.phaseId)) {
-      phaseOutput.textContent =
-        "次序1～5またはPASで実行してください。";
-      return;
-    }
-
-    if (!window.confirm(
-      "現在の段階に保存された全陣営の攻撃計画を一括結算します。\n" +
-      "画面で選択した装備組だけの実行ではありません。\n" +
-      "成功すると弾薬・被害・射線固定・履歴をまとめて保存し、" +
-      "次の段階へ移ります。\n" +
-      "未対応の条件がある場合は、保存せず停止します。"
-    )) {
-      return;
-    }
-
-    executeBatch.disabled = true;
-
-    try {
-      const result = store.settleAttackPhase(scene.revision);
-
-      output.textContent =
-        result.message + "\n" +
-        `次の段階：${getPhaseLabel(result.nextPhaseId)}`;
-    } catch (error) {
-      console.error(error);
-
-      // 不把完整内部异常直接显示给其他观察阵营。
-      output.textContent =
-        "一括結算を完了できませんでした。\n" +
-        "今回の弾薬・被害・履歴・段階変更は保存していません。\n" +
-        "装備資料、攻撃範囲、支援効果、特殊能力、" +
-        "開始記録を確認してください。";
-    } finally {
-      executeBatch.disabled =
-        !/^(order-[1-5]|pas)$/.test(
-          store.getScene().turn.phaseId
-        );
-    }
-  });
-
-    const finishPhase = button("特殊段階・回合終了を処理", () => {
-    const scene = store.getScene();
-    const phaseId = scene.turn.phaseId;
-
-    if (!["special", "end"].includes(phaseId)) {
-      phaseOutput.textContent =
-        "特殊詞条判定または回合終了段階で実行してください。";
-      return;
-    }
-
-    const confirmation = phaseId === "special"
-      ? "全艦の火災・浸水・設備損管と、対応済みの到期任務をまとめて処理します。\n" +
-        "成功すると回合終了段階へ移ります。時刻は進めません。"
-      : "自然沈没の計時と回合終了処理をまとめて保存します。\n" +
-        "成功した場合だけ30分進めて次のラウンドへ移ります。";
-
-    if (!window.confirm(confirmation)) return;
-
-    finishPhase.disabled = true;
-
-    try {
-      const result = phaseId === "special"
-        ? store.finishSpecialPhase(scene.revision)
-        : store.finishTurn(scene.revision);
-
-      output.textContent = result.message;
-    } catch (error) {
-      console.error(error);
-
-      output.textContent =
-        "段階終了処理を完了できませんでした。\n" +
-        "今回の状態・履歴・段階・時刻変更は保存していません。\n" +
-        "未対応の特殊能力、装備損管、開始記録、" +
-        "または保存状態を確認してください。";
-    } finally {
-      finishPhase.disabled =
-        !["special", "end"].includes(
-          store.getScene().turn.phaseId
-        );
-    }
-  });
-
-  executeBatch.id = "attackExecuteBatch";
-  finishPhase.id = "attackFinishPhase";
-
-  toolbar.append(selectAll, clearAll);
-
-  panel.append(
-    labeled("行動するユニット", actor),
-    element("p", "使用する装備組"),
-    toolbar,
-    selectionInfo,
-    equipmentList,
-    labeled("選択した装備組に割り当てる目標", target),
-    assignTarget,
-    removeAssignment,
-    saveCommands,
-    cancelCommands,
-    executeBatch,
-    finishPhase,
-    notice,
-    output
-  );
-  panel.append(phaseOutput);
-  // 在布局模块查询之前，统一注册阶段操作元素。
+// 流程布局使用这些标记取得原按钮和反馈区。
 executeBatch.id = "attackExecuteBatch";
 finishPhase.id = "attackFinishPhase";
 phaseOutput.id = "phaseCommandFeedback";
 
-// append会移动已有节点，不会重复创建反馈区。
-panel.append(phaseOutput);
+toolbar.append(selectAll, clearAll);
+
+panel.append(
+  labeled("行動するユニット", actor),
+  element("p", "使用する装備組"),
+  toolbar,
+  selectionInfo,
+  equipmentList,
+  labeled("選択した装備組に割り当てる目標", target),
+  assignTarget,
+  removeAssignment,
+  saveCommands,
+  cancelCommands,
+  executeBatch,
+  finishPhase,
+  notice,
+  output,
+  phaseOutput
+);
+
 aside.append(panel);
+
 
 
   function refillTargets(scene) {
@@ -821,8 +812,19 @@ finishPhase.textContent = scene.turn.phaseId === "end"
   const unsubscribe = store.subscribe(sync);
   sync();
 
-  return () => {
-    unsubscribe();
-    panel.remove();
-  };
+ let disposed = false;
+
+return () => {
+  if (disposed) return;
+  disposed = true;
+
+  unsubscribe();
+
+  // 流程布局把这些节点移到了原面板外，需单独清理。
+  executeBatch.remove();
+  finishPhase.remove();
+  phaseOutput.remove();
+  panel.remove();
+};
+
 }
