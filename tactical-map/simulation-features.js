@@ -1052,7 +1052,7 @@ const validationScene = clone(scene);
 validationScene.controls.enemyAutonomy = false;
 
 
-        const originalSide = scene.controls.observationSide;
+
         const checked = [];
         const used = new Set();
 
@@ -1098,7 +1098,7 @@ validationScene.controls.enemyAutonomy = false;
           checked.push(buildPlan(validationScene, saved.ref, anchor.x, anchor.y));
         }
 
-        scene.controls.observationSide = originalSide;
+      
 
         // 全計画の検証が成功してから、同じトランザクションで適用する。
         for (const plan of checked) {
