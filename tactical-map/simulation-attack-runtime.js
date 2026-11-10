@@ -277,7 +277,11 @@ export function initializeAttackRuntime(scene) {
       !Number.isSafeInteger(command.turnNumber) ||
       command.turnNumber !== scene.turn.number ||
       !isAttackPhase(command.phaseId) ||
-      command.phaseId !== scene.turn.phaseId ||
+     !isPendingAttackPhase(
+      scene.turn.phaseId,
+      command.phaseId
+      ) ||
+
       !text(command.unitId) ||
       !text(command.groupId) ||
       !text(command.createdAt) ||
@@ -377,7 +381,11 @@ export function replaceAttackCommands(
     id: createId(),
     status: "planned",
     turnNumber: working.turn.number,
-    phaseId: working.turn.phaseId,
+    phaseId: getAttackExecutionPhase(
+     working,
+     unitId,
+     request.groupId
+    ),
     unitId,
     groupId: request.groupId,
     ...targetFields(request),
