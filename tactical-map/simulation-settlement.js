@@ -1396,30 +1396,40 @@ function appendAutonomousAttackCommands(scene) {
       // 支援装备不是攻击命令；原整批支援门禁仍保留。
       if (source.kind === "support") continue;
 
-      const profile = readWeaponProfile(source);
+     const profile = readWeaponProfile(source);
 
-      if (profile.kind !== "weapon") continue;
+if (profile.kind !== "weapon") continue;
 
-      if (profile.issues.length) {
-        fail(
-          "自律攻撃装備の性能を確認できません。\n" +
-          profile.issues.join("\n")
-        );
-      }
+const order = /^order-([1-5])$/.exec(start.turn.phaseId);
 
-      const order = /^order-([1-5])$/.exec(start.turn.phaseId);
+// 先判断是否属于本次序。
+// 不属于本次序的装备不生成命令，
+// 不因该装备的弹药登记问题阻断当前阶段。
+if (profile.pasOnly) {
+  if (start.turn.phaseId !== "pas") continue;
+} else {
+  if (!order) continue;
 
-      if (profile.pasOnly) {
-        if (start.turn.phaseId !== "pas") continue;
-      } else {
-        if (!order) continue;
+  if (
+    !Number.isSafeInteger(profile.maxOrder) ||
+    profile.maxOrder < 1 ||
+    profile.maxOrder > 5
+  ) {
+    fail("自律攻撃装備の最高次序が未登録、または不正です。");
+  }
 
-        if (profile.maxOrder === null) {
-          fail("自律攻撃装備の最高次序がありません。");
-        }
+  if (Number(order[1]) > profile.maxOrder) continue;
+}
 
-        if (Number(order[1]) > profile.maxOrder) continue;
-      }
+// 只有属于本次序的装备，才继续检查完整攻击性能。
+// 缺失弹药、未支持规则等仍然明确拒绝，不伪造数据。
+if (profile.issues.length) {
+  fail(
+    "自律攻撃装備の性能を確認できません。\n" +
+    profile.issues.join("\n")
+  );
+}
+
 
       if (
         !Number.isSafeInteger(group.remainingAmmo) ||
