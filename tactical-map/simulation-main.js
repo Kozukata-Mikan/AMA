@@ -1406,13 +1406,18 @@ $("export").addEventListener("click", safely(() => {
   const link = node("a");
 
   link.href = url;
-  link.download = "推演データ.json";
+  link.download = "推演観察データ.json";
 
   document.body.append(link);
   link.click();
   link.remove();
 
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  show(
+  "現在の観察権限で公開されたJSONを書き出しました。" +
+  "完全な保存データではなく、復元用には使用できません。"
+);
+
 }));
 
 function screenPoint(event) {
@@ -1515,10 +1520,11 @@ registerPageDisposer(store.subscribe(() => {
   fitMap();
 
   show(
-    "艦船の移動計画・移動処理と陣営別の観察制限を接続しました。\n" +
-    "攻撃・PAS・救助の段階処理は未接続です。" +
-    "移動処理後は次序5で停止し、シナリオ時刻は進みません。"
-  );
+  "対応済みの移動・攻撃・PAS・特殊段階・ラウンド終了を専用操作から処理できます。\n" +
+  "自艦を選択すると、設備状態と範囲攻撃・設備修復の面板を表示します。\n" +
+  "外部設備修復の新規登録は正式規則の確認待ちです。" +
+  "未対応の規則は結算前に停止します。"
+);
 } catch (error) {
   console.error(error);
   show(error.message, true);
