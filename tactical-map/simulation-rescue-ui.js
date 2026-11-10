@@ -1,3 +1,8 @@
+import {
+  EQUIPMENT_HIT_ITEMS
+} from "./equipment-damage-runtime.js";
+
+
 export function mountRescueUI(store) {
   const aside = document.querySelector("aside");
 
