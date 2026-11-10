@@ -6,6 +6,18 @@ import {
 export function mountRescueUI(store) {
   const aside = document.querySelector("aside");
 
+  const itemLabels = new Map(
+  EQUIPMENT_HIT_ITEMS.map(item => [item.id, item.label])
+);
+
+function repairItemText(record) {
+  // null表示当前观察阵营不可查看，不推断外方修复位置。
+  return record.itemId
+    ? ` / 項目：${itemLabels.get(record.itemId) ?? "未確認"}`
+    : "";
+}
+
+
   function element(tag, text = "") {
     const result = document.createElement(tag);
     result.textContent = text;
@@ -127,44 +139,65 @@ export function mountRescueUI(store) {
         .map(unit => [unit.instanceId, unit.name])
     );
 
-    for (const plan of scene.rescuePlans ?? []) {
-      const p = element("p",
-        "計画：" +
-        `${names.get(plan.rescuerId) ?? "艦船"} → ` +
-        `${names.get(plan.targetId) ?? "未識別の対象"}`
-      );
-      p.className = "note";
-      tasks.append(p);
-    }
+   for (const plan of scene.rescuePlans ?? []) {
+  const repair = plan.kind === "equipment-repair";
 
-    for (const task of scene.rescueTasks ?? []) {
-      const state = {
+  const p = element("p",
+    `${repair ? "設備修復計画" : "救助計画"}：` +
+    `${names.get(plan.rescuerId) ?? "艦船"} → ` +
+    `${names.get(plan.targetId) ?? "未識別の対象"}` +
+    (repair ? repairItemText(plan) : "")
+  );
+
+  p.className = "note";
+  tasks.append(p);
+}
+
+
+ for (const task of scene.rescueTasks ?? []) {
+  const repair = task.kind === "equipment-repair";
+
+  const labels = repair
+    ? {
+        active: "設備修復中",
+        success: "設備修復成功",
+        failure: "設備修復失敗",
+        interrupted: "設備修復中断"
+      }
+    : {
         active: "救助中",
         success: "救助成功",
         failure: "救助失敗",
         interrupted: "救助中断"
-      }[task.status] ?? "不明な救助状態";
+      };
 
-      const elapsed = scene.turn.number - task.startedTurn + 1;
+  const state = labels[task.status] ?? "不明な任務状態";
+  const elapsed = scene.turn.number - task.startedTurn + 1;
 
+  const p = element("p",
+    `${state}：` +
+    `${names.get(task.rescuerId) ?? "艦船"} → ` +
+    `${names.get(task.targetId) ?? "未識別の対象"}` +
+    (repair ? repairItemText(task) : "") +
+    (task.status === "active"
+      ? ` / 任務第${elapsed}ラウンド`
+      : Number.isInteger(task.resolvedTurn)
+        ? ` / 結果確定：ラウンド${task.resolvedTurn}`
+        : "")
+  );
 
-      const p = element("p",
-        `${state}：` +
-        `${names.get(task.rescuerId) ?? "艦船"} → ` +
-        `${names.get(task.targetId) ?? "未識別の対象"}` +
-        (task.status === "active"
-          ? ` / 救助第${elapsed}ラウンド`
-          : Number.isInteger(task.resolvedTurn)
-            ? ` / 結果確定：ラウンド${task.resolvedTurn}`
-            : "")
+  p.className = "note";
+  tasks.append(p);
+}
 
-      );
-
-      p.className = "note";
-      tasks.append(p);
-    }
   }
 
-  store.subscribe(sync);
-  sync();
+  const unsubscribe = store.subscribe(sync);
+sync();
+
+return () => {
+  unsubscribe();
+  panel.remove();
+};
+
 }
