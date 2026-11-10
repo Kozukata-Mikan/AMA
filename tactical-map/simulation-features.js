@@ -15,6 +15,10 @@ import {
   getRetainedEquipmentDiscovery
 } from "./equipment-item-runtime.js";
 
+import {
+  appendAutonomousRescuePlans
+} from "./simulation-autonomous-rescue.js";
+
 const SIDES = ["ally", "enemy", "neutral"];
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
 const EPSILON = 1e-7;
@@ -1115,6 +1119,10 @@ validationScene.controls.enemyAutonomy = false;
             );
           }
         }
+
+        // 全部舰船已完成移动，使用移动后的真实位置决策。
+// 自主计划与玩家计划一起进入原任务启动流程。
+        appendAutonomousRescuePlans(scene, getVisibility);
 
         startPlannedRescues(scene);
 
