@@ -40,6 +40,9 @@ import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-ru
 
 import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
 
+import { readFiringArc } from "./weapon-firing-arc.js";
+
+
 
 
 
@@ -1240,6 +1243,24 @@ mountEquipmentRepairPanel(container, rescuerId) {
 
         return { x: unit.x, y: unit.y, z };
       }
+
+      try {
+  const arc = readFiringArc(actor, group, target);
+
+  boundaries.push(
+    `射界内：艦首基準 ${arc.relativeDegrees.toFixed(1)}°`
+  );
+
+  if (arc.positionKind === "sides") {
+    boundaries.push(
+      "両舷装備の左右別使用数は、" +
+      "このラウンドの既存射撃と全攻撃計画を合わせて確認します。"
+    );
+  }
+} catch (error) {
+  if (error.code !== "TARGET_INELIGIBLE") throw error;
+  issues.push(error.message);
+}
 
       const from = navalPoint(actor);
       const to = navalPoint(target);
