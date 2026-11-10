@@ -1,5 +1,7 @@
 import { parseHitExpression } from "./weapon-hit-runtime.js";
 import { getEquipmentLabel } from "../js/catalog-seed.js";
+import { readEffectiveInitialAmmo } from "./equipment-runtime.js";
+
 
 // 只适配已经确认的图鉴字段。
 // 不修改装备快照，不初始化备弹，不进行随机判定。
@@ -40,7 +42,7 @@ function nonnegativeNumber(value) {
   );
 }
 
-export function readWeaponProfile(equipment) {
+export function readWeaponProfile(equipment, group = null) {
   if (
     !equipment ||
     typeof equipment !== "object" ||
@@ -154,21 +156,43 @@ export function readWeaponProfile(equipment) {
     }
   }
 
-  if (
-    Number.isSafeInteger(equipment.ammo) &&
-    equipment.ammo >= 0
-  ) {
-    result.initialAmmo = equipment.ammo;
-  } else if (
-    equipment.ammo === null ||
-    equipment.ammo === undefined
-  ) {
-    issues.push(
-      "初期予備弾数が未登録です。無限弾薬として扱いません。"
-    );
-  } else {
-    issues.push("初期予備弾数は0以上の整数で登録してください。");
+    try {
+    let initialAmmo = equipment.ammo;
+
+    if (group !== null) {
+      const snapshotAmmo =
+        equipment.ammo === undefined || equipment.ammo === null
+          ? null
+          : equipment.ammo;
+
+      if (
+        group.equipmentId !== equipment.id ||
+        group.initialAmmo !== snapshotAmmo
+      ) {
+        throw new Error(
+          "装備組の初期弾薬が配置スナップショットと一致しません。"
+        );
+      }
+
+      initialAmmo = readEffectiveInitialAmmo(group);
+    }
+
+    if (initialAmmo === null || initialAmmo === undefined) {
+      issues.push(
+        "初期予備弾数が未登録です。無限弾薬として扱いません。"
+      );
+    } else if (
+      Number.isSafeInteger(initialAmmo) &&
+      initialAmmo >= 0
+    ) {
+      result.initialAmmo = initialAmmo;
+    } else {
+      issues.push("初期予備弾数は0以上の整数で登録してください。");
+    }
+  } catch (error) {
+    issues.push(error.message);
   }
+
 
   if (!result.powerRule) {
     issues.push("威力／参照ルールが未登録です。");
