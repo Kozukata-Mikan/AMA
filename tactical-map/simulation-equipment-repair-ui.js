@@ -1,7 +1,7 @@
 // 外部设备修复的资格、距离和耗时尚未正式确认。
 // 第三阶段按正式规则实现后，才解除页面注册门禁。
 const EQUIPMENT_REPAIR_RULES_CONFIRMED = false;
-
+ 
 
 export function createEquipmentRepairPanel({
   store,
