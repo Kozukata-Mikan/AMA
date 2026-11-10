@@ -1,6 +1,6 @@
 import { getPhaseLabel } from "./simulation-rulebook.js";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
-import { readWeaponTargetScope } from "./weapon-profile-runtime.js";
+
 
 
 // 多组选装、逐组目标、批量检查与攻击计划保存。
@@ -50,7 +50,8 @@ export function mountAttackUI(store) {
   }
 
   const panel = element("details");
-  panel.append(element("summary", "単体攻撃・段階結算"));
+  panel.append(element("summary", "攻撃装備・一括確認"));
+
 
 
   const actor = element("select");
@@ -59,6 +60,59 @@ export function mountAttackUI(store) {
   const equipmentList = element("div");
   equipmentList.setAttribute("role", "group");
   equipmentList.setAttribute("aria-label", "使用する装備組");
+  const rangeHost = element("div");
+rangeHost.className = "attack-range-editor-host";
+
+let mountedRangePanel = null;
+let mountedRangeKey = "";
+
+function clearRangePanel() {
+  mountedRangePanel?.dispose();
+  mountedRangePanel = null;
+  mountedRangeKey = "";
+  rangeHost.replaceChildren();
+}
+
+function syncRangePanel(scene) {
+  const actingUnit = scene.instances.find(
+    unit => unit.instanceId === actor.value
+  );
+
+  if (
+    actingUnit?.observationOwn !== true ||
+    actingUnit.observationLevel !== "identified"
+  ) {
+    clearRangePanel();
+    return;
+  }
+
+  const key = JSON.stringify([
+    scene.controls.observationSide,
+    actingUnit.instanceId
+  ]);
+
+  // 同一单位的保存通知由范围面板自己的订阅刷新。
+  if (key === mountedRangeKey) return;
+
+  clearRangePanel();
+
+  try {
+    mountedRangePanel = store.mountRangeAttackPanel(
+      rangeHost,
+      actingUnit.instanceId
+    );
+
+    mountedRangeKey = key;
+  } catch (error) {
+    clearRangePanel();
+
+    const message = element("p");
+    message.className = "note";
+    message.textContent = error.message;
+    rangeHost.append(message);
+  }
+}
+
 
   const selectionInfo = element("p");
   selectionInfo.className = "note";
@@ -75,7 +129,9 @@ export function mountAttackUI(store) {
     "「攻撃計画を保存」で現在の段階の計画を保存します。" +
     "計画の保存は発射ではありません。" +
     "「現在の攻撃段階を一括結算」で全陣営の保存計画を処理します。" +
-    "範囲武器は、参戦ユニットから自艦を選択して表示する専用面板で指定します。" +
+    "単体・集群を含む攻撃装備を同じ一覧に表示します。" +
+    "編隊の主目標や対象メンバーの指定が必要な武器は、" +
+    "このパネル内の範囲対象編集で計画を保存してください。" +
     "未対応の効果・特殊能力がある場合は、正式結算を停止します。"
 
 
@@ -100,22 +156,18 @@ export function mountAttackUI(store) {
   const assignedTargets = new Map();
 
 
-  function selectableGroups() {
+function selectableGroups() {
   if (!report) return [];
 
-  return report.groups.filter(group => {
-    if (group.profile?.kind !== "weapon") return false;
-
-    try {
-      return readWeaponTargetScope(
-        group.profile.targetScope
-      ).kind === "single";
-    } catch {
-      // 未解释成功的范围不猜作单体。
-      return false;
-    }
-  });
+  // 恢复原列表行为。
+  // 不因范围名称、解析结果或攻击次序而静默隐藏装备组。
+  // 支援装备仍不列入攻击组选装。
+  return report.groups.filter(
+    group => group.profile?.kind !== "support"
+  );
 }
+
+
 
 
   function selectedGroups() {
@@ -424,10 +476,12 @@ export function mountAttackUI(store) {
 
        const description = element(
         "span",
-        `${group.position} / ${group.label}` +
-        ` / 第${group.groupIndex + 1}組` +
-        ` / 残弾 ${group.remainingAmmo ?? "未登録"}` +
-        assignmentText +
+      `${group.position} / ${group.label}` +
+      ` / 第${group.groupIndex + 1}組` +
+      ` / 範囲 ${group.profile?.targetScope || "未登録"}` +
+      ` / 残弾 ${group.remainingAmmo ?? "未登録"}` +
+      assignmentText +
+
         (flags.length ? `［${flags.join("・")}］` : "")
       );
 
@@ -668,11 +722,13 @@ panel.append(
   removeAssignment,
   saveCommands,
   cancelCommands,
+  rangeHost,
   executeBatch,
   finishPhase,
   notice,
   output,
   phaseOutput
+
 );
 
 aside.append(panel);
@@ -793,19 +849,25 @@ finishPhase.textContent = scene.turn.phaseId === "end"
       selectedActorId = actor.value;
     }
 
-    refillTargets(scene);
-    refreshReport();
+   refillTargets(scene);
+   refreshReport();
+   syncRangePanel(scene);
+
   }
 
-  actor.addEventListener("change", () => {
-    selectedGroupIds.clear();
-    assignedTargets.clear();
-    selectedActorId = actor.value;
-    target.value = "";
+ actor.addEventListener("change", () => {
+  selectedGroupIds.clear();
+  assignedTargets.clear();
+  selectedActorId = actor.value;
+  target.value = "";
 
-    refillTargets(store.getScene());
-    refreshReport();
-  });
+  const scene = store.getScene();
+
+  refillTargets(scene);
+  refreshReport();
+  syncRangePanel(scene);
+});
+
 
   target.addEventListener("change", renderReport);
 
@@ -819,6 +881,8 @@ return () => {
   disposed = true;
 
   unsubscribe();
+  clearRangePanel();
+
 
   // 流程布局把这些节点移到了原面板外，需单独清理。
   executeBatch.remove();
