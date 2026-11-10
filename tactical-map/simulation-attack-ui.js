@@ -126,7 +126,9 @@ function syncRangePanel(scene) {
     "p",
     "装備組を選択し、目標を割り当ててください。" +
     "別の組には別の目標を割り当てられます。" +
-    "「攻撃計画を保存」で現在の段階の計画を保存します。" +
+    "「攻撃計画を保存」で計画を保存します。" +
+    "現在より低い最高次序の武器は、その次序に自動分類します。" +
+    "待機中の計画は実行前に変更・取消できます。" +
     "計画の保存は発射ではありません。" +
     "「現在の攻撃段階を一括結算」で全陣営の保存計画を処理します。" +
     "単体・集群を含む攻撃装備を同じ一覧に表示します。" +
@@ -225,7 +227,12 @@ function selectableGroups() {
         lines.push(
           `・${group?.label ?? "装備組"}` +
           ` / 第${(group?.groupIndex ?? 0) + 1}組` +
-          ` → ${savedTarget?.name ?? "現在確認できない目標"}`
+          ` → ${savedTarget?.name ?? "現在確認できない目標"}` +
+         ` / 実行：${getPhaseLabel(command.phaseId)}` +
+         (command.phaseId === saved.phaseId
+         ? "［現在の段階］"
+          : "［実行待ち］")
+
         );
       }
 
@@ -571,15 +578,22 @@ function selectableGroups() {
       return;
     }
 
-    try {
-      store.saveAttackCommands({
-        unitId: report.unitId,
-        assignments
-      }, report.revision);
+    const receipt = store.saveAttackCommands({
+  unitId: report.unitId,
+  assignments
+}, report.revision);
 
-      output.textContent =
-        "攻撃計画を保存しました。\n" +
-        "発射・コイン判定・弾薬消費・被害適用は行っていません。";
+const phases = [...new Set(
+  receipt.commands.map(command => command.phaseId)
+)];
+
+output.textContent =
+  "攻撃計画を保存しました。\n" +
+  "実行段階：" +
+  phases.map(getPhaseLabel).join("、") +
+  "\n未来の次序の計画は、その次序まで待機します。" +
+  "\n発射・コイン判定・弾薬消費・被害適用は行っていません。";
+
     } catch (error) {
       console.error(error);
       output.textContent = error.message;
@@ -628,7 +642,8 @@ function selectableGroups() {
   }
 
   if (!window.confirm(
-    "現在の段階に保存された全陣営の攻撃計画を一括結算します。\n" +
+    "実行段階が現在の段階である全陣営の攻撃計画を一括結算します。\n" +
+    "未来の次序の計画は発射せず、そのまま保存します。\n" +
     "画面で選択した装備組だけの実行ではありません。\n" +
     "成功すると弾薬・被害・射線固定・履歴をまとめて保存し、" +
     "次の段階へ移ります。\n" +
