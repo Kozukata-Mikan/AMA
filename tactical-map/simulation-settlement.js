@@ -732,6 +732,12 @@ try {
       error
     );
 
+    console.error(
+      "[实际威力字段] " +
+      "装备=" + profile.label +
+      "；类型=" + typeof profile.powerRule +
+      "；值=" + JSON.stringify(profile.powerRule)
+    );
     // 保留原异常，不跳过攻击、不改变事务行为。
     throw error;
   }
