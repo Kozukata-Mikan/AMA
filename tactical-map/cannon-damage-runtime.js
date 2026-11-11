@@ -112,20 +112,11 @@ function downgrade(category) {
 }
 
 function readBaseComparison(penetration, armor) {
-  // "-"已知表示穿深0，不是缺失资料。
-  // 当前装甲比较器只支持等级；不把0擅自映射为F等阶。
-  if (
-    typeof penetration === "string" &&
-    penetration.trim() === "-"
-  ) {
-    throw new Error(
-      "貫通値0の艦砲判定はまだ接続されていません。" +
-      "別の装甲等級で代用せず、結算を停止します。"
-    );
-  }
-
+  // 零穿深由比较器统一解释为比F--低一档。
+  // 预览与正式命中使用相同规则。
   return compareArmorGrades(penetration, armor);
 }
+
 
 /**
  * 判定一枚已经命中的舰炮弹。
