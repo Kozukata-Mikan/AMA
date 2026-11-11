@@ -53,6 +53,50 @@ import { normalizeCampaignIntro } from "./campaign-intro-data.js";
 
 const PREFIX = "junqi-simulation-v1:";
 const VERSION = 1;
+// 只属于推演运行状态，不写入initialScene。
+function initializeSimulationEndRuntime(scene) {
+  if (scene.simulationEndRuntime === undefined) {
+    scene.simulationEndRuntime = {
+      version: 1,
+      endedAt: null,
+      turnNumber: null,
+      phaseId: null
+    };
+  }
+
+  const runtime = scene.simulationEndRuntime;
+
+  if (
+    !runtime ||
+    typeof runtime !== "object" ||
+    Array.isArray(runtime) ||
+    runtime.version !== 1
+  ) {
+    throw new Error("推演終了状態の保存形式が不正です。");
+  }
+
+  if (runtime.endedAt === null) {
+    if (
+      runtime.turnNumber !== null ||
+      runtime.phaseId !== null
+    ) {
+      throw new Error("未終了の推演に終了段階が記録されています。");
+    }
+
+    return;
+  }
+
+  if (
+    typeof runtime.endedAt !== "string" ||
+    !Number.isFinite(Date.parse(runtime.endedAt)) ||
+    !Number.isSafeInteger(runtime.turnNumber) ||
+    runtime.turnNumber < 1 ||
+    runtime.turnNumber !== scene.turn.number ||
+    runtime.phaseId !== scene.turn.phaseId
+  ) {
+    throw new Error("推演終了日時または終了段階が不正です。");
+  }
+}
 
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
@@ -320,6 +364,7 @@ function readSaved(id) {
   initializeUnifiedDamageRuntime(value);
   initializeSettlementRuntime(value);
   initializePhaseFinishRuntime(value);
+  initializeSimulationEndRuntime(value);
 
 
 
@@ -570,7 +615,7 @@ export function createSimulation(scene, spatialState) {
   initializeUnifiedDamageRuntime(value);
   initializeSettlementRuntime(value);
   initializePhaseFinishRuntime(value);
-
+  initializeSimulationEndRuntime(value);
 
 
 
@@ -610,6 +655,16 @@ export function openSimulation(id) {
         "ページを再読み込みしてください。"
       );
     }
+
+    // 已结束的推演保留数据，但拒绝后续状态写入。
+// 查看、报告、地图操作和导出不经过commit，不受影响。
+    if (state.simulationEndRuntime.endedAt !== null) {
+     throw new Error(
+    "この推演は終了しています。" +
+    "行動・計画・段階・設定は変更できません。" +
+    "戦闘記録と地図は引き続き確認できます。"
+  );
+}
 
     // 所有修改只发生在独立候选副本。
     const candidate = copy(state);
@@ -698,6 +753,7 @@ export function openSimulation(id) {
     initializeAttackRuntime(candidate);
     initializeSettlementRuntime(candidate);
     initializePhaseFinishRuntime(candidate);
+    initializeSimulationEndRuntime(candidate);
 
 
     const enteredNewPhase =
@@ -847,6 +903,48 @@ export function openSimulation(id) {
        const api = {
   ...createSimulationFeatures(() => state, commit),
   ...createRescueFeatures(() => state, commit),
+
+  getSimulationStatus() {
+  const runtime = state.simulationEndRuntime;
+
+  return copy({
+    revision: state.revision,
+    ended: runtime.endedAt !== null,
+    endedAt: runtime.endedAt,
+    endedTurnNumber: runtime.turnNumber,
+    endedPhaseId: runtime.phaseId,
+    turnNumber: state.turn.number,
+    phaseId: state.turn.phaseId
+  });
+},
+
+endSimulation(expectedRevision) {
+  if (expectedRevision !== state.revision) {
+    throw new Error(
+      "状態が変更されています。もう一度確認してください。"
+    );
+  }
+
+  // 重复调用不增加更新号，也不重复保存。
+  if (state.simulationEndRuntime.endedAt !== null) {
+    return api.getSimulationStatus();
+  }
+
+  commit(candidate => {
+    candidate.simulationEndRuntime = {
+      version: 1,
+      endedAt: new Date().toISOString(),
+      turnNumber: candidate.turn.number,
+      phaseId: candidate.turn.phaseId
+    };
+
+    // 不推进阶段、不结算、不扣弹、不清空等待计划。
+  });
+
+  // 只有保存成功才返回已结束状态。
+  return api.getSimulationStatus();
+},
+
 
 
 
