@@ -109,6 +109,13 @@ import {
   prepareRangeProjection
 } from "./range-projection-runtime.js";
 
+import {
+  initializeRoundTraitRuntime,
+  resolveRoundTraits,
+  readOneAgainstThousandBonus
+} from "./simulation-round-trait-runtime.js";
+
+
 const copy = value => JSON.parse(JSON.stringify(value));
 const EPSILON = 1e-7;
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
@@ -500,7 +507,7 @@ function parseDamageRule(profile) {
 }
 
 
-function trainingModifiers(scene, actor, target, underwaterWeapon) {
+function trainingModifiers(scene, actor, target, underwaterWeapon ,roundTraitOptions = {}) {
   const traits = new Set([
     ...actor.trainingState.baseTraits,
     ...actor.trainingState.acquiredTraits
@@ -560,19 +567,16 @@ function trainingModifiers(scene, actor, target, underwaterWeapon) {
         }
         break;
 
-      case "one-against-thousand":
-        // 每回合一次的50%发动车制尚无持久化契约。
-        // 不能每次攻击各投一次，也不能假定未发动。
-        if (
-          ["moderate", "heavy", "sinking", "sunk"]
-            .includes(actor.shipState.status)
-        ) {
-          fail(
-            "一騎当千のラウンド発動記録が未接続です。" +
-            "命中判定前に結算を停止します。"
-          );
-        }
+       case "one-against-thousand":
+        bonuses += readOneAgainstThousandBonus({
+          actor,
+          turnNumber: scene.turn.number,
+          runtime: roundTraitOptions.runtime,
+          requireResolved:
+            roundTraitOptions.requireResolved === true
+        });
         break;
+
 
       default:
         fail("未対応の練度・特殊能力があります。");
@@ -622,7 +626,7 @@ function assertNoUnconnectedSupport(scene) {
 }
 
 
-function finalPreflight(start, entry) {
+function finalPreflight(start, entry ,roundTraitOptions = {}) {
   const actor = unitFor(start, entry.unitId);
   const target = unitFor(start, entry.targetId);
   const profile = entry.profile;
@@ -917,7 +921,8 @@ try {
     start,
     actor,
     target,
-    underwaterWeapon
+    underwaterWeapon,
+    roundTraitOptions
   );
 
   const modifiers = getHitModifiers({
@@ -2035,6 +2040,7 @@ export function settleAttackPhase(scene, coinSource) {
   const working = copy(scene);
 
   initializeSettlementRuntime(working);
+  initializeRoundTraitRuntime(working);
 
   const context = contextFor(working);
   const key = recordKey(context.turnNumber, context.phaseId);
@@ -2084,10 +2090,43 @@ export function settleAttackPhase(scene, coinSource) {
 
 // 将确定性生成的自主计划放入同一个事务候选。
 // 后续资源应用及命中复核都读取同一份命令。
-working.attackRuntime.commands = commands;
+  working.attackRuntime.commands = commands;
 
+  // 前面的计划、资源及规则支持检查均不掷正式随机数。
+  // 从这里开始，正式事务才生成单位级发动结果。
+  settlementStep(
+    "一騎当千のラウンド発動判定を完了できませんでした。",
+    () => resolveRoundTraits(
+      working,
+      start,
+      coinSource
+    )
+  );
+
+  // 正式命中必须读取已确定的发动结果。
+  // 不修改阶段开始快照，通过参数传入事务中的效果记录。
+  const formalPreflight = (startScene, entry) =>
+    finalPreflight(
+      startScene,
+      entry,
+      {
+        runtime: working.roundTraitRuntime,
+        requireResolved: true
+      }
+    );
+
+  // 在扣弹前，以正式奖励重新检查命中修正。
+  settlementStep(
+    "ラウンド特殊能力を含む正式命中修正を確認できませんでした。",
+    () => prepareBatchHitChecks(
+      working,
+      prepared,
+      formalPreflight
+    )
+  );
 
   // 先验证全批当前装备资源并在候选副本扣弹。
+
   // 后续失败时，候选副本被丢弃，不保存扣弹。
   const resourceReports = applyAttackBatchResources(
     working,
@@ -2100,7 +2139,7 @@ working.attackRuntime.commands = commands;
   () => resolveAttackBatchHitStep(
     working,
     prepared,
-    finalPreflight,
+    formalPreflight,
     coinSource
   )
 );
@@ -2216,6 +2255,7 @@ for (const report of resourceReports) {
   scene.rayTargetRuntime = working.rayTargetRuntime;
   scene.attackRuntime = working.attackRuntime;
   scene.settlementRuntime = working.settlementRuntime;
+  scene.roundTraitRuntime = working.roundTraitRuntime;
   scene.phaseFinishRuntime = working.phaseFinishRuntime;
   scene.turn = working.turn;
   
