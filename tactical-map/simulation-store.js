@@ -2081,10 +2081,13 @@ if (equipmentPower) {
                 selectedIds.has(command.groupId)
             );
 
-                   const filtered = filterUnreachableAttackCommands(
+                            // 同一回合的等待计划共享侧别额度。
+          // 必须一起分配，不能只检查此次勾选的装备组。
+          const filtered = filterUnreachableAttackCommands(
             candidate,
-            savedSelection
+            candidate.attackRuntime.commands
           );
+
 
           skippedCommands = filtered.skipped;
 
@@ -2099,8 +2102,11 @@ if (equipmentPower) {
               command => !skippedIds.has(command.id)
             );
 
+                    // groupId只在单位内唯一。
           const acceptedGroups = new Set(
-            filtered.accepted.map(command => command.groupId)
+            filtered.accepted
+              .filter(command => command.unitId === input.unitId)
+              .map(command => command.groupId)
           );
 
           savedOrders = savedOrders.filter(
@@ -2139,9 +2145,10 @@ if (equipmentPower) {
         skippedCommands,
         message: skippedCommands.length
           ? `攻撃計画を${savedOrders.length}件保存しました。` +
-            `射距・射高・射界の条件を満たさない` +
-            `${skippedCommands.length}件は登録しませんでした。`
+            `射距・射高・射界または側別使用枠の条件により、` +
+            `${skippedCommands.length}件の待機計画を除外しました。`
           : `攻撃計画を${savedOrders.length}件保存しました。`
+
       });
 
     },
