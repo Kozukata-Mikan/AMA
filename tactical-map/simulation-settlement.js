@@ -724,14 +724,48 @@ readFiringArc(actor, firingGroup, target);
     );
   }
 
-  if (
-    trace.distance3D > profile.range + EPSILON ||
-    relativeHeight > profile.ceilingU + EPSILON
-  ) {
-    ineligible(
-      "射距または射高の条件を満たしていません。"
-    );
+  const rangeExceeded =
+    trace.distance3D > profile.range + EPSILON;
+
+  const heightExceeded =
+    relativeHeight > profile.ceilingU + EPSILON;
+
+  if (rangeExceeded || heightExceeded) {
+    const sideLabels = {
+      ally: "味方",
+      enemy: "敵",
+      neutral: "中立"
+    };
+
+    const actorLabel =
+      `${actor.name}（${sideLabels[actor.side] ?? "不明"}）`;
+
+    const targetLabel =
+      `${target.name}（${sideLabels[target.side] ?? "不明"}）`;
+
+    const reasons = [];
+
+    if (rangeExceeded) {
+      reasons.push("三次元距離が射距を超えています。");
+    }
+
+    if (heightExceeded) {
+      reasons.push("目標との相対高度が射高を超えています。");
+    }
+
+    ineligible([
+      ...reasons,
+      `攻撃側：${actorLabel}`,
+      `目標：${targetLabel}`,
+      `兵装：${profile.label ?? "名称未登録"}`,
+      `装備組：${firingGroup.position} / 第${firingGroup.groupIndex + 1}組`,
+      `三次元距離：${trace.distance3D.toFixed(3)} / 射距：${profile.range ?? "未登録"}`,
+      `相対射高：${relativeHeight.toFixed(3)} / 射高上限：${profile.ceilingU ?? "未登録"}`,
+      `発射位置の高さ：${from.z.toFixed(3)}`,
+      `目標位置の高さ：${to.z.toFixed(3)}`
+    ].join("\n"));
   }
+
 
   switch (profile.guidance) {
     case "direct":
