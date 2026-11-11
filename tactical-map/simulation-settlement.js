@@ -472,7 +472,7 @@ function navalPoint(scene, unit) {
 }
 
 function parseDamageRule(profile) {
-  if (/^(舰炮规则|艦砲規則|艦砲ルール)$/.test(
+  if (/^(舰炮规则|艦砲規則|艦炮規則|艦砲ルール)$/.test(
     profile.powerRule.trim()
   )) {
     return { kind: "cannon", underwater: false };
