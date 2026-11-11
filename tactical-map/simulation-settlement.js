@@ -633,11 +633,13 @@ function finalPreflight(start, entry) {
   // 明确的目标资格失败：
   // 范围预检可以排除该成员。
   // 单体攻击没有替代目标，仍然拒绝。
-  function ineligible(message) {
+    function ineligible(message, skipAttack = false) {
     const error = new Error(message);
     error.code = "TARGET_INELIGIBLE";
+    error.skipAttack = skipAttack;
     throw error;
   }
+
 
   if (
     actor.instanceId === target.instanceId ||
@@ -689,7 +691,18 @@ if (!firingGroup) {
   fail("射界判定の装備組を確認できません。");
 }
 
-readFiringArc(actor, firingGroup, target);
+try {
+  readFiringArc(actor, firingGroup, target);
+} catch (error) {
+  // 只有目标确实在射界外时，允许跳过本条攻击。
+  // 装备位置资料错误等其他异常仍向上抛出。
+  if (error.code === "TARGET_INELIGIBLE") {
+    error.skipAttack = true;
+  }
+
+  throw error;
+}
+
 
   const damageRule = parseDamageRule(profile);
 
@@ -763,7 +776,7 @@ readFiringArc(actor, firingGroup, target);
       `相対射高：${relativeHeight.toFixed(3)} / 射高上限：${profile.ceilingU ?? "未登録"}`,
       `発射位置の高さ：${from.z.toFixed(3)}`,
       `目標位置の高さ：${to.z.toFixed(3)}`
-    ].join("\n"));
+     ].join("\n"), true);
   }
 
 
@@ -1659,9 +1672,19 @@ if (profile.issues.length) {
  * 不生成未来阶段快照，不掷正式随机数，不扣弹。
  * 到执行次序时仍须重新执行全部正式检查。
  */
-export function validateDeferredAttackPlans(scene, commands) {
+export function validateDeferredAttackPlans(
+  scene,
+  commands,
+  { includeCurrent = false } = {}
+) {
   for (const command of commands) {
-    if (command.phaseId === scene.turn.phaseId) continue;
+    if (
+      !includeCurrent &&
+      command.phaseId === scene.turn.phaseId
+    ) {
+      continue;
+    }
+
 
     const { current, entry } =
       prepareAttackCommandPreview(scene, command);
@@ -1677,7 +1700,15 @@ export function validateDeferredAttackPlans(scene, commands) {
 
     const effectEntries = [];
 
-    if (entry.scope.kind === "single") {
+        const singleTarget =
+      entry.scope.kind === "single" ||
+      (
+        entry.profile.targetScope.trim() === "集群" &&
+        entry.targetRef?.kind === "unit"
+      );
+
+    if (singleTarget) {
+
       finalPreflight(observedCurrent, entry);
       effectEntries.push(entry);
     } else {
@@ -1733,6 +1764,44 @@ export function validateDeferredAttackPlans(scene, commands) {
     assertEffectAlgorithms(current, current, effectEntries);
   }
 }
+
+// 只筛掉明确可跳过的射距、射高、射界错误。
+// 不投币、不扣弹；其他错误仍中断整个事务。
+export function filterUnreachableAttackCommands(scene, commands) {
+  const accepted = [];
+  const skipped = [];
+
+  for (const command of commands) {
+    try {
+      validateDeferredAttackPlans(
+        scene,
+        [command],
+        { includeCurrent: true }
+      );
+
+      accepted.push(command);
+    } catch (error) {
+      if (
+        error.code !== "TARGET_INELIGIBLE" ||
+        error.skipAttack !== true
+      ) {
+        throw error;
+      }
+
+      skipped.push({
+        commandId: command.id,
+        unitId: command.unitId,
+        groupId: command.groupId,
+        turnNumber: command.turnNumber,
+        phaseId: command.phaseId,
+        reason: error.message
+      });
+    }
+  }
+
+  return { accepted, skipped };
+}
+
 
 export function prepareSettlementAttackPlan(scene) {
   const working = copy(scene);
@@ -1847,8 +1916,29 @@ export function settleAttackPhase(scene, coinSource) {
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
 
- const { prepared, start, commands } =
-  prepareSettlementAttackPlan(working);
+   const currentCommands = working.attackRuntime.commands.filter(
+    command =>
+      command.turnNumber === context.turnNumber &&
+      command.phaseId === context.phaseId
+  );
+
+  const executionFilter = filterUnreachableAttackCommands(
+    working,
+    currentCommands
+  );
+
+  const skippedIds = new Set(
+    executionFilter.skipped.map(item => item.commandId)
+  );
+
+  working.attackRuntime.commands =
+    working.attackRuntime.commands.filter(
+      command => !skippedIds.has(command.id)
+    );
+
+  const { prepared, start, commands } =
+    prepareSettlementAttackPlan(working);
+
 
 // 将确定性生成的自主计划放入同一个事务候选。
 // 后续资源应用及命中复核都读取同一份命令。
@@ -1949,6 +2039,7 @@ for (const report of resourceReports) {
     turnNumber: context.turnNumber,
     phaseId: context.phaseId,
     elapsedMinutes: working.turn.elapsedMinutes,
+    skippedCommands: copy(executionFilter.skipped),
     resourceReports,
     hitReports: hitStep.reports,
     rangeSelections: copy(hitStep.rangeSelections),
