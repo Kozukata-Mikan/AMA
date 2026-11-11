@@ -131,6 +131,9 @@ function syncRangePanel(scene) {
     "現在より低い最高次序の武器は、その次序に自動分類します。" +
     "待機中の計画は実行前に変更・取消できます。" +
     "計画の保存は発射ではありません。" +
+    "射距・射高・射界の条件を満たさない単体攻撃は、" +
+    "その組だけ登録を見送り、他の合法な計画は保存します。" +
+    "登録を見送った組と理由は、保存結果に表示します。" +
     "「現在の攻撃段階を一括結算」で全陣営の保存計画を処理します。" +
     "単体・集群を含む攻撃装備を同じ一覧に表示します。" +
     "編隊の主目標や対象メンバーの指定が必要な武器は、" +
@@ -150,6 +153,12 @@ function syncRangePanel(scene) {
   output.className = "note";
   output.style.whiteSpace = "pre-wrap";
   output.setAttribute("aria-live", "polite");
+  const saveFeedback = element("p");
+  saveFeedback.className = "note";
+  saveFeedback.style.whiteSpace = "pre-wrap";
+  saveFeedback.setAttribute("role", "status");
+  saveFeedback.setAttribute("aria-live", "polite");
+
 
   let report = null;
   let selectedActorId = "";
@@ -556,9 +565,11 @@ function selectableGroups() {
     renderReport();
   });
 
-      const saveCommands = button("攻撃計画を保存", () => {
+       const saveCommands = button("攻撃計画を保存", () => {
+    saveFeedback.textContent = "";
+
     if (!report) {
-      output.textContent =
+      saveFeedback.textContent =
         "行動するユニットを選択してください。";
       return;
     }
@@ -566,7 +577,7 @@ function selectableGroups() {
     const groups = selectedGroups();
 
     if (!groups.length) {
-      output.textContent = "装備組を選択してください。";
+      saveFeedback.textContent = "装備組を選択してください。";
       return;
     }
 
@@ -576,32 +587,92 @@ function selectableGroups() {
     }));
 
     if (assignments.some(item => !item.targetId)) {
-      output.textContent =
+      saveFeedback.textContent =
         "選択したすべての装備組に目標を割り当ててください。";
       return;
     }
 
+    // 保存通知会同步刷新report，因此先保留此次提交的标签。
+    const submittedGroups = new Map(
+      groups.map(group => [
+        group.groupId,
+        `${group.position} / ${group.label}` +
+        ` / 第${group.groupIndex + 1}組`
+      ])
+    );
+
+    const submittedActorName = report.unitName;
+    const submittedActorId = report.unitId;
+    const submittedRevision = report.revision;
+
     try {
       const receipt = store.saveAttackCommands({
-        unitId: report.unitId,
+        unitId: submittedActorId,
         assignments
-      }, report.revision);
+      }, submittedRevision);
 
-      const phases = [...new Set(
-        receipt.commands.map(command => command.phaseId)
-      )];
+      const saved = receipt.commands;
+      const skipped = receipt.skippedCommands ?? [];
 
-      output.textContent =
-        "攻撃計画を保存しました。\n" +
-        "実行段階：" +
-        phases.map(phaseId => getPhaseLabel(phaseId)).join("、") +
-        "\n未来の次序の計画は、その次序まで待機します。" +
-        "\n発射・コイン判定・弾薬消費・被害適用は行っていません。";
+      const lines = [
+        submittedActorName,
+        `保存した攻撃計画：${saved.length}件`,
+        `登録しなかった攻撃：${skipped.length}件`
+      ];
+
+      if (saved.length) {
+        lines.push("", "【保存済み・未発射】");
+
+        for (const command of saved) {
+          lines.push(
+            `・${submittedGroups.get(command.groupId) ?? "装備組"}` +
+            ` / 実行：${getPhaseLabel(command.phaseId)}`
+          );
+        }
+
+        lines.push(
+          "未来の次序の計画は、その次序まで待機します。"
+        );
+      } else {
+        lines.push(
+          "今回の選択から保存された攻撃計画はありません。"
+        );
+      }
+
+      if (skipped.length) {
+        lines.push("", "【射距・射高・射界による登録見送り】");
+
+        for (const command of skipped) {
+          lines.push(
+            `・${submittedGroups.get(command.groupId) ?? "装備組"}`,
+            command.reason,
+            ""
+          );
+        }
+
+        lines.push(
+          "上記の攻撃は登録していません。" +
+          "目標・位置・方位を変更した後、再登録できます。"
+        );
+      }
+
+      lines.push(
+        "",
+        "発射・コイン判定・弾薬消費・被害適用は行っていません。",
+        "保存された計画も、実行段階で条件を再確認します。"
+      );
+
+      saveFeedback.textContent = lines.join("\n");
     } catch (error) {
       console.error(error);
-      output.textContent = error.message;
+
+      saveFeedback.textContent =
+        error.message + "\n" +
+        "今回の登録変更は保存していません。" +
+        "以前に保存された計画は、この失敗では変更されません。";
     }
   });
+
 
 
   const cancelCommands = button(
@@ -750,6 +821,7 @@ panel.append(
   executeBatch,
   finishPhase,
   notice,
+  saveFeedback,
   output,
   phaseOutput
 
@@ -880,6 +952,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
   }
 
  actor.addEventListener("change", () => {
+  saveFeedback.textContent = "";
   selectedGroupIds.clear();
   assignedTargets.clear();
   selectedActorId = actor.value;
