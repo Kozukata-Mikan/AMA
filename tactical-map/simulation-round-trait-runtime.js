@@ -2,7 +2,8 @@
 // 不修改部署快照，不在初始化或预览时掷币。
 
 const TRAIT_ID = "one-against-thousand";
-const ATTACK_PHASE = /^(order-[1-5]|pas)$/;
+const ATTACK_PHASE = /^(order-[1-5]|pas|special)$/;
+
 
 function fail(message) {
   throw new Error(message);
