@@ -54,11 +54,34 @@ export function readArmorGrade(value) {
   };
 }
 
+export function readPenetrationGrade(value) {
+  const normalized = typeof value === "string"
+    ? value.trim().replace(/[−–—－]/g, "-")
+    : null;
+
+  if (
+    value === 0 ||
+    normalized === "-" ||
+    normalized === "0"
+  ) {
+    return {
+      label: "0",
+      grade: null,
+      suffix: "",
+      rank: readArmorGrade("F--").rank - 1
+    };
+  }
+
+  // 空值、其他数值及非法文本仍按原有校验拒绝。
+  return readArmorGrade(value);
+}
+
+
 export function compareArmorGrades(
   penetrationValue,
   armorValue
 ) {
-  const penetration = readArmorGrade(penetrationValue);
+  const penetration = readPenetrationGrade(penetrationValue);
   const armor = readArmorGrade(armorValue);
   const difference = penetration.rank - armor.rank;
 
@@ -111,16 +134,7 @@ export function getArmorPreview({
     ];
   }
 
-  // "-"明确表示穿深0，而非资料缺失。
-  // 此处不擅自把数值0改写为某个装甲等阶。
-  if (typeof penetration === "string" &&
-      penetration.trim() === "-") {
-    return [
-      "貫通値「-」は0として扱います。未登録ではありません。",
-      "この等級比較プレビューでは、数値0を装甲等級に変換しません。",
-      "最終被害はまだ計算していません。"
-    ];
-  }
+  
 
   const result = compareArmorGrades(penetration, armor);
 
