@@ -7,7 +7,8 @@ import {
   prepareBatchHitChecks
 } from "./simulation-attack-batch.js";
 
- 
+
+
 import {
   ensureShipRuntime,
   readShipProfile,
@@ -100,7 +101,8 @@ import {
 } from "./simulation-range-command.js";
 
 import {
-  readFiringArc
+  readFiringArc,
+  assertBroadsideQuotas
 } from "./weapon-firing-arc.js";
 
 import {
@@ -1767,19 +1769,56 @@ export function validateDeferredAttackPlans(
 
 // 只筛掉明确可跳过的射距、射高、射界错误。
 // 不投币、不扣弹；其他错误仍中断整个事务。
+// 单体攻击：先检查几何，再按固定顺序分配本回合侧别额度。
+// 范围攻击保留原来的候选检查与实际投射配额检查。
+// 不投币、不扣弹、不修改输入场景。
 export function filterUnreachableAttackCommands(scene, commands) {
   const accepted = [];
   const skipped = [];
 
-  for (const command of commands) {
+  const records = scene.settlementRuntime?.attackRecords ?? [];
+
+  // 历史本身异常必须停止，不能当作新增命令超限跳过。
+  assertBroadsideQuotas(scene, [], [], records);
+
+  const reservedEntries = [];
+  const reservedAssignments = [];
+
+  const phasePriority = {
+    "order-5": 0,
+    "order-4": 1,
+    "order-3": 2,
+    "order-2": 3,
+    "order-1": 4,
+    pas: 5
+  };
+
+  const ordered = [...commands].sort((a, b) =>
+    (phasePriority[a.phaseId] ?? 99) -
+      (phasePriority[b.phaseId] ?? 99) ||
+    compareText(a.unitId, b.unitId) ||
+    compareText(a.groupId, b.groupId) ||
+    compareText(a.id, b.id)
+  );
+
+  function skip(command, reason) {
+    skipped.push({
+      commandId: command.id,
+      unitId: command.unitId,
+      groupId: command.groupId,
+      turnNumber: command.turnNumber,
+      phaseId: command.phaseId,
+      reason
+    });
+  }
+
+  for (const command of ordered) {
     try {
       validateDeferredAttackPlans(
         scene,
         [command],
         { includeCurrent: true }
       );
-
-      accepted.push(command);
     } catch (error) {
       if (
         error.code !== "TARGET_INELIGIBLE" ||
@@ -1788,19 +1827,62 @@ export function filterUnreachableAttackCommands(scene, commands) {
         throw error;
       }
 
-      skipped.push({
-        commandId: command.id,
-        unitId: command.unitId,
-        groupId: command.groupId,
-        turnNumber: command.turnNumber,
-        phaseId: command.phaseId,
-        reason: error.message
-      });
+      skip(command, error.message);
+      continue;
     }
+
+    const { current, entry } =
+      prepareAttackCommandPreview(scene, command);
+
+    if (entry.scope.kind === "single") {
+      const assignment = {
+        commandId: entry.commandId,
+        targetIds: [entry.targetId]
+      };
+
+      try {
+        // 先尝试加入；不合格命令不会占用后续额度。
+        assertBroadsideQuotas(
+          current,
+          [...reservedEntries, entry],
+          [...reservedAssignments, assignment],
+          records
+        );
+      } catch (error) {
+        if (error.code !== "BROADSIDE_QUOTA") {
+          throw error;
+        }
+
+        const actor = unitFor(current, entry.unitId);
+        const group = actor.equipmentState.groups.find(
+          item => item.id === entry.groupId
+        );
+
+        const target = unitFor(current, entry.targetId);
+        const arc = readFiringArc(actor, group, target);
+
+        skip(command, [
+          "このラウンドの両舷装備の残り使用枠が不足しています。",
+          `攻撃側：${actor.name}`,
+          `兵装：${entry.profile.label ?? "名称未登録"}`,
+          `装備組：${group.position} / 第${group.groupIndex + 1}組`,
+          `射撃側：${arc.side === "left" ? "左舷" : "右舷"}`,
+          "この組は発射せず、弾薬も消費しません。"
+        ].join("\n"));
+
+        continue;
+      }
+
+      reservedEntries.push(entry);
+      reservedAssignments.push(assignment);
+    }
+
+    accepted.push(command);
   }
 
   return { accepted, skipped };
 }
+
 
 
 export function prepareSettlementAttackPlan(scene) {
