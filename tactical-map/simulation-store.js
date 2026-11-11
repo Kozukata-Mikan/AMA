@@ -1973,15 +1973,26 @@ if (equipmentPower) {
           );
 
           prepareSettlementAttackPlan(candidate);
-        } catch {
-          throw new Error(
-            "全批次の正式条件を満たしていません。" +
-            "段階開始記録、主目標、指定メンバー、" +
-            "射距・射高・地形、装備性能、残弾、" +
-            "または未対応の効果を確認してください。" +
-            "今回の計画は保存していません。"
-          );
-        }
+      } catch (error) {
+        const reason =
+       typeof error?.message === "string" && error.message
+       ? error.message
+       : "詳細な原因を取得できませんでした。";
+
+       const wrapped = new Error(
+       "攻撃計画の事前検証に失敗しました。\n" +
+       "原因：" + reason + "\n" +
+        "今回の計画は保存していません。",
+       { cause: error }
+      );
+
+      if (typeof error?.code === "string") {
+      wrapped.code = error.code;
+     }
+
+     throw wrapped;
+    }
+
       });
 
       // 只有事务保存成功，才返回给界面。
