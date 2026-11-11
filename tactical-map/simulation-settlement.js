@@ -1897,7 +1897,25 @@ export function prepareSettlementAttackPlan(scene) {
 
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
+  const currentCommands = working.attackRuntime.commands.filter(
+    command =>
+      command.turnNumber === working.turn.number &&
+      command.phaseId === working.turn.phaseId
+  );
 
+  const filtered = filterUnreachableAttackCommands(
+    working,
+    currentCommands
+  );
+
+  const skippedIds = new Set(
+    filtered.skipped.map(command => command.commandId)
+  );
+
+  working.attackRuntime.commands =
+    working.attackRuntime.commands.filter(
+      command => !skippedIds.has(command.id)
+    );
   settlementStep(
   "自律攻撃計画の作成・候補照合を完了できませんでした。",
   () => appendAutonomousAttackCommands(working)
@@ -1953,11 +1971,13 @@ export function prepareSettlementAttackPlan(scene) {
 
   assertEffectAlgorithms(working, start, effectEntries);
 
-  return {
-  prepared,
-  start,
-  commands: copy(working.attackRuntime.commands)
-};
+    return {
+    prepared,
+    start,
+    commands: copy(working.attackRuntime.commands),
+    skippedCommands: copy(filtered.skipped)
+  };
+
 
 }
 
@@ -2018,8 +2038,13 @@ export function settleAttackPhase(scene, coinSource) {
       command => !skippedIds.has(command.id)
     );
 
-  const { prepared, start, commands } =
-    prepareSettlementAttackPlan(working);
+   const {
+    prepared,
+    start,
+    commands,
+    skippedCommands: preparationSkipped
+  } = prepareSettlementAttackPlan(working);
+
 
 
 // 将确定性生成的自主计划放入同一个事务候选。
@@ -2121,7 +2146,10 @@ for (const report of resourceReports) {
     turnNumber: context.turnNumber,
     phaseId: context.phaseId,
     elapsedMinutes: working.turn.elapsedMinutes,
-    skippedCommands: copy(executionFilter.skipped),
+    skippedCommands: copy([
+      ...executionFilter.skipped,
+      ...preparationSkipped
+    ]),
     resourceReports,
     hitReports: hitStep.reports,
     rangeSelections: copy(hitStep.rangeSelections),
