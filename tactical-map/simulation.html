@@ -481,6 +481,105 @@
   margin: 4px 4px 4px 0;
 }
 
+    /* 推演结束与战斗报告：仅作用于推演页面。 */
+.simulation-end-button {
+  border-color: #b97965;
+  background: #38231f;
+  color: #ffd8c8;
+}
+
+#battleReportDialog {
+  width: min(1000px, calc(100vw - 24px));
+  max-height: 88dvh;
+  padding: 20px;
+  overflow-y: auto;
+  border: 1px solid #52718a;
+  border-radius: 8px;
+  background: #0c1927;
+  color: #dceaf5;
+}
+
+#battleReportDialog::backdrop {
+  background: rgb(0 0 0 / 70%);
+}
+
+.battle-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.battle-report-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.battle-report-header form {
+  margin: 0;
+}
+
+.battle-report-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #294259;
+}
+
+.battle-report-section h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+#battleReportStatus,
+.battle-report-section p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.battle-report-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.battle-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.battle-report-table th,
+.battle-report-table td {
+  padding: 9px 10px;
+  border: 1px solid #294259;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.battle-report-table th {
+  background: #152a3c;
+  color: #bceaff;
+}
+
+.battle-report-table td {
+  white-space: pre-wrap;
+}
+
+#battleReportDialog details {
+  margin: 10px 0;
+}
+
+@media (max-width: 760px) {
+  #battleReportDialog {
+    padding: 12px;
+  }
+
+  .battle-report-table {
+    min-width: 620px;
+  }
+}
+
   </style>
 
   <script type="module" src="./simulation-main.js"></script>
@@ -496,6 +595,9 @@
       <button id="axesToggle" type="button" aria-pressed="false">XYZ 軸を表示</button>
       <button id="colorToggle" type="button" aria-pressed="true">地形着色を非表示</button>
       <button id="export" type="button">観察JSONを書き出し</button>
+      <button id="showBattleReport" type="button" disabled>戦闘記録</button>
+      <button id="endSimulation" class="simulation-end-button"type="button"disabled> 推演を終了</button>
+
     </div>
   </header>
 
@@ -648,5 +750,53 @@
     <div id="environmentBadge" class="map-environment-badge"></div>
    </section>
   </main>
+  <dialog
+  id="battleReportDialog"
+  aria-labelledby="battleReportTitle"
+>
+  <div class="battle-report-header">
+    <h2 id="battleReportTitle">戦闘記録</h2>
+
+    <form method="dialog">
+      <button type="submit" autofocus>閉じる</button>
+    </form>
+  </div>
+
+  <p id="battleReportStatus" class="note"></p>
+
+  <section class="battle-report-section">
+    <h3>推演概要</h3>
+    <div id="battleReportOverview">
+      <p class="note">記録はまだ読み込まれていません。</p>
+    </div>
+  </section>
+
+  <section class="battle-report-section">
+    <h3>ラウンド別の攻撃</h3>
+
+    <p class="note">
+      正式に実行された攻撃を表示します。
+      攻撃回数と命中数は別々に集計します。
+      草案と未実行の攻撃計画は含みません。
+    </p>
+
+    <div id="battleReportRounds"></div>
+  </section>
+
+  <section class="battle-report-section">
+    <h3>ユニット別の行動・被害</h3>
+    <div id="battleReportUnits"></div>
+  </section>
+
+  <section class="battle-report-section">
+    <h3>未実行の攻撃計画</h3>
+
+    <p class="note">
+      推演終了によって、待機中の計画が自動実行されることはありません。
+    </p>
+
+    <div id="battleReportPending"></div>
+  </section>
+</dialog>
 </body>
 </html>
