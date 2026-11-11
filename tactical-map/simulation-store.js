@@ -45,6 +45,7 @@ import { normalizeCampaignIntro } from "./campaign-intro-data.js";
 
 import { buildBattleReport } from "./simulation-battle-report.js";
 
+import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
 
 
@@ -126,6 +127,8 @@ function initializeCombatRuntime(scene) {
   if (!Array.isArray(scene.instances)) {
     throw new Error("推演のユニット一覧が不正です。");
   }
+    initializeRoundTraitRuntime(scene);
+
 
   for (const unit of scene.instances) {
     ensureShipRuntime(unit);
