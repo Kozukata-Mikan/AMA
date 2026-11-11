@@ -43,6 +43,9 @@ import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
 import { readFiringArc } from "./weapon-firing-arc.js";
 import { normalizeCampaignIntro } from "./campaign-intro-data.js";
 
+import { buildBattleReport } from "./simulation-battle-report.js";
+
+
 
 
 
@@ -945,6 +948,17 @@ endSimulation(expectedRevision) {
   return api.getSimulationStatus();
 },
 
+getBattleReport() {
+  if (state.simulationEndRuntime.endedAt === null) {
+    throw new Error(
+      "全陣営の戦闘記録は、推演終了後に確認できます。"
+    );
+  }
+
+  // 结束后的专用复盘入口。
+  // 只返回报告摘要，不返回完整场景、部署快照或内部命令对象。
+  return copy(buildBattleReport(state));
+},
 
 
 
