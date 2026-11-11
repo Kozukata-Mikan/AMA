@@ -27,7 +27,7 @@ import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttack
 import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
 
 import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
-import { initializeSettlementRuntime, settleAttackPhase,prepareSettlementAttackPlan , validateDeferredAttackPlans } from "./simulation-settlement.js";
+import { initializeSettlementRuntime, settleAttackPhase,prepareSettlementAttackPlan , validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js";
 
 import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js";
 
@@ -1930,6 +1930,8 @@ if (equipmentPower) {
 
       const input = copy(request);
       let savedOrders = [];
+      let skippedCommands = [];
+
 
       commit(candidate => {
         if (!isAttackPhase(candidate.turn.phaseId)) {
@@ -2079,12 +2081,35 @@ if (equipmentPower) {
                 selectedIds.has(command.groupId)
             );
 
-          validateDeferredAttackPlans(
+                   const filtered = filterUnreachableAttackCommands(
             candidate,
             savedSelection
           );
 
+          skippedCommands = filtered.skipped;
+
+          const skippedIds = new Set(
+            skippedCommands.map(item => item.commandId)
+          );
+
+          // 只删除此次登记中不合格的命令。
+          // 其他单位和其他装备组的既有计划保留。
+          candidate.attackRuntime.commands =
+            candidate.attackRuntime.commands.filter(
+              command => !skippedIds.has(command.id)
+            );
+
+          const acceptedGroups = new Set(
+            filtered.accepted.map(command => command.groupId)
+          );
+
+          savedOrders = savedOrders.filter(
+            item => acceptedGroups.has(item.groupId)
+          );
+
+          // 保留全批资源、配额、未实现规则等正式保护。
           prepareSettlementAttackPlan(candidate);
+
       } catch (error) {
         const reason =
        typeof error?.message === "string" && error.message
@@ -2108,10 +2133,17 @@ if (equipmentPower) {
       });
 
       // 只有事务保存成功，才返回给界面。
-      return copy({
+     return copy({
         revision: state.revision,
-        commands: savedOrders
+        commands: savedOrders,
+        skippedCommands,
+        message: skippedCommands.length
+          ? `攻撃計画を${savedOrders.length}件保存しました。` +
+            `射距・射高・射界の条件を満たさない` +
+            `${skippedCommands.length}件は登録しませんでした。`
+          : `攻撃計画を${savedOrders.length}件保存しました。`
       });
+
     },
 
     cancelAttackCommands(
