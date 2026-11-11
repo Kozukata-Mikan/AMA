@@ -36,6 +36,12 @@ import {
   initializeRescueState
 } from "./simulation-rescue.js";
 
+import {
+  initializeRoundTraitRuntime,
+  resolveRoundTraits
+} from "./simulation-round-trait-runtime.js";
+
+
 const copy = value => JSON.parse(JSON.stringify(value));
 
 function fail(message) {
@@ -81,6 +87,8 @@ function validateScene(scene) {
   initializeRescueRuntime(scene);
   initializeSpecialRuntime(scene);
   initializePhaseFinishRuntime(scene);
+  initializeRoundTraitRuntime(scene);
+
 }
 
 /**
@@ -275,22 +283,7 @@ function preflightSpecial(scene) {
 
   for (const unit of scene.instances) {
     
-    const traits = new Set([
-      ...unit.trainingState.baseTraits,
-      ...unit.trainingState.acquiredTraits
-    ]);
-
-    if (
-      traits.has("one-against-thousand") &&
-      unit.branch === "navy" &&
-      ["moderate", "heavy", "sinking"]
-        .includes(unit.shipState.status)
-    ) {
-      fail(
-        "一騎当千のラウンド発動処理が未接続です。" +
-        "未判定の能力を省略して段階を終了できません。"
-      );
-    }
+   
 
     if (unit.branch !== "navy") {
       fail(
@@ -449,6 +442,10 @@ export function finishSpecialPhase(scene) {
   validateScene(working);
   assertNotCompleted(working, "special-complete");
   preflightSpecial(working);
+
+  // 正式事务中补判；已有本回合记录的单位不会重新抽签。
+  // 使用特殊阶段开始状态，不受随后火灾、浸水、救助影响。
+  resolveRoundTraits(working, working);
 
   const fireFlooding = applyFireFloodingSpecialStep(working);
 
