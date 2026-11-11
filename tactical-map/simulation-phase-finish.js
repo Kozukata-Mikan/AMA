@@ -472,6 +472,7 @@ export function finishSpecialPhase(scene) {
   scene.specialRuntime = working.specialRuntime;
   scene.rescueRuntime = working.rescueRuntime;
   scene.phaseFinishRuntime = working.phaseFinishRuntime;
+  scene.roundTraitRuntime = working.roundTraitRuntime;
   scene.turn = working.turn;
 
   return {
