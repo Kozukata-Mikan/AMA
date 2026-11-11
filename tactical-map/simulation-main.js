@@ -27,6 +27,7 @@ import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js";
 
+import { mountBattleReportUI } from "./simulation-battle-report.js";
 
 
 import {
@@ -1533,13 +1534,28 @@ registerPageDisposer(store.subscribe(() => {
 
   refresh();
   fitMap();
+  registerPageDisposer(mountBattleReportUI(store));
 
-  show(
-  "対応済みの移動・攻撃・PAS・特殊段階・ラウンド終了を専用操作から処理できます。\n" +
-  "自艦を選択すると、設備状態と範囲攻撃・設備修復の面板を表示します。\n" +
-  "外部設備修復の新規登録は正式規則の確認待ちです。" +
-  "未対応の規則は結算前に停止します。"
-);
+
+     if (store.getSimulationStatus().ended) {
+    // 不覆盖报告模块可能显示的具体错误。
+    if (!$("status").classList.contains("error")) {
+      show(
+        "この推演は終了しています。\n" +
+        "戦闘記録・ユニット情報・地図を確認できます。" +
+        "行動・計画・段階・設定は変更できません。"
+      );
+    }
+  } else {
+    show(
+      "対応済みの移動・攻撃・PAS・特殊段階・ラウンド終了を専用操作から処理できます。\n" +
+      "自艦を選択すると、設備状態と設備修復の面板を表示します。\n" +
+      "「推演を終了」から終了後の戦闘記録を確認できます。" +
+      "未対応の規則は結算前に停止します。"
+    );
+  }
+
+
 } catch (error) {
   console.error(error);
   show(error.message, true);
