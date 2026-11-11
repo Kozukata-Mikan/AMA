@@ -640,18 +640,23 @@ function selectableGroups() {
       }
 
       if (skipped.length) {
-        lines.push("", "【射距・射高・射界による登録見送り】");
+        lines.push("", "【射距・射高・射界・側別使用枠による計画除外】");
 
         for (const command of skipped) {
+          const groupLabel = command.unitId === submittedActorId
+            ? submittedGroups.get(command.groupId) ?? "装備組"
+            : "別ユニットの待機計画";
+
           lines.push(
-            `・${submittedGroups.get(command.groupId) ?? "装備組"}`,
+            `・${groupLabel}`,
             command.reason,
             ""
           );
         }
 
+
         lines.push(
-          "上記の攻撃は登録していません。" +
+          "上記の攻撃計画は保存結果に含まれていません。" +
           "目標・位置・方位を変更した後、再登録できます。"
         );
       }
