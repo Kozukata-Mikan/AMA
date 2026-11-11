@@ -1284,6 +1284,17 @@ function appendAutonomousAttackCommands(scene) {
     );
   }
 
+  // 先检查原有计划和历史。
+// 原有计划已经超限或历史资料错误，仍必须明确拒绝。
+// 后面只能跳过由新增自主候选造成的配额超限。
+const baselinePrepared = prepareAttackBatchResources(scene);
+
+prepareBatchHitChecks(
+  scene,
+  baselinePrepared,
+  finalPreflight
+);
+
   const neutralAggressors = new Set();
 
   // 中立知道自身阵营遭到的攻击，不读取其他阵营私有计划。
@@ -1576,16 +1587,23 @@ if (profile.issues.length) {
             finalPreflight
           );
         } catch (error) {
-          // 射程、射高、地形等明确资格失败允许换目标。
-          // 坏数据、未实现效果和算法错误不得静默吞掉。
+         // 当前候选目标不合格，尝试下一个目标。
          if (error.code === "TARGET_INELIGIBLE") {
          continue;
-         }
+          }
 
-           // 两舷配额超限必须整批拒绝并回滚，不能换目标重试。
-         throw error;
+         // 原有计划已通过基线检查。
+        // 新增自主候选超过侧别配额时，尝试其他目标。
+       // 所有目标均失败则本装备组待机，不生成命令。
+      if (error.code === "BROADSIDE_QUOTA") {
+       continue;
+      }
 
-        }
+       // 缺失历史、重复使用、坏数据、未实现效果等，
+       // 仍然停止整批，不静默跳过。
+      throw error;
+      }
+
 
         scene.attackRuntime.commands.push(command);
 
