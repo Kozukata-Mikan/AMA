@@ -706,7 +706,36 @@ try {
 }
 
 
-  const damageRule = parseDamageRule(profile);
+    let damageRule;
+
+  try {
+    damageRule = parseDamageRule(profile);
+  } catch (error) {
+    // 仅供开发者控制台诊断。
+    // 不加入页面反馈、观察导出或正式战斗记录。
+    console.error(
+      "[威力规则诊断]",
+      {
+        unitName: actor.name,
+        unitId: actor.instanceId,
+        side: actor.side,
+        weaponLabel: profile.label,
+        equipmentId: firingGroup.equipmentId,
+        groupId: firingGroup.id,
+        position: firingGroup.position,
+        groupIndex: firingGroup.groupIndex,
+        targetName: target.name,
+        powerRule: profile.powerRule,
+        powerRuleType: typeof profile.powerRule,
+        powerRuleJSON: JSON.stringify(profile.powerRule)
+      },
+      error
+    );
+
+    // 保留原异常，不跳过攻击、不改变事务行为。
+    throw error;
+  }
+
 
   // 目标资格与伤害规则分开检查。
   const underwaterWeapon =
