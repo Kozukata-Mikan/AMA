@@ -130,8 +130,10 @@ export function buildBattleReport(scene) {
       number: record.turnNumber,
       phases: new Set(),
       attacks: new Map(),
-      damage: new Map()
+      damage: new Map(),
+      collisions: []
     }));
+
 
     round.phases.add(record.phaseId);
 
@@ -238,6 +240,94 @@ export function buildBattleReport(scene) {
     }
   }
 
+    // 撞击来自正式移动历史，不混入武器攻击次数和命中数。
+  // 旧推演没有移动历史时，不补造过去的撞击。
+  const movementRecords = scene.movementRuntime === undefined
+    ? []
+    : scene.movementRuntime?.records;
+
+  if (!Array.isArray(movementRecords)) {
+    throw new Error("移動履歴を確認できません。");
+  }
+
+  let collisionCount = 0;
+  const movementTurns = new Set();
+
+  for (const record of movementRecords) {
+    if (
+      !record ||
+      record.version !== 1 ||
+      record.phaseId !== "movement" ||
+      !Number.isSafeInteger(record.turnNumber) ||
+      record.turnNumber < 1 ||
+      record.turnNumber > scene.turn.number ||
+      movementTurns.has(record.turnNumber) ||
+      !Number.isSafeInteger(record.elapsedMinutes) ||
+      record.elapsedMinutes < 0 ||
+      !Array.isArray(record.collisions)
+    ) {
+      throw new Error("撞撃を含む移動履歴が不正です。");
+    }
+
+    movementTurns.add(record.turnNumber);
+
+    // 没有撞击的移动记录不额外创建报告回合。
+    if (record.collisions.length === 0) continue;
+
+    const round = add(rounds, record.turnNumber, () => ({
+      number: record.turnNumber,
+      phases: new Set(),
+      attacks: new Map(),
+      damage: new Map(),
+      collisions: []
+    }));
+
+    round.phases.add("movement");
+
+    const events = record.collisions.map((collision, index) => {
+      if (
+        !collision ||
+        !Number.isFinite(collision.time) ||
+        collision.time < 0 ||
+        collision.time > 1 ||
+        !Array.isArray(collision.unitIds) ||
+        collision.unitIds.length !== 2 ||
+        collision.unitIds[0] === collision.unitIds[1] ||
+        collision.unitIds.some(id =>
+          typeof id !== "string" ||
+          !unitsById.has(id)
+        )
+      ) {
+        throw new Error("撞撃の参加ユニットまたは発生順序が不正です。");
+      }
+
+      return {
+        eventIndex: index,
+        time: collision.time,
+        elapsedMinutes: record.elapsedMinutes,
+        participants: collision.unitIds.map(id => {
+          const unit = unitsById.get(id);
+
+          return {
+            id,
+            name: unitName(unit, id),
+            side: SIDE_LABELS[unit.side] ?? "不明"
+          };
+        })
+      };
+    });
+
+    // 同时发生的事件保留原保存顺序。
+    events.sort((a, b) =>
+      a.time - b.time ||
+      a.eventIndex - b.eventIndex
+    );
+
+    round.collisions.push(...events);
+    collisionCount += events.length;
+  }
+
+  
   const pending = scene.attackRuntime?.commands ?? [];
 
   return {
@@ -250,17 +340,25 @@ export function buildBattleReport(scene) {
     commandCount: commands.size,
     projectionCount,
     totalHits,
+    collisionCount,
+
 
     rounds: [...rounds.values()]
       .sort((a, b) => a.number - b.number)
       .map(round => ({
         number: round.number,
-        phases: [...round.phases].map(phaseLabel),
+                phases: [...round.phases]
+          .sort((a, b) =>
+            Object.keys(PHASE_LABELS).indexOf(a) -
+            Object.keys(PHASE_LABELS).indexOf(b)
+          )
+          .map(phaseLabel),
         attacks: [...round.attacks.values()].map(row => ({
           ...row,
           phases: [...row.phases].map(phaseLabel)
         })),
-        damage: [...round.damage.values()]
+        damage: [...round.damage.values()],
+        collisions: round.collisions
       })),
 
     units: [...summaries.values()].map(unit => ({
@@ -377,6 +475,7 @@ function renderBattleReport(report, nodes) {
     `結算済み攻撃段階：${report.recordCount}`,
     `実行命令：${report.commandCount}件`,
     `対象別投射：${report.projectionCount}回 / 命中：${report.totalHits}枚`,
+    `撞撃：${report.collisionCount}件`,
     "終了ラウンドは、途中までの記録を含む場合があります。"
   ].join("\n")));
 
@@ -384,7 +483,7 @@ function renderBattleReport(report, nodes) {
 
   if (!report.rounds.length) {
     nodes.battleReportRounds.append(
-      paragraph("保存された正式攻撃履歴はありません。")
+      paragraph("保存された正式攻撃・撞撃履歴はありません。")
     );
   }
 
@@ -396,6 +495,28 @@ function renderBattleReport(report, nodes) {
       "summary",
       `ラウンド${round.number} / ${round.phases.join("・")}`
     ));
+
+        if (round.collisions.length) {
+      section.append(paragraph("【移動段階の撞撃】"));
+
+      section.append(table(
+        ["発生順", "撞撃した双方", "段階", "保存時の経過時間"],
+        round.collisions.map((collision, index) => [
+          String(index + 1),
+          collision.participants.map(unit =>
+            `${unit.name} / ${unit.side}\nID：${unit.id}`
+          ).join("\n↔\n"),
+          "移動段階",
+          `${collision.elapsedMinutes}分`
+        ])
+      ));
+
+      section.append(paragraph(
+        "同時発生の撞撃は保存順に表示します。" +
+        "経過時間は移動結算時に保存された値です。" +
+        "移動途中の発生時刻を分単位で推定していません。"
+      ));
+    }
 
     if (round.attacks.length) {
       section.append(table(
