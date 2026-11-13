@@ -1,9 +1,16 @@
 import {
   readShipProfile,
-  getReconConditions
+  getReconConditions,
+  applyShipCollisionDamage
 } from "./ship-runtime.js";
+
 import { sampleTerrain } from "./terrain-data.js";
-import { startPlannedRescues } from "./simulation-rescue.js";
+
+import {
+  startPlannedRescues,
+  reconcileActiveRescues
+} from "./simulation-rescue.js";
+
 import {
   createShipEffectsState,
   getFloodingMovementFactor
@@ -18,6 +25,14 @@ import {
 import {
   appendAutonomousRescuePlans
 } from "./simulation-autonomous-rescue.js";
+
+import {
+  routeLength,
+  trimRoute,
+  clipLandRoute,
+  resolveMovementRoutes
+} from "./simulation-movement-route.js";
+
 
 const SIDES = ["ally", "enemy", "neutral"];
 const GRADES = ["F", "E", "D", "C", "B", "A", "S", "U"];
@@ -68,6 +83,58 @@ export function initializeSimulationFeatures(scene) {
   if (!Array.isArray(scene.movementPlans)) {
     fail("移動計画の保存形式が不正です。");
   }
+
+    if (scene.movementRuntime !== undefined) {
+    const runtime = scene.movementRuntime;
+
+    if (
+      !runtime ||
+      runtime.version !== 1 ||
+      !Array.isArray(runtime.records)
+    ) {
+      fail("移動履歴の保存形式が不正です。");
+    }
+
+    const turns = new Set();
+
+    for (const record of runtime.records) {
+      if (
+        !record ||
+        record.version !== 1 ||
+        record.phaseId !== "movement" ||
+        !Number.isSafeInteger(record.turnNumber) ||
+        record.turnNumber < 1 ||
+        record.turnNumber > scene.turn.number ||
+        turns.has(record.turnNumber) ||
+        !Number.isSafeInteger(record.elapsedMinutes) ||
+        record.elapsedMinutes < 0 ||
+        !Array.isArray(record.destinations) ||
+        !Array.isArray(record.collisions) ||
+        !Array.isArray(record.damageReports)
+      ) {
+        fail("移動履歴の保存値が不正です。");
+      }
+
+      turns.add(record.turnNumber);
+
+      for (const collision of record.collisions) {
+        if (
+          !Number.isFinite(collision.time) ||
+          collision.time < 0 ||
+          collision.time > 1 ||
+          !Array.isArray(collision.unitIds) ||
+          collision.unitIds.length !== 2 ||
+          collision.unitIds[0] === collision.unitIds[1] ||
+          collision.unitIds.some(id =>
+            !scene.instances.some(unit => unit.instanceId === id)
+          )
+        ) {
+          fail("撞撃履歴の保存値が不正です。");
+        }
+      }
+    }
+  }
+
   if (!Array.isArray(scene.instances)) {
   fail("ユニットの保存形式が不正です。");
 }
@@ -761,6 +828,137 @@ function buildPlan(scene, ref, x, y) {
   };
 }
 
+function buildFollowPlan(scene, ref, x, y) {
+  if (ref?.kind !== "unit") {
+    fail("移動追随は分旗艦単体を選択して指定してください。");
+  }
+
+  const [leader] = movementMembers(scene, ref);
+
+  if (
+    leader.isFormationFlagship !== true ||
+    !scene.groups.some(group => group.id === leader.groupId)
+  ) {
+    fail("所属編隊の分旗艦のみ移動追随を指示できます。");
+  }
+
+  // 先使用原入口检查领舰额度与目标坐标。
+  const leaderPlan = buildPlan(scene, ref, x, y);
+  const rawLeaderRoute = [
+    { x: leader.x, y: leader.y },
+    { x, y }
+  ];
+
+  const leaderRoute = clipLandRoute(
+    scene.terrain,
+    leader,
+    rawLeaderRoute
+  ).route;
+
+  const leaderDistance = routeLength(leaderRoute);
+
+  // 不覆盖其他舰船已经保存的移动任务。
+  const occupied = new Set(
+    scene.movementPlans
+      .filter(plan =>
+        !(
+          plan.mode === "follow" &&
+          plan.ref?.kind === "unit" &&
+          plan.ref.id === leader.instanceId
+        ) &&
+        !(
+          plan.mode !== "follow" &&
+          plan.memberIds.length === 1 &&
+          plan.memberIds[0] === leader.instanceId
+        )
+      )
+      .flatMap(plan => plan.memberIds)
+  );
+
+  if (occupied.has(leader.instanceId)) {
+    fail("分旗艦が別の編隊移動計画に参加しています。先に取消してください。");
+  }
+
+  const members = [
+    leader,
+    ...scene.instances.filter(unit =>
+      unit.instanceId !== leader.instanceId &&
+      unit.groupId === leader.groupId &&
+      unit.side === leader.side &&
+      unit.branch === "navy" &&
+      operational(unit) &&
+      !occupied.has(unit.instanceId) &&
+      (unit.underwater === true) === (leader.underwater === true) &&
+      (
+        unit.underwater !== true ||
+        unit.depth === leader.depth
+      )
+    )
+  ];
+
+  assertManualControl(scene, members);
+
+  const destinations = [];
+  let previousRoute = leaderRoute;
+
+  for (let index = 0; index < members.length; index++) {
+    const unit = members[index];
+    let route;
+
+    if (index === 0) {
+      route = leaderRoute;
+    } else {
+      // 从自身起点接近前舰起点，再沿前舰已经规划的航迹走。
+      // 去掉前舰航迹末端1格，保留队列间距。
+      const trail = trimRoute(
+        previousRoute,
+        Math.max(0, routeLength(previousRoute) - 1)
+      );
+
+      const candidate = [
+        { x: unit.x, y: unit.y },
+        ...trail
+      ];
+
+      route = trimRoute(
+        candidate,
+        Math.min(leaderDistance, limitFor([unit]))
+      );
+
+      route = clipLandRoute(
+        scene.terrain,
+        unit,
+        route
+      ).route;
+    }
+
+    const end = route[route.length - 1];
+
+    destinations.push({
+      instanceId: unit.instanceId,
+      fromX: unit.x,
+      fromY: unit.y,
+      x: end.x,
+      y: end.y,
+      distance: routeLength(route),
+      route
+    });
+
+    previousRoute = route;
+  }
+
+  return {
+    mode: "follow",
+    turnNumber: scene.turn.number,
+    ref: clone(ref),
+    formationId: leader.groupId,
+    requestedX: x,
+    requestedY: y,
+    memberIds: members.map(unit => unit.instanceId),
+    distance: leaderPlan.distance,
+    destinations
+  };
+}
 
 /**
  * 自动移动策略。
@@ -1161,19 +1359,45 @@ export function createSimulationFeatures(getState, commit) {
       });
     },
 
-    planMovement(ref, x, y) {
+        planMovement(ref, x, y, options = {}) {
+      if (
+        !options ||
+        typeof options !== "object" ||
+        Array.isArray(options) ||
+        (
+          options.followFormationMovement !== undefined &&
+          typeof options.followFormationMovement !== "boolean"
+        )
+      ) {
+        fail("移動追随の指定が不正です。");
+      }
+
       commit(scene => {
-        const plan = buildPlan(scene, ref, x, y);
+        const follow = options.followFormationMovement === true;
+
+        const plan = follow
+          ? buildFollowPlan(scene, ref, x, y)
+          : buildPlan(scene, ref, x, y);
+
         const ids = new Set(plan.memberIds);
 
-        // 同じユニットの旧計画を置換する。移動予算はまだ消費しない。
-        scene.movementPlans = scene.movementPlans.filter(
-          old => !old.memberIds.some(id => ids.has(id))
-        );
+        scene.movementPlans = scene.movementPlans.filter(old => {
+          if (
+            old.mode === "follow" &&
+            old.ref?.kind === "unit" &&
+            old.ref.id === ref.id &&
+            ref.kind === "unit"
+          ) {
+            return false;
+          }
+
+          return !old.memberIds.some(id => ids.has(id));
+        });
 
         scene.movementPlans.push(plan);
       });
     },
+
 
     cancelMovement(ref) {
       commit(scene => {
@@ -1236,7 +1460,7 @@ validationScene.controls.enemyAutonomy = false;
 
 
 
-        const checked = [];
+                const checked = [];
         const used = new Set();
 
         for (const saved of movementPlans) {
@@ -1244,30 +1468,77 @@ validationScene.controls.enemyAutonomy = false;
             fail("別ラウンドの移動計画が混在しています。");
           }
 
-          const members = entityMembers(scene, saved.ref);
+          let rebuilt;
 
-          if (
-            members.length !== saved.memberIds.length ||
-            members.some(unit => !saved.memberIds.includes(unit.instanceId))
-          ) {
-            fail("編隊構成が変更されています。移動計画を再指定してください。");
+          if (saved.mode === "follow") {
+            const leader = scene.instances.find(
+              unit => unit.instanceId === saved.ref?.id
+            );
+
+            if (
+              !leader ||
+              leader.groupId !== saved.formationId
+            ) {
+              fail("追随編隊が変更されています。計画を再指定してください。");
+            }
+
+            validationScene.controls.observationSide = leader.side;
+
+            rebuilt = buildFollowPlan(
+              validationScene,
+              saved.ref,
+              saved.requestedX,
+              saved.requestedY
+            );
+
+            // 包括成员顺序、起点、路线和各舰距离。
+            if (JSON.stringify(rebuilt) !== JSON.stringify(saved)) {
+              fail("追随条件が変更されています。計画を再指定してください。");
+            }
+          } else {
+            const members = entityMembers(scene, saved.ref);
+
+            if (
+              members.length !== saved.memberIds.length ||
+              members.some(unit =>
+                !saved.memberIds.includes(unit.instanceId)
+              )
+            ) {
+              fail("編隊構成が変更されています。移動計画を再指定してください。");
+            }
+
+            validationScene.controls.observationSide = members[0].side;
+
+            const anchor = saved.destinations.find(
+              item => item.instanceId === members[0].instanceId
+            );
+
+            if (!anchor) fail("移動計画の座標が不正です。");
+
+            rebuilt = buildPlan(
+              validationScene,
+              saved.ref,
+              anchor.x,
+              anchor.y
+            );
           }
 
-          validationScene.controls.observationSide = members[0].side;
-
-          const anchor = saved.destinations.find(
-            item => item.instanceId === members[0].instanceId
-          );
-
-          if (!anchor) fail("移動計画の座標が不正です。");
+          if (
+            saved.destinations.length !== saved.memberIds.length ||
+            new Set(saved.destinations.map(item => item.instanceId)).size !==
+              saved.memberIds.length
+          ) {
+            fail("移動計画の終点一覧が不正です。");
+          }
 
           for (const destination of saved.destinations) {
-            const unit = members.find(
+            const unit = scene.instances.find(
               item => item.instanceId === destination.instanceId
             );
 
             if (
               !unit ||
+              !saved.memberIds.includes(unit.instanceId) ||
               unit.x !== destination.fromX ||
               unit.y !== destination.fromY ||
               used.has(unit.instanceId)
@@ -1278,26 +1549,100 @@ validationScene.controls.enemyAutonomy = false;
             used.add(unit.instanceId);
           }
 
-          checked.push(buildPlan(validationScene, saved.ref, anchor.x, anchor.y));
+          checked.push(rebuilt);
         }
 
-      
+        const routes = checked.flatMap(plan =>
+          plan.destinations.map(destination => ({
+            instanceId: destination.instanceId,
+            route: destination.route ?? [
+              { x: destination.fromX, y: destination.fromY },
+              { x: destination.x, y: destination.y }
+            ]
+          }))
+        );
 
-        // 全計画の検証が成功してから、同じトランザクションで適用する。
-        for (const plan of checked) {
-          for (const destination of plan.destinations) {
+        const movement = resolveMovementRoutes(
+          scene,
+          routes,
+          unit => limitFor([unit])
+        );
+
+        // 到这里全场路线、陆地截停与接触事件均已确定。
+        for (const destination of movement.destinations) {
+          const unit = scene.instances.find(
+            item => item.instanceId === destination.instanceId
+          );
+
+          unit.x = destination.x;
+          unit.y = destination.y;
+
+          unit.shipState.remainingEndurance = Math.max(
+            0,
+            unit.shipState.remainingEndurance - destination.distance
+          );
+        }
+
+        const damageByUnit = new Map();
+
+        for (const collision of movement.collisions) {
+          for (const id of collision.unitIds) {
             const unit = scene.instances.find(
-              item => item.instanceId === destination.instanceId
+              item => item.instanceId === id
             );
 
-            unit.x = destination.x;
-            unit.y = destination.y;
-            unit.shipState.remainingEndurance = Math.max(
-              0,
-              unit.shipState.remainingEndurance - plan.distance
-            );
+            const maxHp = readShipProfile(unit).maxHp;
+            const damage = Math.max(1, Math.ceil(maxHp / 2));
+
+            if (!Number.isSafeInteger(damage)) {
+              fail("撞撃被害の計算結果が不正です。");
+            }
+
+            const total = (damageByUnit.get(id) ?? 0) + damage;
+
+            if (!Number.isSafeInteger(total)) {
+              fail("撞撃被害の合計が範囲外です。");
+            }
+
+            damageByUnit.set(id, total);
           }
         }
+
+        const damageReports = [];
+
+        for (const [id, damage] of damageByUnit) {
+          const unit = scene.instances.find(
+            item => item.instanceId === id
+          );
+
+          damageReports.push(
+            applyShipCollisionDamage(
+              unit,
+              damage,
+              {
+                turnNumber: scene.turn.number,
+                phaseId: "movement"
+              }
+            )
+          );
+        }
+
+        reconcileActiveRescues(scene);
+
+        scene.movementRuntime ??= {
+          version: 1,
+          records: []
+        };
+
+        scene.movementRuntime.records.push({
+          version: 1,
+          turnNumber: scene.turn.number,
+          phaseId: "movement",
+          elapsedMinutes: scene.turn.elapsedMinutes,
+          destinations: clone(movement.destinations),
+          collisions: clone(movement.collisions),
+          damageReports: clone(damageReports)
+        });
 
         // 全部舰船已完成移动，使用移动后的真实位置决策。
 // 自主计划与玩家计划一起进入原任务启动流程。
