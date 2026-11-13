@@ -1812,9 +1812,20 @@ export function validateDeferredAttackPlans(
 // 单体攻击：先检查几何，再按固定顺序分配本回合侧别额度。
 // 范围攻击保留原来的候选检查与实际投射配额检查。
 // 不投币、不扣弹、不修改输入场景。
-export function filterUnreachableAttackCommands(scene, commands) {
+export function filterUnreachableAttackCommands(
+  scene,
+  commands,
+  {
+    priorityCommandIds = [],
+    skippableTargetCommandIds = []
+  } = {}
+) {
   const accepted = [];
   const skipped = [];
+
+  const priorityIds = new Set(priorityCommandIds);
+  const targetSkipIds = new Set(skippableTargetCommandIds);
+
 
   const records = scene.settlementRuntime?.attackRecords ?? [];
 
@@ -1834,12 +1845,15 @@ export function filterUnreachableAttackCommands(scene, commands) {
   };
 
   const ordered = [...commands].sort((a, b) =>
+    Number(priorityIds.has(b.id)) -
+      Number(priorityIds.has(a.id)) ||
     (phasePriority[a.phaseId] ?? 99) -
       (phasePriority[b.phaseId] ?? 99) ||
     compareText(a.unitId, b.unitId) ||
     compareText(a.groupId, b.groupId) ||
     compareText(a.id, b.id)
   );
+
 
   function skip(command, reason) {
     skipped.push({
@@ -1860,12 +1874,17 @@ export function filterUnreachableAttackCommands(scene, commands) {
         { includeCurrent: true }
       );
     } catch (error) {
-      if (
-        error.code !== "TARGET_INELIGIBLE" ||
-        error.skipAttack !== true
-      ) {
+      const canSkipTarget =
+        error.code === "TARGET_INELIGIBLE" &&
+        (
+          error.skipAttack === true ||
+          targetSkipIds.has(command.id)
+        );
+
+      if (!canSkipTarget) {
         throw error;
       }
+
 
       skip(command, error.message);
       continue;
