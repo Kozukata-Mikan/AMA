@@ -49,6 +49,9 @@ import {
 
 import { getFactionName } from "../js/faction-data.js";
 
+import { getFlagshipDisplayName } from "./flagship-display.js";
+
+
 // ===== 推演页面 =====
 // 不挂载 mountEditor、mountTerrainEditor 或 mountUnitDeployment。
 
@@ -557,8 +560,8 @@ if (unit.observationLevel === "shadow") {
   }
 
 
-  $("unitInfo").textContent = [
-    unit.name,
+    $("unitInfo").textContent = [
+    getFlagshipDisplayName(unit),
     `色陣営：${getFactionName(unit.faction)}`,
     `作戦関係：${SIDE_LABELS[unit.side] ?? "不明"}`,
     `体型：${unit.sizeLevel}`,
@@ -720,7 +723,7 @@ function drawMap() {
       transform: `translate(${position.x} ${position.y})`,
       tabindex: 0,
       role: "button",
-      "aria-label": unit.name,
+      "aria-label": getFlagshipDisplayName(unit),
       "data-instance-id": unit.instanceId
     }, unitLayer);
 
@@ -811,7 +814,7 @@ function drawMap() {
       y: -labelHeight + 4
     }, group);
 
-    label.textContent = unit.name;
+  label.textContent = getFlagshipDisplayName(unit);
     // 集群代理只汇总观察副本中允许显示的己方状态。
 // 不读取或推断外方装备损伤、任务种类。
 const statusMembers = unit.clusterMembers?.length
@@ -966,7 +969,7 @@ function refillEntities(id) {
 
         addOption(
           `${BRANCH_LABELS[branch]} / ${SIDE_LABELS[side]}`,
-          `${unit.name} · ${unit.instanceId.slice(-6)}`,
+          `${getFlagshipDisplayName(unit)} · ${unit.instanceId.slice(-6)}`,
           { kind: "unit", id: unit.instanceId }
         );
       }
@@ -1111,9 +1114,13 @@ function renderGroups(scene) {
         id: group.id
       });
 
-      const names = node("p",
-        entity.members.map(unit => unit.name).join("\n")
+      const names = node(
+        "p",
+        entity.members
+          .map(unit => getFlagshipDisplayName(unit))
+          .join("\n")
       );
+
 
       names.className = "note";
       card.append(names);
@@ -1191,14 +1198,14 @@ function renderUnitList() {
       ));
 
       for (const unit of members) {
-        const entry = button(
-            unit.observationLevel === "shadow"
+      const entry = button(
+          unit.observationLevel === "shadow"
             ? "未識別の影"
-            : `${unit.name} / 体型 ${unit.sizeLevel}` +
+            : `${getFlagshipDisplayName(unit)} / 体型 ${unit.sizeLevel}` +
               ` / 耐性 ${unit.currentHp}`,
-
           () => selectUnit(unit.instanceId)
         );
+
 
         entry.className = "unit-entry";
         sideSection.append(entry);
@@ -1311,7 +1318,10 @@ function refresh() {
     check.type = "checkbox";
     check.value = unit.instanceId;
 
-    label.append(check, node("span", unit.name));
+        label.append(
+      check,
+      node("span", getFlagshipDisplayName(unit))
+    );
     $("members").append(label);
   }
 
