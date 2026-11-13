@@ -41,6 +41,47 @@ export function mountSimulationFeatures(store, context) {
   const actorLabel = element("label");
   actorLabel.append(element("span", "移動する艦船・編隊"), actor);
 
+    const follow = element("input");
+  follow.type = "checkbox";
+  follow.style.width = "auto";
+
+  const followLabel = element("label");
+  followLabel.append(
+    follow,
+    element("span", "分旗艦の航跡に編隊が追随する")
+  );
+
+  let followActorValue = "";
+
+  function syncFollow(scene) {
+    let unit = null;
+
+    if (actor.value) {
+      const selected = JSON.parse(actor.value);
+
+      if (selected.kind === "unit") {
+        unit = scene.instances.find(
+          item => item.instanceId === selected.id
+        );
+      }
+    }
+
+    const allowed =
+      scene.turn.phaseId === "movement" &&
+      unit?.observationOwn === true &&
+      unit.branch === "navy" &&
+      unit.isFormationFlagship === true &&
+      scene.groups.some(group => group.id === unit.groupId);
+
+    if (followActorValue !== actor.value || !allowed) {
+      follow.checked = false;
+    }
+
+    followActorValue = actor.value;
+    follow.disabled = !allowed;
+  }
+
+
   const x = element("input");
   const y = element("input");
   x.type = y.type = "number";
@@ -93,7 +134,12 @@ export function mountSimulationFeatures(store, context) {
       throw new Error("移動先のXとYを入力してください。");
     }
 
-    store.planMovement(ref(), Number(x.value), Number(y.value));
+    store.planMovement(
+      ref(),
+      Number(x.value),
+      Number(y.value),
+      { followFormationMovement: follow.checked }
+    );
     status.textContent = "移動計画を保存しました。位置と航続距離はまだ変更していません。";
   });
 
@@ -125,14 +171,19 @@ if (!confirm(
   panel.append(
     sideLabel,
     actorLabel,
+    followLabel,
     xLabel,
     yLabel,
     buttons,
     element(
       "p",
       "移動段階では自陣営の艦船をドラッグできます。" +
-      "編隊移動は選択欄から指定してください。" +
-      "円は距離上限であり、全地点への通行成功を保証しません。"
+      "分旗艦を選択して追随を指定すると、直属編隊の行動可能艦が航跡を追います。" +
+      "他艦の保存済み移動計画は追随登録で変更しません。" +
+      "水面艦は陸地の手前で停止し、河川・浅海は通行可能です。" +
+      "艦船接触は移動処理時に撞撃として結算します。" +
+      "各艦は自身の最大耐性の半分を失います。" +
+      "円と予定航跡は、途中停止がないことを保証しません。"
     ),
     status
   );
@@ -183,19 +234,28 @@ if (!confirm(
 
       for (const plan of scene.movementPlans) {
         for (const destination of plan.destinations) {
-          const from = project(destination.fromX, destination.fromY, 0);
-          const to = project(destination.x, destination.y, 0);
+            const route = destination.route ?? [
+            { x: destination.fromX, y: destination.fromY },
+            { x: destination.x, y: destination.y }
+          ];
 
-          svgElement("line", {
-            x1: from.x,
-            y1: from.y,
-            x2: to.x,
-            y2: to.y,
-            stroke: "#f6d65b",
+          const projected = route.map(point =>
+            project(point.x, point.y, 0)
+          );
+
+          const to = projected[projected.length - 1];
+
+          svgElement("polyline", {
+            points: projected
+              .map(point => `${point.x},${point.y}`)
+              .join(" "),
+            fill: "none",
+            stroke: plan.mode === "follow" ? "#9ce6b3" : "#f6d65b",
             "stroke-dasharray": "5 4",
             "stroke-width": 1.5,
             "vector-effect": "non-scaling-stroke"
           }, layer);
+
 
           svgElement("circle", {
             cx: to.x,
@@ -290,7 +350,7 @@ if (!movement) {
     "艦船移動は移動段階でのみ指定できます。";
 }
 
-
+    syncFollow(scene);
     drawRange();
   }
 
@@ -300,6 +360,7 @@ if (!movement) {
   }));
 
   actor.addEventListener("change", () => {
+  syncFollow(store.getScene());
   const movement =
     store.getScene().turn.phaseId === "movement";
 
@@ -355,6 +416,7 @@ if (!movement) {
       const point = screenPoint(event);
 
       actor.value = JSON.stringify(movementRef);
+      syncFollow(scene);
       x.value = info.x;
       y.value = info.y;
       drawRange();
@@ -362,6 +424,7 @@ if (!movement) {
       drag = {
         pointerId: event.pointerId,
         ref: movementRef,
+        followFormationMovement: follow.checked,
         unitX: info.x,
         unitY: info.y,
         startX: point.x,
@@ -422,11 +485,15 @@ if (!movement) {
     suppressClickUntil = performance.now() + 400;
 
     run(() => {
-      store.planMovement(
+        store.planMovement(
         current.ref,
         Number(x.value),
-        Number(y.value)
+        Number(y.value),
+        {
+          followFormationMovement: current.followFormationMovement
+        }
       );
+
       status.textContent = "ドラッグした移動計画を保存しました。";
     });
   }
@@ -457,6 +524,7 @@ if (!movement) {
 
     if ([...actor.options].some(option => option.value === value)) {
       actor.value = value;
+      syncFollow(store.getScene());
       drawRange();
     }
   });
