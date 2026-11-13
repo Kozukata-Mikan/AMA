@@ -57,6 +57,44 @@ export function mountAttackUI(store) {
   const actor = element("select");
   const target = element("select");
 
+    const followFormationAttack = element("input");
+  followFormationAttack.type = "checkbox";
+  followFormationAttack.style.width = "auto";
+
+  const followControl = labeled(
+    "分旗艦の攻撃に編隊が追随する",
+    followFormationAttack
+  );
+
+  const followNote = element("p");
+  followNote.className = "note";
+
+  function syncFollowControl(scene, reset = false) {
+    const unit = scene.instances.find(
+      item => item.instanceId === actor.value
+    );
+
+    const allowed =
+      unit?.observationOwn === true &&
+      unit.observationLevel === "identified" &&
+      unit.branch === "navy" &&
+      unit.isFormationFlagship === true &&
+      scene.groups.some(group => group.id === unit.groupId);
+
+    followFormationAttack.disabled = !allowed;
+
+    if (reset || !allowed) {
+      followFormationAttack.checked = false;
+    }
+
+    followNote.textContent = allowed
+      ? "勾選時は、選択した単体武器の全組に同じ艦船目標を割り当ててください。" +
+        "同編隊の他艦は、保存済み計画を変更せず、使用可能な単体武器だけ追随登録します。" +
+        "追随の保存も発射ではありません。"
+      : "攻撃追随は所属編隊の分旗艦のみ指定できます。";
+  }
+
+
   const equipmentList = element("div");
   equipmentList.setAttribute("role", "group");
   equipmentList.setAttribute("aria-label", "使用する装備組");
@@ -608,8 +646,10 @@ function selectableGroups() {
     try {
       const receipt = store.saveAttackCommands({
         unitId: submittedActorId,
-        assignments
+        assignments,
+        followFormationAttack: followFormationAttack.checked
       }, submittedRevision);
+
 
       const saved = receipt.commands;
       const skipped = receipt.skippedCommands ?? [];
@@ -661,6 +701,44 @@ function selectableGroups() {
         );
       }
 
+            if (receipt.follow?.enabled) {
+        const followed = receipt.follow.commands;
+        const followSkipped = receipt.follow.skipped;
+
+        lines.push(
+          "",
+          "【編隊の攻撃追随】",
+          `追随登録：${followed.length}組`,
+          `追随を見送った項目：${followSkipped.length}件`
+        );
+
+        for (const command of followed) {
+          lines.push(
+            `・${command.unitName}`,
+            `  ${command.groupLabel}`,
+            `  実行：${getPhaseLabel(command.phaseId)}`
+          );
+        }
+
+        if (followSkipped.length) {
+          lines.push("", "【追随見送り・既存計画の保持】");
+
+          for (const item of followSkipped) {
+            lines.push(
+              `・${item.unitName} / ${item.groupLabel}`,
+              item.reason,
+              ""
+            );
+          }
+        }
+
+        lines.push(
+          "他艦の保存済み計画は変更していません。",
+          "追随計画も未発射です。実行段階で条件を再確認します。"
+        );
+      }
+
+      
       lines.push(
         "",
         "発射・コイン判定・弾薬消費・被害適用は行っていません。",
@@ -822,6 +900,8 @@ panel.append(
   labeled("選択した装備組に割り当てる目標", target),
   assignTarget,
   removeAssignment,
+  followControl,
+  followNote,
   saveCommands,
   cancelCommands,
   rangeHost,
@@ -952,6 +1032,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
       selectedActorId = actor.value;
     }
 
+   syncFollowControl(scene);
    refillTargets(scene);
    refreshReport();
    syncRangePanel(scene);
@@ -967,6 +1048,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
 
   const scene = store.getScene();
 
+  syncFollowControl(scene, true);
   refillTargets(scene);
   refreshReport();
   syncRangePanel(scene);
