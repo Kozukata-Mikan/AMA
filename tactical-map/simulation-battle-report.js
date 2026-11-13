@@ -21,8 +21,10 @@ const SIDE_LABELS = {
 };
 
 const STATUS_LABELS = {
+  intact: "無傷",
+  minor: "軽微な損傷",
   normal: "正常",
-  light: "軽微な損傷",
+  light: "小破",
   moderate: "中破",
   heavy: "大破",
   sinking: "沈没寸前",
@@ -96,6 +98,9 @@ export function buildBattleReport(scene) {
       receivedHits: 0,
       receivedWeapons: new Map(),
       calculatedDamage: 0,
+      collisionCount: 0,
+      collisionRequestedDamage: 0,
+      collisionActualHpLoss: 0,
       currentHp: unit.currentHp,
       status: STATUS_LABELS[unit.shipState?.status] ??
         unit.shipState?.status ??
@@ -113,6 +118,9 @@ export function buildBattleReport(scene) {
       receivedHits: 0,
       receivedWeapons: new Map(),
       calculatedDamage: 0,
+      collisionCount: 0,
+      collisionRequestedDamage: 0,
+      collisionActualHpLoss: 0,
       currentHp: null,
       status: "状態未記録"
     }));
@@ -131,7 +139,8 @@ export function buildBattleReport(scene) {
       phases: new Set(),
       attacks: new Map(),
       damage: new Map(),
-      collisions: []
+      collisions: [],
+      collisionDamage: []
     }));
 
 
@@ -264,7 +273,8 @@ export function buildBattleReport(scene) {
       movementTurns.has(record.turnNumber) ||
       !Number.isSafeInteger(record.elapsedMinutes) ||
       record.elapsedMinutes < 0 ||
-      !Array.isArray(record.collisions)
+      !Array.isArray(record.collisions) ||
+      !Array.isArray(record.damageReports)
     ) {
       throw new Error("撞撃を含む移動履歴が不正です。");
     }
@@ -279,7 +289,8 @@ export function buildBattleReport(scene) {
       phases: new Set(),
       attacks: new Map(),
       damage: new Map(),
-      collisions: []
+      collisions: [],
+      collisionDamage: []
     }));
 
     round.phases.add("movement");
@@ -323,6 +334,89 @@ export function buildBattleReport(scene) {
       a.eventIndex - b.eventIndex
     );
 
+        // 每次撞击计一次参与次数；
+    // 阶段合算伤害只按 damageReports 累计一次。
+    const participants = new Set();
+
+    for (const event of events) {
+      for (const participant of event.participants) {
+        participants.add(participant.id);
+        summaryFor(participant.id).collisionCount += 1;
+      }
+    }
+
+    const reportedIds = new Set();
+
+    for (const damage of record.damageReports) {
+      if (
+        !damage ||
+        damage.version !== 1 ||
+        damage.turnNumber !== record.turnNumber ||
+        damage.phaseId !== "movement" ||
+        typeof damage.targetId !== "string" ||
+        !participants.has(damage.targetId) ||
+        reportedIds.has(damage.targetId)
+      ) {
+        throw new Error(
+          "撞撃被害の対象・段階が不正、または重複しています。"
+        );
+      }
+
+      const requestedHpDamage = count(
+        damage.requestedHpDamage,
+        "撞撃による算定耐性被害"
+      );
+
+      // 耐性允许有限数值，不能擅自要求历史耐性必须为整数。
+      for (const key of [
+        "actualHpLoss",
+        "beforeHp",
+        "afterHp"
+      ]) {
+        if (
+          !Number.isFinite(damage[key]) ||
+          damage[key] < 0
+        ) {
+          throw new Error("撞撃による耐性変化の履歴が不正です。");
+        }
+      }
+
+      if (
+        damage.actualHpLoss !==
+          damage.beforeHp - damage.afterHp ||
+        damage.actualHpLoss > requestedHpDamage + 1e-7 ||
+        !Object.hasOwn(STATUS_LABELS, damage.beforeStatus) ||
+        !Object.hasOwn(STATUS_LABELS, damage.afterStatus)
+      ) {
+        throw new Error("撞撃被害と耐性・状態の履歴が一致しません。");
+      }
+
+      reportedIds.add(damage.targetId);
+
+      const unit = unitsById.get(damage.targetId);
+      const summary = summaryFor(damage.targetId);
+
+      summary.collisionRequestedDamage += requestedHpDamage;
+      summary.collisionActualHpLoss += damage.actualHpLoss;
+
+      round.collisionDamage.push({
+        id: damage.targetId,
+        name: unitName(unit, damage.targetId),
+        requestedHpDamage,
+        actualHpLoss: damage.actualHpLoss,
+        beforeHp: damage.beforeHp,
+        afterHp: damage.afterHp,
+        beforeStatus: STATUS_LABELS[damage.beforeStatus],
+        afterStatus: STATUS_LABELS[damage.afterStatus]
+      });
+    }
+
+    // 当前移动结算对每名撞击参与舰生成一份合算报告。
+    // 报告缺失时明确报错，不根据最大耐性倒推旧伤害。
+    if (reportedIds.size !== participants.size) {
+      throw new Error("撞撃参加ユニットの被害履歴が不足しています。");
+    }
+
     round.collisions.push(...events);
     collisionCount += events.length;
   }
@@ -358,7 +452,8 @@ export function buildBattleReport(scene) {
           phases: [...row.phases].map(phaseLabel)
         })),
         damage: [...round.damage.values()],
-        collisions: round.collisions
+        collisions: round.collisions,
+        collisionDamage: round.collisionDamage
       })),
 
     units: [...summaries.values()].map(unit => ({
@@ -370,6 +465,9 @@ export function buildBattleReport(scene) {
       receivedHits: unit.receivedHits,
       receivedWeapons: [...unit.receivedWeapons.values()],
       calculatedDamage: unit.calculatedDamage,
+      collisionCount: unit.collisionCount,
+      collisionRequestedDamage: unit.collisionRequestedDamage,
+      collisionActualHpLoss: unit.collisionActualHpLoss,
       currentHp: unit.currentHp,
       status: unit.status
     })),
@@ -518,6 +616,31 @@ function renderBattleReport(report, nodes) {
       ));
     }
 
+       if (round.collisionDamage.length) {
+      section.append(paragraph(
+        "【移動段階の撞撃被害・ユニット別合算】"
+      ));
+
+      section.append(table(
+        ["ユニット", "算定被害", "実際の耐性減少", "耐性変化", "状態変化"],
+        round.collisionDamage.map(row => [
+          `${row.name}\nID：${row.id}`,
+          row.requestedHpDamage,
+          row.actualHpLoss,
+          `${row.beforeHp} → ${row.afterHp}`,
+          `${row.beforeStatus} → ${row.afterStatus}`
+        ])
+      ));
+
+      section.append(paragraph(
+        "同じ移動段階で複数回撞撃した場合、" +
+        "被害はユニットごとの合算値です。" +
+        "各撞撃への割当ては推定していません。\n" +
+        "算定被害と実際の耐性減少は別の値です。"
+      ));
+    }
+
+    
     if (round.attacks.length) {
       section.append(table(
         ["攻撃側 → 目標", "兵装", "投射 / 命中", "段階", "操作"],
@@ -550,19 +673,39 @@ function renderBattleReport(report, nodes) {
   nodes.battleReportUnits.replaceChildren();
 
   if (report.units.length) {
-    nodes.battleReportUnits.append(table(
-      ["ユニット", "実行命令", "受けた投射・命中", "算定耐性被害", "終了時状態"],
+        nodes.battleReportUnits.append(table(
+      [
+        "ユニット",
+        "実行攻撃・受けた投射",
+        "攻撃による算定耐性被害",
+        "撞撃の参加・被害",
+        "終了時状態"
+      ],
       report.units.map(unit => [
         `${unit.name} / ${unit.side}`,
-        unit.attackCommands
-          ? `${unit.attackCommands}件`
-          : "実行された攻撃なし",
-        unit.receivedWeapons.length
-          ? unit.receivedWeapons.map(item =>
-              `${item.weapon}：投射${item.projections}回 / 命中${item.hits}枚`
-            ).join("\n")
-          : "記録なし",
+
+        [
+          unit.attackCommands
+            ? `実行攻撃：${unit.attackCommands}件`
+            : "実行された攻撃なし",
+
+          unit.receivedWeapons.length
+            ? unit.receivedWeapons.map(item =>
+                `${item.weapon}：投射${item.projections}回 / 命中${item.hits}枚`
+              ).join("\n")
+            : "受けた武器投射：記録なし"
+        ].join("\n"),
+
         String(unit.calculatedDamage),
+
+        unit.collisionCount
+          ? [
+              `撞撃参加：${unit.collisionCount}回`,
+              `算定被害：${unit.collisionRequestedDamage}`,
+              `実際の耐性減少：${unit.collisionActualHpLoss}`
+            ].join("\n")
+          : "撞撃記録なし",
+
         `耐性：${unit.currentHp ?? "未記録"} / ${unit.status}`
       ])
     ));
@@ -570,6 +713,7 @@ function renderBattleReport(report, nodes) {
 
   nodes.battleReportUnits.append(paragraph(
     "「実行された攻撃なし」は、保存履歴内に実行攻撃がないことを示します。" +
+    "撞撃は武器攻撃の命令数・投射数・命中数に含みません。" +
     "待機理由や行動不能の原因を推定する表示ではありません。"
   ));
 
