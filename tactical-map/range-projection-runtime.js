@@ -272,9 +272,56 @@ export function prepareRangeProjection({
     .map(check => check.targetId)
     .sort(compareText);
 
-  if (eligibleIds.length === 0) {
-    fail("主目標の範囲に攻撃可能なメンバーがいません。");
+    if (eligibleIds.length === 0) {
+    // 即使没有合格成员，也先检查命令结构与引导参数。
+    // 坏数据、未支持规则不能伪装成普通候选不合格。
+    if (!Array.isArray(specifiedTargetIds)) {
+      fail("指定範囲メンバーの形式が不正です。");
+    }
+
+    if (
+      normalizedScope.mode !== "specified" &&
+      specifiedTargetIds.length !== 0
+    ) {
+      fail("この範囲方式では個別メンバーを指定できません。");
+    }
+
+    if (normalizedScope.mode === "specified") {
+      if (
+        specifiedTargetIds.length === 0 ||
+        new Set(specifiedTargetIds).size !==
+          specifiedTargetIds.length ||
+        specifiedTargetIds.some(id => !memberIds.includes(id))
+      ) {
+        fail("指定メンバーが重複、未指定、または主目標の範囲外です。");
+      }
+
+      if (
+        specifiedTargetIds.length >
+        normalizedScope.maximumTargets
+      ) {
+        fail("指定メンバー数が範囲上限を超えています。");
+      }
+    }
+
+    // 固定硬币源仅做参数验证，不使用正式随机数。
+    resolveHitCoins({
+      groups,
+      coinsPerGroup,
+      standalone: projection.standalone,
+      guidance,
+      bonuses: 0,
+      penalties: 0
+    }, () => false);
+
+    const error = new Error(
+      "主目標の範囲に攻撃可能なメンバーがいません。"
+    );
+
+    error.code = "RANGE_NO_ELIGIBLE_TARGETS";
+    throw error;
   }
+
 
   if (!Array.isArray(specifiedTargetIds)) {
     fail("指定範囲メンバーの形式が不正です。");
