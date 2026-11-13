@@ -47,6 +47,9 @@ import { buildBattleReport } from "./simulation-battle-report.js";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js";
+
+
 
 
 
@@ -1995,9 +1998,18 @@ if (equipmentPower) {
         throw new Error("攻撃計画の指定が不正です。");
       }
 
+      if (
+        request.followFormationAttack !== undefined &&
+        typeof request.followFormationAttack !== "boolean"
+      ) {
+        throw new Error("攻撃追随の指定には真偽値を使用してください。");
+      }
+
       const input = copy(request);
       let savedOrders = [];
       let skippedCommands = [];
+      let followReceipt = { commands: [], skipped: [] };
+
 
 
       commit(candidate => {
@@ -2118,6 +2130,74 @@ if (equipmentPower) {
           });
         }
 
+                let followTargetId = null;
+
+        if (input.followFormationAttack === true) {
+          const leader = candidate.instances.find(
+            unit => unit.instanceId === input.unitId
+          );
+
+          if (
+            !leader ||
+            leader.branch !== "navy" ||
+            leader.isFormationFlagship !== true ||
+            !candidate.groups.some(group => group.id === leader.groupId)
+          ) {
+            throw new Error(
+              "攻撃追随を指示できるのは所属編隊の分旗艦のみです。"
+            );
+          }
+
+          assertManualControl(candidate, [leader]);
+
+          const targetIds = new Set();
+
+          for (const item of checked) {
+            const group = groupReport.groups.find(
+              group => group.groupId === item.groupId
+            );
+
+            const scope = readWeaponTargetScope(
+              group.profile.targetScope
+            );
+
+            if (
+              scope.kind !== "single" ||
+              item.targetRef.kind !== "unit" ||
+              item.specifiedTargetIds.length !== 0
+            ) {
+              throw new Error(
+                "追随を指示する場合、分旗艦の選択武器は単体武器に限ります。"
+              );
+            }
+
+            targetIds.add(item.targetRef.id);
+          }
+
+          if (targetIds.size !== 1) {
+            throw new Error(
+              "追随を指示する場合、選択した全組に同じ単体目標を割り当ててください。"
+            );
+          }
+
+          followTargetId = [...targetIds][0];
+
+          const target = candidate.instances.find(
+            unit => unit.instanceId === followTargetId
+          );
+
+          if (
+            !target ||
+            target.branch !== "navy" ||
+            target.side === leader.side ||
+            target.shipState?.status === "sunk"
+          ) {
+            throw new Error(
+              "追随攻撃には別陣営の未沈没艦を指定してください。"
+            );
+          }
+        }
+
         replaceAttackCommands(
           candidate,
           input.unitId,
@@ -2137,42 +2217,51 @@ if (equipmentPower) {
         // 当前计划正式预检；
         // 未来计划只检查登记时状态，到执行次序再正式复核。
         try {
-          const selectedIds = new Set(
+                    const selectedIds = new Set(
             checked.map(item => item.groupId)
           );
 
-          const savedSelection =
-            candidate.attackRuntime.commands.filter(
-              command =>
-                command.unitId === input.unitId &&
-                selectedIds.has(command.groupId)
+          const submittedCommands =
+            candidate.attackRuntime.commands.filter(command =>
+              command.unitId === input.unitId &&
+              selectedIds.has(command.groupId)
             );
 
-                            // 同一回合的等待计划共享侧别额度。
-          // 必须一起分配，不能只检查此次勾选的装备组。
-          const filtered = filterUnreachableAttackCommands(
-            candidate,
-            candidate.attackRuntime.commands
+          const submittedIds = new Set(
+            submittedCommands.map(command => command.id)
           );
 
+          // 本次没有替换的旧任务先占用额度。
+          const retainedIds =
+            candidate.attackRuntime.commands
+              .filter(command => !submittedIds.has(command.id))
+              .map(command => command.id);
 
-          skippedCommands = filtered.skipped;
+          const filtered = filterUnreachableAttackCommands(
+            candidate,
+            candidate.attackRuntime.commands,
+            {
+              priorityCommandIds: retainedIds
+            }
+          );
+
+          // 全场参与检查，但只删除本次提交的不合格命令。
+          skippedCommands = filtered.skipped.filter(
+            item => submittedIds.has(item.commandId)
+          );
 
           const skippedIds = new Set(
             skippedCommands.map(item => item.commandId)
           );
 
-          // 只删除此次登记中不合格的命令。
-          // 其他单位和其他装备组的既有计划保留。
           candidate.attackRuntime.commands =
             candidate.attackRuntime.commands.filter(
               command => !skippedIds.has(command.id)
             );
 
-                    // groupId只在单位内唯一。
           const acceptedGroups = new Set(
             filtered.accepted
-              .filter(command => command.unitId === input.unitId)
+              .filter(command => submittedIds.has(command.id))
               .map(command => command.groupId)
           );
 
@@ -2180,8 +2269,29 @@ if (equipmentPower) {
             item => acceptedGroups.has(item.groupId)
           );
 
-          // 保留全批资源、配额、未实现规则等正式保护。
+          if (!savedOrders.length) {
+            throw new Error(
+              "今回選択した攻撃はすべて登録条件を満たしていません。"
+            );
+          }
+
+          // 分旗舰仍有合法计划时才生成追随请求。
+          // 追随全都跳过，不取消分旗舰合法计划。
+          if (input.followFormationAttack === true) {
+            followReceipt = appendFormationAttackFollowers(
+              candidate,
+              {
+                leaderId: input.unitId,
+                targetId: followTargetId
+              },
+              newId
+            );
+          }
+
+          // 保留正式的全批资源、阶段快照与未实现规则保护。
+          // 此函数不扣弹、不掷正式随机数。
           prepareSettlementAttackPlan(candidate);
+
 
       } catch (error) {
         const reason =
@@ -2206,14 +2316,19 @@ if (equipmentPower) {
       });
 
       // 只有事务保存成功，才返回给界面。
-     return copy({
+      return copy({
         revision: state.revision,
         commands: savedOrders,
         skippedCommands,
+        follow: {
+          enabled: input.followFormationAttack === true,
+          commands: followReceipt.commands,
+          skipped: followReceipt.skipped
+        },
         message: skippedCommands.length
           ? `攻撃計画を${savedOrders.length}件保存しました。` +
             `射距・射高・射界または側別使用枠の条件により、` +
-            `${skippedCommands.length}件の待機計画を除外しました。`
+            `${skippedCommands.length}件の今回提出した計画を除外しました。`
           : `攻撃計画を${savedOrders.length}件保存しました。`
 
       });
