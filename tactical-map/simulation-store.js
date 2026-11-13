@@ -2272,10 +2272,17 @@ if (equipmentPower) {
           );
 
           if (!savedOrders.length) {
-            throw new Error(
-              "今回選択した攻撃はすべて登録条件を満たしていません。"
+            const reasons = skippedCommands.map(
+              (item, index) =>
+                `${index + 1}. ${item.reason}`
             );
+
+            throw new Error([
+              "今回選択した攻撃はすべて登録条件を満たしていません。",
+              ...reasons
+            ].join("\n"));
           }
+
 
           // 分旗舰仍有合法计划时才生成追随请求。
           // 追随全都跳过，不取消分旗舰合法计划。
