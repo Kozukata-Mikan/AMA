@@ -6,6 +6,8 @@ import { mountCatalogEditor } from "./catalog-editor.js";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
 import { prepareSimulationAmmoSource } from "./equipment-runtime.js";
+import { getFlagshipDisplayName } from "./flagship-display.js";
+
 
 
 
@@ -642,7 +644,7 @@ introSection.append(
       const memberNames = node("ul", "", "group-tree");
 
       for (const member of members) {
-        memberNames.append(node("li", member.name));
+          memberNames.append(node("li", getFlagshipDisplayName(member)));
       }
 
       details.append(memberNames);
@@ -757,6 +759,51 @@ introSection.append(
       "所属編隊",
       select(groupOptions(), unit.groupId ?? "")
     );
+          let overallFlagship;
+    let formationFlagship;
+
+    if (unit.branch === "navy") {
+      overallFlagship = field(
+        form,
+        "👑 総旗艦（表示のみ）",
+        input(unit.isOverallFlagship, "checkbox")
+      );
+
+      formationFlagship = field(
+        form,
+        "♞ 分旗艦（各編隊に1隻）",
+        input(unit.isFormationFlagship, "checkbox")
+      );
+
+      const flagshipNote = node("p", "", "editor-note");
+      form.append(flagshipNote);
+
+      function syncFlagshipControls() {
+        const hasGroup = group.value !== "";
+
+        formationFlagship.disabled = !hasGroup;
+
+        if (!hasGroup) {
+          formationFlagship.checked = false;
+        }
+
+        flagshipNote.textContent = hasGroup
+          ? "分旗艦を指定すると、同じ編隊の旧分旗艦は解除されます。" +
+            "総旗艦と分旗艦は兼任できます。" +
+            "攻撃・移動の追随機能は、まだ接続されていません。"
+          : "分旗艦を指定するには、所属編隊を選択してください。" +
+            "総旗艦は所属なしでも指定できます。";
+      }
+
+      group.addEventListener("change", () => {
+        // 所属変更後は、必要なら新編队で明示的に再指定する。
+        formationFlagship.checked = false;
+        syncFlagshipControls();
+      });
+
+      syncFlagshipControls();
+    }
+
 
     const grid = node("div", "", "editor-grid");
     form.append(grid);
@@ -879,6 +926,11 @@ introSection.append(
           filled: filled.checked,
           description: description.value
         };
+
+        if (overallFlagship) {
+          patch.isOverallFlagship = overallFlagship.checked;
+          patch.isFormationFlagship = formationFlagship.checked;
+        }
 
         if ((patch.x === null) !== (patch.y === null)) {
           throw new Error("X と Y は両方入力するか、両方空欄にしてください。");
@@ -1023,7 +1075,7 @@ introSection.append(
         for (const unit of instances.filter(
           item => item.groupId === group.id
         )) {
-          children.append(node("li", unit.name));
+          children.append(node("li", getFlagshipDisplayName(unit)));
         }
 
         li.append(children);
@@ -1102,7 +1154,7 @@ introSection.append(
     for (const unit of instances) {
       const state = placement(unit);
 
-      const item = button(unit.name, () => {
+    const item = button(getFlagshipDisplayName(unit), () => {
         selectedId = unit.instanceId;
         refresh();
         openSection(unitSection);
