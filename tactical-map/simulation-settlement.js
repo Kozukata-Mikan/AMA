@@ -153,6 +153,103 @@ function integer(value, label) {
   return value;
 }
 
+/**
+ * 每枚已命中的水下弹药独立进行诱爆判定。
+ *
+ * true：进入正常伤害算法。
+ * false：不造成伤害、不获取进水、不消耗强度次数。
+ *
+ * 只由正式伤害步骤调用。
+ * 不修改原始武器命中数，不扣弹、不保存。
+ */
+function resolveUnderwaterDetonation(hitCount, coinSource) {
+  integer(hitCount, "誘爆対象の命中数");
+
+  if (
+    coinSource !== undefined &&
+    typeof coinSource !== "function"
+  ) {
+    fail("誘爆判定の乱数関数が不正です。");
+  }
+
+  const results = [];
+  let damageHitCount = 0;
+
+  for (let index = 0; index < hitCount; index++) {
+    let result;
+
+    if (coinSource !== undefined) {
+      result = coinSource();
+    } else {
+      if (!globalThis.crypto?.getRandomValues) {
+        fail("誘爆判定に必要な乱数機能がありません。");
+      }
+
+      const buffer = new Uint32Array(1);
+      globalThis.crypto.getRandomValues(buffer);
+
+      // 32位均匀随机整数的最低位，正反各半。
+      result = (buffer[0] & 1) === 1;
+    }
+
+    if (typeof result !== "boolean") {
+      fail("誘爆判定の硬貨結果が不正です。");
+    }
+
+    results.push(result);
+
+    if (result) {
+      damageHitCount += 1;
+    }
+  }
+
+  return {
+    version: 1,
+    results,
+    damageHitCount
+  };
+}
+
+/**
+ * 读取伤害有效命中数，同时检查诱爆记录。
+ *
+ * 旧历史没有诱爆字段，沿用原始命中数。
+ * 不给旧记录补掷诱爆，不重写旧伤害。
+ */
+function readDamageHitCount(hitReport) {
+  const originalHitCount = integer(
+    hitReport?.hit?.hitCount,
+    "武器命中数"
+  );
+
+  const detonation = hitReport.underwaterDetonation;
+
+  if (detonation === undefined) {
+    return originalHitCount;
+  }
+
+  if (
+    !detonation ||
+    typeof detonation !== "object" ||
+    Array.isArray(detonation) ||
+    detonation.version !== 1 ||
+    !Array.isArray(detonation.results) ||
+    detonation.results.length !== originalHitCount ||
+    detonation.results.some(
+      result => typeof result !== "boolean"
+    ) ||
+    !Number.isSafeInteger(detonation.damageHitCount) ||
+    detonation.damageHitCount < 0 ||
+    detonation.damageHitCount !==
+      detonation.results.filter(result => result).length
+  ) {
+    fail("水中武器の誘爆履歴が武器命中数と一致しません。");
+  }
+
+  return detonation.damageHitCount;
+}
+
+
 function compareText(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
@@ -231,6 +328,16 @@ export function initializeSettlementRuntime(scene) {
     ) {
       fail("正式攻撃の履歴が不正です。");
     }
+
+    // 新记录检查逐枚诱爆结果。
+    // 旧记录没有该字段时保持原有语义，不补造结果。
+    for (const hit of record.hitReports) {
+      if (hit?.underwaterDetonation !== undefined) {
+        readDamageHitCount(hit);
+      }
+    }
+
+    
     // 旧记录允许缺失；实际需要本回合两舷历史时，
 // 配额检查会明确拒绝缺失数据，不补造历史。
 for (const resource of record.resourceReports) {
@@ -404,7 +511,7 @@ for (const targetReport of record.targetReports) {
 
     if (
       hits.length !== 1 ||
-      equipment.damage.hitCount !== hits[0].hit?.hitCount ||
+      equipment.damage.hitCount !== readDamageHitCount(hits[0]) ||
       equipment.damage.turnNumber !== record.turnNumber ||
       !Array.isArray(equipment.damage.applications) ||
       equipment.damage.applications.length !==
@@ -1130,8 +1237,13 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         occurrenceIndex
       },
       hitCount,
-      rule: parseDamageRule(entry.profile)
+      rule: parseDamageRule(entry.profile),
+
+      // 仅内部引用，用于向正式命中报告追加诱爆记录。
+      // 不修改 hit.hit.hitCount。
+      hitReport: hit
     });
+
   }
 
   for (const entry of prepared.entries) {
@@ -1181,6 +1293,40 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
       compareText(a.entry.groupId, b.entry.groupId) ||
       a.entry.occurrenceIndex - b.entry.occurrenceIndex
     );
+
+        // 原始武器命中已经确定。
+    // 在本目标的伤害处理前，按稳定顺序逐枚判定诱爆。
+    for (const attack of attacks) {
+      const underwaterWeapon =
+        attack.entry.profile.underwater === true ||
+        attack.rule.underwater === true;
+
+      if (!underwaterWeapon) {
+        continue;
+      }
+
+      // 正式命中报告应为本事务新生成的结果，
+      // 不接受预先带入的诱爆记录，也不重复投币。
+      if (
+        attack.hitReport.underwaterDetonation !== undefined
+      ) {
+        fail("誘爆判定が重複しています。");
+      }
+
+      const detonation = resolveUnderwaterDetonation(
+        attack.hitCount,
+        coinSource
+      );
+
+      attack.hitReport.underwaterDetonation =
+        copy(detonation);
+
+      // 只替换内部伤害命中数。
+      // 后面的伤害、进水与强度消耗沿用该值。
+      attack.hitCount = readDamageHitCount(
+        attack.hitReport
+      );
+    }
 
 
     for (const attack of attacks) {
