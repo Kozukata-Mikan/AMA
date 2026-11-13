@@ -351,12 +351,36 @@ function prepareCommand(startScene, command) {
     fail("この軍種の正式な攻撃批次処理は未接続です。");
   }
 
-  if (
-    ["sinking", "sunk"].includes(actor.shipState?.status) ||
-    actor.shipState?.rescueTaskId !== null
-  ) {
-    fail("段階開始時に行動不能または救助中の艦船があります。");
+    // 同时供正式阶段检查和当前状态预览使用，
+  // 因此不把所有错误都描述成“阶段开始时”。
+  if (["sinking", "sunk"].includes(actor.shipState?.status)) {
+    const error = new Error([
+      "攻撃艦が沈没寸前または沈没のため、この計画は実行できません。",
+      `攻撃艦：${actor.name} / ID：${actor.instanceId}`,
+      `状態：${actor.shipState.status}`,
+      `計画段階：${command.phaseId}`,
+      `装備組：${group.id}`
+    ].join("\n"));
+
+    error.code = "ATTACK_ACTOR_UNAVAILABLE";
+    throw error;
   }
+
+  if (actor.shipState?.rescueTaskId !== null) {
+    // 救助任务是否已正确结束，不能由攻击模块自行判断。
+    // 不清除引用、不把任务异常当作普通失效计划跳过。
+    const error = new Error([
+      "攻撃艦に救助・設備修復の参照があるため、計画を実行できません。",
+      `攻撃艦：${actor.name} / ID：${actor.instanceId}`,
+      `救助参照：${actor.shipState?.rescueTaskId ?? "未登録"}`,
+      `計画段階：${command.phaseId}`,
+      `装備組：${group.id}`
+    ].join("\n"));
+
+    error.code = "ATTACK_ACTOR_RESCUE_BLOCKED";
+    throw error;
+  }
+
 
   if (profile.kind !== "weapon" || profile.issues.length) {
     fail(
