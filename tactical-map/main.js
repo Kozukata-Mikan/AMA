@@ -4,6 +4,7 @@ import { createBattleStore } from "../js/battle-state.js";
 import { mountEditor } from "./editor.js";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces } from "./map-display.js";
+import { getFlagshipDisplayName } from "./flagship-display.js";
 
 
 import {
@@ -754,7 +755,8 @@ function selectUnit(unit, group) {
 
   group.classList.add("selected");
 
-  document.querySelector("#unitName").textContent = unit.name;
+   document.querySelector("#unitName").textContent =
+    getFlagshipDisplayName(unit);
   const spatial = getUnitSpatialState(unit);
 
 document.querySelector("#unitDescription").textContent = [
@@ -937,7 +939,7 @@ function drawInvalidUnit(unit, reason) {
     transform: `translate(${position.x} ${position.y})`,
     tabindex: "0",
     role: "button",
-    "aria-label": `${unit.name}：${reason}`
+  "aria-label": `${getFlagshipDisplayName(unit)}：${reason}`
   }, layers.units);
 
   createSVG("path", {
@@ -950,7 +952,9 @@ function drawInvalidUnit(unit, reason) {
     y: 4
   }, group);
 
-  label.textContent = `${unit.name} ⚠`;
+  label.textContent = `${getFlagshipDisplayName(unit)} ⚠`;
+
+
 
   const title = createSVG("title", {}, group);
   title.textContent = reason;
@@ -1004,7 +1008,7 @@ const position = project(unit.x, unit.y, spatial.height);
       transform: `translate(${position.x} ${position.y})`,
       tabindex: "0",
       role: "button",
-      "aria-label": unit.name
+      "aria-label": getFlagshipDisplayName(unit)
     }, layers.units);
 
     // 航空机：画出到海平面的高度参考线。
@@ -1063,7 +1067,7 @@ if (unit.branch === "air") {
       y: -labelHeight + 4
     }, group);
 
-    label.textContent = unit.name;
+   label.textContent = getFlagshipDisplayName(unit);
 
     // 点击区域随图标等级扩大。
     createSVG("circle", {
@@ -1395,8 +1399,9 @@ function drawDeploymentPreview(unit, spatial) {
   }, group);
 
   label.textContent =
-    `${unit.name} · ${unit.heading.toFixed(0)}°` +
+    `${getFlagshipDisplayName(unit)} · ${unit.heading.toFixed(0)}°` +
     (spatial.valid ? "" : " ⚠");
+
 }
 
 
@@ -1739,7 +1744,10 @@ async function startEditor() {
           )
         );
 
-        name.textContent = displayedSelection?.name ?? selected.name;
+        name.textContent = getFlagshipDisplayName(
+          displayedSelection ?? selected
+        );
+
 
 
         const spatial = getUnitSpatialState(selected);
