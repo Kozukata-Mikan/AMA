@@ -816,6 +816,8 @@ export function openSimulation(id) {
     }
 
     initializeCombatRuntime(candidate);
+    initializeSimulationFeatures(candidate);
+
 
     // 正式伤害事务必须先协调救助中断。
     // 保存层只校验，不擅自抽签、补算或修复战斗结果。
