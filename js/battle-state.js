@@ -209,6 +209,32 @@ export function createBattleStore(units) {
       requireText(groupId, "所属編隊番号");
     }
 
+        // 旧场景缺少字段时按未设置处理；显式的错误类型不接受。
+    const isOverallFlagship = requireBoolean(
+      item.isOverallFlagship === undefined
+        ? false
+        : item.isOverallFlagship,
+      "総旗艦設定"
+    );
+
+    const isFormationFlagship = requireBoolean(
+      item.isFormationFlagship === undefined
+        ? false
+        : item.isFormationFlagship,
+      "分旗艦設定"
+    );
+
+    if (
+      (isOverallFlagship || isFormationFlagship) &&
+      snapshot.branch !== "navy"
+    ) {
+      throw new Error("旗艦に指定できるのは海軍ユニットのみです。");
+    }
+
+    if (isFormationFlagship && groupId === null) {
+      throw new Error("分旗艦には所属編隊が必要です。");
+    }
+
     const description = item.description ?? snapshot.description ?? "";
 
     if (typeof description !== "string") {
@@ -253,7 +279,9 @@ export function createBattleStore(units) {
         500
       ),
       description,
-      groupId
+      groupId,
+      isOverallFlagship,
+      isFormationFlagship
     };
   }
 
@@ -449,6 +477,24 @@ export function createBattleStore(units) {
         throw new Error("ユニットの所属編隊が見つかりません。");
       }
     }
+        // 按直接所属 groupId 限制；上层编队不吞并子编队的旗舰名额。
+    const formationFlagships = new Map();
+
+    for (const instance of instances) {
+      if (!instance.isFormationFlagship) continue;
+
+      if (formationFlagships.has(instance.groupId)) {
+        throw new Error(
+          "同じ編隊に複数の分旗艦は指定できません。"
+        );
+      }
+
+      formationFlagships.set(
+        instance.groupId,
+        instance.instanceId
+      );
+    }
+
 
     const view = input.view ?? { x: 0, y: 0, scale: 1 };
 
@@ -597,54 +643,13 @@ export function createBattleStore(units) {
     return copy(instance);
   }
 
-  function updateUnit(instanceId, patch) {
-    if (!isObject(patch)) {
-      throw new Error("ユニット更新データの書式が不正です。");
-    }
-
-    // 個体番号・図鑑番号・軍種・快照は、この編集接口では変更させない。
-    const editable = new Set([
-      "name",
-      "side",
-      "faction",
-      "currentHp",
-      "sizeLevel",
-      "heading",
-      "filled",
-      "underwater",
-      "x",
-      "y",
-      "altitude",
-      "depth",
-      "labelHeight",
-      "description",
-      "groupId"
-    ]);
-
-    for (const key of Object.keys(patch)) {
-      if (!editable.has(key)) {
-        throw new Error(`変更できないユニット項目です：${key}`);
-      }
-    }
-
-    change(candidate => {
-      const index = candidate.instances.findIndex(
-        item => item.instanceId === instanceId
-      );
-
-      if (index < 0) {
-        throw new Error("該当する参戦ユニットが見つかりません。");
-      }
-
-      candidate.instances[index] = {
-        ...candidate.instances[index],
-        ...patch
-      };
-    });
+    function updateUnit(instanceId, patch) {
+    // 单体和批量更新共用同一套旗舰及编队约束。
+    updateUnits([{ instanceId, patch }]);
   }
 
   // 批量更新先验证，再一次性提交。
-  // 避免集群移动到一半时被中间状态打断。
+  // 避免集群移动或旗舰替换产生中间状态。
   function updateUnits(updates) {
     if (!Array.isArray(updates) || !updates.length) {
       throw new Error("更新ユニット一覧が不正です。");
@@ -665,7 +670,9 @@ export function createBattleStore(units) {
       "depth",
       "labelHeight",
       "description",
-      "groupId"
+      "groupId",
+      "isOverallFlagship",
+      "isFormationFlagship"
     ]);
 
     const ids = new Set();
@@ -690,9 +697,26 @@ export function createBattleStore(units) {
           throw new Error(`変更できないユニット項目です：${key}`);
         }
       }
+
+      for (const key of [
+        "isOverallFlagship",
+        "isFormationFlagship"
+      ]) {
+        if (Object.prototype.hasOwnProperty.call(update.patch, key)) {
+          requireBoolean(
+            update.patch[key],
+            key === "isOverallFlagship"
+              ? "総旗艦設定"
+              : "分旗艦設定"
+          );
+        }
+      }
     }
 
     change(candidate => {
+      const requestedFlagshipIds = [];
+
+      // 先应用所有普通更新及编队变更。
       for (const update of updates) {
         const index = candidate.instances.findIndex(
           unit => unit.instanceId === update.instanceId
@@ -702,13 +726,72 @@ export function createBattleStore(units) {
           throw new Error("更新対象のユニットが見つかりません。");
         }
 
-        candidate.instances[index] = {
-          ...candidate.instances[index],
+        const previous = candidate.instances[index];
+        const next = {
+          ...previous,
           ...update.patch
         };
+
+        // 编队变更默认取消分旗舰身份。
+        // 若本次明确勾选，则视为在新编队重新指定。
+        if (next.groupId !== previous.groupId) {
+          next.isFormationFlagship =
+            update.patch.isFormationFlagship === true;
+        }
+
+        candidate.instances[index] = next;
+
+        if (update.patch.isFormationFlagship === true) {
+          requestedFlagshipIds.push(next.instanceId);
+        }
+      }
+
+      // 先验证所有明确的设置请求，避免同一批操作互相覆盖。
+      const requestedGroups = new Set();
+
+      for (const instanceId of requestedFlagshipIds) {
+        const unit = candidate.instances.find(
+          item => item.instanceId === instanceId
+        );
+
+        if (unit.branch !== "navy") {
+          throw new Error("分旗艦に指定できるのは海軍ユニットのみです。");
+        }
+
+        if (
+          unit.groupId == null ||
+          !candidate.groups.some(group => group.id === unit.groupId)
+        ) {
+          throw new Error("分旗艦には有効な所属編隊が必要です。");
+        }
+
+        if (requestedGroups.has(unit.groupId)) {
+          throw new Error(
+            "同じ更新で、同一編隊の複数ユニットを分旗艦には指定できません。"
+          );
+        }
+
+        requestedGroups.add(unit.groupId);
+      }
+
+      // 指定新分旗舰时，在同一候选副本中取消原分旗舰。
+      for (const instanceId of requestedFlagshipIds) {
+        const unit = candidate.instances.find(
+          item => item.instanceId === instanceId
+        );
+
+        for (const member of candidate.instances) {
+          if (
+            member.instanceId !== unit.instanceId &&
+            member.groupId === unit.groupId
+          ) {
+            member.isFormationFlagship = false;
+          }
+        }
       }
     });
   }
+
 
   // 将已有单体合并为集群。
   function createCluster(instanceIds, name) {
@@ -894,8 +977,12 @@ export function createBattleStore(units) {
       for (const instance of candidate.instances) {
         if (instance.groupId === id) {
           instance.groupId = group.parentId;
+
+          // 原编队已解除；不将分旗舰身份带入上级编队。
+          instance.isFormationFlagship = false;
         }
       }
+
 
       candidate.groups = candidate.groups.filter(item => item.id !== id);
     });
