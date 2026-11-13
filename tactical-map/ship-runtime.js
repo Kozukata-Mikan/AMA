@@ -699,6 +699,62 @@ export function applyShipDamageAttack(
   return report;
 }
 
+// ===== 移动阶段撞击伤害 =====
+// 只削减耐性，不套用武器攻击的heavy/sinking升级规则。
+// 多舰同时撞击的伤害，由移动层合并后一次传入。
+
+export function applyShipCollisionDamage(unit, hpDamage, context) {
+  requireDamageInteger(hpDamage, "撞撃による耐性被害");
+
+  if (
+    !context ||
+    context.phaseId !== "movement" ||
+    !Number.isSafeInteger(context.turnNumber) ||
+    context.turnNumber < 1
+  ) {
+    throw new Error("撞撃被害は移動段階で適用してください。");
+  }
+
+  const working = JSON.parse(JSON.stringify(unit));
+  ensureShipRuntime(working);
+
+  const profile = readShipProfile(working);
+  const beforeHp = working.currentHp;
+  const beforeStatus = working.shipState.status;
+  const state = working.shipState;
+
+  if (beforeStatus !== "sunk" && hpDamage > 0) {
+    working.currentHp = Math.max(0, beforeHp - hpDamage);
+    state.hasReceivedDamage = true;
+
+    // 已有特殊濒沉/沉没状态不能因扣HP降级。
+    if (!["heavy", "sinking", "sunk"].includes(beforeStatus)) {
+      state.status = inferInitialStatus(
+        working.currentHp,
+        profile.maxHp
+      );
+    }
+  }
+
+  ensureShipRuntime(working);
+
+  unit.currentHp = working.currentHp;
+  unit.shipState = JSON.parse(JSON.stringify(state));
+
+  return {
+    version: 1,
+    targetId: working.instanceId,
+    turnNumber: context.turnNumber,
+    phaseId: "movement",
+    requestedHpDamage: hpDamage,
+    actualHpLoss: beforeHp - working.currentHp,
+    beforeHp,
+    afterHp: working.currentHp,
+    beforeStatus,
+    afterStatus: state.status
+  };
+}
+
 /**
  * 确定性试算，不修改传入单位。
  * 只供内部规则集成使用；不能向外方观察页面返回完整单位。
