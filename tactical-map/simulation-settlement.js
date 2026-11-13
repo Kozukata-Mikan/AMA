@@ -1675,11 +1675,16 @@ if (profile.issues.length) {
             prepared,
             finalPreflight
           );
-        } catch (error) {
-         // 当前候选目标不合格，尝试下一个目标。
-         if (error.code === "TARGET_INELIGIBLE") {
-         continue;
+          } catch (error) {
+          // 当前新增自律候选没有合法目标，尝试下一个。
+          // 范围零候选只在此处跳过，不放宽已有计划检查。
+          if (
+            error.code === "TARGET_INELIGIBLE" ||
+            error.code === "RANGE_NO_ELIGIBLE_TARGETS"
+          ) {
+            continue;
           }
+
 
          // 原有计划已通过基线检查。
         // 新增自主候选超过侧别配额时，尝试其他目标。
