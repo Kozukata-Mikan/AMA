@@ -1976,7 +1976,8 @@ export function filterUnreachableAttackCommands(
   commands,
   {
     priorityCommandIds = [],
-    skippableTargetCommandIds = []
+    skippableTargetCommandIds = [],
+    skipUnavailableActors = false
   } = {}
 ) {
   const accepted = [];
@@ -2033,6 +2034,15 @@ export function filterUnreachableAttackCommands(
         { includeCurrent: true }
       );
     } catch (error) {
+            // 只用于正式执行当前阶段已有计划。
+      // 登记和普通预览仍拒绝无法行动舰船的攻击。
+      if (
+        skipUnavailableActors === true &&
+        error.code === "ATTACK_ACTOR_UNAVAILABLE"
+      ) {
+        skip(command, error.message);
+        continue;
+      }
       const canSkipTarget =
         error.code === "TARGET_INELIGIBLE" &&
         (
@@ -2245,8 +2255,12 @@ export function settleAttackPhase(scene, coinSource) {
 
   const executionFilter = filterUnreachableAttackCommands(
     working,
-    currentCommands
+    currentCommands,
+    {
+      skipUnavailableActors: true
+    }
   );
+
 
   const skippedIds = new Set(
     executionFilter.skipped.map(item => item.commandId)
