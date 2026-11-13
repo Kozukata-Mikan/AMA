@@ -441,9 +441,19 @@ let memberIds;
       fail("自分自身または同一陣営への攻撃は結算できません。");
     }
 
-    if (singleTarget.shipState.status === "sunk") {
-      fail("段階開始時に沈没している目標は攻撃できません。");
+        if (singleTarget.shipState.status === "sunk") {
+      // 目标已经沉没：本条计划失效，允许筛选层跳过。
+      // 不扣弹、不改使用记录，也不自动换目标。
+      const error = new Error(
+        "目標はすでに沈没しています。この攻撃計画は実行しません。"
+      );
+
+      error.code = "TARGET_INELIGIBLE";
+      error.skipAttack = true;
+
+      throw error;
     }
+
   }
 
   if (group.destroyed === true) {
