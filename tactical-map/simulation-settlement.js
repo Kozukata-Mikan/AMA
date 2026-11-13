@@ -925,6 +925,13 @@ try {
     roundTraitOptions
   );
 
+    // 超过武器射距的一半，增加一次远距离不利判定。
+  // 沿用正式射距检查的三维距离与浮点容差。
+  const longRangePenalty =
+    trace.distance3D > profile.range / 2 + EPSILON
+      ? 1
+      : 0;
+
   const modifiers = getHitModifiers({
     guidance: profile.guidance,
     environment: start.environment,
@@ -933,8 +940,9 @@ try {
     electronicBonuses: 0,
     electronicPenalties: 0,
     globalBonuses: 0,
-    globalPenalties: 0
+    globalPenalties: longRangePenalty
   });
+
 
   return {
     allowed: true,
