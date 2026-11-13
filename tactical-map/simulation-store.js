@@ -105,6 +105,69 @@ function initializeSimulationEndRuntime(scene) {
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
 }
+// ===== 旗舰身份校验 =====
+// 旧推演没有字段时视为未设置。
+// 只校验当前场景，不修改初始快照，也不产生任何战斗效果。
+function validateFlagshipState(scene) {
+  if (
+    !Array.isArray(scene.instances) ||
+    !Array.isArray(scene.groups)
+  ) {
+    throw new Error("旗艦設定の場面形式が不正です。");
+  }
+
+  const groupIds = new Set(
+    scene.groups.map(group => group.id)
+  );
+
+  const flagshipGroups = new Set();
+
+  for (const unit of scene.instances) {
+    for (const key of [
+      "isOverallFlagship",
+      "isFormationFlagship"
+    ]) {
+      if (
+        unit[key] !== undefined &&
+        typeof unit[key] !== "boolean"
+      ) {
+        throw new Error(
+          key === "isOverallFlagship"
+            ? "総旗艦設定の値が不正です。"
+            : "分旗艦設定の値が不正です。"
+        );
+      }
+    }
+
+    const overall = unit.isOverallFlagship === true;
+    const formation = unit.isFormationFlagship === true;
+
+    if ((overall || formation) && unit.branch !== "navy") {
+      throw new Error(
+        "旗艦に指定できるのは海軍ユニットのみです。"
+      );
+    }
+
+    if (!formation) continue;
+
+    if (
+      typeof unit.groupId !== "string" ||
+      !groupIds.has(unit.groupId)
+    ) {
+      throw new Error(
+        "分旗艦には有効な所属編隊が必要です。"
+      );
+    }
+
+    if (flagshipGroups.has(unit.groupId)) {
+      throw new Error(
+        "同じ編隊に複数の分旗艦は指定できません。"
+      );
+    }
+
+    flagshipGroups.add(unit.groupId);
+  }
+}
 
 // 只校验推演运行状态，不修改initialScene或部署快照。
 function initializeCombatRuntime(scene) {
@@ -127,6 +190,7 @@ function initializeCombatRuntime(scene) {
   if (!Array.isArray(scene.instances)) {
     throw new Error("推演のユニット一覧が不正です。");
   }
+      validateFlagshipState(scene);
     initializeRoundTraitRuntime(scene);
 
 
@@ -2295,9 +2359,12 @@ if (equipmentPower) {
         candidate.groups.push(group);
 
         // 明确的重组操作：移动归属，不新增或删除个体。
+        // 原编队的分旗舰身份不自动带入新编队。
         for (const unit of members) {
           unit.groupId = group.id;
+          unit.isFormationFlagship = false;
         }
+
       });
     },
 
@@ -2370,11 +2437,16 @@ if (equipmentPower) {
           }
         }
 
-        for (const unit of candidate.instances) {
+      for (const unit of candidate.instances) {
           if (unit.groupId === groupId) {
             unit.groupId = group.parentId ?? null;
+
+            // 原编队解除后，取消其直属舰船的分旗舰身份。
+            // 总旗舰身份保持不变。
+            unit.isFormationFlagship = false;
           }
         }
+
 
         candidate.groups = candidate.groups.filter(
           item => item.id !== groupId
