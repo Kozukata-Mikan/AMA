@@ -294,8 +294,7 @@ export function mountTerrainEditor({
     for (let index = 1; index <= steps; index++) {
       const ratio = index / steps;
 
-      applyBrush,
-  MAX_TERRAIN_SAMPLES(stroke.working, {
+      applyBrush(stroke.working, {
         x: start.x + (point.x - start.x) * ratio,
         y: start.y + (point.y - start.y) * ratio
       }, stroke.brush);
@@ -360,8 +359,7 @@ export function mountTerrainEditor({
       };
 
       // 在修改工作副本之前检查笔刷参数。
-      applyBrush,
-  MAX_TERRAIN_SAMPLES(cloneTerrain(before), { x: 100000, y: 100000 }, brush);
+      applyBrush(cloneTerrain(before), { x: 100000, y: 100000 }, brush);
 
       stroke = {
         pointerId: event.pointerId,
