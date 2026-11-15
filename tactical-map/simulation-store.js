@@ -1,3 +1,4 @@
+import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
@@ -11,7 +12,7 @@ import { getObserverVisibility , getVisibility} from "./simulation-features.js";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
-import { sampleTerrain } from "./terrain-data.js";
+import { sampleTerrain, validateTerrain } from "./terrain-data.js";
 import { getArmorPreview } from "./armor-runtime.js";
 import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
@@ -286,8 +287,8 @@ function packSaved(value) {
       if (
         value[key] !== undefined &&
         value.initialScene[key] !== undefined &&
-        JSON.stringify(value[key]) ===
-          JSON.stringify(value.initialScene[key])
+        (value[key] === value.initialScene[key] ||
+          JSON.stringify(value[key]) === JSON.stringify(value.initialScene[key]))
       ) {
         delete packed.initialScene[key];
         references.push(key);
@@ -383,8 +384,7 @@ export function compactSimulationSaves() {
 }
 
 
-function readSaved(id) {
-  const raw = localStorage.getItem(PREFIX + id);
+function readSaved(id, raw = localStorage.getItem(PREFIX + id)) {
 
   if (raw === null) {
     throw new Error("推演データが見つかりません。");
@@ -452,7 +452,7 @@ function writeSaved(value) {
 
   try {
     localStorage.setItem(key, text);
-    return;
+    return text;
   } catch (firstError) {
     // 容量不足时，先对旧推演去重，再重试。
     // 不自动删除任何存档。
@@ -464,7 +464,7 @@ function writeSaved(value) {
 
       try {
         localStorage.setItem(key, text);
-        return;
+        return text;
       } catch {
         // 继续交给下面的错误提示。
       }
@@ -701,7 +701,31 @@ export function createSimulation(scene, spatialState) {
 export function openSimulation(id) {
   requireText(id, "推演番号");
 
-  let state = readSaved(id);
+  let savedRaw = localStorage.getItem(PREFIX + id);
+  let state = readSaved(id, savedRaw);
+  state.terrain = freezeSnapshot(validateTerrain(state.terrain));
+  if (state.initialScene?.terrain &&
+      JSON.stringify(state.initialScene.terrain) === JSON.stringify(state.terrain)) {
+    state.initialScene.terrain = state.terrain;
+  }
+  freezeSnapshot(state.initialScene);
+  const initialSceneText = JSON.stringify(state.initialScene);
+  const deploymentSnapshotText = JSON.stringify(state.instances.map(unit => ({
+    instanceId: unit.instanceId, snapshot: unit.snapshot
+  })));
+  let observedSource = null;
+  let observedSnapshot = null;
+  function observedScene() {
+    if (observedSource !== state) {
+      // 缓存的是经过迷雾/阵营过滤后的快照，不向界面暴露完整战场。
+      const observed = getObservedScene(state, {shareTerrain: true});
+      // 地形没有事务内修改接口，可跨推演revision共享同一不可变地形。
+      observed.terrain = state.terrain;
+      observedSnapshot = freezeSnapshot(observed);
+      observedSource = state;
+    }
+    return observedSnapshot;
+  }
   const listeners = new Set();
 
   function notify() {
@@ -719,14 +743,12 @@ export function openSimulation(id) {
       throw new Error("保存処理の指定が不正です。");
     }
 
-    const latest = readSaved(id);
+    const expectedRaw = savedRaw;
 
-    // 防止其他页面覆盖当前页面的修改。
-    if (latest.revision !== state.revision) {
-      throw new Error(
-        "別の画面で推演が更新されています。" +
-        "ページを再読み込みしてください。"
-      );
+    // 保存内容逐字节一致时，无需重复解析和全量初始化两次。
+    // 任意外部修改都拒绝覆盖，包括同revision的内容变更。
+    if (localStorage.getItem(PREFIX + id) !== expectedRaw) {
+      throw new Error("別の画面で推演が更新されています。ページを再読み込みしてください。");
     }
 
     // 已结束的推演保留数据，但拒绝后续状态写入。
@@ -740,21 +762,18 @@ export function openSimulation(id) {
 }
 
     // 所有修改只发生在独立候选副本。
-    const candidate = copy(state);
+    const candidate = {
+      ...copy({...state, terrain: null, initialScene: null}),
+      terrain: state.terrain, initialScene: state.initialScene
+    };
 
     const previousTurn = state.turn.number;
     const previousPhase = state.turn.phaseId;
     const previousRevision = state.revision;
 
     // 初始场景包含原始部署资料与图鉴快照，禁止事务修改。
-    const initialSceneBefore = JSON.stringify(state.initialScene);
-
-    const snapshotBefore = JSON.stringify(
-      state.instances.map(unit => ({
-        instanceId: unit.instanceId,
-        snapshot: unit.snapshot
-      }))
-    );
+    const initialSceneBefore = initialSceneText;
+    const snapshotBefore = deploymentSnapshotText;
 
     const result = change(candidate);
 
@@ -784,6 +803,7 @@ export function openSimulation(id) {
     }
 
     if (
+      candidate.initialScene !== state.initialScene &&
       JSON.stringify(candidate.initialScene) !== initialSceneBefore
     ) {
       throw new Error(
@@ -872,18 +892,13 @@ export function openSimulation(id) {
     candidate.updatedAt = new Date().toISOString();
 
     // 回调可能触发其他同步保存，写入前再次检查。
-    const beforeWrite = readSaved(id);
-
-    if (beforeWrite.revision !== previousRevision) {
-      throw new Error(
-        "保存処理中に推演が更新されました。" +
-        "今回の変更は保存していません。"
-      );
+    if (localStorage.getItem(PREFIX + id) !== expectedRaw) {
+      throw new Error("保存処理中に推演が更新されました。今回の変更は保存していません。");
     }
 
     // 沿用现有压缩、容量不足重试与存档键。
     // 写入失败会抛出错误，不更新内存、不通知界面。
-    writeSaved(candidate);
+    savedRaw = writeSaved(candidate);
 
     state = candidate;
     notify();
@@ -911,7 +926,7 @@ export function openSimulation(id) {
         // 外方编队结构没有公开，不能用已知ID绕过观察过滤。
     if (
       target?.kind === "group" &&
-      !getObservedScene(state).groups.some(
+      !observedScene().groups.some(
         group => group.id === target.id
       )
     ) {
@@ -1045,7 +1060,7 @@ getBattleReport() {
 
   assertManualControl(state, [rescuer]);
 
-  const observed = getObservedScene(state);
+  const observed = observedScene();
   const labels = new Map(
     EQUIPMENT_HIT_ITEMS.map(item => [item.id, item.label])
   );
@@ -1151,13 +1166,16 @@ mountEquipmentRepairPanel(container, rescuerId) {
     },
 
     getScene() {
-      return getObservedScene(state);
+      return copy(observedScene());
+    },
+    getSceneSnapshot() {
+      return observedScene();
     },
 
 
 
     getEntities() {
-      return listEntities(getObservedScene(state));
+      return listEntities(observedScene());
     },
 
             getAttackEquipmentProfiles(instanceId) {
@@ -1790,7 +1808,7 @@ if (equipmentPower) {
       assertManualControl(state, [unit]);
 
       const visibility = getVisibility(state);
-      const observed = getObservedScene(state);
+      const observed = observedScene();
       const visibleGroups = new Set(
         observed.groups.map(group => group.id)
       );
@@ -1924,7 +1942,7 @@ if (equipmentPower) {
 
       assertManualControl(state, [actor]);
 
-      const observed = getObservedScene(state);
+      const observed = observedScene();
       const visibility = getVisibility(state);
       const options = [];
 
@@ -2585,7 +2603,7 @@ if (equipmentPower) {
 
     exportJSON() {
       return JSON.stringify({
-        ...getObservedScene(state),
+        ...observedScene(),
         exportType: "observation",
         restorable: false
       }, null, 2);

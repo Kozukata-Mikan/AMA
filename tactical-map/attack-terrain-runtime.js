@@ -111,14 +111,14 @@ export function traceAttackTerrainLine(
 
   // 先沿网格纵线和横线分段。
   if (dgx !== 0) {
-    for (let col = 1; col < terrain.cols - 1; col++) {
+    for (let col = Math.max(1, Math.ceil(Math.min(gx0, gx1))); col <= Math.min(terrain.cols - 2, Math.floor(Math.max(gx0, gx1))); col++) {
       const t = (col - gx0) / dgx;
       if (t > 0 && t < 1) cuts.push(t);
     }
   }
 
   if (dgy !== 0) {
-    for (let row = 1; row < terrain.rows - 1; row++) {
+    for (let row = Math.max(1, Math.ceil(Math.min(gy0, gy1))); row <= Math.min(terrain.rows - 2, Math.floor(Math.max(gy0, gy1))); row++) {
       const t = (row - gy0) / dgy;
       if (t > 0 && t < 1) cuts.push(t);
     }

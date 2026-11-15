@@ -77,6 +77,8 @@ function terrainIntervals(terrain, from, to) {
   function add(origin, delta, first, last, offset = 0) {
     if (Math.abs(delta) <= EPS) return;
 
+    first = Math.max(first, Math.ceil(Math.min(origin, origin + delta) - offset));
+    last = Math.min(last, Math.floor(Math.max(origin, origin + delta) - offset));
     for (let n = first; n <= last; n++) {
       const t = (n + offset - origin) / delta;
       if (t > 0 && t < 1) values.push(t);

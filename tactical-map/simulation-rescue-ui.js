@@ -111,7 +111,7 @@ function repairItemText(record) {
   }
 
   function sync() {
-    const scene = store.getScene();
+    const scene = store.getSceneSnapshot();
     const side = scene.controls.observationSide;
 
     refill(rescuer, scene.instances.filter(unit =>

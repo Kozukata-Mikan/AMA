@@ -1,3 +1,5 @@
+import { pickProjectedTerrainPoint } from "./terrain-picking.js";
+import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
 import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
@@ -10,7 +12,8 @@ import { getFlagshipDisplayName } from "./flagship-display.js";
 import {
   createDemoTerrain,
   gridPosition,
-  sampleTerrain
+  sampleTerrain,
+  terrainMaximumHeight
 } from "./terrain-data.js";
 
 import {
@@ -104,11 +107,7 @@ function drawAxes() {
   const xLength = terrain.width / 2;
   const yLength = terrain.height / 2;
 
-  let highest = 0;
-
-  for (const height of terrain.heights) {
-    highest = Math.max(highest, height);
-  }
+  const highest = terrainMaximumHeight(terrain);
 
   const zLength = Math.max(300, Math.ceil(highest / 50) * 50);
 
@@ -267,27 +266,17 @@ function drawGrid() {
 }
 
 
-function makeHeightGrid() {
-  const result = [];
+let renderedTerrainWindow = "";
+let renderedTerrainSource = null;
+let terrainViewFrame = null;
 
-  for (let row = 0; row < terrain.rows; row++) {
-    const points = [];
-
-    for (let col = 0; col < terrain.cols; col++) {
-      const point = gridPosition(terrain, col, row);
-
-      points.push({
-        ...point,
-        z: terrain.heights[row * terrain.cols + col]
-      });
-    }
-
-    result.push(points);
-  }
-
-  return result;
+function scheduleTerrainView() {
+  if (terrainViewFrame !== null) return;
+  terrainViewFrame = requestAnimationFrame(() => {
+    terrainViewFrame = null;
+    drawTerrain(false);
+  });
 }
-
 
 function contourTriangle(triangle, level) {
   const intersections = [];
@@ -315,33 +304,35 @@ function contourTriangle(triangle, level) {
   );
 }
 
-function drawTerrain() {
+function drawTerrain(force = true) {
+  const window = terrainRenderWindow(terrain, view, svg.viewBox.baseVal);
+  const key = `${window.key}:${terrainColorVisible}`;
+  if (!force && renderedTerrainSource === terrain && renderedTerrainWindow === key) return;
+  renderedTerrainSource = terrain;
+  renderedTerrainWindow = key;
+  const grid = makeTerrainRenderGrid(terrain, window);
   layers.terrain.replaceChildren();
 
   // 必须先绘制面，再绘制水域标记和等高线。
   drawTerrainFaces({
     layer: layers.terrain,
     terrain,
-    colored: terrainColorVisible
+    colored: terrainColorVisible,
+    grid
   });
 
-  const grid = makeHeightGrid();
   const dx = terrain.width / (terrain.cols - 1);
   const dy = terrain.height / (terrain.rows - 1);
 
   // 水域标记按最近网格顶点的区域绘制。
-  function drawWaterMask(mask, kind, className) {
-    if (!mask) return;
+  function drawWaterMask(kind, className) {
 
     let pathData = "";
 
-    for (let row = 0; row < terrain.rows; row++) {
-      for (let col = 0; col < terrain.cols; col++) {
-        const index = row * terrain.cols + col;
-
-        if (mask[index] !== 1) continue;
-
-        const center = gridPosition(terrain, col, row);
+    for (let row = 0; row < grid.length; row++) {
+      for (let col = 0; col < grid[row].length; col++) {
+        const center = grid[row][col];
+        if (center.kind !== kind) continue;
         const sample = sampleTerrain(terrain, center.x, center.y);
 
         // 随高度变化隐藏不再适用的水域标记。
@@ -379,52 +370,42 @@ function drawTerrain() {
     }
   }
 
-  drawWaterMask(terrain.shallows, "shallow", "shallow-surface");
-  drawWaterMask(terrain.rivers, "river", "river-surface");
+  drawWaterMask("shallow", "shallow-surface");
+  drawWaterMask("river", "river-surface");
 
-  let maximum = 0;
-
-  for (const height of terrain.heights) {
-    maximum = Math.max(maximum, height);
-  }
-
-  const levels = [0];
-
-  for (
-    let level = terrain.contourInterval;
-    level <= maximum;
-    level += terrain.contourInterval
-  ) {
-    levels.push(level);
-  }
-
-  for (const level of levels) {
-    let pathData = "";
-
-    for (let row = 0; row < grid.length - 1; row++) {
-      for (let col = 0; col < grid[row].length - 1; col++) {
-        const a = grid[row][col];
-        const b = grid[row][col + 1];
-        const c = grid[row + 1][col + 1];
-        const d = grid[row + 1][col];
-
-        pathData += contourTriangle([a, b, c], level);
-        pathData += contourTriangle([a, c, d], level);
+  const contours = new Map();
+  for (let row = 0; row < grid.length - 1; row++) {
+    for (let col = 0; col < grid[row].length - 1; col++) {
+      const a = grid[row][col], b = grid[row][col+1];
+      const c = grid[row+1][col+1], d = grid[row+1][col];
+      for (const triangle of [[a,b,c], [a,c,d]]) {
+        const lo = Math.min(...triangle.map(v => v.z));
+        const hi = Math.max(...triangle.map(v => v.z));
+        const applicable = [];
+        if (lo < 0 && hi >= 0) applicable.push(0);
+        for (let level = Math.max(terrain.contourInterval,
+          (Math.floor(lo / terrain.contourInterval) + 1) * terrain.contourInterval);
+          level <= hi; level += terrain.contourInterval) applicable.push(level);
+        for (const level of applicable) {
+          const path = contourTriangle(triangle, level);
+          if (path) {
+            if (!contours.has(level)) contours.set(level, []);
+            contours.get(level).push(path);
+          }
+        }
       }
     }
-
-    if (!pathData) continue;
-
-    createSVG("path", {
-      d: pathData,
-      class: level === 0 ? "contour coast" : "contour"
-    }, layers.terrain);
+  }
+  for (const [level, paths] of [...contours].sort((a,b) => a[0]-b[0])) {
+    createSVG("path", { d: paths.join(""),
+      class: level === 0 ? "contour coast" : "contour" }, layers.terrain);
   }
 }
 
 
 // 参战单位来自共享存储，绘制时附加原绘图代码使用的 id。
 let units = [];
+let displayedMapUnits = [];
 let unitGroups = [];
 
 // ===== 图标规则配置 =====
@@ -988,6 +969,7 @@ function drawUnits() {
     getUnitSpatialState
   );
 
+  displayedMapUnits = displayUnits;
   for (const unit of displayUnits) {
 
    const spatial = getUnitSpatialState(unit);
@@ -1147,6 +1129,7 @@ const view = {
 };
 
 function updateView() {
+  scheduleTerrainView();
   viewport.setAttribute(
     "transform",
     `translate(${view.x} ${view.y}) scale(${view.scale})`
@@ -1174,11 +1157,7 @@ function fitMapToView() {
   const halfWidth = terrain.width / 2;
   const halfHeight = terrain.height / 2;
 
-  let highest = 0;
-
-  for (const height of terrain.heights) {
-    highest = Math.max(highest, height);
-  }
+  const highest = terrainMaximumHeight(terrain);
 
   const points = [];
 
@@ -1256,63 +1235,7 @@ function pickTerrainPoint(event) {
     y: (screen.y - view.y) / view.scale
   };
 
-  let result = null;
-  let nearestDepth = -Infinity;
-
-  function test(vertices) {
-    const projected = vertices.map(vertex =>
-      project(vertex.x, vertex.y, Math.max(0, vertex.z))
-    );
-
-    const [a, b, c] = projected;
-
-    const denominator =
-      (b.y - c.y) * (a.x - c.x) +
-      (c.x - b.x) * (a.y - c.y);
-
-    if (Math.abs(denominator) < 0.000001) return;
-
-    const wa = (
-      (b.y - c.y) * (point.x - c.x) +
-      (c.x - b.x) * (point.y - c.y)
-    ) / denominator;
-
-    const wb = (
-      (c.y - a.y) * (point.x - c.x) +
-      (a.x - c.x) * (point.y - c.y)
-    ) / denominator;
-
-    const wc = 1 - wa - wb;
-
-    if (wa < -0.00001 || wb < -0.00001 || wc < -0.00001) return;
-
-    const x = vertices[0].x * wa + vertices[1].x * wb + vertices[2].x * wc;
-    const y = vertices[0].y * wa + vertices[1].y * wb + vertices[2].y * wc;
-
-    // 多个坡面投影重叠时，选择朝观察者的一侧。
-    const depth = x + y;
-
-    if (depth > nearestDepth) {
-      nearestDepth = depth;
-      result = { x, y };
-    }
-  }
-
-  const grid = makeHeightGrid();
-
-  for (let row = 0; row < grid.length - 1; row++) {
-    for (let col = 0; col < grid[row].length - 1; col++) {
-      const a = grid[row][col];
-      const b = grid[row][col + 1];
-      const c = grid[row + 1][col + 1];
-      const d = grid[row + 1][col];
-
-      test([a, b, c]);
-      test([a, c, d]);
-    }
-  }
-
-  return result;
+  return pickProjectedTerrainPoint(terrain, point);
 }
 
 // 根据单位所在高度平面拾取部署位置。
@@ -1651,23 +1574,21 @@ async function startEditor() {
     const catalog = await loadUnitData();
     const store = createBattleStore(catalog);
 
-    terrain = store.getScene().terrain;
-    let terrainText = JSON.stringify(terrain);
+    terrain = store.getSceneSnapshot().terrain;
 
     redrawTerrain();
 
     // 必须先注册：编辑器重建列表前，空间查询先切换到新地形。
     const unsubscribeTerrain = store.subscribe(() => {
-      const next = store.getScene().terrain;
-      const text = JSON.stringify(next);
+      const next = store.getSceneSnapshot().terrain;
 
-      if (text !== terrainText) {
+      if (next !== terrain) {
         terrain = next;
-        terrainText = text;
         redrawTerrain();
       }
     });
 
+    let mappedInstances = null, mappedGroups = null, mappedTerrain = null;
     editorController = mountEditor({
       container,
       catalog,
@@ -1690,28 +1611,19 @@ async function startEditor() {
       },
 
       renderMap(instances, selectedId) {
-        units = instances.map(instance => ({
-          ...instance,
-          id: instance.instanceId
-        }));
-
-        unitGroups = store.getGroups();
-
-        drawUnits();
-
-        const displayUnits = getDisplayUnits(
-          units,
-          unitGroups,
-          terrain,
-          getUnitSpatialState
-        );
-
+        const groups = store.getSceneSnapshot().groups;
+        // 仅选择单位时，只切换高亮，不重建地图上的所有图标。
+        if (mappedInstances !== instances || mappedGroups !== groups || mappedTerrain !== terrain) {
+          units = instances.map(instance => ({...instance, id: instance.instanceId}));
+          unitGroups = groups;
+          drawUnits();
+          mappedInstances = instances; mappedGroups = groups; mappedTerrain = terrain;
+        }
+        const displayUnits = displayedMapUnits;
+        const displayedById = new Map(displayUnits.map(unit => [unit.instanceId, unit]));
 
          for (const element of layers.units.querySelectorAll(".unit")) {
-          const displayed = displayUnits.find(
-            unit =>
-              unit.instanceId === element.dataset.instanceId
-          );
+          const displayed = displayedById.get(element.dataset.instanceId);
 
           const selected =
             displayed?.instanceId === selectedId ||
@@ -1865,6 +1777,7 @@ async function startEditor() {
     window.addEventListener("pagehide", event => {
       if (event.persisted) return;
 
+      if (terrainViewFrame !== null) cancelAnimationFrame(terrainViewFrame);
       deploymentController?.destroy();
       terrainController?.destroy();
       unsubscribeTerrain();

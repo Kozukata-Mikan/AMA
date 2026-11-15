@@ -1,3 +1,4 @@
+import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";
 // ===== 共享参战状态 =====
 // 界面和错误文案使用日文，代码注释使用中文。
 import {
@@ -114,6 +115,24 @@ export function createBattleStore(units) {
   const listeners = new Set();
 
   let scene = emptyScene();
+  let snapshotSource = null;
+  let snapshot = null;
+  const trustedTerrains = new WeakSet();
+  function normalizeTerrain(value) {
+    if (trustedTerrains.has(value)) return value;
+    const terrain = freezeSnapshot(validateTerrain(value));
+    trustedTerrains.add(terrain);
+    return terrain;
+  }
+  function getSceneSnapshot() {
+    if (snapshotSource !== scene) {
+      scene.terrain = normalizeTerrain(scene.terrain);
+      // 不可变地形可共享；其他资料仅在每次状态提交后复制一次。
+      snapshot = freezeSnapshot({...copy({...scene, terrain: null}), terrain: scene.terrain});
+      snapshotSource = scene;
+    }
+    return snapshot;
+  }
 
   let storageWarning = "";
   let recoveryBlocked = false;
@@ -506,7 +525,7 @@ export function createBattleStore(units) {
       version: VERSION,
       name: requireText(input.name, "作戦名"),
       terrainId: input.terrainId,
-      terrain: validateTerrain(input.terrain ?? createDemoTerrain()),
+      terrain: normalizeTerrain(input.terrain ?? createDemoTerrain()),
       environment: normalizeEnvironment(input.environment),
       campaignIntro: normalizeCampaignIntro(input.campaignIntro),
       instances,
@@ -580,7 +599,7 @@ export function createBattleStore(units) {
   }
 
   function change(callback) {
-    const candidate = getScene();
+    const candidate = {...copy({...scene, terrain: null}), terrain: scene.terrain};
     callback(candidate);
     commit(candidate);
   }
@@ -1200,6 +1219,7 @@ export function createBattleStore(units) {
 
     // 第一阶段新增接口。
     getScene,
+    getSceneSnapshot,
     setTerrain,
     getGroups: () => copy(scene.groups),
     updateUnit,

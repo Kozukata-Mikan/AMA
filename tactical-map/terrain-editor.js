@@ -1,7 +1,8 @@
 import {
   cloneTerrain,
   resizeTerrain,
-  applyBrush
+  applyBrush,
+  MAX_TERRAIN_SAMPLES
 } from "./terrain-data.js";
 
 import {
@@ -107,8 +108,12 @@ export function mountTerrainEditor({
     control.min = "120";
     control.max = "7200";
   }
-  const cols = field(sizeSection, "列数（9～121）", numberInput(81));
-  const rows = field(sizeSection, "行数（9～121）", numberInput(81));
+  const cols = field(sizeSection, "列数（9～7201）", numberInput(81));
+  const rows = field(sizeSection, "行数（9～7201）", numberInput(81));
+  for (const control of [cols, rows]) {
+    control.min = "9"; control.max = String(MAX_TERRAIN_SAMPLES); control.step = "1";
+  }
+  sizeSection.append(node("p", "格子ごとの編集には、列数＝幅＋1・行数＝高さ＋1を指定します。拡大すると詳細が表示されます。", "editor-note"));
   const interval = field(sizeSection, "等高線間隔（5～100）", numberInput(6));
 
   const actions = node("div", "", "editor-actions");
@@ -121,7 +126,8 @@ export function mountTerrainEditor({
   let redo = [];
   let stroke = null;
   let frame = null;
-  let known = JSON.stringify(getTerrain());
+  let known = getTerrain();
+  let saving = false;
 
   const environmentController = mountEnvironmentEditor({
     container,
@@ -171,12 +177,16 @@ export function mountTerrainEditor({
 
   function saveTerrain(next, before) {
     // 先验证并保存，成功后才加入撤销历史。
-    known = JSON.stringify(next);
+    known = next;
 
     try {
+      saving = true;
       store.setTerrain(next);
+      known = store.getSceneSnapshot().terrain;
+      saving = false;
     } catch (error) {
-      known = JSON.stringify(before);
+      saving = false;
+      known = before;
       previewTerrain(before);
       throw error;
     }
@@ -215,13 +225,17 @@ export function mountTerrainEditor({
 
     const current = cloneTerrain(getTerrain());
     const previous = undo[undo.length - 1];
-    known = JSON.stringify(previous);
+    known = previous;
 
     try {
+      saving = true;
       store.setTerrain(previous);
+      known = store.getSceneSnapshot().terrain;
     } catch (error) {
-      known = JSON.stringify(current);
+      known = getTerrain();
       throw error;
+    } finally {
+      saving = false;
     }
 
     undo.pop();
@@ -238,13 +252,18 @@ export function mountTerrainEditor({
 
     const current = cloneTerrain(getTerrain());
     const next = redo[redo.length - 1];
-    known = JSON.stringify(next);
+    known = next;
 
     try {
+      saving = true;
       store.setTerrain(next);
+      known = store.getSceneSnapshot().terrain;
+      saving = false;
     } catch (error) {
-      known = JSON.stringify(current);
+      known = getTerrain();
       throw error;
+    } finally {
+      saving = false;
     }
 
     redo.pop();
@@ -275,7 +294,8 @@ export function mountTerrainEditor({
     for (let index = 1; index <= steps; index++) {
       const ratio = index / steps;
 
-      applyBrush(stroke.working, {
+      applyBrush,
+  MAX_TERRAIN_SAMPLES(stroke.working, {
         x: start.x + (point.x - start.x) * ratio,
         y: start.y + (point.y - start.y) * ratio
       }, stroke.brush);
@@ -340,7 +360,8 @@ export function mountTerrainEditor({
       };
 
       // 在修改工作副本之前检查笔刷参数。
-      applyBrush(cloneTerrain(before), { x: 100000, y: 100000 }, brush);
+      applyBrush,
+  MAX_TERRAIN_SAMPLES(cloneTerrain(before), { x: 100000, y: 100000 }, brush);
 
       stroke = {
         pointerId: event.pointerId,
@@ -437,10 +458,10 @@ export function mountTerrainEditor({
   svg.addEventListener("click", click, true);
 
   const unsubscribe = store.subscribe(() => {
-    const incoming = JSON.stringify(store.getScene().terrain);
+    const incoming = store.getSceneSnapshot().terrain;
 
     // 另一页面修改地形或导入场景时，不能重做旧地图上的操作。
-    if (incoming !== known) {
+    if (!saving && incoming !== known) {
       if (stroke) finish({ pointerId: stroke.pointerId }, true);
 
       undo = [];
@@ -464,7 +485,7 @@ export function mountTerrainEditor({
 
       undo = [];
       redo = [];
-      known = JSON.stringify(getTerrain());
+      known = getTerrain();
 
       editing.checked = false;
       svg.classList.remove("terrain-editing");
