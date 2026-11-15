@@ -1,3 +1,7 @@
+import {beforeEach} from 'node:test';
+import {resetDatabase, IDBObjectStore} from './save-test-environment.mjs';
+import {readSave, writeSave} from '../js/save-database.js';
+beforeEach(resetDatabase);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDemoTerrain, resizeTerrain, sampleTerrain, gridPosition, applyBrush, validateTerrain, readTerrainVertex } from '../tactical-map/terrain-data.js';
@@ -80,34 +84,35 @@ test('one-cell land still blocks exact movement/LOS queries on a large map',()=>
  const line=traceAttackTerrainLine(t,{x:-2,y:0,z:1},{x:2,y:0,z:1});
  assert.equal(line.maxGroundHeight,100);assert.equal(line.minGroundClearance,-99);
 });
-test('battle read snapshots are immutable, reusable, and invalidated after changes',()=>{
- data.clear();const store=createBattleStore([]);
+test('battle read snapshots are immutable, reusable, and invalidated after changes',async ()=>{
+ data.clear();const store=await createBattleStore([]);
  const a=store.getSceneSnapshot();assert.equal(a,store.getSceneSnapshot());
  assert.throws(()=>{a.name='mutated'});
  const mutable=store.getScene();mutable.name='private';assert.notEqual(store.getSceneSnapshot().name,'private');
- store.renameScene('changed');const b=store.getSceneSnapshot();assert.notEqual(a,b);assert.equal(b.name,'changed');
- assert.equal(a.terrain,b.terrain);store.destroy();
+ await store.renameScene('changed');const b=store.getSceneSnapshot();assert.notEqual(a,b);assert.equal(b.name,'changed');
+ assert.equal(a.terrain,b.terrain);await store.destroy();
 });
-test('simulation cached snapshots preserve fog and mutable getScene contract',()=>{
- data.clear();const id=createSimulation(source(),()=>({valid:true}));const store=openSimulation(id);
+test('simulation cached snapshots preserve fog and mutable getScene contract',async ()=>{
+ data.clear();const id=await createSimulation(source(),()=>({valid:true}));const store=await openSimulation(id);
  const a=store.getSceneSnapshot();assert.equal(a,store.getSceneSnapshot());assert(Object.isFrozen(a));
  const hidden=a.instances.find(u=>u.instanceId==='b');
  assert.equal(hidden.observationLevel,'shadow');assert.equal(hidden.currentHp,null);assert.equal(hidden.snapshot.maxHp,null);assert.notEqual(hidden.name,'b');
  const mutable=store.getScene();mutable.name='private';assert.notEqual(store.getSceneSnapshot().name,'private');
- store.setObservationSide('enemy');const b=store.getSceneSnapshot();assert.notEqual(a,b);assert.equal(b.controls.observationSide,'enemy');
+ await store.setObservationSide('enemy');const b=store.getSceneSnapshot();assert.notEqual(a,b);assert.equal(b.controls.observationSide,'enemy');
  assert.equal(a.terrain,b.terrain);
  assert(a.instances.every(u=>u.observationOwn || u.observationLevel !== undefined));
 });
-test('cross-tab writes with same revision are rejected instead of overwritten',()=>{
- data.clear();const id=createSimulation(source(),()=>({valid:true}));const store=openSimulation(id);
- const key=[...data.keys()].find(k=>k.endsWith(id));const previous=data.get(key);data.set(key,previous+' ');
- assert.throws(()=>store.setObservationSide('enemy'));assert.equal(data.get(key),previous+' ');
+test('cross-tab writes with same revision are rejected instead of overwritten',async ()=>{
+ data.clear();const id=await createSimulation(source(),()=>({valid:true}));const store=await openSimulation(id);
+ const key='junqi-simulation-v1:'+id;const previous=await readSave(key);
+ await writeSave(key,previous+' ',{expectedRaw:previous});
+ await assert.rejects(()=>store.setObservationSide('enemy'));assert.equal(await readSave(key),previous+' ');
 });
-test('save failure does not advance in-memory revision or cached state',()=>{
- data.clear();const id=createSimulation(source(),()=>({valid:true}));const store=openSimulation(id);
- const before=store.getSceneSnapshot();const write=localStorage.setItem;
- localStorage.setItem=()=>{throw new Error('disk full')};
- try{assert.throws(()=>store.setObservationSide('enemy'));assert.equal(store.getSceneSnapshot(),before)}finally{localStorage.setItem=write}
+test('save failure does not advance in-memory revision or cached state',async ()=>{
+ data.clear();const id=await createSimulation(source(),()=>({valid:true}));const store=await openSimulation(id);
+ const before=store.getSceneSnapshot();const put=IDBObjectStore.prototype.put;
+ IDBObjectStore.prototype.put=function(){throw new DOMException('disk full','QuotaExceededError')};
+ try{await assert.rejects(()=>store.setObservationSide('enemy'));assert.equal(store.getSceneSnapshot(),before)}finally{IDBObjectStore.prototype.put=put}
 });
 test('all existing equipment and range rule regressions pass',()=>{
  assert.equal(runEquipmentRegressionTests().failed,0);assert.equal(runRangeRegression().passed,true);
@@ -166,36 +171,30 @@ test('full fire damage-control sequence preserves sinking transition',()=>{
   assert.equal(s.instances[0].currentHp,7);assert.equal(s.instances[0].shipState.status,'sinking');assert.equal(s.phaseFinishRuntime.sinkingOrigins.length,1);
  }finally{crypto.getRandomValues=random}
 });
-test('selected-unit read APIs work with frozen observation snapshots',()=>{
- data.clear();const id=createSimulation(source(),()=>({valid:true}));const store=openSimulation(id);
+test('selected-unit read APIs work with frozen observation snapshots',async ()=>{
+ data.clear();const id=await createSimulation(source(),()=>({valid:true}));const store=await openSimulation(id);
  store.getSceneSnapshot();
  assert.doesNotThrow(()=>store.getAttackEquipmentProfiles('a'));
  assert.doesNotThrow(()=>store.getEquipmentRepairOptions('a'));
  assert.doesNotThrow(()=>store.getEntities());
- store.beginMovement();assert.equal(store.getSceneSnapshot().turn.phaseId,'movement');
+ await store.beginMovement();assert.equal(store.getSceneSnapshot().turn.phaseId,'movement');
 });
-test('reentrant save cannot be overwritten by its older outer transaction',()=>{
- data.clear();const id=createSimulation(source(),()=>({valid:true}));const store=openSimulation(id);
- const read=localStorage.getItem;let calls=0,injecting=false;
- localStorage.getItem=k=>{
-  calls++;
-  if(calls===2&&!injecting){injecting=true;store.setObservationSide('enemy')}
-  return read(k);
- };
- try{
-  assert.throws(()=>store.beginMovement());
-  assert.equal(store.getSceneSnapshot().controls.observationSide,'enemy');
-  assert.equal(store.getSceneSnapshot().turn.phaseId,'start');
- }finally{localStorage.getItem=read}
+test('overlapping saves are rejected without overwriting the active transaction',async ()=>{
+ data.clear();const id=await createSimulation(source(),()=>({valid:true}));const store=await openSimulation(id);
+ const first=store.beginMovement();
+ await assert.rejects(()=>store.setObservationSide('enemy'),/保存中/);
+ await first;
+ assert.equal(store.getSceneSnapshot().controls.observationSide,'ally');
+ assert.equal(store.getSceneSnapshot().turn.phaseId,'movement');
 });
-test('large edited terrain survives editor save/export/import/reopen intact',()=>{
- data.clear();let store=createBattleStore([]);
+test('large edited terrain survives editor save/export/import/reopen intact',async ()=>{
+ data.clear();let store=await createBattleStore([]);
  const t=resizeTerrain(flatTerrain(),{width:7200,height:7200,cols:7201,rows:7201,contourInterval:6});
  applyBrush(t,{x:2000,y:2000},{mode:'level',radius:5,strength:10,target:123});
- store.setTerrain(t);store.renameScene('Large terrain');
- const exported=store.exportScene();store.importScene(exported);
+ await store.setTerrain(t);await store.renameScene('Large terrain');
+ const exported=store.exportScene();await store.importScene(exported);
  assert.equal(sampleTerrain(store.getSceneSnapshot().terrain,2000,2000).height,123);
- store.destroy();store=createBattleStore([]);
+ await store.destroy();store=await createBattleStore([]);
  assert.equal(store.getSceneSnapshot().terrain.cols,7201);
- assert.equal(sampleTerrain(store.getSceneSnapshot().terrain,2000,2000).height,123);store.destroy();
+ assert.equal(sampleTerrain(store.getSceneSnapshot().terrain,2000,2000).height,123);await store.destroy();
 });

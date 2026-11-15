@@ -1,3 +1,4 @@
+import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
@@ -339,52 +340,26 @@ function unpackSaved(value) {
 
 // 压缩已经存在的推演存档。
 // 不删除存档；单个写入失败时，原存档仍保留。
-export function compactSimulationSaves() {
-  const keys = [];
-
-  for (let index = 0; index < localStorage.length; index++) {
-    const key = localStorage.key(index);
-
-    if (key?.startsWith(PREFIX)) {
-      keys.push(key);
-    }
-  }
-
-  let compacted = 0;
-  let failed = 0;
-
-  for (const key of keys) {
+export async function compactSimulationSaves() {
+  let compacted = 0, failed = 0;
+  for (const entry of await listSaveMetadata(PREFIX)) {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = await readSave(entry.key);
       if (!raw) continue;
-
       const value = unpackSaved(JSON.parse(raw));
-
-      if (
-        value.version !== VERSION ||
-        value.mode !== "simulation" ||
-        key !== PREFIX + value.id
-      ) {
-        continue;
-      }
-
+      if (value.version !== VERSION || value.mode !== "simulation" || entry.key !== PREFIX + value.id) continue;
       const packed = packSaved(value);
-
       if (packed.length < raw.length) {
-        localStorage.setItem(key, packed);
-        compacted += 1;
+        await writeSave(entry.key, packed, {expectedRaw: raw, name: value.name});
+        compacted++;
       }
-    } catch (error) {
-      console.warn("推演存档压缩失败：", key, error);
-      failed += 1;
-    }
+    } catch (error) { console.warn(error); failed++; }
   }
-
-  return { compacted, failed };
+  return {compacted, failed};
 }
 
 
-function readSaved(id, raw = localStorage.getItem(PREFIX + id)) {
+function readSaved(id, raw) {
 
   if (raw === null) {
     throw new Error("推演データが見つかりません。");
@@ -446,36 +421,13 @@ function readSaved(id, raw = localStorage.getItem(PREFIX + id)) {
 
 }
 
-function writeSaved(value) {
-  const key = PREFIX + value.id;
+async function writeSaved(value, expectedRaw = null) {
   const text = packSaved(value);
-
   try {
-    localStorage.setItem(key, text);
+    await writeSave(PREFIX + value.id, text, {expectedRaw, name: value.name});
     return text;
-  } catch (firstError) {
-    // 容量不足时，先对旧推演去重，再重试。
-    // 不自动删除任何存档。
-    if (
-      firstError.name === "QuotaExceededError" ||
-      firstError.name === "NS_ERROR_DOM_QUOTA_REACHED"
-    ) {
-      compactSimulationSaves();
-
-      try {
-        localStorage.setItem(key, text);
-        return text;
-      } catch {
-        // 继续交给下面的错误提示。
-      }
-    }
-
-    throw new Error(
-      "推演データを保存できません。" +
-      "既存の推演を圧縮しても容量が不足しているか、" +
-      "ブラウザーが保存を許可していません。" +
-      "既存データは削除していません。"
-    );
+  } catch (error) {
+    throw new Error("推演データを保存できません。今回の変更は確定していません。" + error.message, {cause: error});
   }
 }
 
@@ -594,7 +546,7 @@ function actorSnapshot(entity) {
 
 // 从已经部署好的自定义场景创建一次独立推演。
 // spatialState 使用现有地图的部署条件，不增加战斗公式。
-export function createSimulation(scene, spatialState) {
+export async function createSimulation(scene, spatialState) {
   if (
     !scene ||
     !Array.isArray(scene.instances) ||
@@ -692,16 +644,28 @@ export function createSimulation(scene, spatialState) {
 
 
 
-  writeSaved(value);
+  await writeSaved(value);
 
   return id;
 
 }
 
-export function openSimulation(id) {
+export async function openSimulation(id) {
   requireText(id, "推演番号");
 
-  let savedRaw = localStorage.getItem(PREFIX + id);
+  let savedRaw = await readSave(PREFIX + id);
+  let saving = false;
+  const savingListeners = new Set();
+  function setSaving(value) {
+    saving = value;
+    for (const listener of savingListeners) {
+      try { listener(value); } catch (error) { console.error(error); }
+    }
+  }
+  function subscribeSaving(listener) {
+    savingListeners.add(listener); listener(saving);
+    return () => savingListeners.delete(listener);
+  }
   let state = readSaved(id, savedRaw);
   state.terrain = freezeSnapshot(validateTerrain(state.terrain));
   if (state.initialScene?.terrain &&
@@ -731,14 +695,17 @@ export function openSimulation(id) {
   function notify() {
     for (const listener of listeners) {
       try {
-        listener();
+        Promise.resolve(listener()).catch(console.error);
       } catch (error) {
         console.error(error);
       }
     }
   }
 
-    function commit(change) {
+    async function commit(change) {
+    if (saving) throw new Error("保存中です。完了してから次の操作を行ってください。");
+    setSaving(true);
+    try {
     if (typeof change !== "function") {
       throw new Error("保存処理の指定が不正です。");
     }
@@ -747,7 +714,7 @@ export function openSimulation(id) {
 
     // 保存内容逐字节一致时，无需重复解析和全量初始化两次。
     // 任意外部修改都拒绝覆盖，包括同revision的内容变更。
-    if (localStorage.getItem(PREFIX + id) !== expectedRaw) {
+    if (await readSave(PREFIX + id) !== expectedRaw) {
       throw new Error("別の画面で推演が更新されています。ページを再読み込みしてください。");
     }
 
@@ -777,7 +744,7 @@ export function openSimulation(id) {
 
     const result = change(candidate);
 
-    // 当前localStorage事务必须同步完成。
+    // 规则计算回调必须同步完成，数据库写入在计算与校验后等待确认。
     // 不允许异步回调先返回，再修改候选状态。
     if (
       result !== null &&
@@ -892,16 +859,17 @@ export function openSimulation(id) {
     candidate.updatedAt = new Date().toISOString();
 
     // 回调可能触发其他同步保存，写入前再次检查。
-    if (localStorage.getItem(PREFIX + id) !== expectedRaw) {
+    if (await readSave(PREFIX + id) !== expectedRaw) {
       throw new Error("保存処理中に推演が更新されました。今回の変更は保存していません。");
     }
 
-    // 沿用现有压缩、容量不足重试与存档键。
+    // 保留原有压缩格式与存档键；IndexedDB原子比较后提交。
     // 写入失败会抛出错误，不更新内存、不通知界面。
-    savedRaw = writeSaved(candidate);
+    savedRaw = await writeSaved(candidate, expectedRaw);
 
     state = candidate;
     notify();
+    } finally { setSaving(false); }
   }
 
 
@@ -991,6 +959,8 @@ export function openSimulation(id) {
   }
 
        const api = {
+    isSaving: () => saving,
+    subscribeSaving,
   ...createSimulationFeatures(() => state, commit),
   ...createRescueFeatures(() => state, commit),
 
@@ -1008,7 +978,7 @@ export function openSimulation(id) {
   });
 },
 
-endSimulation(expectedRevision) {
+async endSimulation(expectedRevision) {
   if (expectedRevision !== state.revision) {
     throw new Error(
       "状態が変更されています。もう一度確認してください。"
@@ -1020,7 +990,7 @@ endSimulation(expectedRevision) {
     return api.getSimulationStatus();
   }
 
-  commit(candidate => {
+  await commit(candidate => {
     candidate.simulationEndRuntime = {
       version: 1,
       endedAt: new Date().toISOString(),
@@ -1112,7 +1082,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
       };
     },
 
-    setEnemyAutonomy(enabled) {
+    async setEnemyAutonomy(enabled) {
       if (typeof enabled !== "boolean") {
         throw new Error("自律行動の設定には真偽値を指定してください。");
       }
@@ -1121,7 +1091,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
         return;
       }
 
-      commit(candidate => {
+      await commit(candidate => {
   if (!["start", "movement"].includes(candidate.turn.phaseId)) {
     throw new Error(
       "自律行動の切替はラウンド開始または移動段階で行ってください。"
@@ -1863,7 +1833,7 @@ if (equipmentPower) {
     },
 
 
-        settleAttackPhase(expectedRevision) {
+        async settleAttackPhase(expectedRevision) {
       if (expectedRevision !== state.revision) {
         throw new Error(
           "状態が変更されています。もう一度確認してください。"
@@ -1878,7 +1848,7 @@ if (equipmentPower) {
 
       let receipt;
 
-      commit(candidate => {
+      await commit(candidate => {
         receipt = settleAttackPhase(candidate);
       });
 
@@ -1893,7 +1863,7 @@ if (equipmentPower) {
       };
     },
 
-        finishSpecialPhase(expectedRevision) {
+        async finishSpecialPhase(expectedRevision) {
       if (expectedRevision !== state.revision) {
         throw new Error(
           "状態が変更されています。もう一度確認してください。"
@@ -1902,7 +1872,7 @@ if (equipmentPower) {
 
       let receipt;
 
-      commit(candidate => {
+      await commit(candidate => {
         receipt = finishSpecialPhase(candidate);
       });
 
@@ -1912,7 +1882,7 @@ if (equipmentPower) {
       };
     },
 
-    finishTurn(expectedRevision) {
+    async finishTurn(expectedRevision) {
       if (expectedRevision !== state.revision) {
         throw new Error(
           "状態が変更されています。もう一度確認してください。"
@@ -1921,7 +1891,7 @@ if (equipmentPower) {
 
       let receipt;
 
-      commit(candidate => {
+      await commit(candidate => {
         receipt = finishTurn(candidate);
       });
 
@@ -2002,7 +1972,7 @@ if (equipmentPower) {
     },
 
            
-           saveAttackCommands(request, expectedRevision) {
+           async saveAttackCommands(request, expectedRevision) {
       if (expectedRevision !== state.revision) {
         throw new Error(
           "状態が変更されています。もう一度確認してください。"
@@ -2032,7 +2002,7 @@ if (equipmentPower) {
 
 
 
-      commit(candidate => {
+      await commit(candidate => {
         if (!isAttackPhase(candidate.turn.phaseId)) {
           throw new Error(
             "攻撃計画は次序1～5またはPASで登録してください。"
@@ -2362,7 +2332,7 @@ if (equipmentPower) {
 
     },
 
-    cancelAttackCommands(
+    async cancelAttackCommands(
       { unitId, groupIds },
       expectedRevision
     ) {
@@ -2384,7 +2354,7 @@ if (equipmentPower) {
 
       const selected = new Set(groupIds);
 
-      commit(candidate => {
+      await commit(candidate => {
         if (!isAttackPhase(candidate.turn.phaseId)) {
           throw new Error("攻撃計画を取り消せる段階ではありません。");
         }
@@ -2408,7 +2378,7 @@ if (equipmentPower) {
       });
     },
 
-    saveDraft(request, expectedRevision) {
+    async saveDraft(request, expectedRevision) {
       if (expectedRevision !== state.revision) {
         throw new Error(
           "状態が変更されています。もう一度プレビューしてください。"
@@ -2417,7 +2387,7 @@ if (equipmentPower) {
 
       const preview = previewDraft(request);
 
-      commit(candidate => {
+      await commit(candidate => {
         if (candidate.actions.length >= 1000) {
           throw new Error("草案記録は 1000 件以内にしてください。");
         }
@@ -2436,7 +2406,7 @@ if (equipmentPower) {
       });
     },
 
-    createGroup({ name, kind, memberIds }) {
+    async createGroup({ name, kind, memberIds }) {
       const groupName = requireText(name, "編隊名");
 
       if (!["formation", "cluster"].includes(kind)) {
@@ -2451,7 +2421,7 @@ if (equipmentPower) {
         throw new Error("メンバーを選択してください。");
       }
 
-      commit(candidate => {
+      await commit(candidate => {
         const members = memberIds.map(instanceId => {
           const unit = candidate.instances.find(
             item => item.instanceId === instanceId
@@ -2510,10 +2480,10 @@ if (equipmentPower) {
       });
     },
 
-    renameGroup(groupId, name) {
+    async renameGroup(groupId, name) {
       const nextName = requireText(name, "編隊名");
 
-      commit(candidate => {
+      await commit(candidate => {
         const group = candidate.groups.find(
           item => item.id === groupId
         );
@@ -2544,8 +2514,8 @@ if (equipmentPower) {
       });
     },
 
-    dissolveGroup(groupId) {
-      commit(candidate => {
+    async dissolveGroup(groupId) {
+      await commit(candidate => {
         const group = candidate.groups.find(
           item => item.id === groupId
         );

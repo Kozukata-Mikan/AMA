@@ -14,7 +14,7 @@ export function mountUnitDeployment({
   resolveUnit = instanceId => store.getAll().find(
     unit => unit.instanceId === instanceId
   ),
-  commitUnit = candidate => store.updateUnit(
+  commitUnit = async candidate => await store.updateUnit(
     candidate.instanceId,
     {
       x: candidate.x,
@@ -211,7 +211,7 @@ export function mountUnitDeployment({
     paintPreview(event);
   }
 
-  function up(event) {
+  async function up(event) {
     if (!drag || drag.pointerId !== event.pointerId) return;
 
     const current = drag;
@@ -252,7 +252,7 @@ export function mountUnitDeployment({
     }
 
     try {
-      commitUnit(candidate);
+      await commitUnit(candidate);
 
 
       selectUnit(candidate.instanceId);
@@ -279,7 +279,7 @@ export function mountUnitDeployment({
     cancelDrag("配置を取り消しました。");
   }
 
-  function wheel(event) {
+  async function wheel(event) {
     if (svg.classList.contains("terrain-editing")) return;
     if (event.deltaY === 0) return;
 
@@ -317,7 +317,7 @@ export function mountUnitDeployment({
     try {
       const heading = normalizeHeading(unit.heading + change);
 
-      commitUnit({...unit,heading
+      await commitUnit({...unit,heading
       });
 
 

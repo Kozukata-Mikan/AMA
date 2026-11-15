@@ -603,7 +603,7 @@ function selectableGroups() {
     renderReport();
   });
 
-       const saveCommands = button("攻撃計画を保存", () => {
+       const saveCommands = button("攻撃計画を保存", async () => {
     saveFeedback.textContent = "";
 
     if (!report) {
@@ -644,7 +644,7 @@ function selectableGroups() {
     const submittedRevision = report.revision;
 
     try {
-      const receipt = store.saveAttackCommands({
+      const receipt = await store.saveAttackCommands({
         unitId: submittedActorId,
         assignments,
         followFormationAttack: followFormationAttack.checked
@@ -760,7 +760,7 @@ function selectableGroups() {
 
   const cancelCommands = button(
     "選択した組の保存計画を取消",
-    () => {
+    async () => {
       if (!report) {
         output.textContent = "行動するユニットを選択してください。";
         return;
@@ -776,7 +776,7 @@ function selectableGroups() {
       }
 
       try {
-        store.cancelAttackCommands({
+        await store.cancelAttackCommands({
           unitId: report.unitId,
           groupIds
         }, report.revision);
@@ -790,7 +790,7 @@ function selectableGroups() {
     }
   );
 
-  const executeBatch = button("現在の攻撃段階を一括結算", () => {
+  const executeBatch = button("現在の攻撃段階を一括結算", async () => {
   const scene = store.getSceneSnapshot();
 
   if (!/^(order-[1-5]|pas)$/.test(scene.turn.phaseId)) {
@@ -813,7 +813,7 @@ function selectableGroups() {
   executeBatch.disabled = true;
 
   try {
-    const result = store.settleAttackPhase(scene.revision);
+    const result = await store.settleAttackPhase(scene.revision);
 
     phaseOutput.textContent =
       result.message + "\n" +
@@ -842,7 +842,7 @@ phaseOutput.textContent =
   }
 });
 
-const finishPhase = button("特殊段階・回合終了を処理", () => {
+const finishPhase = button("特殊段階・回合終了を処理", async () => {
   const scene = store.getSceneSnapshot();
   const phaseId = scene.turn.phaseId;
 
@@ -864,8 +864,8 @@ const finishPhase = button("特殊段階・回合終了を処理", () => {
 
   try {
     const result = phaseId === "special"
-      ? store.finishSpecialPhase(scene.revision)
-      : store.finishTurn(scene.revision);
+      ? await store.finishSpecialPhase(scene.revision)
+      : await store.finishTurn(scene.revision);
 
     phaseOutput.textContent = result.message;
   } catch (error) {

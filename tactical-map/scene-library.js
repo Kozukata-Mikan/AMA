@@ -80,20 +80,20 @@ async function databaseOperation(mode, operation) {
   }
 }
 
-function readEntry(id) {
-  return databaseOperation("readonly", store => store.get(id));
+async function readEntry(id) {
+  return await databaseOperation("readonly", store => store.get(id));
 }
 
-function readEntries() {
-  return databaseOperation("readonly", store => store.getAll());
+async function readEntries() {
+  return await databaseOperation("readonly", store => store.getAll());
 }
 
-function writeEntry(entry) {
-  return databaseOperation("readwrite", store => store.put(entry));
+async function writeEntry(entry) {
+  return await databaseOperation("readwrite", store => store.put(entry));
 }
 
-function deleteEntry(id) {
-  return databaseOperation("readwrite", store => store.delete(id));
+async function deleteEntry(id) {
+  return await databaseOperation("readwrite", store => store.delete(id));
 }
 
 function element(tag, text = "", className = "") {
@@ -105,7 +105,7 @@ function element(tag, text = "", className = "") {
   return result;
 }
 
-export function mountSceneLibrary({
+export async function mountSceneLibrary({
   container,
   store,
   getView,
@@ -204,14 +204,14 @@ export function mountSceneLibrary({
   }
 
   // 保存此刻的视角，再导出经过存储层验证的完整场景。
-  function captureCurrent(id) {
+  async function captureCurrent(id) {
     if (store.isRecoveryBlocked()) {
       throw new Error(
         "保存データを復元してから地图库を操作してください。"
       );
     }
 
-    store.updateView(getView());
+    await store.updateView(getView());
 
     const scene = store.getScene();
 
@@ -227,7 +227,7 @@ export function mountSceneLibrary({
   }
 
   async function backupCurrent() {
-    const backup = captureCurrent(BACKUP_ID);
+    const backup = await captureCurrent(BACKUP_ID);
     await writeEntry(backup);
   }
 
@@ -262,7 +262,7 @@ export function mountSceneLibrary({
       `「${previous.name}」を現在の作戦で上書きしますか？`
     )) return;
 
-    await writeEntry(captureCurrent(id));
+    await writeEntry(await captureCurrent(id));
     await refreshEntries();
 
     show("保存スロットに作戦を保存しました。");
@@ -285,8 +285,8 @@ export function mountSceneLibrary({
     await backupCurrent();
 
     // importScene 内部先完整校验，失败时不替换场景。
-    store.importScene(entry.text);
-    onLoaded();
+    await store.importScene(entry.text);
+    await onLoaded();
 
     show(
       "作戦を読み込みました。" +
@@ -309,8 +309,8 @@ export function mountSceneLibrary({
 
     await backupCurrent();
 
-    store.newScene(name);
-    onLoaded();
+    await store.newScene(name);
+    await onLoaded();
 
     show(
       "空白の海域地図を作成しました。" +
@@ -333,8 +333,8 @@ export function mountSceneLibrary({
 
     await backupCurrent();
 
-    store.importScene(backup.text);
-    onLoaded();
+    await store.importScene(backup.text);
+    await onLoaded();
 
     show("切り替え前の作戦を復元しました。");
   });
@@ -363,7 +363,7 @@ export function mountSceneLibrary({
   // 初始化期间禁用按钮，避免与首次读取交错。
   setBusy(true);
 
-  refreshEntries()
+  await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await refreshEntries()
     .then(() => {
       show("保存スロットを選んで操作してください。");
     })

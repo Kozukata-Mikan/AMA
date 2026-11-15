@@ -1,3 +1,5 @@
+import { readSave, writeSave, subscribeSaveChanges } from "./save-database.js";
+import { MAX_SCENE_FILE_BYTES } from "./save-limits.js";
 import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";
 // ===== 共享参战状态 =====
 // 界面和错误文案使用日文，代码注释使用中文。
@@ -99,7 +101,7 @@ function emptyScene() {
   };
 }
 
-export function createBattleStore(units) {
+export async function createBattleStore(units) {
   if (!Array.isArray(units)) {
     throw new Error("ユニット図鑑が初期化されていません。");
   }
@@ -134,6 +136,19 @@ export function createBattleStore(units) {
     return snapshot;
   }
 
+  let savedRaw = null;
+  let saving = false;
+  const savingListeners = new Set();
+  function setSaving(value) {
+    saving = value;
+    for (const listener of savingListeners) {
+      try { listener(value); } catch (error) { console.error(error); }
+    }
+  }
+  function subscribeSaving(listener) {
+    savingListeners.add(listener); listener(saving);
+    return () => savingListeners.delete(listener);
+  }
   let storageWarning = "";
   let recoveryBlocked = false;
 
@@ -563,7 +578,7 @@ export function createBattleStore(units) {
   function emit() {
     for (const listener of listeners) {
       try {
-        listener(getAll());
+        Promise.resolve(listener(getAll())).catch(console.error);
       } catch (error) {
         // ある画面の描画失敗で、他の購読者まで停止させない。
         console.error(error);
@@ -571,47 +586,45 @@ export function createBattleStore(units) {
     }
   }
 
-  function persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(scene));
-      storageWarning = "";
-    } catch (error) {
-      storageWarning =
-        "保存できませんでした。現在の変更はメモリー内にのみ保持されています。作戦データを書き出してください。";
-      console.warn(error);
-    }
-  }
-
-  function commit(candidate, allowRecovery = false) {
+  async function commit(candidate, allowRecovery = false) {
+    if (saving) throw new Error("保存中です。完了してから次の操作を行ってください。");
     if (recoveryBlocked && !allowRecovery) {
-      throw new Error(
-        "保存データを復元できませんでした。元データ保護のため、編集を停止しています。バックアップ後に初期化するか、有効な作戦データを読み込んでください。"
-      );
+      throw new Error("保存データを復元できませんでした。元データ保護のため編集を停止しています。バックアップと復元が必要です。");
     }
-
-    // 検証が成功するまで現在の場面には触れない。
-    const next = normalizeScene(candidate);
-
-    scene = next;
-    recoveryBlocked = false;
-    persist();
-    emit();
+    setSaving(true);
+    try {
+      const next = normalizeScene(candidate);
+      const raw = JSON.stringify(next);
+      await writeSave(STORAGE_KEY, raw, {expectedRaw: savedRaw, name: next.name});
+      // Only committed writes replace the visible scene.
+      savedRaw = raw;
+      scene = next;
+      recoveryBlocked = false;
+      storageWarning = "";
+      emit();
+    } catch (error) {
+      storageWarning = "保存できませんでした。今回の変更は確定していません。" + error.message;
+      throw error;
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function change(callback) {
+  async function change(callback) {
     const candidate = {...copy({...scene, terrain: null}), terrain: scene.terrain};
     callback(candidate);
-    commit(candidate);
+    await commit(candidate);
   }
 
   // ===== 起動時の復元 =====
   try {
-    const savedText = localStorage.getItem(STORAGE_KEY);
+    const savedText = await readSave(STORAGE_KEY);
+    savedRaw = savedText;
 
     if (savedText !== null) {
       scene = normalizeScene(JSON.parse(savedText));
     } else {
-      const legacyText = localStorage.getItem(LEGACY_KEY);
+      const legacyText = await readSave(LEGACY_KEY);
 
       if (legacyText !== null) {
         scene = migrateLegacy(JSON.parse(legacyText));
@@ -626,7 +639,7 @@ export function createBattleStore(units) {
     console.warn(error);
   }
 
-    function addUnit(unitId, options = {}) {
+    async function addUnit(unitId, options = {}) {
     const base = catalog.get(unitId);
 
     if (!base) {
@@ -655,21 +668,21 @@ export function createBattleStore(units) {
       altitude: base.branch === "air" ? 80 : null
     });
 
-    change(candidate => {
+    await change(candidate => {
       candidate.instances.push(instance);
     });
 
     return copy(instance);
   }
 
-    function updateUnit(instanceId, patch) {
+    async function updateUnit(instanceId, patch) {
     // 单体和批量更新共用同一套旗舰及编队约束。
-    updateUnits([{ instanceId, patch }]);
+    await updateUnits([{ instanceId, patch }]);
   }
 
   // 批量更新先验证，再一次性提交。
   // 避免集群移动或旗舰替换产生中间状态。
-  function updateUnits(updates) {
+  async function updateUnits(updates) {
     if (!Array.isArray(updates) || !updates.length) {
       throw new Error("更新ユニット一覧が不正です。");
     }
@@ -732,7 +745,7 @@ export function createBattleStore(units) {
       }
     }
 
-    change(candidate => {
+    await change(candidate => {
       const requestedFlagshipIds = [];
 
       // 先应用所有普通更新及编队变更。
@@ -813,7 +826,7 @@ export function createBattleStore(units) {
 
 
   // 将已有单体合并为集群。
-  function createCluster(instanceIds, name) {
+  async function createCluster(instanceIds, name) {
     if (
       !Array.isArray(instanceIds) ||
       new Set(instanceIds).size !== instanceIds.length
@@ -828,7 +841,7 @@ export function createBattleStore(units) {
       kind: "cluster"
     };
 
-    change(candidate => {
+    await change(candidate => {
       const members = instanceIds.map(id => {
         const member = candidate.instances.find(
           unit => unit.instanceId === id
@@ -868,7 +881,7 @@ export function createBattleStore(units) {
   }
 
   // 直接新增一个未部署集群。
-  function addCluster(unitId, count, sizeLevel, name) {
+  async function addCluster(unitId, count, sizeLevel, name) {
     const base = catalog.get(unitId);
 
     if (!base) {
@@ -899,7 +912,7 @@ export function createBattleStore(units) {
       })
     );
 
-    change(candidate => {
+    await change(candidate => {
       candidate.groups.push(group);
       candidate.instances.push(...members);
     });
@@ -910,50 +923,50 @@ export function createBattleStore(units) {
     };
   }
 
-    function setEnvironment(value) {
+    async function setEnvironment(value) {
     const environment = normalizeEnvironment(value);
 
-    change(candidate => {
+    await change(candidate => {
       candidate.environment = environment;
     });
   }
   
-  function setCampaignIntro(value) {
+  async function setCampaignIntro(value) {
   const intro = normalizeCampaignIntro(value);
 
-  change(candidate => {
+  await change(candidate => {
     candidate.campaignIntro = intro;
   });
 }
 
   
-  function updateHp(instanceId, currentHp) {
-    updateUnit(instanceId, { currentHp });
+  async function updateHp(instanceId, currentHp) {
+    await updateUnit(instanceId, { currentHp });
   }
 
-  function removeUnit(instanceId) {
-    change(candidate => {
+  async function removeUnit(instanceId) {
+    await change(candidate => {
       candidate.instances = candidate.instances.filter(
         item => item.instanceId !== instanceId
       );
     });
   }
 
-  function addGroup(name, parentId = null) {
+  async function addGroup(name, parentId = null) {
     const group = {
       id: newId(),
       name,
       parentId
     };
 
-    change(candidate => {
+    await change(candidate => {
       candidate.groups.push(group);
     });
 
     return copy(group);
   }
 
-  function updateGroup(id, patch) {
+  async function updateGroup(id, patch) {
     if (!isObject(patch)) {
       throw new Error("編隊更新データの書式が不正です。");
     }
@@ -964,7 +977,7 @@ export function createBattleStore(units) {
       }
     }
 
-    change(candidate => {
+    await change(candidate => {
       const index = candidate.groups.findIndex(item => item.id === id);
 
       if (index < 0) {
@@ -978,8 +991,8 @@ export function createBattleStore(units) {
     });
   }
 
-  function removeGroup(id) {
-    change(candidate => {
+  async function removeGroup(id) {
+    await change(candidate => {
       const group = candidate.groups.find(item => item.id === id);
 
       if (!group) {
@@ -1007,7 +1020,7 @@ export function createBattleStore(units) {
     });
   }
 
-  function updateView(patch) {
+  async function updateView(patch) {
     if (!isObject(patch)) {
       throw new Error("地図表示更新データの書式が不正です。");
     }
@@ -1018,7 +1031,7 @@ export function createBattleStore(units) {
       }
     }
 
-    change(candidate => {
+    await change(candidate => {
       candidate.view = {
         ...candidate.view,
         ...patch
@@ -1026,13 +1039,13 @@ export function createBattleStore(units) {
     });
   }
 
-  function renameScene(name) {
-    change(candidate => {
+  async function renameScene(name) {
+    await change(candidate => {
       candidate.name = name;
     });
   }
 
-  function newScene(name = "新しい作戦") {
+  async function newScene(name = "新しい作戦") {
     if (recoveryBlocked) {
       throw new Error(
         "保存データを復元してから新しい作戦を作成してください。"
@@ -1048,13 +1061,13 @@ export function createBattleStore(units) {
     candidate.terrain.rivers.fill(0);
     candidate.terrain.shallows.fill(0);
 
-    commit(candidate);
+    await commit(candidate);
   }
 
   
-  function clear() {
+  async function clear() {
     // 明确的清空操作允许解除恢复保护。
-    commit(emptyScene(), true);
+    await commit(emptyScene(), true);
   }
 
   function exportScene() {
@@ -1067,13 +1080,13 @@ export function createBattleStore(units) {
     return JSON.stringify(scene, null, 2);
   }
 
-  function importScene(text) {
+  async function importScene(text) {
     if (typeof text !== "string") {
       throw new Error("作戦データは JSON テキストで指定してください。");
     }
 
-    if (text.length > 5_000_000) {
-      throw new Error("作戦データが大きすぎます。");
+    if (text.length > MAX_SCENE_FILE_BYTES || new Blob([text]).size > MAX_SCENE_FILE_BYTES) {
+      throw new Error("作戦JSONは128 MiB以内で指定してください。");
     }
 
     let parsed;
@@ -1088,7 +1101,7 @@ export function createBattleStore(units) {
       ? migrateLegacy(parsed)
       : normalizeScene(parsed);
 
-    commit(candidate, true);
+    await commit(candidate, true);
   }
 
     function actionActor(instance) {
@@ -1108,7 +1121,7 @@ export function createBattleStore(units) {
     };
   }
 
-  function addAction({ attackerId, targetId, actionType, note = "" }) {
+  async function addAction({ attackerId, targetId, actionType, note = "" }) {
     const attacker = scene.instances.find(
       item => item.instanceId === attackerId
     );
@@ -1131,7 +1144,7 @@ export function createBattleStore(units) {
       target: actionActor(target)
     });
 
-    change(candidate => {
+    await change(candidate => {
       if (candidate.actions.length >= 5000) {
         throw new Error(
           "行動記録が 5000 件に達しました。書き出した後、不要な記録を削除してください。"
@@ -1144,17 +1157,17 @@ export function createBattleStore(units) {
     return copy(record);
   }
 
-  function removeAction(id) {
-    change(candidate => {
+  async function removeAction(id) {
+    await change(candidate => {
       candidate.actions = candidate.actions.filter(
         item => item.id !== id
       );
     });
   }
-    function setTerrain(terrain) {
+    async function setTerrain(terrain) {
     const validated = validateTerrain(terrain);
 
-    change(candidate => {
+    await change(candidate => {
       candidate.terrain = validated;
     });
   }
@@ -1168,41 +1181,26 @@ export function createBattleStore(units) {
     return () => listeners.delete(listener);
   }
 
-  function handleStorage(event) {
-    if (event.key !== STORAGE_KEY && event.key !== null) {
-      return;
-    }
-
+  let destroyed = false;
+  const unsubscribeStorage = subscribeSaveChanges(async key => {
+    if (key !== STORAGE_KEY || destroyed || saving) return;
     try {
-      // 读取此刻的保存结果，而不是可能已过期的事件内容。
-      const text = localStorage.getItem(STORAGE_KEY);
-
-      if (text === null) {
-        storageWarning =
-          "別の画面で保存データが削除されました。現在の表示は変更していません。";
-        emit();
-        return;
-      }
-
+      const text = await readSave(STORAGE_KEY);
+      if (destroyed || saving || text === savedRaw) return;
+      if (text === null) throw new Error("別の画面で保存データが削除されました。");
       const next = normalizeScene(JSON.parse(text));
-
-      scene = next;
-      recoveryBlocked = false;
-      storageWarning = "";
+      scene = next; savedRaw = text; recoveryBlocked = false; storageWarning = "";
       emit();
     } catch (error) {
-      storageWarning =
-        "別の画面の保存データを読み込めませんでした。現在の表示は変更していません。";
-      console.warn(error);
-      emit();
+      storageWarning = "別の画面の保存データを読み込めませんでした。現在の表示を保持しています。";
+      console.warn(error); emit();
     }
-  }
-
-  window.addEventListener("storage", handleStorage);
-
+  });
   function destroy() {
-    window.removeEventListener("storage", handleStorage);
+    destroyed = true;
+    unsubscribeStorage();
     listeners.clear();
+    savingListeners.clear();
   }
 
   return {
@@ -1238,6 +1236,8 @@ export function createBattleStore(units) {
     addAction,
     removeAction,
     isRecoveryBlocked: () => recoveryBlocked,
+    isSaving: () => saving,
+    subscribeSaving,
     destroy
   };
 }

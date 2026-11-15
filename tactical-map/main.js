@@ -1,6 +1,7 @@
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
+import { mountSaveIndicator } from "./save-indicator.js";
 import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
 import { mountEditor } from "./editor.js";
@@ -1572,7 +1573,8 @@ async function startEditor() {
 
   try {
     const catalog = await loadUnitData();
-    const store = createBattleStore(catalog);
+    const store = await createBattleStore(catalog);
+    const disposeSaveIndicator = mountSaveIndicator(store);
 
     terrain = store.getSceneSnapshot().terrain;
 
@@ -1595,8 +1597,8 @@ async function startEditor() {
       store,
       spatialState: getUnitSpatialState,
       
-      onSceneLoaded() {
-        terrainController?.resetHistory();
+      async onSceneLoaded() {
+        await terrainController?.resetHistory();
         clearDeploymentPreview();
       },
 
@@ -1757,14 +1759,14 @@ async function startEditor() {
         );
       },
 
-      commitUnit(candidate) {
+      async commitUnit(candidate) {
         const spatial = deploymentSpatialState(candidate);
 
         if (!spatial.valid) {
           throw new Error(spatial.reason);
         }
 
-        store.updateUnits(getDeploymentUpdates(candidate));
+        await store.updateUnits(getDeploymentUpdates(candidate));
       },
 
       selectUnit(instanceId) {
@@ -1774,15 +1776,16 @@ async function startEditor() {
 
 
     
-    window.addEventListener("pagehide", event => {
+    window.addEventListener("pagehide", async event => {
       if (event.persisted) return;
 
       if (terrainViewFrame !== null) cancelAnimationFrame(terrainViewFrame);
       deploymentController?.destroy();
-      terrainController?.destroy();
+      await terrainController?.destroy();
       unsubscribeTerrain();
       editorController?.destroy();
-      store.destroy();
+      await store.destroy();
+      disposeSaveIndicator();
     });
   } catch (error) {
     console.error(error);
@@ -1797,4 +1800,4 @@ async function startEditor() {
 }
 
 
-startEditor();
+await startEditor();

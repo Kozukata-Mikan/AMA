@@ -100,9 +100,9 @@ export function mountSimulationFeatures(store, context) {
   const buttons = element("div");
   buttons.className = "buttons";
 
-  function run(action) {
+  async function run(action) {
     try {
-      action();
+      await action();
     } catch (error) {
       console.error(error);
       status.textContent = error.message;
@@ -112,7 +112,7 @@ export function mountSimulationFeatures(store, context) {
   function addButton(text, action) {
     const result = element("button", text);
     result.type = "button";
-    result.addEventListener("click", () => run(action));
+    result.addEventListener("click", async () => await run(action));
     buttons.append(result);
     return result;
   }
@@ -124,17 +124,17 @@ export function mountSimulationFeatures(store, context) {
     return JSON.parse(actor.value);
   }
 
-  const begin = addButton("移動段階へ", () => {
-    store.beginMovement();
+  const begin = addButton("移動段階へ", async () => {
+    await store.beginMovement();
     status.textContent = "移動段階を開始しました。時刻は変更していません。";
   });
 
-  const save = addButton("移動計画を保存", () => {
+  const save = addButton("移動計画を保存", async () => {
     if (x.value.trim() === "" || y.value.trim() === "") {
       throw new Error("移動先のXとYを入力してください。");
     }
 
-    store.planMovement(
+    await store.planMovement(
       ref(),
       Number(x.value),
       Number(y.value),
@@ -143,12 +143,12 @@ export function mountSimulationFeatures(store, context) {
     status.textContent = "移動計画を保存しました。位置と航続距離はまだ変更していません。";
   });
 
-  const cancel = addButton("計画を取消", () => {
-    store.cancelMovement(ref());
+  const cancel = addButton("計画を取消", async () => {
+    await store.cancelMovement(ref());
     status.textContent = "選択した移動計画を取り消しました。";
   });
 
-  const resolve = addButton("全陣営の移動を処理", () => {
+  const resolve = addButton("全陣営の移動を処理", async () => {
  const autonomy = store.getSceneSnapshot().controls.enemyAutonomy;
 
 if (!confirm(
@@ -161,7 +161,7 @@ if (!confirm(
   )
 )) return;
 
-    store.resolveMovement();
+    await store.resolveMovement();
 
     status.textContent =
        "移動を保存し、次序5へ進みました。" +
@@ -354,12 +354,12 @@ if (!movement) {
     drawRange();
   }
 
-  side.addEventListener("change", () => run(() => {
-    store.setObservationSide(side.value);
+  side.addEventListener("change", async () => await run(async () => {
+    await store.setObservationSide(side.value);
     status.textContent = "観察陣営を変更しました。表示情報を再判定しました。";
   }));
 
-  actor.addEventListener("change", () => {
+  actor.addEventListener("change", async () => {
   syncFollow(store.getSceneSnapshot());
   const movement =
     store.getSceneSnapshot().turn.phaseId === "movement";
@@ -379,7 +379,7 @@ if (!movement) {
     return;
   }
 
-  run(() => {
+  await run(() => {
     const info = store.getMovementInfo(ref());
     x.value = info.x;
     y.value = info.y;
@@ -468,7 +468,7 @@ if (!movement) {
     event.stopImmediatePropagation();
   }, true);
 
-  function endDrag(event, cancelled) {
+  async function endDrag(event, cancelled) {
     if (!drag || drag.pointerId !== event.pointerId) return;
 
     const current = drag;
@@ -484,8 +484,8 @@ if (!movement) {
 
     suppressClickUntil = performance.now() + 400;
 
-    run(() => {
-        store.planMovement(
+    await run(async () => {
+        await store.planMovement(
         current.ref,
         Number(x.value),
         Number(y.value),
@@ -498,8 +498,8 @@ if (!movement) {
     });
   }
 
-  svg.addEventListener("pointerup", event => endDrag(event, false), true);
-  svg.addEventListener("pointercancel", event => endDrag(event, true), true);
+  svg.addEventListener("pointerup", async event => await endDrag(event, false), true);
+  svg.addEventListener("pointercancel", async event => await endDrag(event, true), true);
 
   svg.addEventListener("lostpointercapture", () => {
     drag = null;

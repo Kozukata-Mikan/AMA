@@ -162,10 +162,10 @@ export function mountTerrainEditor({
     const result = node("button", title);
     result.type = "button";
 
-    result.addEventListener("click", () => {
+    result.addEventListener("click", async () => {
       try {
         if (stroke) throw new Error("描画を終了してから操作してください。");
-        action();
+        await action();
       } catch (error) {
         show(error.message, true);
       }
@@ -175,13 +175,13 @@ export function mountTerrainEditor({
     return result;
   }
 
-  function saveTerrain(next, before) {
+  async function saveTerrain(next, before) {
     // 先验证并保存，成功后才加入撤销历史。
     known = next;
 
     try {
       saving = true;
-      store.setTerrain(next);
+      await store.setTerrain(next);
       known = store.getSceneSnapshot().terrain;
       saving = false;
     } catch (error) {
@@ -199,7 +199,7 @@ export function mountTerrainEditor({
     show("地形を保存し、配置条件を再検証しました。");
   }
 
-  addButton(actions, "サイズと等高線間隔を適用", () => {
+  addButton(actions, "サイズと等高線間隔を適用", async () => {
     if (!confirm(
       "地図サイズとグリッドを変更しますか？ユニット座標は変更されません。範囲外の地形は切り取られ、新しい範囲は海域になります。"
     )) return;
@@ -214,10 +214,10 @@ export function mountTerrainEditor({
       contourInterval: Number(interval.value)
     });
 
-    saveTerrain(next, before);
+    await saveTerrain(next, before);
   });
 
-  addButton(historyActions, "地形を元に戻す", () => {
+  addButton(historyActions, "地形を元に戻す", async () => {
     if (!undo.length) {
       show("元に戻せる地形操作はありません。");
       return;
@@ -229,7 +229,7 @@ export function mountTerrainEditor({
 
     try {
       saving = true;
-      store.setTerrain(previous);
+      await store.setTerrain(previous);
       known = store.getSceneSnapshot().terrain;
     } catch (error) {
       known = getTerrain();
@@ -244,7 +244,7 @@ export function mountTerrainEditor({
     show("地形操作を元に戻しました。");
   });
 
-  addButton(historyActions, "地形をやり直す", () => {
+  addButton(historyActions, "地形をやり直す", async () => {
     if (!redo.length) {
       show("やり直せる地形操作はありません。");
       return;
@@ -256,7 +256,7 @@ export function mountTerrainEditor({
 
     try {
       saving = true;
-      store.setTerrain(next);
+      await store.setTerrain(next);
       known = store.getSceneSnapshot().terrain;
       saving = false;
     } catch (error) {
@@ -311,7 +311,7 @@ export function mountTerrainEditor({
     }
   }
 
-  function finish(event, cancel = false) {
+  async function finish(event, cancel = false) {
     if (!stroke || stroke.pointerId !== event.pointerId) return;
 
     const completed = stroke;
@@ -329,7 +329,7 @@ export function mountTerrainEditor({
         previewTerrain(completed.before);
         show("地形描画を取り消しました。");
       } else {
-        saveTerrain(completed.working, completed.before);
+        await saveTerrain(completed.working, completed.before);
       }
     } catch (error) {
       previewTerrain(completed.before);
@@ -340,6 +340,7 @@ export function mountTerrainEditor({
   // 捕获阶段处理笔刷，阻止原来的地图平移监听器启动。
   function down(event) {
     if (!editing.checked || event.button !== 0 || stroke) return;
+    if (store.isSaving()) { show("保存中です。完了してから次の描画を開始してください。", true); return; }
 
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -383,7 +384,7 @@ export function mountTerrainEditor({
     }
   }
 
-  function move(event) {
+  async function move(event) {
     if (!stroke || stroke.pointerId !== event.pointerId) return;
 
     event.preventDefault();
@@ -392,24 +393,24 @@ export function mountTerrainEditor({
     try {
       paint(event);
     } catch (error) {
-      finish(event, true);
+      await finish(event, true);
       show(error.message, true);
     }
   }
 
-  function up(event) {
+  async function up(event) {
     if (!stroke || stroke.pointerId !== event.pointerId) return;
     event.stopImmediatePropagation();
-    finish(event);
+    await finish(event);
   }
 
-  function cancel(event) {
-    finish(event, true);
+  async function cancel(event) {
+    await finish(event, true);
   }
 
-  function lost(event) {
+  async function lost(event) {
     // 正常松开时 stroke 已经清空；意外失去捕获时取消操作。
-    finish(event, true);
+    await finish(event, true);
   }
 
   function click(event) {
@@ -417,12 +418,12 @@ export function mountTerrainEditor({
     event.stopImmediatePropagation();
   }
 
-  editing.addEventListener("change", () => {
-    if (stroke) finish({ pointerId: stroke.pointerId }, true);
+  editing.addEventListener("change", async () => {
+    if (stroke) await finish({ pointerId: stroke.pointerId }, true);
     svg.classList.toggle("terrain-editing", editing.checked);
   });
   
-    function handleDisclosureToggle() {
+    async function handleDisclosureToggle() {
     if (disclosure.open) {
       // 兼容不支持 details.name 的浏览器。
       const panel = host.closest("#editor") ?? host;
@@ -438,7 +439,7 @@ export function mountTerrainEditor({
 
     // 隐藏地形面板时，取消尚未提交的笔刷操作。
     if (stroke) {
-      finish({ pointerId: stroke.pointerId }, true);
+      await finish({ pointerId: stroke.pointerId }, true);
     }
 
     editing.checked = false;
@@ -455,12 +456,12 @@ export function mountTerrainEditor({
   svg.addEventListener("lostpointercapture", lost, true);
   svg.addEventListener("click", click, true);
 
-  const unsubscribe = store.subscribe(() => {
+  const unsubscribe = store.subscribe(async () => {
     const incoming = store.getSceneSnapshot().terrain;
 
     // 另一页面修改地形或导入场景时，不能重做旧地图上的操作。
     if (!saving && incoming !== known) {
-      if (stroke) finish({ pointerId: stroke.pointerId }, true);
+      if (stroke) await finish({ pointerId: stroke.pointerId }, true);
 
       undo = [];
       redo = [];
@@ -475,10 +476,10 @@ export function mountTerrainEditor({
   show("地形編集モードを有効にして描画してください。");
 
   return {
-    resetHistory() {
+    async resetHistory() {
       // 切换场景时清理上一张地图的撤销、重做记录。
       if (stroke) {
-        finish({ pointerId: stroke.pointerId }, true);
+        await finish({ pointerId: stroke.pointerId }, true);
       }
 
       undo = [];
@@ -493,11 +494,11 @@ export function mountTerrainEditor({
       show("作戦を切り替えました。地形操作履歴をリセットしました。");
     },
 
-    destroy() {
+    async destroy() {
 
       environmentController.destroy();
 
-      if (stroke) finish({ pointerId: stroke.pointerId }, true);
+      if (stroke) await finish({ pointerId: stroke.pointerId }, true);
       unsubscribe();
 
       disclosure.removeEventListener("toggle", handleDisclosureToggle);

@@ -221,7 +221,7 @@ export function mountEnvironmentEditor({
 
   timeInput.addEventListener("input", updateTimePreview);
 
-  apply.addEventListener("click", () => {
+  apply.addEventListener("click", async () => {
     try {
       if (!canApply()) {
         throw new Error(
@@ -231,7 +231,7 @@ export function mountEnvironmentEditor({
 
       if (!timeInput.reportValidity()) return;
 
-      store.setEnvironment({
+      await store.setEnvironment({
         time: timeInput.value,
         weather: weatherSelect.value
       });

@@ -340,9 +340,9 @@ export function mountCatalogEditor({
 
   
   function safely(action) {
-    return () => {
+    return async () => {
       try {
-        action();
+        await action();
       } catch (error) {
         console.error(error);
         message(error.message, true);
@@ -690,8 +690,8 @@ export function mountCatalogEditor({
           "catalog-muted"
         ),
 
-        button("追加してドラッグ配置へ", safely(() => {
-          const added = battleStore.addUnit(item.id, {
+        button("追加してドラッグ配置へ", safely(async () => {
+          const added = await battleStore.addUnit(item.id, {
             name: selectedName.value,
             faction: selectedFaction.value,
             side: selectedSide.value

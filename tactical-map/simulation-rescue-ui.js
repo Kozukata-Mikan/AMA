@@ -48,9 +48,9 @@ function repairItemText(record) {
 
   const tasks = element("div");
 
-  function run(action) {
+  async function run(action) {
     try {
-      action();
+      await action();
     } catch (error) {
       console.error(error);
       message.textContent = error.message;
@@ -59,12 +59,12 @@ function repairItemText(record) {
 
   const save = element("button", "救助計画を保存");
   save.type = "button";
-  save.addEventListener("click", () => run(() => {
+  save.addEventListener("click", async () => await run(async () => {
     if (!rescuer.value || !target.value) {
       throw new Error("救助艦と救助対象を選択してください。");
     }
 
-    store.planRescue(rescuer.value, target.value);
+    await store.planRescue(rescuer.value, target.value);
 
     message.textContent =
       "救助計画を保存しました。開始条件は移動処理後に確認します。";
@@ -72,12 +72,12 @@ function repairItemText(record) {
 
   const cancel = element("button", "救助計画を取消");
   cancel.type = "button";
-  cancel.addEventListener("click", () => run(() => {
+  cancel.addEventListener("click", async () => await run(async () => {
     if (!rescuer.value) {
       throw new Error("救助艦を選択してください。");
     }
 
-    store.cancelRescuePlan(rescuer.value);
+    await store.cancelRescuePlan(rescuer.value);
     message.textContent = "救助計画を取り消しました。";
   }));
 

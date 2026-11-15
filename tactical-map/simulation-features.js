@@ -1335,7 +1335,7 @@ export function createSimulationFeatures(getState, commit) {
       };
     },
 
-    setObservationSide(side) {
+    async setObservationSide(side) {
       if (!SIDES.includes(side)) {
         fail("観察陣営の指定が不正です。");
       }
@@ -1344,13 +1344,13 @@ export function createSimulationFeatures(getState, commit) {
         fail("自律行動が有効な場合、観察陣営は味方に固定されます。");
       }
 
-      commit(scene => {
+      await commit(scene => {
         scene.controls.observationSide = side;
       });
     },
 
-    beginMovement() {
-      commit(scene => {
+    async beginMovement() {
+      await commit(scene => {
         if (scene.turn.phaseId !== "start") {
           fail("ラウンド開始段階ではありません。");
         }
@@ -1363,7 +1363,7 @@ export function createSimulationFeatures(getState, commit) {
       });
     },
 
-        planMovement(ref, x, y, options = {}) {
+        async planMovement(ref, x, y, options = {}) {
       if (
         !options ||
         typeof options !== "object" ||
@@ -1376,7 +1376,7 @@ export function createSimulationFeatures(getState, commit) {
         fail("移動追随の指定が不正です。");
       }
 
-      commit(scene => {
+      await commit(scene => {
         const follow = options.followFormationMovement === true;
 
         const plan = follow
@@ -1403,8 +1403,8 @@ export function createSimulationFeatures(getState, commit) {
     },
 
 
-    cancelMovement(ref) {
-      commit(scene => {
+    async cancelMovement(ref) {
+      await commit(scene => {
         const members = movementMembers(scene, ref);
         const ids = new Set(members.map(unit => unit.instanceId));
 
@@ -1414,8 +1414,8 @@ export function createSimulationFeatures(getState, commit) {
       });
     },
 
-    resolveMovement() {
-      commit(scene => {
+    async resolveMovement() {
+      await commit(scene => {
         if (scene.turn.phaseId !== "movement") {
           fail("移動段階ではありません。");
         }

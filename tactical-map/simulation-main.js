@@ -1,5 +1,6 @@
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
+import { mountSaveIndicator } from "./save-indicator.js";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   drawMapAxes,
@@ -197,13 +198,13 @@ function show(text, error = false) {
 }
 
 function safely(action) {
-  return () => {
+  return async () => {
     try {
       if (!store) {
         throw new Error("推演データを読み込めていません。");
       }
 
-      action();
+      await action();
     } catch (error) {
       console.error(error);
       show(error.message, true);
@@ -1006,21 +1007,21 @@ function renderGroups(scene) {
     }
 
     card.append(
-      button("名称変更", () => {
+      button("名称変更", async () => {
         const name = prompt("編隊名", group.name);
 
         if (name === null) return;
 
-        store.renameGroup(group.id, name);
+        await store.renameGroup(group.id, name);
         show("編隊名を変更しました。");
       }),
 
-      button("編隊を解除", () => {
+      button("編隊を解除", async () => {
         if (!confirm(
           `「${group.name}」を解除しますか？個体は削除されません。`
         )) return;
 
-        store.dissolveGroup(group.id);
+        await store.dissolveGroup(group.id);
         show("編隊を解除しました。個体は保持されています。");
       })
     );
@@ -1217,7 +1218,7 @@ function refresh() {
 
 }
 
-$("createGroup").addEventListener("click", safely(() => {
+$("createGroup").addEventListener("click", safely(async () => {
   const memberIds = [...$("members").querySelectorAll(
     "input:checked"
   )].map(control => control.value);
@@ -1231,7 +1232,7 @@ $("createGroup").addEventListener("click", safely(() => {
     "現在の所属から外れるため、元の集群表示が解除される場合があります。"
   )) return;
 
-  store.createGroup({
+  await store.createGroup({
     name: $("groupName").value,
     kind: $("groupKind").value,
     memberIds
@@ -1263,7 +1264,7 @@ $("previewAction").addEventListener("click", safely(() => {
   show("草案をプレビューしました。実行可否の裁定ではありません。");
 }));
 
-$("saveDraft").addEventListener("click", safely(() => {
+$("saveDraft").addEventListener("click", safely(async () => {
   const request = requestFromForm();
 
   if (
@@ -1273,7 +1274,7 @@ $("saveDraft").addEventListener("click", safely(() => {
     throw new Error("現在の内容を先にプレビューしてください。");
   }
 
-  store.saveDraft(request, draftPreview.revision);
+  await store.saveDraft(request, draftPreview.revision);
 
   $("note").value = "";
   show("草案を保存しました。生命・位置・行動回数は変更していません。");
@@ -1398,7 +1399,8 @@ try {
     throw new Error("自定義モードから推演を開始してください。");
   }
 
-  store = openSimulation(id);
+  store = await openSimulation(id);
+  registerPageDisposer(mountSaveIndicator(store));
 
 // 开场关闭前，不挂载战斗操作面板，也不绘制战场单位。
 // 模块支持顶层await，当前HTML已使用type="module"。

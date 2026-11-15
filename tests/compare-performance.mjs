@@ -1,3 +1,5 @@
+import {IDBFactory} from 'fake-indexeddb';
+globalThis.indexedDB=new IDBFactory();
 // node tests/compare-performance.mjs /absolute/path/to/baseline-checkout
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -34,11 +36,11 @@ const values=new Map();globalThis.localStorage={getItem:k=>values.get(k)??null,s
 const timings=[];
 for(const [name,module]of [['baseline',oldStore],['optimized',newStore]]){
  values.clear();const scene=source();scene.instances=Array.from({length:40},(_,i)=>ship('ship'+i,i%2?'ally':'enemy',i*5-100));
- const id=module.createSimulation(scene,()=>({valid:true}));const store=module.openSimulation(id);
+ const id=await module.createSimulation(scene,()=>({valid:true}));const store=await module.openSimulation(id);
  const read=()=>store.getSceneSnapshot?store.getSceneSnapshot():store.getScene();
  read(); // cache/warm-up is outside the timed reads, matching subscribers after a revision.
  let start=performance.now();for(let i=0;i<25;i++)read();const reads=performance.now()-start;
- start=performance.now();for(let i=0;i<5;i++)store.setObservationSide(i%2?'ally':'enemy');const commits=performance.now()-start;
+ start=performance.now();for(let i=0;i<5;i++)await store.setObservationSide(i%2?'ally':'enemy');const commits=performance.now()-start;
  timings.push({name,reads25ms:+reads.toFixed(3),commits5ms:+commits.toFixed(3)});
 }
 console.table(timings);

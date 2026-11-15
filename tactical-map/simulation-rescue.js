@@ -655,20 +655,20 @@ function savePlan(scene, rescuerId, targetId, itemId) {
 
 export function createRescueFeatures(getState, commit) {
   return {
-    planRescue(rescuerId, targetId) {
-      commit(scene => {
+    async planRescue(rescuerId, targetId) {
+      await commit(scene => {
         savePlan(scene, rescuerId, targetId);
       });
     },
 
-    planEquipmentRepair(rescuerId, targetId, itemId) {
-      commit(scene => {
+    async planEquipmentRepair(rescuerId, targetId, itemId) {
+      await commit(scene => {
         savePlan(scene, rescuerId, targetId, itemId);
       });
     },
 
-    cancelRescuePlan(rescuerId) {
-      commit(scene => {
+    async cancelRescuePlan(rescuerId) {
+      await commit(scene => {
         if (scene.turn.phaseId !== "movement") {
           fail("任務計画の取消は移動段階で実行してください。");
         }

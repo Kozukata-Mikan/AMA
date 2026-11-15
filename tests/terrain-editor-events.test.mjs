@@ -1,3 +1,6 @@
+import {beforeEach} from 'node:test';
+import {resetDatabase} from './save-test-environment.mjs';
+beforeEach(resetDatabase);
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mountTerrainEditor } from '../tactical-map/terrain-editor.js';
@@ -15,7 +18,7 @@ class Element {
  setAttribute(k,v){this[k]=v}
  addEventListener(k,f){if(!this.listeners.has(k))this.listeners.set(k,new Set());this.listeners.get(k).add(f)}
  removeEventListener(k,f){this.listeners.get(k)?.delete(f)}
- dispatch(k,extra={}){const e={button:0,pointerId:1,preventDefault(){},stopImmediatePropagation(){},...extra};for(const f of this.listeners.get(k)??[])f(e)}
+ async dispatch(k,extra={}){const e={button:0,pointerId:1,preventDefault(){},stopImmediatePropagation(){},...extra};for(const f of this.listeners.get(k)??[])await f(e)}
  setPointerCapture(id){this.captures.add(id)}
  hasPointerCapture(id){return this.captures.has(id)}
  releasePointerCapture(id){this.captures.delete(id)}
@@ -25,7 +28,7 @@ class Element {
  querySelectorAll(){return []}
 }
 function all(node){return [node,...node.children.flatMap(all)]}
-function setup(large=false){
+async function setup(large=false){
  const data=new Map();
  globalThis.localStorage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
  globalThis.window={addEventListener(){},removeEventListener(){}};
@@ -37,44 +40,44 @@ function setup(large=false){
  globalThis.requestAnimationFrame=f=>{frames.set(++nextFrame,f);return nextFrame};
  globalThis.cancelAnimationFrame=id=>frames.delete(id);
  const flush=()=>{for(const [id,f]of [...frames]){frames.delete(id);f()}};
- const store=createBattleStore([]);
+ const store=await createBattleStore([]);
  let initial=flatTerrain();if(large)initial=resizeTerrain(initial,{width:7200,height:7200,cols:7201,rows:7201,contourInterval:6});
- store.setTerrain(initial);
+ await store.setTerrain(initial);
  let current=store.getSceneSnapshot().terrain;
  const sync=store.subscribe(()=>{current=store.getSceneSnapshot().terrain});
  const container=new Element('section'),svg=new Element('svg'),panel=new Element('section');panel.append(svg);
  const controller=mountTerrainEditor({container,svg,store,pickPoint:e=>({x:e.x??0,y:e.y??0}),previewTerrain:t=>{current=t},getTerrain:()=>current});
- const editing=all(container).find(n=>n.type==='checkbox');editing.checked=true;editing.dispatch('change');
+ const editing=all(container).find(n=>n.type==='checkbox');editing.checked=true;await editing.dispatch('change');
  const button=text=>all(container).find(n=>n.tagName==='button'&&n.textContent===text);
- return {svg,flush,store,container,button,getTerrain:()=>current,dispose(){controller.destroy();sync();store.destroy()}};
+ return {svg,flush,store,container,button,getTerrain:()=>current,async dispose(){await controller.destroy();sync();await store.destroy()}};
 }
-for(const large of [false,true])test(`pointer drawing saves and undo/redo restore terrain (${large?'7200-cell':'legacy'} map)`,()=>{
- const ui=setup(large);
+for(const large of [false,true])test(`pointer drawing saves and undo/redo restore terrain (${large?'7200-cell':'legacy'} map)`,async ()=>{
+ const ui=await setup(large);
  try{
   const before=sampleTerrain(ui.getTerrain(),0,0).height;
-  ui.svg.dispatch('pointerdown',{x:0,y:0});ui.svg.dispatch('pointermove',{x:5,y:0});ui.flush();
+  await ui.svg.dispatch('pointerdown',{x:0,y:0});await ui.svg.dispatch('pointermove',{x:5,y:0});ui.flush();
   assert(sampleTerrain(ui.getTerrain(),0,0).height>before,'pointer handlers must apply the brush');
-  ui.svg.dispatch('pointerup');
+  await ui.svg.dispatch('pointerup');
   const saved=sampleTerrain(ui.store.getSceneSnapshot().terrain,0,0).height;
   assert(saved>before,'pointerup must commit the edit');assert.equal(ui.svg.captures.size,0);
-  ui.button('地形を元に戻す').dispatch('click');assert.equal(sampleTerrain(ui.getTerrain(),0,0).height,before);
-  ui.button('地形をやり直す').dispatch('click');assert.equal(sampleTerrain(ui.getTerrain(),0,0).height,saved);
+  await ui.button('地形を元に戻す').dispatch('click');assert.equal(sampleTerrain(ui.getTerrain(),0,0).height,before);
+  await ui.button('地形をやり直す').dispatch('click');assert.equal(sampleTerrain(ui.getTerrain(),0,0).height,saved);
   assert(!all(ui.container).some(n=>String(n.textContent).includes('MAX_TERRAIN_SAMPLES is not a function')));
- }finally{ui.dispose()}
+ }finally{await ui.dispose()}
 });
-test('pointer cancel restores the previous map without saving',()=>{
- const ui=setup();
- try{const before=JSON.stringify(ui.store.getSceneSnapshot().terrain);ui.svg.dispatch('pointerdown');ui.flush();assert.notEqual(JSON.stringify(ui.getTerrain()),before);ui.svg.dispatch('pointercancel');assert.equal(JSON.stringify(ui.getTerrain()),before);assert.equal(JSON.stringify(ui.store.getSceneSnapshot().terrain),before)}finally{ui.dispose()}
+test('pointer cancel restores the previous map without saving',async ()=>{
+ const ui=await setup();
+ try{const before=JSON.stringify(ui.store.getSceneSnapshot().terrain);await ui.svg.dispatch('pointerdown');ui.flush();assert.notEqual(JSON.stringify(ui.getTerrain()),before);await ui.svg.dispatch('pointercancel');assert.equal(JSON.stringify(ui.getTerrain()),before);assert.equal(JSON.stringify(ui.store.getSceneSnapshot().terrain),before)}finally{await ui.dispose()}
 });
 
-for(const mode of ['raise','lower','smooth','level','land','sea','river','eraseRiver','shallow','eraseShallow'])test(`editor pointer entry executes ${mode} brush`,()=>{
- const ui=setup();
+for(const mode of ['raise','lower','smooth','level','land','sea','river','eraseRiver','shallow','eraseShallow'])test(`editor pointer entry executes ${mode} brush`,async ()=>{
+ const ui=await setup();
  try{
   all(ui.container).find(n=>n.tagName==='select').value=mode;
   const expected=JSON.parse(JSON.stringify(ui.getTerrain()));
   applyBrush(expected,{x:0,y:0},{mode,radius:30,strength:5,target:20});
-  ui.svg.dispatch('pointerdown');ui.flush();ui.svg.dispatch('pointerup');
+  await ui.svg.dispatch('pointerdown');ui.flush();await ui.svg.dispatch('pointerup');
   assert.deepEqual(ui.store.getSceneSnapshot().terrain,expected);
   assert(all(ui.container).some(n=>String(n.textContent).includes('地形を保存し')),'editor must reach the saved state');
- }finally{ui.dispose()}
+ }finally{await ui.dispose()}
 });

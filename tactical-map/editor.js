@@ -1,4 +1,5 @@
 import { getBranchName } from "../js/data-store.js";
+import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
 import { createSimulation } from "./simulation-store.js";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
@@ -109,9 +110,9 @@ export function mountEditor({
   }
 
   function safely(action) {
-    return (...args) => {
+    return async (...args) => {
       try {
-        action(...args);
+        await action(...args);
       } catch (error) {
         console.error(error);
         message(error.message, true);
@@ -174,7 +175,7 @@ export function mountEditor({
     store,
     getView,
 
-    onLoaded() {
+    async onLoaded() {
       // 不保留上一张地图的单位和编队选择。
       selectedId = "";
       selectedGroupId = "";
@@ -185,7 +186,7 @@ export function mountEditor({
       setView(scene.view);
       lastSavedView = JSON.stringify(scene.view);
 
-      onSceneLoaded();
+      await onSceneLoaded();
       refresh();
 
       // 即使两个存档的介绍内容相同，也不保留上一份草稿。
@@ -210,17 +211,21 @@ export function mountEditor({
   fileInput.setAttribute("aria-label", "作戦データのファイル");
 
   sceneActions.append(
-    button("作戦名を保存", safely(() => {
-      store.renameScene(sceneName.value);
+    button("作戦名を保存", safely(async () => {
+      await store.renameScene(sceneName.value);
       message("作戦名を保存しました。");
     })),
-    button("表示位置を保存", safely(() => {
-      store.updateView(getView());
+    button("表示位置を保存", safely(async () => {
+      await store.updateView(getView());
       message("地図の表示位置を保存しました。");
     })),
-    button("JSON 書き出し", safely(() => {
+    button("JSON 書き出し", safely(async () => {
       // 本地保存失败时仍允许导出内存中的有效场景。
-      store.updateView(getView());
+      try {
+        await store.updateView(getView());
+      } catch (error) {
+        console.warn("表示位置を保存できませんでした。確定済みの作戦をバックアップします。", error);
+      }
 
       const blob = new Blob(
         [store.exportScene()],
@@ -242,14 +247,14 @@ export function mountEditor({
       fileInput.value = "";
       fileInput.click();
     }),
-    button("作戦を初期化", safely(() => {
+    button("作戦を初期化", safely(async () => {
       if (!confirm(
         "現在のユニット、編隊、行動記録、表示設定を初期化しますか？必要なデータは先に書き出してください。復元に失敗している場合は、保存領域の元データを先にバックアップしてください。"
       )) return;
 
       selectedId = "";
       selectedGroupId = "";
-      store.clear();
+      await store.clear();
       syncCampaignIntro(true);
       message("作戦を初期化しました。");
     }))
@@ -260,8 +265,8 @@ export function mountEditor({
     if (!file) return;
 
     try {
-      if (file.size > 5_000_000) {
-        throw new Error("ファイルが大きすぎます。");
+      if (file.size > MAX_SCENE_FILE_BYTES) {
+        throw new Error("作戦JSONは128 MiB以内で指定してください。");
       }
 
       const text = await file.text();
@@ -271,7 +276,7 @@ export function mountEditor({
       )) return;
 
       // 存储层先完整验证，失败时不修改当前场景。
-      store.importScene(text);
+      await store.importScene(text);
       syncCampaignIntro(true);
       message(
         "作戦データを読み込みました。配置条件に合わないユニットは一覧から修正してください。"
@@ -313,10 +318,10 @@ function syncCampaignIntro(force = false) {
 }
 
 introSection.append(
-  button("紹介を保存", safely(() => {
+  button("紹介を保存", safely(async () => {
     const value = introEditor.read();
 
-    store.setCampaignIntro(value);
+    await store.setCampaignIntro(value);
 
     // 即使保存内容没有变化，也明确重新读取正式场景值。
     syncCampaignIntro(true);
@@ -415,8 +420,8 @@ introSection.append(
 
 
   catalogSection.append(
-    button("参戦ユニットを追加", safely(() => {
-      const added = store.addUnit(catalogSelect.value);
+    button("参戦ユニットを追加", safely(async () => {
+      const added = await store.addUnit(catalogSelect.value);
       selectedId = added.instanceId;
       refresh();
       openSection(unitSection);
@@ -491,8 +496,8 @@ introSection.append(
     newForm.addEventListener("submit", event => {
       event.preventDefault();
 
-      safely(() => {
-        const created = store.addCluster(
+      safely(async () => {
+        const created = await store.addCluster(
           catalogControl.value,
           numberValue(countControl, "個体数"),
           Number(sizeControl.value),
@@ -560,7 +565,7 @@ introSection.append(
     mergeForm.addEventListener("submit", event => {
       event.preventDefault();
 
-      safely(() => {
+      safely(async () => {
         const ids = checks
           .filter(item => item.control.checked)
           .map(item => item.instanceId);
@@ -591,7 +596,7 @@ introSection.append(
           }
         }
 
-        store.createCluster(ids, mergeName.value);
+        await store.createCluster(ids, mergeName.value);
 
         message("集群を作成しました。地図上のアイコンを統合しました。");
       })();
@@ -650,12 +655,12 @@ introSection.append(
       details.append(memberNames);
       card.append(details);
 
-      card.append(button("集群を解除", safely(() => {
+      card.append(button("集群を解除", safely(async () => {
         if (!confirm(
           `「${group.name}」を解除しますか？個体は削除されません。`
         )) return;
 
-        store.removeGroup(group.id);
+        await store.removeGroup(group.id);
         message("集群を解除しました。個体はそのまま保持されています。");
       })));
 
@@ -893,15 +898,15 @@ introSection.append(
 
     actions.append(
       save,
-      button("配置を解除", safely(() => {
-        store.updateUnit(unit.instanceId, { x: null, y: null });
+      button("配置を解除", safely(async () => {
+        await store.updateUnit(unit.instanceId, { x: null, y: null });
         message("配置を解除しました。");
       })),
-      button("参戦から除外", safely(() => {
+      button("参戦から除外", safely(async () => {
         if (!confirm(`${unit.name}を参戦から除外しますか？`)) return;
 
         selectedId = "";
-        store.removeUnit(unit.instanceId);
+        await store.removeUnit(unit.instanceId);
         message("参戦ユニットを除外しました。");
       }))
     );
@@ -911,7 +916,7 @@ introSection.append(
     form.addEventListener("submit", event => {
       event.preventDefault();
 
-      safely(() => {
+      safely(async () => {
         const patch = {
           name: name.value,
           side: side.value,
@@ -954,7 +959,7 @@ introSection.append(
           }
         }
 
-        store.updateUnit(unit.instanceId, patch);
+        await store.updateUnit(unit.instanceId, patch);
         message("ユニット設定を保存しました。");
       })();
     });
@@ -1021,13 +1026,13 @@ introSection.append(
     actions.append(save);
 
     if (chosen) {
-      actions.append(button("編隊を解除", safely(() => {
+      actions.append(button("編隊を解除", safely(async () => {
         if (!confirm(
           "この編隊を解除しますか？直属の下位編隊とユニットは上位編隊に移されます。ユニット自体は削除されません。"
         )) return;
 
         selectedGroupId = "";
-        store.removeGroup(chosen.id);
+        await store.removeGroup(chosen.id);
         message("編隊を解除しました。");
       })));
     }
@@ -1037,14 +1042,14 @@ introSection.append(
     form.addEventListener("submit", event => {
       event.preventDefault();
 
-      safely(() => {
+      safely(async () => {
         if (chosen) {
-          store.updateGroup(chosen.id, {
+          await store.updateGroup(chosen.id, {
             name: name.value,
             parentId: parent.value || null
           });
         } else {
-          const created = store.addGroup(
+          const created = await store.addGroup(
             name.value,
             parent.value || null
           );
@@ -1101,7 +1106,7 @@ introSection.append(
       "editor-note"
     ),
 
-    button("現在の配置で推演を開始", safely(() => {
+    button("現在の配置で推演を開始", safely(async () => {
       if (store.isRecoveryBlocked()) {
         throw new Error(
           "作戦データの復元が完了していません。先に復元してください。"
@@ -1119,7 +1124,7 @@ introSection.append(
       // 但不触发自定义场景的写入与表单重绘。
       source.view = getView();
 
-      const id = createSimulation( prepareSimulationAmmoSource(source, catalog),spatialState);
+      const id = await createSimulation( prepareSimulationAmmoSource(source, catalog),spatialState);
 
       const url = new URL("./simulation.html", import.meta.url);
       url.searchParams.set("id", id);

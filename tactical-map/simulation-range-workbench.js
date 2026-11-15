@@ -1,3 +1,4 @@
+import { listSaveMetadata } from "../js/save-database.js";
 import {
   openSimulation
 } from "./simulation-store.js";
@@ -26,43 +27,10 @@ function fail(message) {
   throw new Error(message);
 }
 
-function listSaves() {
-  const result = [];
-
-  for (let index = 0; index < localStorage.length; index++) {
-    const key = localStorage.key(index);
-
-    if (!key?.startsWith(PREFIX)) continue;
-
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw === null) continue;
-
-      const value = JSON.parse(raw);
-
-      if (
-        value.version !== 1 ||
-        value.mode !== "simulation" ||
-        typeof value.id !== "string" ||
-        key !== PREFIX + value.id
-      ) {
-        continue;
-      }
-
-      result.push({
-        id: value.id,
-        name: typeof value.name === "string"
-          ? value.name
-          : value.id
-      });
-    } catch {
-      // 不修改或删除无法读取的旧存档。
-    }
-  }
-
-  return result.sort((a, b) =>
-    a.id < b.id ? -1 : a.id > b.id ? 1 : 0
-  );
+async function listSaves() {
+  return (await listSaveMetadata(PREFIX)).map(entry => ({
+    id: entry.key.slice(PREFIX.length), name: entry.name
+  })).sort((a,b) => a.id.localeCompare(b.id));
 }
 
 function downloadJSON(name, value) {
@@ -81,7 +49,7 @@ function downloadJSON(name, value) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-export function mountSimulationRangeWorkbench(container) {
+export async function mountSimulationRangeWorkbench(container) {
   if (!(container instanceof Element)) {
     fail("表示先が不正です。");
   }
@@ -160,10 +128,10 @@ export function mountSimulationRangeWorkbench(container) {
     currentAudit = null;
   }
 
-  function fillSaves() {
+  async function fillSaves() {
     saveSelect.replaceChildren();
 
-    const saves = listSaves();
+    const saves = await listSaves();
 
     for (const save of saves) {
       const option = element("option", save.name);
@@ -367,7 +335,7 @@ export function mountSimulationRangeWorkbench(container) {
     renderAudit(reports);
   }
 
-  openButton.addEventListener("click", () => {
+  openButton.addEventListener("click", async () => {
     try {
       message.textContent = "";
       closeStore();
@@ -376,7 +344,7 @@ export function mountSimulationRangeWorkbench(container) {
         fail("推演データを選択してください。");
       }
 
-      store = openSimulation(saveSelect.value);
+      store = await openSimulation(saveSelect.value);
 
       // 原store同步保存成功后触发刷新。
       unsubscribe = store.subscribe(refresh);
@@ -403,7 +371,7 @@ export function mountSimulationRangeWorkbench(container) {
     }
   });
 
-  settleButton.addEventListener("click", () => {
+  settleButton.addEventListener("click", async () => {
     try {
       if (!store) {
         fail("推演を開いてください。");
@@ -420,7 +388,7 @@ export function mountSimulationRangeWorkbench(container) {
 
       if (!confirmed) return;
 
-      const receipt = store.settleAttackPhase(report.revision);
+      const receipt = await store.settleAttackPhase(report.revision);
       message.textContent = receipt.message;
 
       // 阶段已变化，重建目标编辑器。
@@ -443,7 +411,7 @@ export function mountSimulationRangeWorkbench(container) {
     );
   });
 
-  fillSaves();
+  await fillSaves();
 
   return {
     element: root,

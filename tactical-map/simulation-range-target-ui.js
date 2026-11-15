@@ -398,11 +398,11 @@ export function createRangeAttackPanel({ store, unitId }) {
         save.disabled = group.issues.length > 0;
         editor.setDisabled(save.disabled);
 
-        save.addEventListener("click", () => {
+        save.addEventListener("click", async () => {
           try {
             const selection = editor.read();
 
-            store.saveAttackCommands({
+            await store.saveAttackCommands({
               unitId,
               assignments: [{
                 groupId: group.groupId,
@@ -422,9 +422,9 @@ export function createRangeAttackPanel({ store, unitId }) {
         cancel.textContent = "この装備組の計画を取消";
         cancel.disabled = !current;
 
-        cancel.addEventListener("click", () => {
+        cancel.addEventListener("click", async () => {
           try {
-            store.cancelAttackCommands({
+            await store.cancelAttackCommands({
               unitId,
               groupIds: [group.groupId]
             }, report.revision);

@@ -121,13 +121,13 @@ export function createEquipmentRepairPanel({
     refreshItems();
   });
 
-  save.addEventListener("click", () => {
+  save.addEventListener("click", async () => {
     try {
       if (!targetSelect.value || !itemSelect.value) {
         throw new Error("修復対象を選択してください。");
       }
 
-      store.planEquipmentRepair(
+      await store.planEquipmentRepair(
         rescuerId,
         targetSelect.value,
         itemSelect.value
@@ -140,9 +140,9 @@ export function createEquipmentRepairPanel({
     }
   });
 
-  cancel.addEventListener("click", () => {
+  cancel.addEventListener("click", async () => {
     try {
-      store.cancelRescuePlan(rescuerId);
+      await store.cancelRescuePlan(rescuerId);
       message.textContent = "任務計画を取り消しました。";
     } catch (error) {
       message.textContent = error.message;
