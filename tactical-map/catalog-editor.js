@@ -497,6 +497,7 @@ export function mountCatalogEditor({
   });
 
   factionFilter.addEventListener("change", renderList);
+  search.addEventListener("input", renderList);
 
   function renderList() {
     list.replaceChildren();
