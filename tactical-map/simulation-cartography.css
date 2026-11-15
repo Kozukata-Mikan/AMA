@@ -54,3 +54,20 @@ aside summary { color: #b8d7de; font-weight: 600; }
   .map-environment-badge { max-width: 45%; }
 }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
+/* Only terrain is dimmed: unit symbols and information remain readable. */
+#terrainLayer { filter: brightness(var(--terrain-exposure, 1)); }
+.simulation-map-panel[data-period="day"] #map { background: radial-gradient(ellipse at 45% 45%, #244657, #122736 85%); }
+.simulation-map-panel[data-period="night"] #map { background: radial-gradient(ellipse at 45% 45%, #101e30, #050e19 85%); }
+.simulation-map-panel[data-period="dawn"] #map { background: radial-gradient(ellipse at 70% 70%, #293240, #101f30 85%); }
+.simulation-map-panel[data-period="dusk"] #map { background: radial-gradient(ellipse at 25% 25%, #332b36, #101e2c 85%); }
+#scenePeriodHint { color: #b6c2c8; font-size: 11px; }
+.distance-grid-floor { stroke: #a3d0da; stroke-opacity: .3; stroke-width: .7; vector-effect: non-scaling-stroke; }
+.distance-grid-vertical { stroke: #a7b1cd; stroke-opacity: .25; stroke-width: .65; stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
+#map .distance-grid-label { fill: #b7d9de; font-size: 10px; font-variant-numeric: tabular-nums; }
+.chart-grid-controls { position: absolute; top: 20px; right: 22px; z-index: 3; padding: 10px 12px; max-width: 240px; border: 1px solid #47606c70; border-radius: 8px; background: #0d202bdf; }
+.chart-grid-controls[hidden] { display: none; }
+.chart-grid-controls label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; font-size: 10px; color: #a9c5cd; }
+.chart-grid-controls select { padding: 4px 6px; font-size: 11px; }
+#gridReadout { display: block; color: #c5dce0; font-size: 10px; }
+@media (max-width: 760px) { .chart-grid-controls { top: 15px; right: 15px; max-width: 165px; padding: 8px; } }

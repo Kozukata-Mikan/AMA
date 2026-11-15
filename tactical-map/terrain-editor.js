@@ -1,9 +1,7 @@
-import {
-  cloneTerrain,
-  resizeTerrain,
-  applyBrush,
-  MAX_TERRAIN_SAMPLES
-} from "./terrain-data.js";
+import {forkTerrainForEditing, MAX_TERRAIN_SAMPLES} from "./terrain-data.js";
+import {applyTerrainFrame} from "./terrain-edit-history.js";
+import {createTerrainStrokeSession} from "./terrain-stroke-session.js";
+import {runBackgroundTask} from "./background-client.js";
 
 import {
   mountEnvironmentEditor
@@ -128,6 +126,7 @@ export function mountTerrainEditor({
   let frame = null;
   let known = getTerrain();
   let saving = false;
+  let finishing = false;
 
   const environmentController = mountEnvironmentEditor({
     container,
@@ -135,7 +134,7 @@ export function mountTerrainEditor({
     store,
 
     canApply() {
-      return stroke === null;
+      return stroke === null && !finishing;
     }
   });
 
@@ -164,7 +163,7 @@ export function mountTerrainEditor({
 
     result.addEventListener("click", async () => {
       try {
-        if (stroke) throw new Error("描画を終了してから操作してください。");
+        if (stroke || finishing) throw new Error("描画・計算が完了してから操作してください。");
         await action();
       } catch (error) {
         show(error.message, true);
@@ -175,102 +174,54 @@ export function mountTerrainEditor({
     return result;
   }
 
-  async function saveTerrain(next, before) {
-    // 先验证并保存，成功后才加入撤销历史。
+  async function saveTerrain(next, before, historyFrame) {
+    if (store.getSceneSnapshot().terrain !== before) throw new Error("描画中に地形が更新されました。今回の描画は保存していません。");
     known = next;
-
     try {
       saving = true;
       await store.setTerrain(next);
       known = store.getSceneSnapshot().terrain;
-      saving = false;
     } catch (error) {
-      saving = false;
-      known = before;
-      previewTerrain(before);
+      known = store.getSceneSnapshot().terrain;
+      previewTerrain(known);
       throw error;
-    }
-
-    undo.push(cloneTerrain(before));
+    } finally { saving = false; }
+    undo.push(historyFrame.kind === 'replace' ? {...historyFrame, after:known} : historyFrame);
     if (undo.length > 20) undo.shift();
     redo = [];
     updateFields();
-
     show("地形を保存し、配置条件を再検証しました。");
   }
 
   addButton(actions, "サイズと等高線間隔を適用", async () => {
-    if (!confirm(
-      "地図サイズとグリッドを変更しますか？ユニット座標は変更されません。範囲外の地形は切り取られ、新しい範囲は海域になります。"
-    )) return;
-
-    const before = cloneTerrain(getTerrain());
-
-    const next = resizeTerrain(before, {
-      width: Number(width.value),
-      height: Number(height.value),
-      cols: Number(cols.value),
-      rows: Number(rows.value),
-      contourInterval: Number(interval.value)
-    });
-
-    await saveTerrain(next, before);
+    if (!confirm("地図サイズとグリッドを変更しますか？ユニット座標は変更されません。範囲外の地形は切り取られ、新しい範囲は海域になります。")) return;
+    const before = store.getSceneSnapshot().terrain;
+    finishing = true;
+    try {
+      const resized = await runBackgroundTask('terrain-resize', {source:before, settings:{
+        width:Number(width.value),height:Number(height.value),cols:Number(cols.value),rows:Number(rows.value),contourInterval:Number(interval.value)
+      }});
+      const next = forkTerrainForEditing(resized);
+      await saveTerrain(next,before,{kind:'replace',before,after:next});
+    } finally { finishing = false; }
   });
 
-  addButton(historyActions, "地形を元に戻す", async () => {
-    if (!undo.length) {
-      show("元に戻せる地形操作はありません。");
-      return;
-    }
-
-    const current = cloneTerrain(getTerrain());
-    const previous = undo[undo.length - 1];
-    known = previous;
-
+  async function restoreHistory(forward) {
+    const source = forward ? redo : undo, destination = forward ? undo : redo;
+    if (!source.length) {show(forward ? "やり直せる地形操作はありません。" : "元に戻せる地形操作はありません。");return;}
+    const current=store.getSceneSnapshot().terrain, entry=source.at(-1);
+    const next=applyTerrainFrame(current,entry,forward);
+    finishing=true;saving=true;
     try {
-      saving = true;
-      await store.setTerrain(previous);
-      known = store.getSceneSnapshot().terrain;
-    } catch (error) {
-      known = getTerrain();
-      throw error;
-    } finally {
-      saving = false;
-    }
-
-    undo.pop();
-    redo.push(current);
-    updateFields();
-    show("地形操作を元に戻しました。");
-  });
-
-  addButton(historyActions, "地形をやり直す", async () => {
-    if (!redo.length) {
-      show("やり直せる地形操作はありません。");
-      return;
-    }
-
-    const current = cloneTerrain(getTerrain());
-    const next = redo[redo.length - 1];
-    known = next;
-
-    try {
-      saving = true;
       await store.setTerrain(next);
-      known = store.getSceneSnapshot().terrain;
-      saving = false;
-    } catch (error) {
-      known = getTerrain();
-      throw error;
-    } finally {
-      saving = false;
-    }
-
-    redo.pop();
-    undo.push(current);
-    updateFields();
-    show("地形操作をやり直しました。");
-  });
+      known=store.getSceneSnapshot().terrain;
+      source.pop();destination.push(entry);
+      updateFields();show(forward?"地形操作をやり直しました。":"地形操作を元に戻しました。");
+    } catch(error) {known=store.getSceneSnapshot().terrain;previewTerrain(known);throw error;}
+    finally {saving=false;finishing=false;}
+  }
+  addButton(historyActions,"地形を元に戻す",()=>restoreHistory(false));
+  addButton(historyActions,"地形をやり直す",()=>restoreHistory(true));
 
   function schedulePreview() {
     if (frame !== null) return;
@@ -281,28 +232,16 @@ export function mountTerrainEditor({
     });
   }
 
-  function paint(event) {
-    const point = pickPoint(event);
-    if (!point) return;
-
-    // 按地图距离插值，避免快速拖动留下断裂。
-    const start = stroke.last ?? point;
-    const distance = Math.hypot(point.x - start.x, point.y - start.y);
-    const stepLength = Math.max(3, stroke.brush.radius / 3);
-    const steps = Math.max(1, Math.ceil(distance / stepLength));
-
-    for (let index = 1; index <= steps; index++) {
-      const ratio = index / steps;
-
-      applyBrush(stroke.working, {
-        x: start.x + (point.x - start.x) * ratio,
-        y: start.y + (point.y - start.y) * ratio
-      }, stroke.brush);
-    }
-
-    stroke.last = point;
-    stroke.changed = true;
-    schedulePreview();
+  async function paint(event) {
+    const active=stroke, point=pickPoint(event);
+    if(!active || !point)return;
+    const start=active.last??point, distance=Math.hypot(point.x-start.x,point.y-start.y);
+    const steps=Math.max(1,Math.ceil(distance/Math.max(3,active.brush.radius/3)));
+    const points=[];
+    for(let index=1;index<=steps;index++)points.push({x:start.x+(point.x-start.x)*index/steps,y:start.y+(point.y-start.y)*index/steps});
+    active.last=point;active.changed=true;
+    await active.session.enqueue(points);
+    if(stroke===active)schedulePreview();
   }
 
   function release(pointerId) {
@@ -313,75 +252,37 @@ export function mountTerrainEditor({
 
   async function finish(event, cancel = false) {
     if (!stroke || stroke.pointerId !== event.pointerId) return;
-
-    const completed = stroke;
-    stroke = null;
-
-    if (frame !== null) {
-      cancelAnimationFrame(frame);
-      frame = null;
-    }
-
+    const completed=stroke;stroke=null;finishing=true;
+    if(frame!==null){cancelAnimationFrame(frame);frame=null;}
     release(event.pointerId);
-
     try {
-      if (cancel || !completed.changed) {
-        previewTerrain(completed.before);
+      if(cancel || !completed.changed){
+        await completed.session.cancel();previewTerrain(store.getSceneSnapshot().terrain);
         show("地形描画を取り消しました。");
       } else {
-        await saveTerrain(completed.working, completed.before);
+        const result=await completed.session.finish();
+        if(result.frame.changes.length)await saveTerrain(result.terrain,completed.before,result.frame);
+        else {previewTerrain(store.getSceneSnapshot().terrain);show("地形を保存しました（変更なし）。");}
       }
-    } catch (error) {
-      previewTerrain(completed.before);
-      show(error.message, true);
-    }
+    } catch(error) {
+      await completed.session.cancel().catch(()=>{});
+      previewTerrain(store.getSceneSnapshot().terrain);show(error.message,true);
+    } finally {finishing=false;}
   }
 
-  // 捕获阶段处理笔刷，阻止原来的地图平移监听器启动。
-  function down(event) {
-    if (!editing.checked || event.button !== 0 || stroke) return;
-    if (store.isSaving()) { show("保存中です。完了してから次の描画を開始してください。", true); return; }
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    if (store.isRecoveryBlocked()) {
-      show("保存データを復元してから編集してください。", true);
-      return;
-    }
-
+  async function down(event) {
+    if(!editing.checked || event.button!==0 || stroke)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    if(finishing || store.isSaving()){show("計算・保存中です。完了してから次の描画を開始してください。",true);return;}
+    if(store.isRecoveryBlocked()){show("保存データを復元してから編集してください。",true);return;}
     try {
-      const before = cloneTerrain(getTerrain());
-      const brush = {
-        mode: mode.value,
-        radius: Number(radius.value),
-        strength: Number(strength.value),
-        target: Number(target.value)
-      };
-
-      // 在修改工作副本之前检查笔刷参数。
-      applyBrush(cloneTerrain(before), { x: 100000, y: 100000 }, brush);
-
-      stroke = {
-        pointerId: event.pointerId,
-        before,
-        working: cloneTerrain(before),
-        brush,
-        last: null,
-        changed: false
-      };
-
+      const before=store.getSceneSnapshot().terrain;
+      const brush={mode:mode.value,radius:Number(radius.value),strength:Number(strength.value),target:Number(target.value)};
+      const session=createTerrainStrokeSession(before,brush);
+      stroke={pointerId:event.pointerId,before,working:session.working,session,brush,last:null,changed:false};
       svg.setPointerCapture(event.pointerId);
-      paint(event);
-    } catch (error) {
-      if (stroke) {
-        const id = stroke.pointerId;
-        stroke = null;
-        release(id);
-      }
-
-      show(error.message, true);
-    }
+      await paint(event);
+    } catch(error) {await finish(event,true);show(error.message,true);}
   }
 
   async function move(event) {
@@ -391,7 +292,7 @@ export function mountTerrainEditor({
     event.stopImmediatePropagation();
 
     try {
-      paint(event);
+      await paint(event);
     } catch (error) {
       await finish(event, true);
       show(error.message, true);

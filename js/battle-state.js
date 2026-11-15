@@ -5,7 +5,8 @@ import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";
 // 界面和错误文案使用日文，代码注释使用中文。
 import {
   createDemoTerrain,
-  validateTerrain
+  validateTerrain,
+  freezeTerrainSnapshot
 } from "../tactical-map/terrain-data.js";
 
 import {
@@ -122,7 +123,7 @@ export async function createBattleStore(units) {
   const trustedTerrains = new WeakSet();
   function normalizeTerrain(value) {
     if (trustedTerrains.has(value)) return value;
-    const terrain = freezeSnapshot(validateTerrain(value));
+    const terrain = freezeTerrainSnapshot(value);
     trustedTerrains.add(terrain);
     return terrain;
   }
@@ -1165,7 +1166,7 @@ export async function createBattleStore(units) {
     });
   }
     async function setTerrain(terrain) {
-    const validated = validateTerrain(terrain);
+    const validated = freezeTerrainSnapshot(terrain);
 
     await change(candidate => {
       candidate.terrain = validated;

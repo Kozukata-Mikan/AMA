@@ -1,4 +1,5 @@
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
+import { runBackgroundTask } from "./background-client.js";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
@@ -13,7 +14,7 @@ import { getObserverVisibility , getVisibility} from "./simulation-features.js";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
-import { sampleTerrain, validateTerrain } from "./terrain-data.js";
+import { sampleTerrain, validateTerrain, freezeTerrainSnapshot } from "./terrain-data.js";
 import { getArmorPreview } from "./armor-runtime.js";
 import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
@@ -667,7 +668,7 @@ export async function openSimulation(id) {
     return () => savingListeners.delete(listener);
   }
   let state = readSaved(id, savedRaw);
-  state.terrain = freezeSnapshot(validateTerrain(state.terrain));
+  state.terrain = freezeTerrainSnapshot(state.terrain);
   if (state.initialScene?.terrain &&
       JSON.stringify(state.initialScene.terrain) === JSON.stringify(state.terrain)) {
     state.initialScene.terrain = state.terrain;
@@ -702,7 +703,7 @@ export async function openSimulation(id) {
     }
   }
 
-    async function commit(change) {
+    async function commit(change, backgroundOperation = null) {
     if (saving) throw new Error("保存中です。完了してから次の操作を行ってください。");
     setSaving(true);
     try {
@@ -742,6 +743,18 @@ export async function openSimulation(id) {
     const initialSceneBefore = initialSceneText;
     const snapshotBefore = deploymentSnapshotText;
 
+    let backgroundReceipt;
+    if (backgroundOperation) {
+      // The worker gets an isolated current scene, never the immutable deployment history.
+      const calculation = await runBackgroundTask('simulation', {
+        operation: backgroundOperation, scene: {...candidate, initialScene: null}
+      });
+      if (!calculation?.fields || 'terrain' in calculation.fields || 'initialScene' in calculation.fields) {
+        throw new Error('計算結果の保存形式が不正です。');
+      }
+      Object.assign(candidate, calculation.fields);
+      backgroundReceipt = calculation.receipt;
+    }
     const result = change(candidate);
 
     // 规则计算回调必须同步完成，数据库写入在计算与校验后等待确认。
@@ -869,7 +882,12 @@ export async function openSimulation(id) {
 
     state = candidate;
     notify();
+    return backgroundReceipt;
     } finally { setSaving(false); }
+  }
+
+  async function commitBackground(operation) {
+    return commit(() => {}, operation);
   }
 
 
@@ -961,7 +979,7 @@ export async function openSimulation(id) {
        const api = {
     isSaving: () => saving,
     subscribeSaving,
-  ...createSimulationFeatures(() => state, commit),
+  ...createSimulationFeatures(() => state, commit, commitBackground),
   ...createRescueFeatures(() => state, commit),
 
   getSimulationStatus() {
@@ -1846,11 +1864,7 @@ if (equipmentPower) {
         );
       }
 
-      let receipt;
-
-      await commit(candidate => {
-        receipt = settleAttackPhase(candidate);
-      });
+      const receipt = await commitBackground('attack');
 
       // 不返回内部命中、目标耐性或外方计划。
       // 完整报告保留在存档根字段，不进入观察白名单。
@@ -1870,11 +1884,7 @@ if (equipmentPower) {
         );
       }
 
-      let receipt;
-
-      await commit(candidate => {
-        receipt = finishSpecialPhase(candidate);
-      });
+      const receipt = await commitBackground('special');
 
       return {
         ...receipt,
@@ -1889,11 +1899,7 @@ if (equipmentPower) {
         );
       }
 
-      let receipt;
-
-      await commit(candidate => {
-        receipt = finishTurn(candidate);
-      });
+      const receipt = await commitBackground('turn-end');
 
       return {
         ...receipt,

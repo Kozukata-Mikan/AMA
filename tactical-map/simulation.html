@@ -594,6 +594,7 @@
       <button id="back" type="button">自定義ページへ戻る</button>
       <button id="fit" type="button">地図全体を表示</button>
       <button id="axesToggle" type="button" aria-pressed="false">XYZ 軸を表示</button>
+      <button id="gridToggle" type="button" aria-pressed="false">距離グリッドを表示</button>
       <button id="colorToggle" type="button" aria-pressed="true">輪郭表示に切替</button>
       <button id="export" type="button">観察JSONを書き出し</button>
       <button id="showBattleReport" type="button" disabled>戦闘記録</button>
@@ -740,6 +741,12 @@
         <span class="chart-kicker">TACTICAL CHART</span>
         <strong>戦術海図</strong>
         <span id="mapStyleLabel">標高カラー</span>
+        <span id="scenePeriodHint"></span>
+      </div>
+      <div id="gridControls" class="chart-grid-controls" hidden>
+        <label>格子間隔<select id="gridSpacing"><option value="auto">自動</option><option value="5">5格（1km）</option><option value="25">25格（5km）</option><option value="50">50格（10km）</option></select></label>
+        <label>表示面<select id="gridPlanes"><option value="xy">XY平面</option><option value="xyz">XY・XZ・YZ</option></select></label>
+        <span id="gridReadout" title="実際の表示間隔です。大域表示では線が密集しない間隔に調整し、拡大すると指定間隔に戻ります。"></span>
       </div>
     <svg
       id="map"
@@ -749,6 +756,8 @@
     >
       <g id="viewport">
         <g id="terrainLayer"></g>
+        <g id="sceneAtmosphereLayer" pointer-events="none" aria-hidden="true"></g>
+        <g id="distanceGridLayer" pointer-events="none" aria-hidden="true"></g>
         <g id="axesLayer" pointer-events="none" aria-hidden="true"></g>
         <g id="unitLayer"></g>
       </g>

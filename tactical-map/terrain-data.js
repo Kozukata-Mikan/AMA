@@ -1,8 +1,59 @@
+import {freezeSnapshot} from './read-only-snapshot.js';
 // ===== 地形数据与查询 =====
 // v1保留旧密集网格；v2保存原地形和稀疏精细顶点，不为整张大地图预分配数组。
-// 两种格式共用精确三角面插值，显示抽样不得用于规则判定。
+// v3以32×32顶点分块保存编辑差分；三种格式共用精确三角面插值。
+// 显示抽样不得用于规则判定。
 export const MAX_TERRAIN_SAMPLES = 7201;
 export const DENSE_TERRAIN_LIMIT = 10000;
+export const TERRAIN_CHUNK_SIZE = 32;
+const editContexts = new WeakMap();
+const trustedSnapshots = new WeakMap();
+const trustedChunks = new WeakMap();
+function registerSnapshot(terrain) {
+  if(trustedSnapshots.has(terrain))return trustedSnapshots.get(terrain);
+  const depth=terrain.base?registerSnapshot(terrain.base)+1:0;
+  if(terrain.version===3)for(const [key,chunk] of Object.entries(terrain.chunks)){
+    if(!trustedChunks.has(chunk))trustedChunks.set(chunk,{key,cols:terrain.cols,rows:terrain.rows,highest:Math.max(0,...Object.values(chunk).map(v=>v[0]))});
+  }
+  trustedSnapshots.set(terrain,depth);return depth;
+}
+export function freezeTerrainSnapshot(value) {
+  const terrain=validateTerrain(value,0,true);
+  freezeSnapshot(terrain);registerSnapshot(terrain);return terrain;
+}
+const sameVertex = (a,b) => a === b || !!(a && b && a[0] === b[0] && a[1] === b[1] && a[2] === b[2]);
+function chunkAddress(terrain,index) {
+  const col=index%terrain.cols, row=Math.floor(index/terrain.cols);
+  return {key:`${Math.floor(col/TERRAIN_CHUNK_SIZE)},${Math.floor(row/TERRAIN_CHUNK_SIZE)}`,
+    local:(row%TERRAIN_CHUNK_SIZE)*TERRAIN_CHUNK_SIZE+col%TERRAIN_CHUNK_SIZE};
+}
+export function forkTerrainForEditing(source, recordChange) {
+  const working=source.version===3 ? {...source,chunks:{...source.chunks}} : {
+    version:3,width:source.width,height:source.height,cols:source.cols,rows:source.rows,
+    contourInterval:source.contourInterval,chunkSize:TERRAIN_CHUNK_SIZE,base:source,chunks:{}
+  };
+  editContexts.set(working,{touched:new Set(),recordChange});
+  return working;
+}
+export function readTerrainOverride(terrain,index) {
+  if(terrain.version!==3)return null;
+  const {key,local}=chunkAddress(terrain,index);
+  return terrain.chunks[key]?.[local] ?? null;
+}
+export function writeTerrainOverride(terrain,index,value) {
+  if(terrain.version!==3 || !Number.isSafeInteger(index) || index<0 || index>=terrain.cols*terrain.rows)throw new Error('地形差分の位置が不正です。');
+  const before=readTerrainOverride(terrain,index);
+  if(sameVertex(before,value))return;
+  const {key,local}=chunkAddress(terrain,index), context=editContexts.get(terrain);
+  let chunk=terrain.chunks[key];
+  if(!chunk)chunk=terrain.chunks[key]={};
+  else if(context && !context.touched.has(key))chunk=terrain.chunks[key]={...chunk};
+  context?.touched.add(key);
+  if(value===null){delete chunk[local];if(!Object.keys(chunk).length)delete terrain.chunks[key]}
+  else chunk[local]=value.slice();
+  context?.recordChange?.({index,before:before?.slice()??null,after:value?.slice()??null});
+  maximumHeights.delete(terrain);
+}
 
 const inheritedVertices = new WeakMap();
 const maximumHeights = new WeakMap();
@@ -12,8 +63,9 @@ export function readTerrainVertex(terrain, col, row) {
   if (terrain.version === 1) {
     return [terrain.heights[index], terrain.rivers[index], terrain.shallows?.[index] ?? 0];
   }
-  const patch = terrain.vertices[index];
-  if (patch !== undefined) return patch;
+  const patch = terrain.version===3 ? readTerrainOverride(terrain,index) : terrain.vertices[index];
+  if(terrain.version===3 && patch===null && terrain.base && terrain.base.width===terrain.width && terrain.base.height===terrain.height && terrain.base.cols===terrain.cols && terrain.base.rows===terrain.rows)return readTerrainVertex(terrain.base,col,row);
+  if (patch !== undefined && patch !== null) return patch;
   let cache = inheritedVertices.get(terrain);
   if (!cache) { cache = new Map(); inheritedVertices.set(terrain, cache); }
   if (cache.has(index)) return cache.get(index);
@@ -39,7 +91,12 @@ function sampleTerrainVertex(terrain, x, y) {
 
 function writeTerrainVertex(terrain, col, row, vertex) {
   const index = row * terrain.cols + col;
-  if (terrain.version === 2) terrain.vertices[index] = vertex;
+  if(terrain.version===3){
+    let original=[-20,0,0];
+    if(terrain.base){const p=gridPosition(terrain,col,row);original=terrain.base.width===terrain.width && terrain.base.height===terrain.height && terrain.base.cols===terrain.cols && terrain.base.rows===terrain.rows ? readTerrainVertex(terrain.base,col,row) : sampleTerrainVertex(terrain.base,p.x,p.y)}
+    writeTerrainOverride(terrain,index,sameVertex(vertex,original)?null:vertex);
+  }
+  else if (terrain.version === 2) terrain.vertices[index] = vertex;
   else {
     terrain.heights[index] = vertex[0];
     terrain.rivers[index] = vertex[1];
@@ -50,9 +107,13 @@ function writeTerrainVertex(terrain, col, row, vertex) {
 export function terrainMaximumHeight(terrain) {
   if (Object.isFrozen(terrain) && maximumHeights.has(terrain)) return maximumHeights.get(terrain);
   let maximum = 0;
-  if (terrain.version === 2) {
+  if (terrain.version === 2 || terrain.version === 3) {
     if (terrain.base) maximum = terrainMaximumHeight(terrain.base);
-    for (const v of Object.values(terrain.vertices)) maximum = Math.max(maximum, v[0]);
+    if(terrain.version===3){for(const chunk of Object.values(terrain.chunks)){
+      const info=trustedChunks.get(chunk);
+      if(info)maximum=Math.max(maximum,info.highest);else for(const v of Object.values(chunk))maximum=Math.max(maximum,v[0]);
+    }}
+    else for (const v of Object.values(terrain.vertices)) maximum = Math.max(maximum, v[0]);
   } else {
     for (const h of terrain.heights) maximum = Math.max(maximum, h);
   }
@@ -102,8 +163,12 @@ export function createDemoTerrain() {
   return terrain;
 }
 
-export function validateTerrain(value, depth = 0) {
-  if (!value || typeof value !== "object" || ![1, 2].includes(value.version) || depth > 16) {
+export function validateTerrain(value, depth = 0, reuseImmutable = false) {
+  if(reuseImmutable && trustedSnapshots.has(value)){
+    if(depth+trustedSnapshots.get(value)>16)throw new Error('地形基底の階層が深すぎます。');
+    return value;
+  }
+  if (!value || typeof value !== "object" || ![1, 2, 3].includes(value.version) || depth > 16) {
     throw new Error("地形データ形式が不正です。");
   }
 
@@ -138,6 +203,25 @@ export function validateTerrain(value, depth = 0) {
     throw new Error("等高線間隔は 5～100 で指定してください。");
   }
 
+  if(value.version===3){
+    if(value.chunkSize!==TERRAIN_CHUNK_SIZE || !value.chunks || typeof value.chunks!=='object' || Array.isArray(value.chunks))throw new Error('分割地形の形式が不正です。');
+    const chunks={};
+    for(const [key,chunk] of Object.entries(value.chunks)){
+      if(!/^\d+,\d+$/.test(key) || !chunk || typeof chunk!=='object' || Array.isArray(chunk))throw new Error('地形区画の形式が不正です。');
+      const [cx,cy]=key.split(',').map(Number);
+      if(key!==`${cx},${cy}` || cx*TERRAIN_CHUNK_SIZE>=value.cols || cy*TERRAIN_CHUNK_SIZE>=value.rows)throw new Error('地形区画が範囲外です。');
+      const trusted=trustedChunks.get(chunk);
+      if(reuseImmutable && trusted?.key===key && trusted.cols===value.cols && trusted.rows===value.rows){chunks[key]=chunk;continue;}
+      const copied={};
+      for(const [local,v] of Object.entries(chunk)){
+        const i=Number(local), col=cx*TERRAIN_CHUNK_SIZE+i%TERRAIN_CHUNK_SIZE,row=cy*TERRAIN_CHUNK_SIZE+Math.floor(i/TERRAIN_CHUNK_SIZE);
+        if(!Number.isInteger(i)||String(i)!==local||i<0||i>=TERRAIN_CHUNK_SIZE**2||col>=value.cols||row>=value.rows||!Array.isArray(v)||v.length!==3||!Number.isFinite(v[0])||v[0]<-200||v[0]>600||![0,1].includes(v[1])||![0,1].includes(v[2]))throw new Error('地形区画内の頂点が不正です。');
+        copied[local]=v.slice();
+      }
+      if(Object.keys(copied).length)chunks[key]=copied;
+    }
+    return {version:3,width:value.width,height:value.height,cols:value.cols,rows:value.rows,contourInterval:value.contourInterval,chunkSize:TERRAIN_CHUNK_SIZE,base:value.base===null?null:validateTerrain(value.base,depth+1,reuseImmutable),chunks};
+  }
   if (value.version === 2) {
     if (!value.vertices || typeof value.vertices !== "object" || Array.isArray(value.vertices)) {
       throw new Error("精細地形の頂点データが不正です。");
@@ -155,7 +239,7 @@ export function validateTerrain(value, depth = 0) {
     return {
       version: 2, width: value.width, height: value.height,
       cols: value.cols, rows: value.rows, contourInterval: value.contourInterval,
-      base: value.base === null ? null : validateTerrain(value.base, depth + 1), vertices
+      base: value.base === null ? null : validateTerrain(value.base, depth + 1, reuseImmutable), vertices
     };
   }
   if (count > DENSE_TERRAIN_LIMIT) {
@@ -294,7 +378,7 @@ export function resizeTerrain(source, settings) {
   if (cols * rows > DENSE_TERRAIN_LIMIT) {
     // 基底保留原始精度。细网格只保存实际修改的顶点。
     // 尺寸/精度未变时不增加嵌套，也不丢弃既有精细编辑。
-    if (source.version === 2 && width === source.width && height === source.height &&
+    if ([2,3].includes(source.version) && width === source.width && height === source.height &&
         cols === source.cols && rows === source.rows) {
       return validateTerrain({...source, contourInterval: Number(settings.contourInterval)});
     }

@@ -1,5 +1,6 @@
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
+import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
 import { mountSaveIndicator } from "./save-indicator.js";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
@@ -153,6 +154,7 @@ function syncSelectedUnitPanels(scene, unit) {
 }
 let draftPreview = null;
 let axesVisible = false;
+let gridVisible = false;
 let terrainColorVisible = true;
 
 const BRANCH_LABELS = {
@@ -522,6 +524,7 @@ function drawMap() {
     terrain,
     axesVisible
   );
+  renderDistanceGrid();
 
   unitLayer.replaceChildren();
 
@@ -756,6 +759,7 @@ function updateView() {
   if (store && terrainRenderFrame === null) terrainRenderFrame = requestAnimationFrame(() => {
     terrainRenderFrame = null;
     renderSimulationTerrain(getRenderScene().terrain, terrainColorVisible);
+    renderDistanceGrid();
   });
   viewport.setAttribute(
     "transform",
@@ -1098,6 +1102,8 @@ function renderUnitList() {
 
 function renderEnvironment(scene) {
   const environment = normalizeEnvironment(scene.environment);
+  const lighting = applySceneLighting($("map").parentElement, $("sceneAtmosphereLayer"), scene.terrain, environment.time);
+  $("scenePeriodHint").textContent = lighting.label + (lighting.direction === "east" ? " · 東の空" : lighting.direction === "west" ? " · 西の空" : "");
   const recon = getReconConditions(environment);
 
   renderEnvironmentBadge(
@@ -1140,6 +1146,25 @@ function renderEnvironment(scene) {
 
 $("branchFilter").addEventListener("change", safely(renderUnitList));
 $("sideFilter").addEventListener("change", safely(renderUnitList));
+
+function renderDistanceGrid() {
+  if (!store) return;
+  const settings = drawDistanceGrid($("distanceGridLayer"), getRenderScene().terrain, {
+    visible: gridVisible, view, box: svg.viewBox.baseVal,
+    requested: $("gridSpacing").value, planes: $("gridPlanes").value
+  });
+  $("gridControls").hidden = !gridVisible;
+  if (settings) $("gridReadout").textContent =
+    `XY：${settings.step}格＝${settings.step / 5}km` +
+    ($("gridPlanes").value === "xyz" ? ` / Z：${settings.zStep * 100}m` : "");
+}
+$("gridToggle").addEventListener("click", safely(() => {
+  gridVisible = !gridVisible;
+  $("gridToggle").setAttribute("aria-pressed", String(gridVisible));
+  $("gridToggle").textContent = gridVisible ? "距離グリッドを非表示" : "距離グリッドを表示";
+  renderDistanceGrid();
+}));
+for (const id of ["gridSpacing", "gridPlanes"]) $(id).addEventListener("change", safely(renderDistanceGrid));
 
 $("axesToggle").addEventListener("click", safely(() => {
   axesVisible = !axesVisible;

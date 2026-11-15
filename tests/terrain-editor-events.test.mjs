@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mountTerrainEditor } from '../tactical-map/terrain-editor.js';
 import { createBattleStore } from '../js/battle-state.js';
-import { sampleTerrain, resizeTerrain, applyBrush } from '../tactical-map/terrain-data.js';
+import { sampleTerrain, resizeTerrain, applyBrush, readTerrainVertex } from '../tactical-map/terrain-data.js';
 import { flatTerrain } from './fixtures.mjs';
 
 // Execute the real editor event handlers with a small DOM/pointer adapter.
@@ -77,7 +77,8 @@ for(const mode of ['raise','lower','smooth','level','land','sea','river','eraseR
   const expected=JSON.parse(JSON.stringify(ui.getTerrain()));
   applyBrush(expected,{x:0,y:0},{mode,radius:30,strength:5,target:20});
   await ui.svg.dispatch('pointerdown');ui.flush();await ui.svg.dispatch('pointerup');
-  assert.deepEqual(ui.store.getSceneSnapshot().terrain,expected);
-  assert(all(ui.container).some(n=>String(n.textContent).includes('地形を保存し')),'editor must reach the saved state');
+  const actual=ui.store.getSceneSnapshot().terrain;
+  for(let r=0;r<expected.rows;r++)for(let c=0;c<expected.cols;c++)assert.deepEqual(readTerrainVertex(actual,c,r),readTerrainVertex(expected,c,r));
+  assert(all(ui.container).some(n=>String(n.textContent).includes('地形を保存')),'editor must reach the saved state');
  }finally{await ui.dispose()}
 });

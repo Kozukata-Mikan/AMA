@@ -1321,7 +1321,7 @@ function createAutonomousMovementPlans(
   return plans;
 }
 
-export function createSimulationFeatures(getState, commit) {
+export function createSimulationFeatures(getState, commit, commitBackground = null) {
   return {
     getMovementInfo(ref) {
       const scene = getState();
@@ -1415,7 +1415,14 @@ export function createSimulationFeatures(getState, commit) {
     },
 
     async resolveMovement() {
-      await commit(scene => {
+      if (commitBackground) await commitBackground('movement');
+      else await commit(scene => resolveMovementScene(scene));
+    }
+  };
+}
+
+// Shared verbatim movement rules: main-thread compatibility and worker execution.
+export function resolveMovementScene(scene) {
         if (scene.turn.phaseId !== "movement") {
           fail("移動段階ではありません。");
         }
@@ -1659,7 +1666,4 @@ validationScene.controls.enemyAutonomy = false;
 
 
         // 移動処理ではラウンド番号も時刻も進めない。
-      });
-    }
-  };
 }

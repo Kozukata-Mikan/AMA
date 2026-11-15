@@ -1,4 +1,5 @@
-// Saving is visible, but map selection/panning remains usable during disk writes.
+import {subscribeBackgroundStatus} from './background-client.js';
+// Saving/computing is visible; selection and panning remain usable.
 export function mountSaveIndicator(store) {
   const indicator = document.createElement('p');
   indicator.textContent = '保存中… 完了するまでページを閉じないでください。';
@@ -11,15 +12,21 @@ export function mountSaveIndicator(store) {
     fontSize: '12px', pointerEvents: 'none', maxWidth: 'calc(100% - 36px)'
   });
   document.body.append(indicator);
-  const unsubscribe = store.subscribeSaving(saving => { indicator.hidden = !saving; });
+  let saving = store.isSaving(), computing = 0;
+  function sync() {
+    indicator.hidden = !saving && computing === 0;
+    indicator.textContent = computing ? '計算中… 地図の移動・拡大は操作できます。' : '保存中… 完了するまでページを閉じないでください。';
+  }
+  const unsubscribe = store.subscribeSaving(value => { saving = value; sync(); });
+  const stopComputing = subscribeBackgroundStatus(count => { computing = count; sync(); });
   function beforeUnload(event) {
-    if (!store.isSaving()) return;
+    if (!store.isSaving() && !computing) return;
     event.preventDefault();
     event.returnValue = '';
   }
   window.addEventListener('beforeunload', beforeUnload);
   return () => {
-    unsubscribe(); indicator.remove();
+    unsubscribe(); stopComputing(); indicator.remove();
     window.removeEventListener('beforeunload', beforeUnload);
   };
 }
