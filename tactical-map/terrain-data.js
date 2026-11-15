@@ -1,5 +1,64 @@
 // ===== 地形数据与查询 =====
-// 高度和河流标记分开存储。高度单位暂时沿用原地图单位。
+// v1保留旧密集网格；v2保存原地形和稀疏精细顶点，不为整张大地图预分配数组。
+// 两种格式共用精确三角面插值，显示抽样不得用于规则判定。
+export const MAX_TERRAIN_SAMPLES = 7201;
+export const DENSE_TERRAIN_LIMIT = 10000;
+
+const inheritedVertices = new WeakMap();
+const maximumHeights = new WeakMap();
+
+export function readTerrainVertex(terrain, col, row) {
+  const index = row * terrain.cols + col;
+  if (terrain.version === 1) {
+    return [terrain.heights[index], terrain.rivers[index], terrain.shallows?.[index] ?? 0];
+  }
+  const patch = terrain.vertices[index];
+  if (patch !== undefined) return patch;
+  let cache = inheritedVertices.get(terrain);
+  if (!cache) { cache = new Map(); inheritedVertices.set(terrain, cache); }
+  if (cache.has(index)) return cache.get(index);
+  const p = gridPosition(terrain, col, row);
+  const vertex = terrain.base ? sampleTerrainVertex(terrain.base, p.x, p.y) : [-20, 0, 0];
+  // 基底是创建/验证时的独立快照，不会被笔刷修改。限制查询缓存的内存占用。
+  if (cache.size >= 16384) cache.clear();
+  cache.set(index, vertex);
+  return vertex;
+}
+
+// 保留被高度暂时隐藏的河流/浅海标记，与旧版网格语义一致。
+function sampleTerrainVertex(terrain, x, y) {
+  const sample = sampleTerrain(terrain, x, y);
+  if (!sample.inside) return [-20, 0, 0];
+  const col = Math.min(terrain.cols - 1, Math.max(0, Math.round(
+    (x + terrain.width / 2) / terrain.width * (terrain.cols - 1))));
+  const row = Math.min(terrain.rows - 1, Math.max(0, Math.round(
+    (y + terrain.height / 2) / terrain.height * (terrain.rows - 1))));
+  const vertex = readTerrainVertex(terrain, col, row);
+  return [sample.height, vertex[1], vertex[2]];
+}
+
+function writeTerrainVertex(terrain, col, row, vertex) {
+  const index = row * terrain.cols + col;
+  if (terrain.version === 2) terrain.vertices[index] = vertex;
+  else {
+    terrain.heights[index] = vertex[0];
+    terrain.rivers[index] = vertex[1];
+    terrain.shallows[index] = vertex[2];
+  }
+}
+
+export function terrainMaximumHeight(terrain) {
+  if (Object.isFrozen(terrain) && maximumHeights.has(terrain)) return maximumHeights.get(terrain);
+  let maximum = 0;
+  if (terrain.version === 2) {
+    if (terrain.base) maximum = terrainMaximumHeight(terrain.base);
+    for (const v of Object.values(terrain.vertices)) maximum = Math.max(maximum, v[0]);
+  } else {
+    for (const h of terrain.heights) maximum = Math.max(maximum, h);
+  }
+  if (Object.isFrozen(terrain)) maximumHeights.set(terrain, maximum);
+  return maximum;
+}
 
 export function cloneTerrain(value) {
   return JSON.parse(JSON.stringify(value));
@@ -43,8 +102,8 @@ export function createDemoTerrain() {
   return terrain;
 }
 
-export function validateTerrain(value) {
-  if (!value || typeof value !== "object" || value.version !== 1) {
+export function validateTerrain(value, depth = 0) {
+  if (!value || typeof value !== "object" || ![1, 2].includes(value.version) || depth > 16) {
     throw new Error("地形データ形式が不正です。");
   }
 
@@ -63,27 +122,13 @@ export function validateTerrain(value) {
     if (
       !Number.isInteger(value[key]) ||
       value[key] < 9 ||
-      value[key] > 121
+      value[key] > MAX_TERRAIN_SAMPLES
     ) {
-      throw new Error("地形の列数と行数は 9～121 の整数で指定してください。");
+      throw new Error("地形の列数と行数は 9～7201 の整数で指定してください。");
     }
   }
 
   const count = value.cols * value.rows;
-    // 旧地图没有浅海字段，自动补为全零，不改变已有地形。
-  const shallows = value.shallows === undefined
-    ? Array(count).fill(0)
-    : value.shallows;
-
-  if (!Array.isArray(shallows) || shallows.length !== count) {
-    throw new Error("浅海マスクの長さが一致しません。");
-  }
-
-
-  if (count > 10000) {
-    throw new Error("地形の頂点数は 10000 以下にしてください。");
-  }
-
   if (
     typeof value.contourInterval !== "number" ||
     !Number.isFinite(value.contourInterval) ||
@@ -91,6 +136,34 @@ export function validateTerrain(value) {
     value.contourInterval > 100
   ) {
     throw new Error("等高線間隔は 5～100 で指定してください。");
+  }
+
+  if (value.version === 2) {
+    if (!value.vertices || typeof value.vertices !== "object" || Array.isArray(value.vertices)) {
+      throw new Error("精細地形の頂点データが不正です。");
+    }
+    const vertices = {};
+    for (const [key, v] of Object.entries(value.vertices)) {
+      const index = Number(key);
+      if (!Number.isSafeInteger(index) || index < 0 || index >= count || String(index) !== key ||
+          !Array.isArray(v) || v.length !== 3 || !Number.isFinite(v[0]) ||
+          v[0] < -200 || v[0] > 600 || ![0, 1].includes(v[1]) || ![0, 1].includes(v[2])) {
+        throw new Error("精細地形の頂点が範囲外です。");
+      }
+      vertices[key] = v.slice();
+    }
+    return {
+      version: 2, width: value.width, height: value.height,
+      cols: value.cols, rows: value.rows, contourInterval: value.contourInterval,
+      base: value.base === null ? null : validateTerrain(value.base, depth + 1), vertices
+    };
+  }
+  if (count > DENSE_TERRAIN_LIMIT) {
+    throw new Error("大きい地形は精細地形形式で保存してください。");
+  }
+  const shallows = value.shallows === undefined ? Array(count).fill(0) : value.shallows;
+  if (!Array.isArray(shallows) || shallows.length !== count) {
+    throw new Error("浅海マスクの長さが一致しません。");
   }
 
   if (
@@ -170,7 +243,7 @@ export function sampleTerrain(terrain, x, y) {
   const u = gx - col;
   const v = gy - row;
 
-  const at = (c, r) => terrain.heights[r * terrain.cols + c];
+  const at = (c, r) => readTerrainVertex(terrain, c, r)[0];
 
   const a = at(col, row);
   const b = at(col + 1, row);
@@ -185,8 +258,9 @@ export function sampleTerrain(terrain, x, y) {
   // 河流标记采用最近网格顶点的分区。
   const nearestCol = Math.min(terrain.cols - 1, Math.round(gx));
   const nearestRow = Math.min(terrain.rows - 1, Math.round(gy));
-  const river = terrain.rivers[nearestRow * terrain.cols + nearestCol] === 1;
-  const shallow = terrain.shallows?.[nearestRow * terrain.cols + nearestCol] === 1;
+  const marker = readTerrainVertex(terrain, nearestCol, nearestRow);
+  const river = marker[1] === 1;
+  const shallow = marker[2] === 1;
 
   const kind = height <= 0
     ? shallow ? "shallow" : "sea"
@@ -211,11 +285,24 @@ export function resizeTerrain(source, settings) {
   if (
     !Number.isFinite(width) || width < 120 || width > 7200 ||
     !Number.isFinite(height) || height < 120 || height > 7200 ||
-    !Number.isInteger(cols) || cols < 9 || cols > 121 ||
-    !Number.isInteger(rows) || rows < 9 || rows > 121 ||
-    cols * rows > 10000
+    !Number.isInteger(cols) || cols < 9 || cols > MAX_TERRAIN_SAMPLES ||
+    !Number.isInteger(rows) || rows < 9 || rows > MAX_TERRAIN_SAMPLES
   ) {
     throw new Error("地図サイズまたはグリッド数が範囲外です。");
+  }
+
+  if (cols * rows > DENSE_TERRAIN_LIMIT) {
+    // 基底保留原始精度。细网格只保存实际修改的顶点。
+    // 尺寸/精度未变时不增加嵌套，也不丢弃既有精细编辑。
+    if (source.version === 2 && width === source.width && height === source.height &&
+        cols === source.cols && rows === source.rows) {
+      return validateTerrain({...source, contourInterval: Number(settings.contourInterval)});
+    }
+    return validateTerrain({
+      version: 2, width, height, cols, rows,
+      contourInterval: Number(settings.contourInterval),
+      base: source, vertices: {}
+    });
   }
 
   const result = {
@@ -276,11 +363,12 @@ export function applyBrush(terrain, point, brush) {
   }
 
 // 防御性兼容：工作副本也允许从没有浅海字段的旧地图生成。
-  if (!terrain.shallows) {
+  if (terrain.version === 1 && !terrain.shallows) {
     terrain.shallows = Array(terrain.cols * terrain.rows).fill(0);
   }
   
-  const old = terrain.heights.slice();
+  // 只在平滑笔刷需要邻域快照，避免每次移动都复制整张高度网格。
+  const old = new Map();
   const dx = terrain.width / (terrain.cols - 1);
   const dy = terrain.height / (terrain.rows - 1);
 
@@ -300,6 +388,14 @@ export function applyBrush(terrain, point, brush) {
     (point.y + radius + terrain.height / 2) / dy
   ));
 
+  if (brush.mode === "smooth") {
+    for (let r = Math.max(0, minRow - 1); r <= Math.min(terrain.rows - 1, maxRow + 1); r++) {
+      for (let c = Math.max(0, minCol - 1); c <= Math.min(terrain.cols - 1, maxCol + 1); c++) {
+        old.set(r * terrain.cols + c, readTerrainVertex(terrain, c, r)[0]);
+      }
+    }
+  }
+
   for (let row = minRow; row <= maxRow; row++) {
     for (let col = minCol; col <= maxCol; col++) {
       const position = gridPosition(terrain, col, row);
@@ -308,7 +404,8 @@ export function applyBrush(terrain, point, brush) {
 
       const index = row * terrain.cols + col;
       const weight = 1 - distance / radius;
-      const height = old[index];
+      const vertex = readTerrainVertex(terrain, col, row).slice();
+      const height = old.get(index) ?? vertex[0];
       let next = height;
 
       switch (brush.mode) {
@@ -327,33 +424,33 @@ export function applyBrush(terrain, point, brush) {
 
         case "land":
           next = Math.max(1, height + strength * weight);
-          terrain.rivers[index] = 0;
-          terrain.shallows[index] = 0;
+          vertex[1] = 0;
+          vertex[2] = 0;
           break;
 
         case "sea":
           next = Math.min(-1, height - strength * weight);
-          terrain.rivers[index] = 0;
-          terrain.shallows[index] = 0;
+          vertex[1] = 0;
+          vertex[2] = 0;
           break;
 
 
         case "river":
           // 河流不强制降低到海平面。
-          if (height > 0) terrain.rivers[index] = 1;
+          if (height > 0) vertex[1] = 1;
           break;
 
         case "eraseRiver":
-          terrain.rivers[index] = 0;
+          vertex[1] = 0;
           break;
 
         case "shallow":
           // 浅海只在海域上绘制，不修改高度。
-          if (height <= 0) terrain.shallows[index] = 1;
+          if (height <= 0) vertex[2] = 1;
           break;
 
         case "eraseShallow":
-          terrain.shallows[index] = 0;
+          vertex[2] = 0;
           break;
 
 
@@ -363,7 +460,7 @@ export function applyBrush(terrain, point, brush) {
 
           for (let r = Math.max(0, row - 1); r <= Math.min(terrain.rows - 1, row + 1); r++) {
             for (let c = Math.max(0, col - 1); c <= Math.min(terrain.cols - 1, col + 1); c++) {
-              sum += old[r * terrain.cols + c];
+              sum += old.get(r * terrain.cols + c);
               count++;
             }
           }
@@ -374,7 +471,8 @@ export function applyBrush(terrain, point, brush) {
         }
       }
 
-      terrain.heights[index] = Math.max(-200, Math.min(600, next));
+      vertex[0] = Math.max(-200, Math.min(600, next));
+      writeTerrainVertex(terrain, col, row, vertex);
     }
   }
 }

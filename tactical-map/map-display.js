@@ -1,6 +1,8 @@
+import { makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import {
   gridPosition,
-  sampleTerrain
+  sampleTerrain,
+  terrainMaximumHeight
 } from "./terrain-data.js";
 
 import {
@@ -35,9 +37,11 @@ export function drawTerrainFaces({
   layer,
   terrain,
   colored,
-  wireframe = false
+  wireframe = false,
+  grid
 }) {
   if (!colored && !wireframe) return;
+  grid ??= makeTerrainRenderGrid(terrain);
 
   const colors = {
     land: "#193a30",
@@ -46,56 +50,39 @@ export function drawTerrainFaces({
     shallow: "#286a71"
   };
 
-  // 使用完整网格，避免粗采样把小河、浅海省略掉。
-  for (let row = 0; row < terrain.rows - 1; row++) {
-    for (let col = 0; col < terrain.cols - 1; col++) {
-      const vertices = [
-        [col, row],
-        [col + 1, row],
-        [col + 1, row + 1],
-        [col, row + 1]
-      ].map(([c, r]) => {
-        const point = gridPosition(terrain, c, r);
-        const sample = sampleTerrain(
-          terrain,
-          point.x,
-          point.y
-        );
-
-        return {
-          point: projectMap(
-            point.x,
-            point.y,
-            sample.surface
-          ),
-          sample
-        };
-      });
-
-      // 拆成两个三角面，以减少坡面投影的不一致。
-      for (const indexes of [[0, 1, 2], [0, 2, 3]]) {
-        const triangle = indexes.map(index => vertices[index]);
-
-        const kind = triangle.some(v => v.sample.kind === "land")
-          ? "land"
-          : triangle.some(v => v.sample.kind === "river")
-            ? "river"
-            : triangle.some(v => v.sample.kind === "shallow")
-              ? "shallow"
-              : "sea";
-
-        svgNode("polygon", {
-          points: triangle.map(v =>
-            `${v.point.x},${v.point.y}`
-          ).join(" "),
-          fill: colored ? colors[kind] : "none",
-          stroke: wireframe ? "#35556a" : "none",
-          "stroke-width": 0.4,
-          "stroke-opacity": 0.55
-        }, layer);
+  // 连续同类面合并成path；保留原来的前后绘制顺序。
+  let kind = null, data = [], count = 0;
+  const fragment = document.createDocumentFragment();
+  function flush() {
+    if (!data.length) return;
+    svgNode("path", {
+      d: data.join(" "), fill: colored ? colors[kind] : "none",
+      stroke: wireframe ? "#35556a" : "none",
+      "stroke-width": 0.4, "stroke-opacity": 0.55
+    }, fragment);
+    data = []; count = 0;
+  }
+  for (let row = 0; row < grid.length - 1; row++) {
+    for (let col = 0; col < grid[row].length - 1; col++) {
+      const vertices = [grid[row][col], grid[row][col+1], grid[row+1][col+1], grid[row+1][col]];
+      for (const ids of [[0,1,2], [0,2,3]]) {
+        const triangle = ids.map(i => vertices[i]);
+        const next = triangle.some(v => v.kind === "land") ? "land"
+          : triangle.some(v => v.kind === "river") ? "river"
+          : triangle.some(v => v.kind === "shallow") ? "shallow" : "sea";
+        if (kind !== next || count >= 256) { flush(); kind = next; }
+        const points = triangle.map(v => projectMap(v.x, v.y, Math.max(0, v.z)));
+        const area = points.reduce((sum, p, i) => {
+          const q = points[(i+1)%3]; return sum + p.x*q.y - q.x*p.y;
+        }, 0);
+        if (area < 0) points.reverse();
+        data.push(`M${points.map(v => `${v.x},${v.y}`).join(" L")} Z`);
+        count++;
       }
     }
   }
+  flush();
+  layer.append(fragment);
 }
 
 export function drawMapAxes(layer, terrain, visible) {
@@ -104,11 +91,7 @@ export function drawMapAxes(layer, terrain, visible) {
 
   if (!visible) return;
 
-  let highest = 0;
-
-  for (const height of terrain.heights) {
-    highest = Math.max(highest, height);
-  }
+  const highest = terrainMaximumHeight(terrain);
 
   const origin = projectMap(0, 0, 0);
 

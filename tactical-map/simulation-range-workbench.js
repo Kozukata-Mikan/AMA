@@ -180,7 +180,7 @@ export function mountSimulationRangeWorkbench(container) {
   }
 
   function getControllableReports() {
-    const observed = store.getScene();
+    const observed = store.getSceneSnapshot();
     const reports = [];
 
     for (const unit of observed.instances) {
@@ -352,7 +352,7 @@ export function mountSimulationRangeWorkbench(container) {
   function refresh() {
     if (disposed || !store) return;
 
-    const scene = store.getScene();
+    const scene = store.getSceneSnapshot();
     const reports = getControllableReports();
 
     status.textContent =

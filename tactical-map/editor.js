@@ -301,7 +301,7 @@ let introEditor = null;
 let introSavedKey = "";
 
 function syncCampaignIntro(force = false) {
-  const value = store.getScene().campaignIntro ?? {};
+  const value = store.getSceneSnapshot().campaignIntro ?? {};
   const key = JSON.stringify(value);
 
   // 普通单位、地形及视角更新不清掉介绍的未保存输入。
@@ -1131,9 +1131,18 @@ introSection.append(
 
   // ===== 状态与地图同步 =====
 
+  function refreshSelection() {
+    const scene = store.getSceneSnapshot();
+    for (const item of unitList.querySelectorAll("[data-select-instance-id]")) {
+      item.classList.toggle("active", item.dataset.selectInstanceId === selectedId);
+    }
+    renderUnitForm(scene.instances);
+    renderMap(scene.instances, selectedId);
+  }
+
   function refresh() {
-    const instances = store.getAll();
-    const scene = store.getScene();
+    const scene = store.getSceneSnapshot();
+    const instances = scene.instances;
 
     if (!instances.some(item => item.instanceId === selectedId)) {
       selectedId = "";
@@ -1156,11 +1165,12 @@ introSection.append(
 
     const item = button(getFlagshipDisplayName(unit), () => {
         selectedId = unit.instanceId;
-        refresh();
+        refreshSelection();
         openSection(unitSection);
         message("ユニットを選択しました。");
       });
 
+      item.dataset.selectInstanceId = unit.instanceId;
       item.classList.toggle("active", unit.instanceId === selectedId);
       const deployHandle = node(
         "span",
@@ -1217,7 +1227,7 @@ introSection.append(
   return {
     select(instanceId) {
       selectedId = instanceId;
-      refresh();
+      refreshSelection();
       openSection(unitSection);
       message("地図からユニットを選択しました。");
     },

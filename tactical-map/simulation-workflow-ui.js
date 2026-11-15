@@ -204,7 +204,7 @@ export function mountSimulationWorkflow(store) {
   function sync() {
     if (disposed) return;
 
-    const scene = store.getScene();
+    const scene = store.getSceneSnapshot();
     const phaseId = scene.turn.phaseId;
     const index = STEPS.findIndex(step => step.id === phaseId);
     const step = STEPS[index];

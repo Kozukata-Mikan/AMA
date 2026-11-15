@@ -180,6 +180,8 @@ function terrainBreaks(terrain, from, to) {
   function crossings(origin, delta, first, last) {
     if (Math.abs(delta) < EPSILON) return;
 
+    first = Math.max(first, Math.ceil(Math.min(origin, origin + delta)));
+    last = Math.min(last, Math.floor(Math.max(origin, origin + delta)));
     for (let n = first; n <= last; n++) {
       const t = (n - origin) / delta;
       if (t > 0 && t < 1) values.push(t);
@@ -419,7 +421,7 @@ export function getVisibility(scene) {
  * 返回页面可用的观察副本，而不是完整战场。
  * 普通发现不携带真实名称、耐性、军种、阵营或图鉴快照。
  */
-export function getObservedScene(scene) {
+export function getObservedScene(scene, {shareTerrain = false} = {}) {
   const visibility = getVisibility(scene);
   const side = getObservationSide(scene);
 
@@ -554,7 +556,7 @@ export function getObservedScene(scene) {
     record.target?.members?.every(unit => unit.side === side)
   );
 
-  return clone({
+  const observedScene = clone({
     version: scene.version,
     mode: scene.mode,
     id: scene.id,
@@ -570,7 +572,7 @@ export function getObservedScene(scene) {
     scene.campaignIntro ??
     scene.initialScene?.campaignIntro ??
     null,
-    terrain: scene.terrain,
+    terrain: shareTerrain ? null : scene.terrain,
     environment: scene.environment,
     turn: scene.turn,
     controls: scene.controls,
@@ -641,6 +643,8 @@ export function getObservedScene(scene) {
       )
     )
   });
+  if (shareTerrain) observedScene.terrain = scene.terrain;
+  return observedScene;
 }
 
 export function assertManualControl(scene, members) {

@@ -252,7 +252,7 @@ function selectableGroups() {
 
        try {
       const saved = store.getAttackCommands(report.unitId);
-      const visibleScene = store.getScene();
+      const visibleScene = store.getSceneSnapshot();
 
       lines.push(
         "",
@@ -339,7 +339,7 @@ function selectableGroups() {
 
 
         // 从观察副本读取环境，不读取完整战场内部状态。
-    const environment = store.getScene().environment;
+    const environment = store.getSceneSnapshot().environment;
 
     for (const group of groups) {
       const profile = group.profile;
@@ -418,7 +418,7 @@ function selectableGroups() {
       }
 
       // 只从当前观察副本读取目标名称。
-      const visibleTarget = store.getScene().instances.find(
+      const visibleTarget = store.getSceneSnapshot().instances.find(
         unit =>
           unit.instanceId === assignedTargetId &&
           unit.observationLevel === "identified"
@@ -791,7 +791,7 @@ function selectableGroups() {
   );
 
   const executeBatch = button("現在の攻撃段階を一括結算", () => {
-  const scene = store.getScene();
+  const scene = store.getSceneSnapshot();
 
   if (!/^(order-[1-5]|pas)$/.test(scene.turn.phaseId)) {
     phaseOutput.textContent =
@@ -837,13 +837,13 @@ phaseOutput.textContent =
   } finally {
     executeBatch.disabled =
       !/^(order-[1-5]|pas)$/.test(
-        store.getScene().turn.phaseId
+        store.getSceneSnapshot().turn.phaseId
       );
   }
 });
 
 const finishPhase = button("特殊段階・回合終了を処理", () => {
-  const scene = store.getScene();
+  const scene = store.getSceneSnapshot();
   const phaseId = scene.turn.phaseId;
 
   if (!["special", "end"].includes(phaseId)) {
@@ -879,7 +879,7 @@ const finishPhase = button("特殊段階・回合終了を処理", () => {
   } finally {
     finishPhase.disabled =
       !["special", "end"].includes(
-        store.getScene().turn.phaseId
+        store.getSceneSnapshot().turn.phaseId
       );
   }
 });
@@ -995,7 +995,7 @@ aside.append(panel);
   }
 
   function sync() {
-    const scene = store.getScene();
+    const scene = store.getSceneSnapshot();
     const previous = actor.value;
     const attackPhase = /^(order-[1-5]|pas)$/.test(
   scene.turn.phaseId
@@ -1046,7 +1046,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
   selectedActorId = actor.value;
   target.value = "";
 
-  const scene = store.getScene();
+  const scene = store.getSceneSnapshot();
 
   syncFollowControl(scene, true);
   refillTargets(scene);

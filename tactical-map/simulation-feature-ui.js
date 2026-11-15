@@ -149,7 +149,7 @@ export function mountSimulationFeatures(store, context) {
   });
 
   const resolve = addButton("全陣営の移動を処理", () => {
- const autonomy = store.getScene().controls.enemyAutonomy;
+ const autonomy = store.getSceneSnapshot().controls.enemyAutonomy;
 
 if (!confirm(
   "全陣営の移動をまとめて処理しますか？" +
@@ -202,7 +202,7 @@ if (!confirm(
     layer.replaceChildren();
 
     if (
-     store.getScene().turn.phaseId !== "movement" ||
+     store.getSceneSnapshot().turn.phaseId !== "movement" ||
      !actor.value
     ) return;
 
@@ -230,7 +230,7 @@ if (!confirm(
         "vector-effect": "non-scaling-stroke"
       }, layer);
 
-      const scene = store.getScene();
+      const scene = store.getSceneSnapshot();
 
       for (const plan of scene.movementPlans) {
         for (const destination of plan.destinations) {
@@ -273,7 +273,7 @@ if (!confirm(
   }
 
   function sync() {
-    const scene = store.getScene();
+    const scene = store.getSceneSnapshot();
     const currentSide = scene.controls.observationSide;
     const previous = actor.value;
 
@@ -360,9 +360,9 @@ if (!movement) {
   }));
 
   actor.addEventListener("change", () => {
-  syncFollow(store.getScene());
+  syncFollow(store.getSceneSnapshot());
   const movement =
-    store.getScene().turn.phaseId === "movement";
+    store.getSceneSnapshot().turn.phaseId === "movement";
 
   save.disabled = cancel.disabled =
     !movement || !actor.value;
@@ -399,7 +399,7 @@ if (!movement) {
     const icon = event.target.closest(".unit[data-instance-id]");
     if (!icon) return;
 
-    const scene = store.getScene();
+    const scene = store.getSceneSnapshot();
     const unit = scene.instances.find(
       item => item.instanceId === icon.dataset.instanceId
     );
@@ -524,7 +524,7 @@ if (!movement) {
 
     if ([...actor.options].some(option => option.value === value)) {
       actor.value = value;
-      syncFollow(store.getScene());
+      syncFollow(store.getSceneSnapshot());
       drawRange();
     }
   });
