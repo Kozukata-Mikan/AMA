@@ -1,3 +1,4 @@
+import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
 import { gridPosition, readTerrainVertex, terrainMaximumHeight } from './terrain-data.js';
 import { projectMap as project } from './map-display.js';
 
@@ -47,10 +48,8 @@ export function pickProjectedTerrainPoint(terrain, point) {
 
   // 同一屏幕点反投影到不同高度时，x/y沿同一条线变化。
   // 按每个网格交点划分，只检查这条线经过的真实细网格三角面。
-  const difference = (point.x - 500) / 0.95;
-  const sum = (point.y - 340) / 0.43;
-  const from = {x: (sum + difference) / 2, y: (sum - difference) / 2};
-  const delta = terrainMaximumHeight(terrain) * 0.75 / 0.43 / 2;
+  const from = unprojectDisplayPoint(point);
+  const delta = terrainMaximumHeight(terrain) * 0.75 * getVerticalExaggeration() / 0.43 / 2;
   const to = {x: from.x + delta, y: from.y + delta};
   const gx = x => (x + terrain.width / 2) / terrain.width * (terrain.cols - 1);
   const gy = y => (y + terrain.height / 2) / terrain.height * (terrain.rows - 1);

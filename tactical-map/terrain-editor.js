@@ -389,6 +389,7 @@ export function mountTerrainEditor({
   show("地形編集モードを有効にして描画してください。");
 
   return {
+    canChangeDisplay:()=>stroke===null&&!finishing,
     async resetHistory() {
       generatorController.invalidate();
       // 切换场景时清理上一张地图的撤销、重做记录。

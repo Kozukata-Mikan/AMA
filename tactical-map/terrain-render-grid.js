@@ -1,3 +1,4 @@
+import {unprojectDisplayPoint} from './relief-display.js';
 import { gridPosition, readTerrainVertex, terrainMaximumHeight } from './terrain-data.js';
 
 // 仅供显示：原始地形不重采样保存，规则继续读取terrain-data的完整网格。
@@ -10,10 +11,8 @@ export function terrainRenderWindow(terrain, view, box, maxCells = 128) {
     for (const sx of [box.x, box.x + box.width]) {
       for (const sy of [box.y, box.y + box.height]) {
         for (const z of [0, highest]) {
-          const difference = ((sx - view.x) / view.scale - 500) / 0.95;
-          const sum = ((sy - view.y) / view.scale - 340 + z * 0.75) / 0.43;
-          xs.push((sum + difference) / 2);
-          ys.push((sum - difference) / 2);
+          const p = unprojectDisplayPoint({x:(sx-view.x)/view.scale,y:(sy-view.y)/view.scale},z);
+          xs.push(p.x);ys.push(p.y);
         }
       }
     }

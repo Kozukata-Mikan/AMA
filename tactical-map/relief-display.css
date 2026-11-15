@@ -1,0 +1,8 @@
+.relief-control { display:flex; align-items:center; flex-wrap:wrap; gap:5px 8px; padding:6px 9px; border:1px solid #385063; border-radius:6px; background:#10202c; color:#c2d7df; font-size:11px; }
+.relief-control select { width:auto; margin:0; padding:3px 5px; font-size:12px; }
+.relief-control small { color:#a8bec8; font-size:10px; }
+/* Screen-space contours stay legible while zoomed out. Heights and intervals remain physical. */
+#map .contour:not(.coast) { stroke:#b9d2c5; stroke-width:1.05px; opacity:.82; }
+#map .contour.contour-major { stroke:#e3e6c9; stroke-width:1.55px; opacity:.96; }
+#map .chart-contour { stroke:#bacbb2; stroke-width:1.05px; stroke-opacity:.74; }
+#map .chart-contour-major { stroke:#e1e6c7; stroke-width:1.5px; stroke-opacity:.94; }

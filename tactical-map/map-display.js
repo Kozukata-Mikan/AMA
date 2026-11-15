@@ -1,3 +1,4 @@
+import {projectDisplayPoint} from './relief-display.js';
 import { makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import {
   gridPosition,
@@ -25,10 +26,7 @@ function svgNode(tag, attributes, parent) {
 }
 
 export function projectMap(x, y, height = 0) {
-  return {
-    x: 500 + (x - y) * 0.95,
-    y: 340 + (x + y) * 0.43 - height * 0.75
-  };
+  return projectDisplayPoint(x,y,height);
 }
 
 // 自定义页：着色关闭时不绘制面。

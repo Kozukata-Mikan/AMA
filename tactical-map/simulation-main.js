@@ -1,9 +1,12 @@
+import {mountReliefControls} from './relief-controls.js';
+import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
 import { mountSaveIndicator } from "./save-indicator.js";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
+  projectMap,
   drawMapAxes,
   renderEnvironmentBadge
 } from "./map-display.js";
@@ -222,10 +225,7 @@ function button(text, action) {
 }
 
 function project(x, y, z = 0) {
-  return {
-    x: 500 + (x - y) * 0.95,
-    y: 340 + (x + y) * 0.43 - z * 0.75
-  };
+  return projectMap(x,y,z);
 }
 
 function pointsText(points) {
@@ -265,12 +265,13 @@ let terrainRenderFrame = null;
 let renderedWindowKey = "";
 function renderSimulationTerrain(terrain, colored) {
   const window = terrainRenderWindow(terrain, view, svg.viewBox.baseVal);
-  if (renderedTerrain === terrain && renderedTerrainColored === colored && renderedWindowKey === window.key) return;
+  const displayKey = `${window.key}:${getVerticalExaggeration()}`;
+  if (renderedTerrain === terrain && renderedTerrainColored === colored && renderedWindowKey === displayKey) return;
   const layer = $("terrainLayer");
   drawSimulationCartography(layer, terrain, makeTerrainRenderGrid(terrain, window), {colored});
   renderedTerrain = terrain;
   renderedTerrainColored = colored;
-  renderedWindowKey = window.key;
+  renderedWindowKey = displayKey;
 }
 
 function getOwnCombatDetailLines(unit, turnNumber) {
@@ -1416,6 +1417,11 @@ svg.addEventListener("pointercancel", endDrag);
 svg.addEventListener("lostpointercapture", () => {
   drag = null;
 });
+
+registerPageDisposer(mountReliefControls($('axesToggle').parentElement, {
+  canChange:()=>!drag,
+  onChange(){if(store)drawMap();}
+}));
 
 try {
   const id = new URL(location.href).searchParams.get("id");

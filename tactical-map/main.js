@@ -1,3 +1,5 @@
+import {mountReliefControls} from './relief-controls.js';
+import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
@@ -6,7 +8,7 @@ import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
 import { mountEditor } from "./editor.js";
 import { mountUnitDeployment } from "./unit-deployment.js";
-import { drawTerrainFaces } from "./map-display.js";
+import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js";
 
 
@@ -66,10 +68,7 @@ function createSVG(tag, attributes = {}, parent = null) {
 // 固定角度の平行投影。
 // x、y は地図平面上の座標、height は地形の標高を表します。
 function project(x, y, height = 0) {
-  return {
-    x: 500 + (x - y) * 0.95,
-    y: 340 + (x + y) * 0.43 - height * 0.75
-  };
+  return projectMap(x,y,height);
 }
 
 function pointText(point) {
@@ -307,7 +306,7 @@ function contourTriangle(triangle, level) {
 
 function drawTerrain(force = true) {
   const window = terrainRenderWindow(terrain, view, svg.viewBox.baseVal);
-  const key = `${window.key}:${terrainColorVisible}`;
+  const key = `${window.key}:${terrainColorVisible}:${getVerticalExaggeration()}`;
   if (!force && renderedTerrainSource === terrain && renderedTerrainWindow === key) return;
   renderedTerrainSource = terrain;
   renderedTerrainWindow = key;
@@ -399,7 +398,7 @@ function drawTerrain(force = true) {
   }
   for (const [level, paths] of [...contours].sort((a,b) => a[0]-b[0])) {
     createSVG("path", { d: paths.join(""),
-      class: level === 0 ? "contour coast" : "contour" }, layers.terrain);
+      class: level === 0 ? "contour coast" : level % (terrain.contourInterval * 3) === 0 ? "contour contour-major" : "contour" }, layers.terrain);
   }
 }
 
@@ -1262,14 +1261,8 @@ function pickUnitPlacement(event, unit) {
   const projectedX = (screen.x - view.x) / view.scale;
   const projectedY = (screen.y - view.y) / view.scale;
 
-  // 与 project() 的投影参数保持一致。
-  const difference = (projectedX - 500) / 0.95;
-  const sum = (projectedY - 340 + fixedHeight * 0.75) / 0.43;
-
-  return {
-    x: (sum + difference) / 2,
-    y: (sum - difference) / 2
-  };
+  // Same display inverse as terrain/axes, including the visual Z multiplier.
+  return unprojectDisplayPoint({x:projectedX,y:projectedY},fixedHeight);
 }
 
 // 部署预览独立于 unitLayer，避免清空真实单位。
@@ -1557,6 +1550,12 @@ terrainColorButton.addEventListener("click", () => {
 
 document.querySelector(".controls").append(terrainColorButton);
 
+
+const disposeReliefControls = mountReliefControls(document.querySelector('.controls'), {
+  canChange:()=>!drag&&!svg.classList.contains('unit-deploying')&&(terrainController?.canChangeDisplay()??true),
+  onChange(){clearDeploymentPreview();redrawTerrain();}
+});
+window.addEventListener('pagehide',event=>{if(!event.persisted)disposeReliefControls()});
 
 // ===== 启动与编辑器桥接 =====
 
