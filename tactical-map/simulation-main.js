@@ -1,8 +1,8 @@
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
+import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   drawMapAxes,
-  drawTerrainFaces,
   renderEnvironmentBadge
 } from "./map-display.js";
 
@@ -264,9 +264,7 @@ function renderSimulationTerrain(terrain, colored) {
   const window = terrainRenderWindow(terrain, view, svg.viewBox.baseVal);
   if (renderedTerrain === terrain && renderedTerrainColored === colored && renderedWindowKey === window.key) return;
   const layer = $("terrainLayer");
-  layer.replaceChildren();
-  drawTerrainFaces({layer, terrain, colored, wireframe: !colored,
-    grid: makeTerrainRenderGrid(terrain, window)});
+  drawSimulationCartography(layer, terrain, makeTerrainRenderGrid(terrain, window), {colored});
   renderedTerrain = terrain;
   renderedTerrainColored = colored;
   renderedWindowKey = window.key;
@@ -1163,8 +1161,9 @@ $("colorToggle").addEventListener("click", safely(() => {
   terrainColorVisible = !terrainColorVisible;
 
   $("colorToggle").textContent = terrainColorVisible
-    ? "地形着色を非表示"
-    : "地形着色を表示";
+    ? "輪郭表示に切替"
+    : "地形着色に切替";
+  $("mapStyleLabel").textContent = terrainColorVisible ? "標高カラー" : "輪郭表示";
 
   $("colorToggle").setAttribute(
     "aria-pressed",
