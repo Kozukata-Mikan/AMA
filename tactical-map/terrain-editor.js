@@ -1,6 +1,7 @@
 import {forkTerrainForEditing, MAX_TERRAIN_SAMPLES} from "./terrain-data.js";
 import {applyTerrainFrame} from "./terrain-edit-history.js";
 import {createTerrainStrokeSession} from "./terrain-stroke-session.js";
+import {mountTerrainGenerator} from './terrain-generator-panel.js';
 import {runBackgroundTask} from "./background-client.js";
 
 import {
@@ -223,6 +224,16 @@ export function mountTerrainEditor({
   addButton(historyActions,"地形を元に戻す",()=>restoreHistory(false));
   addButton(historyActions,"地形をやり直す",()=>restoreHistory(true));
 
+  const generatorController = mountTerrainGenerator({
+    container, store,
+    canAct:()=>!stroke&&!finishing&&!store.isSaving()&&!store.isRecoveryBlocked(),
+    setBusy:value=>{finishing=value},
+    async saveGenerated(next,before){
+      await saveTerrain(next,before,{kind:'replace',before,after:next});
+      previewTerrain(store.getSceneSnapshot().terrain);
+    }
+  });
+
   function schedulePreview() {
     if (frame !== null) return;
 
@@ -364,6 +375,7 @@ export function mountTerrainEditor({
     if (!saving && incoming !== known) {
       if (stroke) await finish({ pointerId: stroke.pointerId }, true);
 
+      generatorController.invalidate();
       undo = [];
       redo = [];
       known = incoming;
@@ -378,6 +390,7 @@ export function mountTerrainEditor({
 
   return {
     async resetHistory() {
+      generatorController.invalidate();
       // 切换场景时清理上一张地图的撤销、重做记录。
       if (stroke) {
         await finish({ pointerId: stroke.pointerId }, true);
@@ -397,6 +410,7 @@ export function mountTerrainEditor({
 
     async destroy() {
 
+      generatorController.destroy();
       environmentController.destroy();
 
       if (stroke) await finish({ pointerId: stroke.pointerId }, true);

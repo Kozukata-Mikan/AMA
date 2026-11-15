@@ -82,3 +82,22 @@ for(const mode of ['raise','lower','smooth','level','land','sea','river','eraseR
   assert(all(ui.container).some(n=>String(n.textContent).includes('地形を保存')),'editor must reach the saved state');
  }finally{await ui.dispose()}
 });
+
+test('generated preview is separate, apply persists origin and undo/redo restore maps',async()=>{
+ const ui=await setup();
+ try{
+  const before=ui.store.getSceneSnapshot().terrain;
+  await ui.button('地形プレビューを生成').dispatch('click');
+  assert.equal(ui.store.getSceneSnapshot().terrain,before,'preview never writes');
+  const apply=ui.button('この地形を地図に適用');assert.equal(apply.disabled,false);
+  await apply.dispatch('click');
+  const generated=ui.store.getSceneSnapshot().terrain;assert.equal(generated.generation.mode,'description');assert.equal(generated.width,120);assert.equal(generated.cols,121);assert(sampleTerrain(generated,0,0).height>0);
+  const exported=ui.store.exportScene();await ui.button('地形を元に戻す').dispatch('click');assert.equal(sampleTerrain(ui.store.getSceneSnapshot().terrain,0,0).height,-20);
+  await ui.button('地形をやり直す').dispatch('click');assert.equal(ui.store.getSceneSnapshot().terrain.generation.mode,'description');
+  await ui.store.importScene(exported);const reopened=await createBattleStore([]);try{assert.deepEqual(reopened.getSceneSnapshot().terrain.generation,generated.generation);assert.equal(sampleTerrain(reopened.getSceneSnapshot().terrain,0,0).height,sampleTerrain(generated,0,0).height)}finally{await reopened.destroy()}
+ }finally{await ui.dispose()}
+});
+test('external terrain update invalidates an unapplied generated preview',async()=>{
+ const ui=await setup();
+ try{await ui.button('地形プレビューを生成').dispatch('click');assert.equal(ui.button('この地形を地図に適用').disabled,false);await ui.store.setTerrain(flatTerrain());assert.equal(ui.button('この地形を地図に適用').disabled,true)}finally{await ui.dispose()}
+});

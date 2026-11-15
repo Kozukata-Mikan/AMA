@@ -1,3 +1,4 @@
+import {generateTerrainTask} from './terrain-generation-task.js';
 import {applyBrush,resizeTerrain} from './terrain-data.js';
 import {beginTerrainEdit} from './terrain-edit-history.js';
 import {settleAttackPhase} from './simulation-settlement.js';
@@ -5,6 +6,7 @@ import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js';
 import {resolveMovementScene} from './simulation-features.js';
 const strokes=new Map();
 export function executeBackgroundTask(task,payload){
+ if(task==='terrain-generate')return generateTerrainTask(payload);
  if(task==='terrain-resize')return resizeTerrain(payload.source,payload.settings);
  if(task==='terrain-start'){
   if(strokes.has(payload.sessionId))throw new Error('描画処理が重複しています。');

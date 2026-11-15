@@ -1,0 +1,14 @@
+.terrain-generator { border-top:1px solid #304352; margin-top:18px; padding-top:14px; }
+.terrain-generator h3 { color:#b9d9da; }
+.terrain-generator textarea { width:100%; min-height:82px; padding:9px; background:#101f2c; color:#d8e8e9; border:1px solid #385063; border-radius:6px; font:inherit; resize:vertical; box-sizing:border-box; }
+.terrain-generator-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 10px; }
+.terrain-generator-fields label { min-width:0; }
+.terrain-generator p { font-size:11px; line-height:1.7; color:#9cb6c2; }
+.terrain-generator button { margin:4px 4px 4px 0; }
+.terrain-generator button:disabled { opacity:.5; cursor:wait; }
+.terrain-generator [hidden] { display:none; }
+.terrain-generation-preview { margin-top:12px; border:1px solid #405967; border-radius:8px; overflow:hidden; padding:8px; background:#0d1d29; }
+.terrain-generation-preview img { display:block; width:100%; max-height:420px; object-fit:contain; background:#102b3c; border-radius:4px; }
+.terrain-generation-preview p { white-space:pre-line; }
+.terrain-generator details { margin-top:10px; font-size:11px; color:#9cb6c2; }
+.terrain-generator a { color:#9ccee2; }

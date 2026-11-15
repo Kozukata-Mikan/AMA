@@ -30,7 +30,7 @@ function chunkAddress(terrain,index) {
 export function forkTerrainForEditing(source, recordChange) {
   const working=source.version===3 ? {...source,chunks:{...source.chunks}} : {
     version:3,width:source.width,height:source.height,cols:source.cols,rows:source.rows,
-    contourInterval:source.contourInterval,chunkSize:TERRAIN_CHUNK_SIZE,base:source,chunks:{}
+    contourInterval:source.contourInterval,chunkSize:TERRAIN_CHUNK_SIZE,base:source,chunks:{},...(source.generation?{generation:source.generation}:{})
   };
   editContexts.set(working,{touched:new Set(),recordChange});
   return working;
@@ -163,6 +163,18 @@ export function createDemoTerrain() {
   return terrain;
 }
 
+function terrainGenerationMetadata(value) {
+  if(value===undefined)return {};
+  if(!value||value.version!==1||!['description','geographic'].includes(value.mode)||typeof value.label!=='string'||value.label.length>500||!Number.isInteger(value.seed)||value.seed<0||value.seed>4294967295||!['dem','approximate','flat','procedural'].includes(value.elevation))throw new Error('地形生成の記録形式が不正です。');
+  for(const key of ['spacingX','spacingY','seaDepthMeters'])if(!Number.isFinite(value[key])||value[key]<=0||value[key]>1000000)throw new Error('地形生成の数値記録が不正です。');
+  const generation={version:1,mode:value.mode,label:value.label,seed:value.seed,elevation:value.elevation,seaDepthMeters:value.seaDepthMeters,spacingX:value.spacingX,spacingY:value.spacingY};
+  if(value.mode==='geographic'){
+    if(!Number.isFinite(value.latitude)||Math.abs(value.latitude)>75||!Number.isFinite(value.longitude)||Math.abs(value.longitude)>180)throw new Error('生成中心の座標が不正です。');
+    generation.latitude=value.latitude;generation.longitude=value.longitude;
+  }
+  return {generation};
+}
+
 export function validateTerrain(value, depth = 0, reuseImmutable = false) {
   if(reuseImmutable && trustedSnapshots.has(value)){
     if(depth+trustedSnapshots.get(value)>16)throw new Error('地形基底の階層が深すぎます。');
@@ -193,6 +205,7 @@ export function validateTerrain(value, depth = 0, reuseImmutable = false) {
     }
   }
 
+  const metadata = terrainGenerationMetadata(value.generation);
   const count = value.cols * value.rows;
   if (
     typeof value.contourInterval !== "number" ||
@@ -220,7 +233,7 @@ export function validateTerrain(value, depth = 0, reuseImmutable = false) {
       }
       if(Object.keys(copied).length)chunks[key]=copied;
     }
-    return {version:3,width:value.width,height:value.height,cols:value.cols,rows:value.rows,contourInterval:value.contourInterval,chunkSize:TERRAIN_CHUNK_SIZE,base:value.base===null?null:validateTerrain(value.base,depth+1,reuseImmutable),chunks};
+    return {version:3,width:value.width,height:value.height,cols:value.cols,rows:value.rows,contourInterval:value.contourInterval,chunkSize:TERRAIN_CHUNK_SIZE,base:value.base===null?null:validateTerrain(value.base,depth+1,reuseImmutable),chunks,...metadata};
   }
   if (value.version === 2) {
     if (!value.vertices || typeof value.vertices !== "object" || Array.isArray(value.vertices)) {
@@ -239,7 +252,7 @@ export function validateTerrain(value, depth = 0, reuseImmutable = false) {
     return {
       version: 2, width: value.width, height: value.height,
       cols: value.cols, rows: value.rows, contourInterval: value.contourInterval,
-      base: value.base === null ? null : validateTerrain(value.base, depth + 1, reuseImmutable), vertices
+      base: value.base === null ? null : validateTerrain(value.base, depth + 1, reuseImmutable), vertices, ...metadata
     };
   }
   if (count > DENSE_TERRAIN_LIMIT) {
@@ -292,6 +305,7 @@ export function validateTerrain(value, depth = 0, reuseImmutable = false) {
     contourInterval: value.contourInterval,
     heights: value.heights.slice(),
     rivers: value.rivers.slice(),
+    ...metadata,
     shallows: shallows.slice()
   };
 }
@@ -385,11 +399,13 @@ export function resizeTerrain(source, settings) {
     return validateTerrain({
       version: 2, width, height, cols, rows,
       contourInterval: Number(settings.contourInterval),
+      ...(source.generation?{generation:source.generation}:{}),
       base: source, vertices: {}
     });
   }
 
   const result = {
+    ...(source.generation?{generation:source.generation}:{}),
     version: 1,
     width,
     height,
