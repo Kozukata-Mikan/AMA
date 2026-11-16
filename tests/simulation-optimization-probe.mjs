@@ -8,9 +8,9 @@ const NativeDate=Date;globalThis.Date=class extends NativeDate{constructor(...ar
 const catalogRaw=await fs.readFile(catalogPath,'utf8'),sceneRaw=await fs.readFile(scenePath,'utf8'),values=new Map([['junqi-catalog-v1',catalogRaw]]);globalThis.localStorage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
 const {initializeCatalog}=await load('js/catalog-store.js'),catalog=initializeCatalog([]),{createBattleStore}=await load('js/battle-state.js'),battle=await createBattleStore(catalog.units);await battle.importScene(sceneRaw);
 const {prepareSimulationAmmoSource}=await load('tactical-map/equipment-runtime.js');const source=prepareSimulationAmmoSource(battle.getScene(),catalog.units);
-if(scenario==='contact'){
- source.instances=['ally','enemy'].flatMap(side=>source.instances.filter(u=>u.side===side).slice(0,2));source.groups=[];
- for(let i=0;i<source.instances.length;i++){const u=source.instances[i];u.groupId=null;u.isOverallFlagship=false;u.isFormationFlagship=false;u.x=i<2?-30:30;u.y=(i%2)*30;u.underwater=false;u.depth=12}
+if(scenario==='contact'||scenario==='squadron'){
+ source.instances=['ally','enemy'].flatMap(side=>source.instances.filter(u=>u.side===side).slice(0,scenario==='squadron'?6:2));source.groups=[];
+ for(let i=0;i<source.instances.length;i++){const u=source.instances[i];u.groupId=null;u.isOverallFlagship=false;u.isFormationFlagship=false;u.x=u.side==='ally'?-30:30;u.y=(i%(scenario==='squadron'?6:2))*12;u.underwater=false;u.depth=12}
  source.terrain.heights.fill(-20);source.terrain.rivers.fill(0);source.terrain.shallows?.fill(0);
 }
 const {createSimulation,openSimulation}=await load('tactical-map/simulation-store.js'),{readSave}=await load('js/save-database.js');

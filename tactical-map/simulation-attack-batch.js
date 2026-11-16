@@ -1,10 +1,11 @@
+import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
 import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets  } from "./simulation-features.js";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
 import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js";
 import { readAttackCommandTarget } from "./simulation-attack-runtime.js";
@@ -339,7 +340,7 @@ for (const startUnit of start.instances) {
  * 按阶段开始状态检查装备与资源资格。
  * 不代替目标几何、命中修正、范围效果和伤害检查。
  */
-function prepareCommand(startScene, command) {
+function prepareCommand(startScene, command, visibilityBySide) {
   const actor = findUnit(startScene, command.unitId);
   const group = findGroup(actor, command.groupId);
   const profile = profileFor(actor, group);
@@ -454,7 +455,11 @@ let memberIds;
 
   };
 
-  assertIdentifiedTargets(observationScene, members);
+  if (visibilityBySide) {
+    if (!visibilityBySide.has(actor.side)) visibilityBySide.set(actor.side, getVisibility(observationScene));
+    const visibility = visibilityBySide.get(actor.side);
+    if (members.some(unit => visibility.get(unit.instanceId) !== "identified")) fail("未発見または未識別の対象の詳細は参照できません。");
+  } else assertIdentifiedTargets(observationScene, members);
 
   if (scope.kind === "single") {
     const singleTarget = members[0];
@@ -605,8 +610,9 @@ export function prepareAttackBatchResources(scene) {
   );
 
 
+  const visibilityBySide = new Map();
   const entries = commands.map(
-    command => prepareCommand(startScene, command)
+    command => prepareCommand(startScene, command, visibilityBySide)
   );
 
   const rayTargets = new Map();
@@ -817,18 +823,43 @@ export function prepareBatchHitChecks(
   }
 
   const startScene = getAttackPhaseStartScene(copySceneWithSpecialHistory(scene));
+  const checks = checkBatchEntries(startScene, expected.entries, finalPreflight);
+
+ // 单体命令的左右侧在随机前已经确定。
+// 提前检查，供手动保存和自主选目标使用。
+// 范围命令的实际侧向在目标选择后统一检查。
+const singleEntries = expected.entries.filter(
+  (_, index) => checks[index].kind === "single"
+);
+
+assertBroadsideQuotas(
+  startScene,
+  singleEntries,
+  singleEntries.map(entry => ({
+    commandId: entry.commandId,
+    targetIds: [entry.targetId]
+  })),
+  scene.settlementRuntime?.attackRecords ?? []
+);
+
+  return {
+    prepared: expected,
+    checks
+  };
+}
+
+
+// The same isolated per-entry rule checks are used by both full batches and planning.
+function checkBatchEntries(startScene, entries, finalPreflight, observations = new Map()) {
   const checks = [];
 
-  for (const entry of expected.entries) {
-    const observedStart = {
-      ...copy(startScene),
-      controls: {
-      ...copy(startScene.controls),
-      enemyAutonomy: false,
-      observationSide: entry.side
-      }
-
-    };
+  for (const entry of entries) {
+    if (!observations.has(entry.side)) {
+      const snapshot = copy(startScene);
+      snapshot.controls = {...snapshot.controls, enemyAutonomy:false, observationSide:entry.side};
+      observations.set(entry.side, freezeSnapshot(snapshot));
+    }
+    const observedStart = observations.get(entry.side);
 
     if (entry.scope.kind === "range") {
       const range = prepareRangeProjection({
@@ -888,17 +919,9 @@ export function prepareBatchHitChecks(
       continue;
     }
 
-    const input = {
-      startScene: observedStart,
-      entry: copy(entry)
-    };
-
-    const before = JSON.stringify(input);
-    const result = finalPreflight(input.startScene, input.entry);
-
-    if (JSON.stringify(input) !== before) {
-      fail("攻撃条件照合が入力状態を変更しました。");
-    }
+    // Deep immutable isolated inputs enforce the original no-write contract without
+    // serializing the entire battlefield twice for every weapon group.
+    const result = finalPreflight(observedStart, freezeSnapshot(copy(entry)));
 
     const checked = validateHitPreflight(result, entry);
 
@@ -916,29 +939,38 @@ export function prepareBatchHitChecks(
     });
   }
 
- // 单体命令的左右侧在随机前已经确定。
-// 提前检查，供手动保存和自主选目标使用。
-// 范围命令的实际侧向在目标选择后统一检查。
-const singleEntries = expected.entries.filter(
-  (_, index) => checks[index].kind === "single"
-);
-
-assertBroadsideQuotas(
-  startScene,
-  singleEntries,
-  singleEntries.map(entry => ({
-    commandId: entry.commandId,
-    targetIds: [entry.targetId]
-  })),
-  scene.settlementRuntime?.attackRecords ?? []
-);
-
-  return {
-    prepared: expected,
-    checks
-  };
+  return checks;
 }
 
+/** A synchronous planning session over one unchanged phase-start snapshot.
+ * Existing plans are fully checked once. Each generated candidate runs the same
+ * resource, geometry, hit and broadside checks; accepted plans cannot alter the
+ * snapshot. Formal settlement still revalidates the entire final batch.
+ */
+export function createAutonomousAttackValidator(scene, finalPreflight) {
+  const prepared = prepareAttackBatchResources(scene);
+  const baseline = prepareBatchHitChecks(scene, prepared, finalPreflight);
+  const start = getAttackPhaseStartScene(scene);
+  const entries = [...prepared.entries];
+  const checks = [...baseline.checks];
+  const observations = new Map();
+  const visibilityBySide = new Map();
+  return command => {
+    const entry = prepareCommand(start, command, visibilityBySide);
+    if (entries.some(previous => previous.commandId === entry.commandId ||
+      (previous.unitId === entry.unitId && previous.groupId === entry.groupId))) fail("攻撃計画の装備組が重複しています。");
+    if (entry.profile.guidance === "ray") {
+      const existing = start.rayTargetRuntime.locks.find(lock => lock.unitId === entry.unitId && lock.turnNumber === start.turn.number);
+      const selected = entries.find(previous => previous.unitId === entry.unitId && previous.profile.guidance === "ray");
+      if ((existing && existing.targetId !== entry.targetId) || (selected && selected.targetId !== entry.targetId)) fail("同じ艦船の射線に複数の目標が指定されています。このラウンドの射線目標を統一してください。");
+    }
+    const [check] = checkBatchEntries(start, [entry], finalPreflight, observations);
+    const nextEntries = [...entries, entry], nextChecks = [...checks, check];
+    const singles = nextEntries.filter((_, index) => nextChecks[index].kind === "single");
+    assertBroadsideQuotas(start, singles, singles.map(item => ({commandId:item.commandId,targetIds:[item.targetId]})), scene.settlementRuntime?.attackRecords ?? []);
+    entries.push(entry); checks.push(check);
+  };
+}
 
 /**
  * 整批命中处理：不修改scene，不扣弹，不造成伤害。

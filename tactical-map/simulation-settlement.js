@@ -1,6 +1,7 @@
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   prepareAttackBatchResources,
+  createAutonomousAttackValidator,
   getAttackPhaseStartScene,
   applyAttackBatchResources,
   resolveAttackBatchHitStep,
@@ -1531,13 +1532,7 @@ function appendAutonomousAttackCommands(scene) {
   // 先检查原有计划和历史。
 // 原有计划已经超限或历史资料错误，仍必须明确拒绝。
 // 后面只能跳过由新增自主候选造成的配额超限。
-const baselinePrepared = prepareAttackBatchResources(scene);
-
-prepareBatchHitChecks(
-  scene,
-  baselinePrepared,
-  finalPreflight
-);
+const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight);
 
   const neutralAggressors = new Set();
 
@@ -1820,19 +1815,8 @@ if (profile.issues.length) {
           command.targetId = target.targetRef.id;
         }
 
-        const trial = copySceneWithSpecialHistory(scene);
-        trial.attackRuntime.commands.push(command);
-
         try {
-          initializeAttackRuntime(trial);
-
-          const prepared = prepareAttackBatchResources(trial);
-
-          prepareBatchHitChecks(
-            trial,
-            prepared,
-            finalPreflight
-          );
+          validateCandidate(command);
           } catch (error) {
           // 当前新增自律候选没有合法目标，尝试下一个。
           // 范围零候选只在此处跳过，不放宽已有计划检查。

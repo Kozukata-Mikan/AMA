@@ -753,6 +753,10 @@ function selectableGroups() {
         error.message + "\n" +
         "今回の登録変更は保存していません。" +
         "以前に保存された計画は、この失敗では変更されません。";
+      if (error.code === "ATTACK_SELECTION_INELIGIBLE") {
+        saveFeedback.textContent += "\n射距などの条件を満たす目標・装備組を選び直してください。" +
+          "攻撃を登録せずに「現在の攻撃段階を一括結算」で段階を進めることもできます。";
+      }
     }
   });
 

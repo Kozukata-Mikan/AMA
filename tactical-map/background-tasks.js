@@ -3,7 +3,7 @@ import {freezeSpecialHistory} from './special-history-snapshot.js';
 import {generateTerrainTask} from './terrain-generation-task.js';
 import {applyBrush,resizeTerrain} from './terrain-data.js';
 import {beginTerrainEdit} from './terrain-edit-history.js';
-import {settleAttackPhase} from './simulation-settlement.js';
+import {settleAttackPhase,prepareSettlementAttackPlan} from './simulation-settlement.js';
 import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js';
 import {resolveMovementScene} from './simulation-features.js';
 const strokes=new Map();
@@ -21,6 +21,11 @@ export function executeBackgroundTask(task,payload){
   const stroke=strokes.get(payload.sessionId);if(!stroke)throw new Error('描画セッションが見つかりません。描画をやり直してください。');
   for(const point of payload.points)applyBrush(stroke.edit.working,point,stroke.brush);
   return {changes:stroke.edit.drain()};
+ }
+ if(task==='simulation-attack-preflight'){
+  const scene=freezeSpecialHistory(decodeSpecialHistory(payload.scene));
+  prepareSettlementAttackPlan(scene);
+  return {validated:true};
  }
  if(task==='simulation'){
   const scene=freezeSpecialHistory(decodeSpecialHistory(payload.scene));let receipt;

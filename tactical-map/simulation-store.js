@@ -32,7 +32,7 @@ import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttack
 import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
 
 import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
-import { initializeSettlementRuntime, settleAttackPhase,prepareSettlementAttackPlan , validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js";
 
 import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js";
 
@@ -706,7 +706,7 @@ export async function openSimulation(id) {
     }
   }
 
-    async function commit(change, backgroundOperation = null) {
+    async function commit(change, backgroundOperation = null, attackPreflight = false) {
     if (saving) throw new Error("保存中です。完了してから次の操作を行ってください。");
     setSaving(true);
     try {
@@ -770,6 +770,15 @@ export async function openSimulation(id) {
       throw new Error(
         "非同期の処理は、この保存トランザクションでは実行できません。"
       );
+    }
+
+    if (attackPreflight) {
+      // Keep expensive all-side planning off the UI thread. Candidate state stays
+      // private and all usual identity/CAS/database checks still run before saving.
+      const validation = await runBackgroundTask('simulation-attack-preflight', {
+        scene: encodeSpecialHistory({...candidate, initialScene:null})
+      });
+      if (validation?.validated !== true) throw new Error('攻撃計画の事前検証を完了できませんでした。');
     }
 
     // 事务不能变更存档身份或自行递增更新号。
@@ -2275,10 +2284,12 @@ if (equipmentPower) {
                 `${index + 1}. ${item.reason}`
             );
 
-            throw new Error([
+            const rejected = new Error([
               "今回選択した攻撃はすべて登録条件を満たしていません。",
               ...reasons
             ].join("\n"));
+            rejected.code = "ATTACK_SELECTION_INELIGIBLE";
+            throw rejected;
           }
 
 
@@ -2297,7 +2308,7 @@ if (equipmentPower) {
 
           // 保留正式的全批资源、阶段快照与未实现规则保护。
           // 此函数不扣弹、不掷正式随机数。
-          prepareSettlementAttackPlan(candidate);
+          // The full batch preflight runs in the worker before this commit saves.
 
 
       } catch (error) {
@@ -2320,7 +2331,7 @@ if (equipmentPower) {
      throw wrapped;
     }
 
-      });
+      }, null, true);
 
       // 只有事务保存成功，才返回给界面。
       return copy({
