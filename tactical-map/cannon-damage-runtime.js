@@ -118,6 +118,15 @@ function readBaseComparison(penetration, armor) {
 }
 
 
+// Best legal outcome for one hit against the minimum supported armor.
+// A water hit can upgrade penetration or normal at a non-overpenetrating position.
+export function getMaximumCannonHitCredits(penetration, minimumArmor) {
+  const { category } = readBaseComparison(penetration, minimumArmor);
+  if (category === "major" || category === "penetration") return NORMAL_CREDITS.major;
+  if (category === "normal") return NORMAL_CREDITS.penetration;
+  return NORMAL_CREDITS.normal; // A failed progress coin still gives a normal hit.
+}
+
 /**
  * 判定一枚已经命中的舰炮弹。
  *

@@ -1,3 +1,4 @@
+import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   prepareAttackBatchResources,
@@ -29,7 +30,6 @@ import {
 } from "./simulation-features.js";
 
 import {
-  tryReadEquipmentPower,
   getEquipmentDamagePlan,
   validateEquipmentImpactReport
 } from "./equipment-damage-runtime.js";
@@ -58,7 +58,6 @@ import {
 } from "./cannon-damage-runtime.js";
 
 import {
-  readNumericPower,
   resolveNumericDamage
 } from "./numeric-damage-runtime.js";
 
@@ -587,33 +586,6 @@ function navalPoint(scene, unit) {
   return { x: unit.x, y: unit.y, z };
 }
 
-function parseDamageRule(profile) {
-  if (/^(舰炮规则|艦砲規則|艦炮規則|艦砲ルール)$/.test(
-    profile.powerRule.trim()
-  )) {
-    return { kind: "cannon", underwater: false };
-  }
-
-  const equipment = tryReadEquipmentPower(
-    profile.powerRule
-  );
-
-  if (equipment) {
-    return {
-      kind: "equipment",
-      underwater: false,
-      power: equipment.power
-    };
-  }
-
-  const parsed = readNumericPower(profile.powerRule);
-
-  return {
-    kind: parsed.underwater ? "underwater" : "numeric",
-    underwater: parsed.underwater,
-    power: parsed.power
-  };
-}
 
 
 function trainingModifiers(scene, actor, target, underwaterWeapon ,roundTraitOptions = {}) {

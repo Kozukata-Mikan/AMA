@@ -1,3 +1,4 @@
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
@@ -1134,6 +1135,7 @@ function createAutonomousMovementPlans(
   planning.controls.enemyAutonomy = false;
 
   const plans = [];
+  const damageByProfile = new Map();
   const autonomousUnits = planning.instances
     .filter(unit =>
     ["enemy", "neutral"].includes(unit.side) &&
@@ -1205,6 +1207,21 @@ function createAutonomousMovementPlans(
       );
     }
 
+    const initialDistance = nearestDistance(unit.x, unit.y);
+    const holdsRange = unit.side === "enemy" &&
+      !["moderate", "heavy"].includes(unit.shipState.status);
+    const engagementRange = holdsRange
+      ? getAutonomousEngagementRange(unit, planning.turn.number, damageByProfile)
+      : 1;
+    if (engagementRange === null) continue;
+
+    // Capping all sampled travel by the nearest starting gap also prevents a
+    // straight path from crossing inside the engagement range en route.
+    const travelLimit = holdsRange
+      ? Math.min(movementLimit, initialDistance - engagementRange)
+      : movementLimit;
+    if (travelLimit <= EPSILON) continue;
+
     // 候选采样属于决策策略，不是新增移动规则。
     const candidates = [{ x: unit.x, y: unit.y }];
 
@@ -1213,7 +1230,7 @@ function createAutonomousMovementPlans(
       if (length <= EPSILON) return;
 
       for (const fraction of [0.25, 0.5, 0.75, 1]) {
-        const distance = movementLimit * fraction;
+        const distance = travelLimit * fraction;
 
         candidates.push({
           x: unit.x + dx / length * distance,
@@ -1239,8 +1256,8 @@ function createAutonomousMovementPlans(
       if (unit.side === "enemy") {
         const distance = Math.hypot(dx, dy);
         const travel = Math.min(
-          movementLimit,
-          Math.max(0, distance - 1)
+          travelLimit,
+          Math.max(0, distance - engagementRange)
         );
 
         if (distance > EPSILON && travel > EPSILON) {
@@ -1253,10 +1270,12 @@ function createAutonomousMovementPlans(
     }
 
     let bestPlan = null;
-    let bestDistance = nearestDistance(unit.x, unit.y);
+    let bestDistance = initialDistance;
     let bestTravel = 0;
 
     for (const destination of candidates) {
+      const distance = nearestDistance(destination.x, destination.y);
+      if (holdsRange && distance > bestDistance + EPSILON) continue;
       let plan;
 
       try {
@@ -1279,10 +1298,6 @@ function createAutonomousMovementPlans(
         throw error;
       }
 
-      const distance = nearestDistance(
-        destination.x,
-        destination.y
-      );
 
       const improved = unit.side === "enemy"
         ? distance < bestDistance - EPSILON
