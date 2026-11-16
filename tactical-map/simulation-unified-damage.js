@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   ensureShipRuntime,
   readShipProfile,
@@ -454,7 +455,7 @@ export function applyUnifiedDamageStep(
     fail("統一被害処理の開始状態または批次指定が不正です。");
   }
 
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
   initializeUnifiedDamageRuntime(working);
 
   if (

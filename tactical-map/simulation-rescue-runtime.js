@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
  
 import { ensureShipRuntime } from "./ship-runtime.js";
@@ -140,7 +141,7 @@ function writeBack(scene, working) {
 export function applyRescueSpecialStep(scene) {
   requireScene(scene, "special");
 
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
   initializeRescueRuntime(working);
 
@@ -200,7 +201,7 @@ export function applyRescueSpecialStep(scene) {
 export function applySinkingEndStep(scene) {
   requireScene(scene, "end");
 
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
   initializeRescueRuntime(working);
   validateUnits(working);

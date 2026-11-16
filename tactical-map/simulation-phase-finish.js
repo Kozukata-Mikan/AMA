@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
 } from "./rules-engine.js";
@@ -437,7 +438,7 @@ export function finishSpecialPhase(scene) {
     fail("特殊詞条判定段階ではありません。");
   }
 
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
   validateScene(working);
   assertNotCompleted(working, "special-complete");
@@ -488,7 +489,7 @@ export function finishTurn(scene) {
     fail("回合終了段階ではありません。");
   }
 
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
   validateScene(working);
   assertNotCompleted(working, "turn-complete");

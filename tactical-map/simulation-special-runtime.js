@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
@@ -359,7 +360,7 @@ export function applyFireFloodingSpecialStep(
   }
 
 
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
     initializeSpecialRuntime(working);
 

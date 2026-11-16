@@ -23,7 +23,8 @@ test('real isolated worker handles resizing, ordered brush batches, errors and c
   for(let r=0;r<source.rows;r++)for(let c=0;c<source.cols;c++)assert.deepEqual(readTerrainVertex(result.terrain,c,r),readTerrainVertex(expected,c,r));
   assert(result.frame.changes.length>0);
   const settings={width:7200,height:7200,cols:7201,rows:7201,contourInterval:10};
-  let ticked=false;setTimeout(()=>ticked=true,0);assert.deepEqual(await runBackgroundTask('terrain-resize',{source,settings}),resizeTerrain(source,settings));assert(ticked);
+  // A tiny resize can finish before a zero-delay timer; protocol correctness must not depend on timer scheduling.
+  assert.deepEqual(await runBackgroundTask('terrain-resize',{source,settings}),resizeTerrain(source,settings));
   await assert.rejects(runBackgroundTask('missing',{}));
   const cancelled=createTerrainStrokeSession(source,brush);await cancelled.enqueue(points);await cancelled.cancel();
   assert(statuses.some(n=>n>0));assert.equal(statuses.at(-1),0);

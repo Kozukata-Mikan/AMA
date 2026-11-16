@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readRangeCommandTarget
 } from "./simulation-range-command.js";
@@ -142,7 +143,7 @@ export function prepareRangeBatchTransaction({
     fail("範囲攻撃の一括結算入力が不正です。");
   }
 
-  const current = copy(scene);
+  const current = copySceneWithSpecialHistory(scene);
   const snapshot = copy(startScene);
   const orders = copy(commands);
   const commandIds = new Set();

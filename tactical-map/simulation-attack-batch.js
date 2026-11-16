@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js";
 import { initializeAttackRuntime } from "./simulation-attack-runtime.js";
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js";
@@ -655,7 +656,7 @@ export function prepareAttackBatchResources(scene) {
  * 不能作为页面独立操作入口。
  */
 export function applyAttackBatchResources(scene, prepared) {
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
   const expected = prepareAttackBatchResources(working);
 
   if (
@@ -809,13 +810,13 @@ export function prepareBatchHitChecks(
     fail("正式な攻撃条件照合が未接続です。");
   }
 
-  const expected = prepareAttackBatchResources(copy(scene));
+  const expected = prepareAttackBatchResources(copySceneWithSpecialHistory(scene));
 
   if (JSON.stringify(prepared) !== JSON.stringify(expected)) {
     fail("命中判定の批次と現在の攻撃計画が一致しません。");
   }
 
-  const startScene = getAttackPhaseStartScene(copy(scene));
+  const startScene = getAttackPhaseStartScene(copySceneWithSpecialHistory(scene));
   const checks = [];
 
   for (const entry of expected.entries) {
@@ -1013,7 +1014,7 @@ const firingAssignments = checked.prepared.entries.map(
 );
 
 const firingReports = assertBroadsideQuotas(
-  getAttackPhaseStartScene(copy(scene)),
+  getAttackPhaseStartScene(copySceneWithSpecialHistory(scene)),
   checked.prepared.entries,
   firingAssignments,
   scene.settlementRuntime?.attackRecords ?? []

@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   prepareAttackBatchResources,
   getAttackPhaseStartScene,
@@ -1568,6 +1569,8 @@ prepareBatchHitChecks(
       .map(lock => [lock.unitId, lock.targetId])
   );
 
+  // All actors plan from the same phase-start state. Plans do not mutate start.
+  const visibilityBySide=new Map();
   for (const actor of actors) {
     if (actor.branch !== "navy") {
       fail("海軍以外の自律攻撃は未接続です。");
@@ -1589,7 +1592,8 @@ prepareBatchHitChecks(
       }
     };
 
-    const visibility = getVisibility(observedStart);
+    if(!visibilityBySide.has(actor.side))visibilityBySide.set(actor.side,getVisibility(observedStart));
+    const visibility = visibilityBySide.get(actor.side);
 
     const targets = start.instances.filter(target =>
       target.instanceId !== actor.instanceId &&
@@ -1816,7 +1820,7 @@ if (profile.issues.length) {
           command.targetId = target.targetRef.id;
         }
 
-        const trial = copy(scene);
+        const trial = copySceneWithSpecialHistory(scene);
         trial.attackRuntime.commands.push(command);
 
         try {
@@ -2114,7 +2118,7 @@ export function filterUnreachableAttackCommands(
 
 
 export function prepareSettlementAttackPlan(scene) {
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
   initializeSettlementRuntime(working);
 
@@ -2225,7 +2229,7 @@ export function settleAttackPhase(scene, coinSource) {
     fail("コイン関数の指定が不正です。");
   }
 
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
   initializeSettlementRuntime(working);
   initializeRoundTraitRuntime(working);

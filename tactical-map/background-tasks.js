@@ -1,3 +1,5 @@
+import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
+import {freezeSpecialHistory} from './special-history-snapshot.js';
 import {generateTerrainTask} from './terrain-generation-task.js';
 import {applyBrush,resizeTerrain} from './terrain-data.js';
 import {beginTerrainEdit} from './terrain-edit-history.js';
@@ -21,7 +23,7 @@ export function executeBackgroundTask(task,payload){
   return {changes:stroke.edit.drain()};
  }
  if(task==='simulation'){
-  const scene=payload.scene;let receipt;
+  const scene=freezeSpecialHistory(decodeSpecialHistory(payload.scene));let receipt;
   switch(payload.operation){
    case 'movement':resolveMovementScene(scene);break;
    case 'attack':receipt=settleAttackPhase(scene);break;
@@ -31,7 +33,7 @@ export function executeBackgroundTask(task,payload){
   }
   // Immutable map/deployment history never comes back as replacement state.
   const {terrain,initialScene,...fields}=scene;
-  return {fields,receipt};
+  return {fields:encodeSpecialHistory(fields),receipt};
  }
  throw new Error('未対応のバックグラウンド処理です。');
 }

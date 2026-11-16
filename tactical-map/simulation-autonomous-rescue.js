@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile
 } from "./ship-runtime.js";
@@ -74,7 +75,7 @@ export function appendAutonomousRescuePlans(
   }
 
   // 全体を副本で処理し、失敗時に計画だけ残さない。
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
 
   initializeRescueState(working);
 
@@ -104,7 +105,7 @@ export function appendAutonomousRescuePlans(
     if (side === "neutral") {
       // 仅在隔离副本中切换观察阵营。
       // 不改变正式场景的按钮状态或玩家权限。
-      const observation = copy(working);
+      const observation = copySceneWithSpecialHistory(working);
       observation.controls.enemyAutonomy = false;
       observation.controls.observationSide = side;
 

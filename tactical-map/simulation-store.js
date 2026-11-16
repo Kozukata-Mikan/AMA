@@ -1,3 +1,5 @@
+import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
+import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
 import { runBackgroundTask } from "./background-client.js";
 import { freezeSnapshot } from "./read-only-snapshot.js";
@@ -302,10 +304,11 @@ function packSaved(value) {
     }
   }
 
-  return JSON.stringify(packed);
+  return JSON.stringify(encodeSpecialHistory(packed));
 }
 
 function unpackSaved(value) {
+  value = decodeSpecialHistory(value);
   const references = value.initialSceneReferences;
 
   // 兼容以前未经去重的存档。
@@ -667,7 +670,7 @@ export async function openSimulation(id) {
     savingListeners.add(listener); listener(saving);
     return () => savingListeners.delete(listener);
   }
-  let state = readSaved(id, savedRaw);
+  let state = freezeSpecialHistory(readSaved(id, savedRaw));
   state.terrain = freezeTerrainSnapshot(state.terrain);
   if (state.initialScene?.terrain &&
       JSON.stringify(state.initialScene.terrain) === JSON.stringify(state.terrain)) {
@@ -731,7 +734,7 @@ export async function openSimulation(id) {
 
     // 所有修改只发生在独立候选副本。
     const candidate = {
-      ...copy({...state, terrain: null, initialScene: null}),
+      ...copySceneWithSpecialHistory({...state, terrain: null, initialScene: null}),
       terrain: state.terrain, initialScene: state.initialScene
     };
 
@@ -747,12 +750,12 @@ export async function openSimulation(id) {
     if (backgroundOperation) {
       // The worker gets an isolated current scene, never the immutable deployment history.
       const calculation = await runBackgroundTask('simulation', {
-        operation: backgroundOperation, scene: {...candidate, initialScene: null}
+        operation: backgroundOperation, scene: encodeSpecialHistory({...candidate, initialScene: null})
       });
       if (!calculation?.fields || 'terrain' in calculation.fields || 'initialScene' in calculation.fields) {
         throw new Error('計算結果の保存形式が不正です。');
       }
-      Object.assign(candidate, calculation.fields);
+      Object.assign(candidate, decodeSpecialHistory(calculation.fields));
       backgroundReceipt = calculation.receipt;
     }
     const result = change(candidate);
@@ -878,6 +881,7 @@ export async function openSimulation(id) {
 
     // 保留原有压缩格式与存档键；IndexedDB原子比较后提交。
     // 写入失败会抛出错误，不更新内存、不通知界面。
+    freezeSpecialHistory(candidate);
     savedRaw = await writeSaved(candidate, expectedRaw);
 
     state = candidate;

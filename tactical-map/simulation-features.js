@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
@@ -19,7 +20,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
-  getRetainedEquipmentDiscovery
+  readEquipmentItemState
 } from "./equipment-item-runtime.js";
 
 import {
@@ -347,34 +348,21 @@ export function getEquipmentReconSourceVisibility(
  *
  * 多观察者合并仍由getVisibility负责。
  */
-export function getObserverVisibility(scene, observer, target) {
-  if (!operational(observer) || !positioned(target)) {
-    return null;
-  }
-
-  if (
-    observer.branch === "navy" &&
-    target.branch === "navy"
-  ) {
-    if (
-      !isEquipmentReconAvailable(observer, "sea-recon")
-    ) {
-      return getRetainedEquipmentDiscovery(
-        scene,
-        observer,
-        target,
-        "sea-recon"
-      );
+function observerVisibility(scene, observer, target, readRecon) {
+  if (!operational(observer) || !positioned(target)) return null;
+  if (observer.branch === "navy" && target.branch === "navy") {
+    const state=readRecon(observer);
+    if(state.damaged){
+      if(state.damagedTurn!==scene.turn?.number)return null;
+      return state.discoveries.find(entry=>entry.targetId===target.instanceId)?.level??null;
     }
   }
-
-  return getNormalObserverVisibility(
-    scene,
-    observer,
-    target
-  );
+  return getNormalObserverVisibility(scene,observer,target);
 }
 
+export function getObserverVisibility(scene, observer, target) {
+  return observerVisibility(scene,observer,target,unit=>readEquipmentItemState(unit,"sea-recon"));
+}
 
 export function getVisibility(scene) {
   const side = getObservationSide(scene);
@@ -384,6 +372,12 @@ export function getVisibility(scene) {
   );
 
   const result = new Map();
+  // Only this synchronous query owns the cache. Mutable states are never cached across calls.
+  const reconStates=new Map();
+  const readRecon=observer=>{
+    if(!reconStates.has(observer))reconStates.set(observer,readEquipmentItemState(observer,"sea-recon"));
+    return reconStates.get(observer);
+  };
 
   for (const target of scene.instances) {
     if (target.side === side) {
@@ -394,11 +388,7 @@ export function getVisibility(scene) {
     let visibility = null;
 
     for (const observer of sources) {
-      const level = getObserverVisibility(
-        scene,
-        observer,
-        target
-      );
+      const level = observerVisibility(scene,observer,target,readRecon);
 
       if (level === "identified") {
         visibility = level;
@@ -980,7 +970,7 @@ function buildFollowPlan(scene, ref, x, y) {
 function createAutonomousRescueApproachPlans(scene) {
   if (!scene.controls.enemyAutonomy) return [];
 
-  const planning = clone(scene);
+  const planning = copySceneWithSpecialHistory(scene);
   planning.controls.enemyAutonomy = false;
 
   const reserved = new Set();
@@ -1137,7 +1127,7 @@ function createAutonomousMovementPlans(
 
   if (!scene.controls.enemyAutonomy) return [];
 
-  const planning = clone(scene);
+  const planning = copySceneWithSpecialHistory(scene);
 
   // 只在内部隔离副本关闭手动操作门禁。
   // 正式场景仍保持自主开启、玩家仅操作我方。
@@ -1158,6 +1148,7 @@ function createAutonomousMovementPlans(
           : 0
     );
 
+  const visibilityBySide=new Map();
   for (const unit of autonomousUnits) {
     if (unit.branch !== "navy") {
       fail(
@@ -1171,7 +1162,8 @@ function createAutonomousMovementPlans(
 
     planning.controls.observationSide = unit.side;
 
-    const visibility = getVisibility(planning);
+    if(!visibilityBySide.has(unit.side))visibilityBySide.set(unit.side,getVisibility(planning));
+    const visibility = visibilityBySide.get(unit.side);
 
     const relevantTargets = planning.instances.filter(target => {
       if (
@@ -1466,7 +1458,7 @@ const movementPlans = [
 
 // 下面的重新校验在独立副本上进行，
 // 不放宽正式场景的观察与手动权限。
-const validationScene = clone(scene);
+const validationScene = copySceneWithSpecialHistory(scene);
 validationScene.controls.enemyAutonomy = false;
 
 

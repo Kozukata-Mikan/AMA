@@ -1,3 +1,4 @@
+import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { resolveAttackExecutionPhase } from "./attack-order-runtime.js";
 import { readWeaponProfile } from "./weapon-profile-runtime.js";
 
@@ -346,7 +347,7 @@ export function replaceAttackCommands(
   createId
 ) {
   // 初始化和验证也在独立副本进行。
-  const working = copy(scene);
+  const working = copySceneWithSpecialHistory(scene);
   initializeAttackRuntime(working);
 
   if (
