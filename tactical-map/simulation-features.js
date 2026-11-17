@@ -365,7 +365,7 @@ export function getObserverVisibility(scene, observer, target) {
   return observerVisibility(scene,observer,target,unit=>readEquipmentItemState(unit,"sea-recon"));
 }
 
-export function getVisibility(scene) {
+export function getVisibility(scene, targetIds) {
   const side = getObservationSide(scene);
 
   const sources = scene.instances.filter(
@@ -381,6 +381,7 @@ export function getVisibility(scene) {
   };
 
   for (const target of scene.instances) {
+    if (targetIds && !targetIds.has(target.instanceId)) continue;
     if (target.side === side) {
       result.set(target.instanceId, "identified");
       continue;

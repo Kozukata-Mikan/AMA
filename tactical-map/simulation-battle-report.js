@@ -735,10 +735,48 @@ function renderBattleReport(report, nodes) {
   }
 }
 
+function renderObservedRound(report, nodes) {
+  nodes.battleReportStatus.textContent =
+    `ラウンド${report.roundNumber} / ${SIDE_LABELS[report.side]}視点 / 終了時刻 ${report.time}\n` +
+    '自陣営が関わった結算と、回合終了時に確認できた艦船を表示します。';
+  const content = nodes.roundBattleReportContent;
+  content.replaceChildren();
+
+  function section(title, columns, rows, empty) {
+    const block = element('section');
+    block.className = 'battle-report-section';
+    block.append(element('h3', title), rows.length ? table(columns, rows) : paragraph(empty));
+    content.append(block);
+    return block;
+  }
+  section('攻撃・被弾', ['段階', '攻撃側', '目標', '自陣営の兵装', '命中'],
+    report.attacks.map(row => [phaseLabel(row.phase), row.actor, row.target, row.weapon ?? '—', row.hits]),
+    '実行した攻撃や確認した被弾はありません。');
+  section('撞撃', ['接触した艦船', '回数'],
+    report.collisions.map(row => [`${row.first} ↔ ${row.second}`, row.count]),
+    '自陣営の撞撃はありません。');
+  section('自陣営の算定耐性被害', ['段階', '艦船', '被害'],
+    report.damage.map(row => [phaseLabel(row.phase), row.target, row.damage]),
+    '記録された算定耐性被害はありません。');
+  const status = value => STATUS_LABELS[value] ?? '—';
+  section('自陣営の終了時状態', ['艦船', '耐性', '状態'],
+    report.ownUnits.map(unit => [unit.name, unit.hp ?? '—', status(unit.status)]),
+    '自陣営の艦船はありません。');
+  const contacts = section('終了時に確認した他陣営', ['艦船', '状態'],
+    report.contacts.map(unit => [unit.name, status(unit.status)]), '識別できた艦船はありません。');
+  contacts.append(paragraph(`未識別の影：${report.shadows}`));
+}
+
 export function mountBattleReportUI(store) {
   const required = [
     "endSimulation",
     "showBattleReport",
+    "showRoundBattleReport",
+    "battleReportTitle",
+    "battleReportRound",
+    "roundBattleReport",
+    "roundBattleReportContent",
+    "fullBattleReport",
     "battleReportDialog",
     "battleReportStatus",
     "battleReportOverview",
@@ -760,6 +798,7 @@ export function mountBattleReportUI(store) {
   const aside = document.querySelector(".workspace > aside");
   const controller = new AbortController();
   let disposed = false;
+  let openRoundSide = null;
 
   function showError(error) {
     console.error(error);
@@ -809,6 +848,13 @@ export function mountBattleReportUI(store) {
       : "推演を終了";
 
     nodes.showBattleReport.disabled = !status.ended;
+    const observed = store.getRoundBattleReportStatus();
+    nodes.showRoundBattleReport.hidden = status.ended || store.getControlSettings().enemyAutonomy;
+    nodes.showRoundBattleReport.disabled = observed.rounds.length === 0;
+    if (openRoundSide && (observed.side !== openRoundSide || !observed.rounds.length)) {
+      nodes.battleReportDialog.close();
+      clearRoundReport();
+    }
 
     freezeControls();
   }
@@ -816,6 +862,9 @@ export function mountBattleReportUI(store) {
   function openReport() {
     const report = store.getBattleReport();
 
+    clearRoundReport();
+    nodes.battleReportTitle.textContent = '戦闘記録';
+    nodes.fullBattleReport.hidden = false;
     renderBattleReport(report, nodes);
 
     if (!nodes.battleReportDialog.open) {
@@ -823,7 +872,50 @@ export function mountBattleReportUI(store) {
     }
   }
 
-  nodes.endSimulation.addEventListener("click", () => {
+  function clearRoundReport() {
+    if (!openRoundSide) return;
+    openRoundSide = null;
+    nodes.roundBattleReport.hidden = true;
+    nodes.roundBattleReportContent.replaceChildren();
+    nodes.battleReportStatus.textContent = '';
+  }
+
+  function openRoundReport() {
+    const {rounds} = store.getRoundBattleReportStatus();
+    const newest = rounds.at(-1);
+    const report = store.getRoundBattleReport(newest);
+    nodes.battleReportRound.replaceChildren(...rounds.toReversed().map(round => {
+      const option = element('option', `ラウンド${round}`);
+      option.value = String(round);
+      return option;
+    }));
+    nodes.battleReportRound.value = String(newest);
+    openRoundSide = report.side;
+    nodes.battleReportTitle.textContent = 'ラウンド戦闘記録';
+    nodes.fullBattleReport.hidden = true;
+    nodes.roundBattleReport.hidden = false;
+    renderObservedRound(report, nodes);
+    nodes.battleReportDialog.showModal();
+  }
+
+  nodes.showRoundBattleReport.addEventListener('click', () => {
+    try {
+      openRoundReport();
+    } catch (error) {
+      showError(error);
+    }
+  }, {signal:controller.signal});
+  nodes.battleReportRound.addEventListener('change', () => {
+    try {
+      renderObservedRound(store.getRoundBattleReport(Number(nodes.battleReportRound.value)), nodes);
+    } catch (error) {
+      showError(error);
+      nodes.battleReportDialog.close();
+    }
+  }, {signal:controller.signal});
+  nodes.battleReportDialog.addEventListener('close', clearRoundReport, {signal:controller.signal});
+
+  nodes.endSimulation.addEventListener("click", async () => {
     try {
       const status = store.getSimulationStatus();
 
@@ -840,7 +932,7 @@ export function mountBattleReportUI(store) {
         return;
       }
 
-      store.endSimulation(status.revision);
+      await store.endSimulation(status.revision);
 
       const message = document.getElementById("status");
 

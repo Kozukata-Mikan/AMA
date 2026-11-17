@@ -1,3 +1,4 @@
+import {captureRoundWitnesses} from "./simulation-round-report.js";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -2385,6 +2386,10 @@ for (const report of resourceReports) {
     rescueInterruptions
   };
 
+  if (!working.controls.enemyAutonomy && report.hitReports.length) {
+    const pairs = report.hitReports.map(hit => [hit.unitId, hit.targetId]);
+    report.roundWitnesses = captureRoundWitnesses(start, pairs);
+  }
   working.settlementRuntime.attackRecords.push(copy(report));
 
   /// 终结当前次序的全阵营计划，保留未来次序计划。

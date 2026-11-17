@@ -1,3 +1,4 @@
+import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js";
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import {freezeSpecialHistory} from './special-history-snapshot.js';
 import {generateTerrainTask} from './terrain-generation-task.js';
@@ -29,16 +30,29 @@ export function executeBackgroundTask(task,payload){
  }
  if(task==='simulation'){
   const scene=freezeSpecialHistory(decodeSpecialHistory(payload.scene));let receipt;
+  let roundObservation;
   switch(payload.operation){
-   case 'movement':resolveMovementScene(scene);break;
+   case 'movement': {
+    resolveMovementScene(scene);
+    const movement = scene.movementRuntime?.records.at(-1);
+    if (!scene.controls.enemyAutonomy && movement?.collisions.length) {
+      movement.roundWitnesses = captureRoundWitnesses(scene, movement.collisions.map(event => event.unitIds));
+    }
+    break;
+   }
    case 'attack':receipt=settleAttackPhase(scene);break;
    case 'special':receipt=finishSpecialPhase(scene);break;
-   case 'turn-end':receipt=finishTurn(scene);break;
+   case 'turn-end': {
+    const roundNumber = scene.turn.number;
+    receipt = finishTurn(scene);
+    if (!scene.controls.enemyAutonomy) roundObservation = buildObservedRoundReports(scene, roundNumber);
+    break;
+   }
    default:throw new Error('未対応の推演処理です。');
   }
   // Immutable map/deployment history never comes back as replacement state.
   const {terrain,initialScene,...fields}=scene;
-  return {fields:encodeSpecialHistory(fields),receipt};
+  return {fields:encodeSpecialHistory(fields),receipt,roundObservation};
  }
  throw new Error('未対応のバックグラウンド処理です。');
 }

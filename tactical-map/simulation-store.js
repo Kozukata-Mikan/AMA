@@ -1,3 +1,4 @@
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
@@ -7,7 +8,7 @@ import { assessCluster } from "./cluster-engine.js";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
 import { ensureShipRuntime } from "./ship-runtime.js";
-import {initializeSimulationFeatures,getObservedScene,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js";
 
 import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
@@ -733,8 +734,9 @@ export async function openSimulation(id) {
 }
 
     // 所有修改只发生在独立候选副本。
+    const {observedRoundReports, ...transactionState} = state;
     const candidate = {
-      ...copySceneWithSpecialHistory({...state, terrain: null, initialScene: null}),
+      ...copySceneWithSpecialHistory({...transactionState, terrain: null, initialScene: null}),
       terrain: state.terrain, initialScene: state.initialScene
     };
 
@@ -747,6 +749,7 @@ export async function openSimulation(id) {
     const snapshotBefore = deploymentSnapshotText;
 
     let backgroundReceipt;
+    let roundObservation;
     if (backgroundOperation) {
       // The worker gets an isolated current scene, never the immutable deployment history.
       const calculation = await runBackgroundTask('simulation', {
@@ -757,6 +760,15 @@ export async function openSimulation(id) {
       }
       Object.assign(candidate, decodeSpecialHistory(calculation.fields));
       backgroundReceipt = calculation.receipt;
+      roundObservation = calculation.roundObservation;
+    }
+    if (observedRoundReports) candidate.observedRoundReports = observedRoundReports;
+    if (roundObservation) {
+      if (backgroundOperation !== 'turn-end' || candidate.controls.enemyAutonomy ||
+          roundObservation.roundNumber !== previousTurn || candidate.turn.number !== previousTurn + 1) {
+        throw new Error('ラウンドの観察戦闘記録が不正です。');
+      }
+      candidate.observedRoundReports = [...(observedRoundReports ?? []), freezeSnapshot(roundObservation)];
     }
     const result = change(candidate);
 
@@ -776,7 +788,7 @@ export async function openSimulation(id) {
       // Keep expensive all-side planning off the UI thread. Candidate state stays
       // private and all usual identity/CAS/database checks still run before saving.
       const validation = await runBackgroundTask('simulation-attack-preflight', {
-        scene: encodeSpecialHistory({...candidate, initialScene:null})
+        scene: encodeSpecialHistory({...candidate, initialScene:null, observedRoundReports:undefined})
       });
       if (validation?.validated !== true) throw new Error('攻撃計画の事前検証を完了できませんでした。');
     }
@@ -1034,6 +1046,14 @@ async endSimulation(expectedRevision) {
 
   // 只有保存成功才返回已结束状态。
   return api.getSimulationStatus();
+},
+
+getRoundBattleReportStatus() {
+  return {side:getObservationSide(state), rounds:visibleRoundNumbers(state)};
+},
+
+getRoundBattleReport(roundNumber) {
+  return readObservedRoundReport(state, roundNumber);
 },
 
 getBattleReport() {

@@ -598,6 +598,7 @@
       <button id="gridToggle" type="button" aria-pressed="false">距離グリッドを表示</button>
       <button id="colorToggle" type="button" aria-pressed="true">輪郭表示に切替</button>
       <button id="export" type="button">観察JSONを書き出し</button>
+      <button id="showRoundBattleReport" type="button" hidden>ラウンド戦闘記録</button>
       <button id="showBattleReport" type="button" disabled>戦闘記録</button>
       <button id="endSimulation" class="simulation-end-button"type="button"disabled> 推演を終了</button>
 
@@ -785,41 +786,49 @@
 
   <p id="battleReportStatus" class="note"></p>
 
-  <section class="battle-report-section">
-    <h3>推演概要</h3>
-    <div id="battleReportOverview">
-      <p class="note">記録はまだ読み込まれていません。</p>
-    </div>
-  </section>
+  <div id="roundBattleReport" hidden>
+    <label for="battleReportRound">ラウンド</label>
+    <select id="battleReportRound"></select>
+    <div id="roundBattleReportContent"></div>
+  </div>
 
-  <section class="battle-report-section">
-    <h3>ラウンド別の攻撃・撞撃</h3>
+  <div id="fullBattleReport">
+    <section class="battle-report-section">
+      <h3>推演概要</h3>
+      <div id="battleReportOverview">
+        <p class="note">記録はまだ読み込まれていません。</p>
+      </div>
+    </section>
+
+    <section class="battle-report-section">
+      <h3>ラウンド別の攻撃・撞撃</h3>
 
 
-    <p class="note">
-  正式に実行された攻撃と、移動段階の撞撃を表示します。
-  撞撃は攻撃命令数・投射数・命中数に含みません。
-  草案と未実行の攻撃計画は含みません。
-   </p>
+      <p class="note">
+    正式に実行された攻撃と、移動段階の撞撃を表示します。
+    撞撃は攻撃命令数・投射数・命中数に含みません。
+    草案と未実行の攻撃計画は含みません。
+     </p>
 
 
-    <div id="battleReportRounds"></div>
-  </section>
+      <div id="battleReportRounds"></div>
+    </section>
 
-  <section class="battle-report-section">
-    <h3>ユニット別の行動・被害</h3>
-    <div id="battleReportUnits"></div>
-  </section>
+    <section class="battle-report-section">
+      <h3>ユニット別の行動・被害</h3>
+      <div id="battleReportUnits"></div>
+    </section>
 
-  <section class="battle-report-section">
-    <h3>未実行の攻撃計画</h3>
+    <section class="battle-report-section">
+      <h3>未実行の攻撃計画</h3>
 
-    <p class="note">
-      推演終了によって、待機中の計画が自動実行されることはありません。
-    </p>
+      <p class="note">
+        推演終了によって、待機中の計画が自動実行されることはありません。
+      </p>
 
-    <div id="battleReportPending"></div>
-  </section>
+      <div id="battleReportPending"></div>
+    </section>
+  </div>
 </dialog>
 </body>
 </html>
