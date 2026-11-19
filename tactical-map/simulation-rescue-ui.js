@@ -1,3 +1,4 @@
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-course-3";
 import {
   EQUIPMENT_HIT_ITEMS
 } from "./equipment-damage-runtime.js";
@@ -28,6 +29,7 @@ function repairItemText(record) {
   panel.append(element("summary", "艦船救助"));
 
   const rescuer = element("select");
+  const fleetPicker = createFleetUnitSelector(rescuer, {label:"救助する編隊"});
   const target = element("select");
 
   const rescuerLabel = element("label");
@@ -86,6 +88,7 @@ function repairItemText(record) {
   buttons.append(save, cancel);
 
   panel.append(
+    fleetPicker.field,
     rescuerLabel,
     targetLabel,
     note,
@@ -114,7 +117,7 @@ function repairItemText(record) {
     const scene = store.getSceneSnapshot();
     const side = scene.controls.observationSide;
 
-    refill(rescuer, scene.instances.filter(unit =>
+    fleetPicker.sync(scene, scene.instances.filter(unit =>
       unit.side === side &&
       unit.branch === "navy" &&
       !["sinking", "sunk"].includes(unit.shipState.status) &&

@@ -1,4 +1,4 @@
-import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=naval-formation-2";
+import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=fleet-course-3";
 import { readSave, writeSave, subscribeSaveChanges } from "./save-database.js";
 import { MAX_SCENE_FILE_BYTES } from "./save-limits.js";
 import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";

@@ -1,4 +1,4 @@
-import {formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=naval-formation-2";
+import {formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-course-3";
 import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=naval-formation-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -12,7 +12,7 @@ import { sampleTerrain } from "./terrain-data.js";
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=naval-formation-2";
+} from "./simulation-rescue.js?v=fleet-course-3";
 
 import {
   createShipEffectsState,
@@ -27,14 +27,15 @@ import {
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=naval-formation-2";
+} from "./simulation-autonomous-rescue.js?v=fleet-course-3";
 
 import {
   routeLength,
   trimRoute,
   clipLandRoute,
+  routeHeading,
   resolveMovementRoutes
-} from "./simulation-movement-route.js";
+} from "./simulation-movement-route.js?v=fleet-course-3";
 
 
 const SIDES = ["ally", "enemy", "neutral"];
@@ -840,7 +841,8 @@ function buildPlan(scene, ref, x, y) {
   return {
     turnNumber: scene.turn.number,
     ref: clone(ref),
-    ...(ref.kind === "group" ? {requestedX:x,requestedY:y} : {}),
+    ...(ref.kind === "group" ? {requestedX:x,requestedY:y,
+      ...(distance > EPSILON ? {heading:routeHeading([anchor,{x,y}])} : {})} : {}),
     memberIds: members.map(unit => unit.instanceId),
     distance,
     destinations
@@ -1398,6 +1400,8 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
         const plan = buildPlan(scene,{kind:"group",id},center.x,center.y);
         const ids = new Set(plan.memberIds);
         scene.movementPlans = scene.movementPlans.filter(old => !old.memberIds.some(id => ids.has(id)));
+        plan.mode = "formation-layout";
+        delete plan.heading;
         scene.movementPlans.push(plan);
       });
     },
@@ -1627,6 +1631,10 @@ validationScene.controls.enemyAutonomy = false;
             used.add(unit.instanceId);
           }
 
+          if (saved.mode === "formation-layout") {
+            rebuilt.mode = saved.mode;
+            delete rebuilt.heading;
+          }
           checked.push(rebuilt);
         }
 
@@ -1647,6 +1655,11 @@ validationScene.controls.enemyAutonomy = false;
           unit => limitFor([unit])
         );
 
+        const formationHeadings = new Map();
+        for (const plan of checked) {
+          if (Number.isFinite(plan.heading))
+            for (const id of plan.memberIds) formationHeadings.set(id, plan.heading);
+        }
         // 到这里全场路线、陆地截停与接触事件均已确定。
         for (const destination of movement.destinations) {
           const unit = scene.instances.find(
@@ -1655,6 +1668,10 @@ validationScene.controls.enemyAutonomy = false;
 
           unit.x = destination.x;
           unit.y = destination.y;
+          if (destination.distance > EPSILON) {
+            unit.heading = formationHeadings.get(unit.instanceId) ??
+              routeHeading(destination.route, unit.heading);
+          }
 
           unit.shipState.remainingEndurance = Math.max(
             0,

@@ -1,6 +1,6 @@
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=naval-formation-2";
+} from "./simulation-features.js?v=fleet-course-3";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

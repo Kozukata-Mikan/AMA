@@ -1,6 +1,6 @@
 import { getBranchName } from "../js/data-store.js?v=naval-formation-2";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=naval-formation-2";
+import { createSimulation } from "./simulation-store.js?v=fleet-course-3";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
 import { mountCatalogEditor } from "./catalog-editor.js?v=naval-formation-2";

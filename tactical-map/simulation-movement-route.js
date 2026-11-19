@@ -29,6 +29,15 @@ export function routeLength(route) {
   return result;
 }
 
+// Heading follows the last nonzero segment actually travelled, after clipping.
+export function routeHeading(route, fallback = 0) {
+  for (let i = route.length - 1; i > 0; i--) {
+    const dx = route[i].x - route[i-1].x, dy = route[i].y - route[i-1].y;
+    if (Math.hypot(dx,dy) > EPS) return (Math.atan2(dx,-dy) * 180 / Math.PI + 360) % 360;
+  }
+  return fallback;
+}
+
 export function trimRoute(route, budget) {
   if (!Number.isFinite(budget) || budget < 0) {
     fail("移動経路の距離予算が不正です。");

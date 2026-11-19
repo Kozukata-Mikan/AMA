@@ -1,13 +1,14 @@
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-course-3";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
-import {mountFormationEditor} from "./formation-editor.js?v=naval-formation-2";
-import {mountFormationAttackUI} from "./formation-attack-ui.js?v=naval-formation-2";
-import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=naval-formation-2";
+import {mountFormationEditor} from "./formation-editor.js?v=fleet-course-3";
+import {mountFormationAttackUI} from "./formation-attack-ui.js?v=fleet-course-3";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-course-3";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=naval-formation-2";
+import { mountSaveIndicator } from "./save-indicator.js?v=fleet-course-3";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -22,19 +23,19 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js?v=naval-formation-2";
 
 import { getDisplayUnits } from "./cluster-engine.js";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=naval-formation-2";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=fleet-course-3";
 import {
   getShipDetailLines,
   getReconConditions
 } from "./ship-runtime.js?v=naval-formation-2";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js";
-import { mountRescueUI } from "./simulation-rescue-ui.js";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=fleet-course-3";
+import { mountRescueUI } from "./simulation-rescue-ui.js?v=fleet-course-3";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
 } from "../js/catalog-seed.js?v=naval-formation-2";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=naval-formation-2";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=fleet-course-3";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=workspace-ui-3";
@@ -52,7 +53,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=naval-formation-2";
+} from "./simulation-store.js?v=fleet-course-3";
 
 import {
   gridPosition,
@@ -749,7 +750,7 @@ if (statusFlags.length) {
     }, group);
 
     if (compactIds.has(unit.instanceId)) {
-      compactFormationIcon(group);
+      compactFormationIcon(group, unit);
     }
 
     group.addEventListener("click", () => {
@@ -814,102 +815,25 @@ function fitMap() {
   updateView();
 }
 
+const draftActorPicker = createFleetUnitSelector($("attacker"), {
+  label:"行動側の編隊", wholeGroups:true, encodeUnit:id=>JSON.stringify({kind:"unit",id})});
+$("attacker").parentElement.querySelector("span").textContent = "行動側の単艦";
+$("attacker").parentElement.before(draftActorPicker.field);
+const draftTargetPicker = createFleetUnitSelector($("target"), {
+  label:"目標側の編隊", wholeGroups:true, encodeUnit:id=>JSON.stringify({kind:"unit",id})});
+$("target").parentElement.querySelector("span").textContent = "目標側の単艦";
+$("target").parentElement.before(draftTargetPicker.field);
+
 function refillEntities(id) {
-  const control = $(id);
-  const previous = control.value;
   const scene = getRenderScene();
-    $("unitInfo").textContent = "";
-
+  $("unitInfo").textContent = "";
   if (!scene.instances.some(unit => unit.instanceId === selectedId)) {
-  selectedId = "";
-  clearSelectedUnitPanels();
-}
-
-
-
-  control.replaceChildren(new Option("選択してください", ""));
-
-  const buckets = new Map();
-
-  function addOption(category, label, ref) {
-    if (!buckets.has(category)) {
-      const group = document.createElement("optgroup");
-      group.label = category;
-      buckets.set(category, group);
-      control.append(group);
-    }
-
-    buckets.get(category).append(new Option(
-      label,
-      JSON.stringify(ref)
-    ));
+    selectedId = "";
+    clearSelectedUnitPanels();
   }
-
-  for (const branch of Object.keys(BRANCH_LABELS)) {
-    for (const side of Object.keys(SIDE_LABELS)) {
-      for (const unit of scene.instances.filter(item =>
-        item.branch === branch && item.side === side
-      )) {
-
-        if (unit.observationLevel === "shadow") continue;
-
-        if (
-          id === "attacker" &&
-          unit.side !== scene.controls.observationSide
-        ) {
-          continue;
-        }
-
-        addOption(
-          `${BRANCH_LABELS[branch]} / ${SIDE_LABELS[side]}`,
-          `${getFlagshipDisplayName(unit)} · ${unit.instanceId.slice(-6)}`,
-          { kind: "unit", id: unit.instanceId }
-        );
-      }
-    }
-  }
-
-  for (const group of scene.groups) {
-    let entity;
-
-    try {
-      entity = resolveEntity(scene, {
-        kind: "group",
-        id: group.id
-      });
-    } catch {
-      continue;
-    }
-
-    const branches = new Set(
-      entity.members.map(unit => unit.branch)
-    );
-
-    const sides = new Set(
-      entity.members.map(unit => unit.side)
-    );
-
-    const branchText = branches.size === 1
-      ? BRANCH_LABELS[[...branches][0]] ?? "特殊"
-      : "混合軍種";
-
-    const sideText = sides.size === 1
-      ? SIDE_LABELS[[...sides][0]] ?? "不明"
-      : "混合作戦関係";
-
-    addOption(
-      group.kind === "cluster" ? "集群" : "編隊",
-      `${group.name}（${entity.members.length}）` +
-      ` / ${branchText} / ${sideText}`,
-      entity.ref
-    );
-  }
-
-  if ([...control.options].some(option =>
-    option.value === previous
-  )) {
-    control.value = previous;
-  }
+  const actor = id === "attacker";
+  (actor ? draftActorPicker : draftTargetPicker).sync(scene, scene.instances.filter(unit =>
+    (!actor || unit.side === scene.controls.observationSide) && unit.observationLevel !== "shadow"));
 }
 
 

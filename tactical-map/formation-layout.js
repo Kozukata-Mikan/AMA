@@ -1,3 +1,4 @@
+import { getFlagshipMarks } from "./flagship-display.js";
 export const FORMATION_RADIUS = 25;
 export function formationReference(members) {
   return members.find((unit) => unit.isFormationFlagship) ?? members[0];
@@ -186,7 +187,22 @@ export function drawFormationViews(layer, scene, project, select) {
   return compactIds;
 }
 
-export function compactFormationIcon(root) {
+export function compactFormationIcon(root, unit) {
   for (const node of root.querySelectorAll("text,.unit-stem,.unit-dot"))
     node.style.display = "none";
+  const marks = getFlagshipMarks(unit);
+  if (!marks) return;
+  const badge = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  badge.setAttribute("class", "formation-flagship-mark");
+  badge.setAttribute("x", "7"); badge.setAttribute("y", "-7");
+  badge.setAttribute("fill", "#ffd27b");
+  badge.setAttribute("font-size", "11");
+  badge.setAttribute("stroke", "#07131f");
+  badge.setAttribute("stroke-width", "2");
+  badge.setAttribute("paint-order", "stroke");
+  badge.setAttribute("pointer-events", "none");
+  badge.setAttribute("role", "img");
+  badge.setAttribute("aria-label", [unit.isOverallFlagship ? "総旗艦" : "", unit.isFormationFlagship ? "分旗艦" : ""].filter(Boolean).join(" / "));
+  badge.textContent = marks;
+  root.append(badge);
 }

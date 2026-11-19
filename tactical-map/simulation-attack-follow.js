@@ -9,12 +9,12 @@ import {
 
 import {
   filterUnreachableAttackCommands
-} from "./simulation-settlement.js?v=naval-formation-2";
+} from "./simulation-settlement.js?v=fleet-course-3";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=naval-formation-2";
+} from "./simulation-features.js?v=fleet-course-3";
 
 // ===== 分旗舰攻击追随 =====
 // 只在store的候选事务内调用。

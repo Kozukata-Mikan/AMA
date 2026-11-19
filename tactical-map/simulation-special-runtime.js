@@ -7,7 +7,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=naval-formation-2";
+} from "./simulation-rescue.js?v=fleet-course-3";
 
 import {
   ensureEquipmentRuntime

@@ -20,13 +20,13 @@ import {
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=naval-formation-2";
+} from "./simulation-special-runtime.js?v=fleet-course-3";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=naval-formation-2";
+} from "./simulation-rescue-runtime.js?v=fleet-course-3";
 
 import {
   getEquipmentControlCandidates
@@ -35,7 +35,7 @@ import {
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=naval-formation-2";
+} from "./simulation-rescue.js?v=fleet-course-3";
 
 import {
   initializeRoundTraitRuntime,

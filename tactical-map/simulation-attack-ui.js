@@ -1,4 +1,5 @@
-import { getPhaseLabel } from "./simulation-rulebook.js?v=naval-formation-2";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-course-3";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=fleet-course-3";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 
@@ -55,6 +56,7 @@ export function mountAttackUI(store) {
 
 
   const actor = element("select");
+  const fleetPicker = createFleetUnitSelector(actor, {label:"攻撃する編隊"});
   const target = element("select");
 
     const followFormationAttack = element("input");
@@ -896,7 +898,8 @@ phaseOutput.id = "phaseCommandFeedback";
 toolbar.append(selectAll, clearAll);
 
 panel.append(
-  labeled("行動するユニット", actor),
+  fleetPicker.field,
+  labeled("行動する単艦", actor),
   element("p", "使用する装備組"),
   toolbar,
   selectionInfo,
@@ -1015,18 +1018,8 @@ finishPhase.textContent = scene.turn.phaseId === "end"
   : "特殊段階を処理";
 
 
-    actor.replaceChildren(
-      new Option("選択してください", "")
-    );
-
-    for (const unit of scene.instances) {
-      if (unit.observationOwn !== true) continue;
-      if (unit.observationLevel !== "identified") continue;
-
-      actor.append(new Option(unit.name, unit.instanceId));
-    }
-
-    restoreOption(actor, previous);
+    fleetPicker.sync(scene, scene.instances.filter(unit =>
+      unit.observationOwn === true && unit.observationLevel === "identified"));
 
     if (selectedActorId !== actor.value) {
       // 组ID只在单位内唯一，不跨单位沿用。

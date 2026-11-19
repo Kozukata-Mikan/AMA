@@ -21,11 +21,11 @@ import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=naval-formation-2";
+} from "./simulation-rescue.js?v=fleet-course-3";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=naval-formation-2";
+} from "./simulation-rescue-runtime.js?v=fleet-course-3";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

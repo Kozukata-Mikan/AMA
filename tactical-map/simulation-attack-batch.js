@@ -5,12 +5,12 @@ import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=naval-
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=naval-formation-2";
 import { ensureShipRuntime } from "./ship-runtime.js?v=naval-formation-2";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=naval-formation-2";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=fleet-course-3";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=naval-formation-2";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=fleet-course-3";
 import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=naval-formation-2";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=naval-formation-2";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=fleet-course-3";
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
 
 

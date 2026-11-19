@@ -70,10 +70,10 @@ const layout = {
     { id: "a2", x: 2, y: 4 },
   ],
 };
-async function simulation() {
+async function simulation(initial = fixture()) {
   await resetDatabase();
   globalThis.localStorage = { getItem: () => null, setItem() {} };
-  const id = await createSimulation(fixture(), () => ({ valid: true }));
+  const id = await createSimulation(initial, () => ({ valid: true }));
   return { id, store: await openSimulation(id) };
 }
 
@@ -255,7 +255,7 @@ test("repeated whole-group movement keeps a nonzero anchor offset and a fixed fo
 test("real worker plans a formation attack atomically and refuses orders for foreign formations", async () => {
   const { Worker } = await import("node:worker_threads");
   const { shutdownBackground } = await import(
-    "../tactical-map/background-client.js?v=naval-formation-2"
+    "../tactical-map/background-client.js?v=fleet-course-3"
   );
   const { id, store } = await simulation();
   globalThis.Worker = class {
@@ -347,4 +347,53 @@ test("simulation bow-relative layout stays a movement plan and uses rotated offs
   near(saved.instances[1].x,24); near(saved.instances[1].y,10);
   const reopened=await openSimulation(id);
   assert.deepEqual(reopened.getSceneSnapshot().groups[0].formation,bowLayout);
+});
+
+test("completed fleet movement turns every ship to the course and zero movement retains headings", async () => {
+  const {id,store}=await simulation();
+  await store.beginMovement();
+  await store.planMovement({kind:'group',id:'own'},20,0);
+  await store.resolveMovement();
+  const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].heading,90);near(saved.instances[1].heading,90);
+  near(saved.instances[0].x,20);near(saved.instances[1].x,20);
+  near(saved.instances[1].y-saved.instances[0].y,4);
+  near(saved.instances[2].heading,0);
+});
+
+test("single-ship heading follows completed displacement and persists on reopening", async () => {
+  const {id,store}=await simulation();
+  await store.beginMovement();
+  await store.planMovement({kind:'unit',id:'a'},-10,0);
+  await store.resolveMovement();
+  const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].heading,270);
+  const reopened=await openSimulation(id);
+  near(reopened.getSceneSnapshot().instances.find(u=>u.instanceId==='a').heading,270);
+});
+
+test("no-travel plans do not reset heading, and follow routes use their final travelled segment", async () => {
+  const {routeHeading,trimRoute}=await import('../tactical-map/simulation-movement-route.js');
+  const route=[{x:0,y:0},{x:5,y:0},{x:5,y:-5}];
+  near(routeHeading(route),0);
+  near(routeHeading(trimRoute(route,3)),90);
+  near(routeHeading(trimRoute(route,0),215),215);
+  near(routeHeading([{x:0,y:0},{x:0,y:4},{x:0,y:4}]),180);
+  const initial=fixture(); initial.instances[0].heading=215;
+  const {id,store}=await simulation(initial);
+  await store.beginMovement();
+  await store.planMovement({kind:'unit',id:'a'},0,0);
+  await store.resolveMovement();
+  const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].heading,215);
+});
+
+test("trail-following ships turn to the final leg instead of the overall displacement bearing", async()=>{
+  const initial=fixture();initial.instances[0].isFormationFlagship=true;
+  const {id,store}=await simulation(initial);
+  await store.beginMovement();
+  await store.planMovement({kind:'unit',id:'a'},10,-10,{followFormationMovement:true});
+  await store.resolveMovement();
+  const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].heading,45);near(saved.instances[1].heading,45);
 });

@@ -6,7 +6,7 @@ import {
   FORMATION_RADIUS,
   normalizeFormation,
   validateFormationMembers,
-} from "./formation-layout.js?v=naval-formation-2";
+} from "./formation-layout.js?v=fleet-course-3";
 
 export function mountFormationEditor(store, parent) {
   const element = (tag, text = "") => {

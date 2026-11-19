@@ -7,7 +7,7 @@ import {
   prepareRangeProjection,
   selectRangeOccurrences,
   resolveRangeProjectionHits
-} from "./range-projection-runtime.js?v=naval-formation-2";
+} from "./range-projection-runtime.js?v=fleet-course-3";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

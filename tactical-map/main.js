@@ -1,16 +1,16 @@
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
-import {mountFormationEditor} from "./formation-editor.js?v=naval-formation-2";
-import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=naval-formation-2";
+import {mountFormationEditor} from "./formation-editor.js?v=fleet-course-3";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-course-3";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=naval-formation-2";
+import { mountSaveIndicator } from "./save-indicator.js?v=fleet-course-3";
 import { loadUnitData } from "../js/data-store.js?v=naval-formation-2";
-import { createBattleStore } from "../js/battle-state.js?v=naval-formation-2";
-import { mountEditor } from "./editor.js?v=naval-formation-2";
+import { createBattleStore } from "../js/battle-state.js?v=fleet-course-3";
+import { mountEditor } from "./editor.js?v=fleet-course-3";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js";
@@ -31,7 +31,7 @@ import {
 } from "./cluster-engine.js";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=naval-formation-2";
+import { mountTerrainEditor } from "./terrain-editor.js?v=fleet-course-3";
 
 let terrain = createDemoTerrain();
 let terrainController = null;
@@ -1033,7 +1033,7 @@ if (unit.branch === "air") {
 
    label.textContent = getFlagshipDisplayName(unit);
 
-    if (compactIds.has(unit.instanceId)) compactFormationIcon(group);
+    if (compactIds.has(unit.instanceId)) compactFormationIcon(group, unit);
 
     // 点击区域随图标等级扩大。
     createSVG("circle", {

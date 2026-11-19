@@ -1,6 +1,6 @@
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
-import { formationMembers } from "./formation-layout.js?v=naval-formation-2";
-import { assertManualControl, getVisibility } from "./simulation-features.js?v=naval-formation-2";
+import { formationMembers } from "./formation-layout.js?v=fleet-course-3";
+import { assertManualControl, getVisibility } from "./simulation-features.js?v=fleet-course-3";
 import {
   readWeaponProfile,
   readWeaponTargetScope,
@@ -13,7 +13,7 @@ import {
   createDeferredAttackValidator,
   filterUnreachableAttackCommands,
   prepareSettlementAttackPlan,
-} from "./simulation-settlement.js?v=naval-formation-2";
+} from "./simulation-settlement.js?v=fleet-course-3";
 
 function shuffle(values) {
   const result = [...values];

@@ -1,7 +1,7 @@
 import { listSaveMetadata } from "../js/save-database.js";
 import {
   openSimulation
-} from "./simulation-store.js?v=naval-formation-2";
+} from "./simulation-store.js?v=fleet-course-3";
 
 import {
   readWeaponTargetScope

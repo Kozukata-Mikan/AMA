@@ -1,3 +1,4 @@
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-course-3";
 export function mountSimulationFeatures(store, context) {
   const {
     svg, viewport, view, project, screenPoint
@@ -39,7 +40,9 @@ export function mountSimulationFeatures(store, context) {
 
   const actor = element("select");
   const actorLabel = element("label");
-  actorLabel.append(element("span", "移動する艦船・編隊"), actor);
+  actorLabel.append(element("span", "移動する単艦"), actor);
+  const fleetPicker = createFleetUnitSelector(actor, {label:"移動する編隊", wholeGroups:true,
+    encodeUnit:id => JSON.stringify({kind:"unit",id})});
 
     const follow = element("input");
   follow.type = "checkbox";
@@ -170,6 +173,7 @@ if (!confirm(
 
   panel.append(
     sideLabel,
+    fleetPicker.field,
     actorLabel,
     followLabel,
     xLabel,
@@ -275,12 +279,10 @@ if (!confirm(
   function sync() {
     const scene = store.getSceneSnapshot();
     const currentSide = scene.controls.observationSide;
-    const previous = actor.value;
 
     side.value = currentSide;
     side.disabled = scene.controls.enemyAutonomy;
 
-    actor.replaceChildren(new Option("選択してください", ""));
 
     const ships = scene.instances.filter(unit =>
       unit.side === currentSide &&
@@ -289,51 +291,13 @@ if (!confirm(
       unit.shipState?.rescueTaskId === null
     );
 
-    for (const unit of ships) {
-      actor.append(new Option(
-        unit.name,
-        JSON.stringify({ kind: "unit", id: unit.instanceId })
-      ));
-    }
-
-    const allowed = new Set(ships.map(unit => unit.instanceId));
-
-    for (const group of scene.groups) {
-      const ids = new Set([group.id]);
-      let changed = true;
-
-      while (changed) {
-        changed = false;
-        for (const child of scene.groups) {
-          if (ids.has(child.parentId) && !ids.has(child.id)) {
-            ids.add(child.id);
-            changed = true;
-          }
-        }
-      }
-
-      const members = scene.instances.filter(unit => ids.has(unit.groupId));
-
-      if (
-        members.length &&
-        members.every(unit => allowed.has(unit.instanceId))
-      ) {
-        actor.append(new Option(
-          `編隊：${group.name}`,
-          JSON.stringify({ kind: "group", id: group.id })
-        ));
-      }
-    }
-
-    if ([...actor.options].some(option => option.value === previous)) {
-      actor.value = previous;
-    }
+    fleetPicker.sync(scene, ships);
 
     const movement = scene.turn.phaseId === "movement";
 
     begin.disabled = scene.turn.phaseId !== "start";
 
-actor.disabled = !movement;
+fleetPicker.setDisabled(!movement);
 x.disabled = !movement;
 y.disabled = !movement;
 
@@ -415,7 +379,7 @@ if (!movement) {
       const info = store.getMovementInfo(movementRef);
       const point = screenPoint(event);
 
-      actor.value = JSON.stringify(movementRef);
+      fleetPicker.select(JSON.stringify(movementRef));
       syncFollow(scene);
       x.value = info.x;
       y.value = info.y;
@@ -522,8 +486,7 @@ if (!movement) {
       id: icon.dataset.instanceId
     });
 
-    if ([...actor.options].some(option => option.value === value)) {
-      actor.value = value;
+    if (fleetPicker.select(value)) {
       syncFollow(store.getSceneSnapshot());
       drawRange();
     }
@@ -531,8 +494,7 @@ if (!movement) {
 
   document.addEventListener('formation-select',event=>{
     const value=JSON.stringify({kind:'group',id:event.detail});
-    if([...actor.options].some(option=>option.value===value)){
-      actor.value=value;syncFollow(store.getSceneSnapshot());drawRange();
+    if(fleetPicker.select(value)){syncFollow(store.getSceneSnapshot());drawRange();
     }
   });
   store.subscribe(sync);
