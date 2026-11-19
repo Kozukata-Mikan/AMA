@@ -1,3 +1,4 @@
+import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js";
 import {mountFormationEditor} from "./formation-editor.js";
 import {mountFormationAttackUI} from "./formation-attack-ui.js";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
@@ -1457,6 +1458,8 @@ registerPageDisposer(mountFormationAttackUI(store,document.querySelector('aside'
 registerPageDisposer(mountRescueUI(store));
 registerPageDisposer(mountAttackUI(store));
 registerPageDisposer(mountSimulationWorkflow(store));
+registerPageDisposer(mountToolNavigation(store,document.querySelector("aside"),"simulation"));
+registerPageDisposer(mountViewSettings(document.querySelector(".toolbar"),[$("axesToggle"),$("gridToggle"),$("colorToggle"),document.querySelector(".relief-control")]));
 
 registerPageDisposer(store.subscribe(() => {
   renderSceneCache = null;

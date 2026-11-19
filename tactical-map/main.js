@@ -1,3 +1,4 @@
+import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js";
 import {mountFormationEditor} from "./formation-editor.js";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
 import {mountReliefControls} from './relief-controls.js';
@@ -1781,6 +1782,8 @@ async function startEditor() {
 
     
     const disposeFormationEditor=mountFormationEditor(store,container);
+    const disposeToolNavigation=mountToolNavigation(store,container,"custom");
+    const disposeViewSettings=mountViewSettings(document.querySelector(".controls"),[axesButton,terrainColorButton,document.querySelector(".relief-control"),document.querySelector("#replay")]);
 
     window.addEventListener("pagehide", async event => {
       if (event.persisted) return;
@@ -1793,6 +1796,8 @@ async function startEditor() {
       await store.destroy();
       disposeSaveIndicator();
       disposeFormationEditor();
+      disposeToolNavigation();
+      disposeViewSettings();
     });
   } catch (error) {
     console.error(error);

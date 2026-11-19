@@ -120,12 +120,9 @@ export function mountSimulationWorkflow(store) {
   const nextAction = element("p");
   nextAction.className = "workflow-next";
 
-  overview.append(
-    element("h2", "ラウンドの進行"),
-    current,
-    rail,
-    nextAction
-  );
+  const timeline=element("details");
+  timeline.append(element("summary","段階一覧"),rail);
+  overview.append(element("h2","ラウンドの進行"),current,timeline,nextAction);
 
   const startSection = section(
     "1｜ラウンド開始",
@@ -150,11 +147,6 @@ export function mountSimulationWorkflow(store) {
   const endSection = section(
     "5｜ラウンド終了",
     "終了処理の保存に成功した場合だけ、30分進めて次のラウンドへ移ります。"
-  );
-
-  const auxiliary = section(
-    "補助｜編隊管理・草案記録",
-    "編隊管理と行動メモです。草案の保存は正式な行動実行ではありません。"
   );
 
   const repairNote = element(
@@ -286,8 +278,6 @@ export function mountSimulationWorkflow(store) {
   attackActions.append(execute);
   feedbackBox.append(feedback);
 
-  if (groups) auxiliary.body.append(groups);
-  if (drafts) auxiliary.body.append(drafts);
 
   const knownPanels = new Set([
     environment, units, groups, drafts,
@@ -298,19 +288,18 @@ export function mountSimulationWorkflow(store) {
   const additionalNodes = originalNodes.filter(
     node => !knownPanels.has(node)
   );
-  auxiliary.body.append(...additionalNodes);
-
-  aside.replaceChildren(
-    overview,
-    units,
-    startSection.root,
-    movementSection.root,
-    attackSection.root,
-    specialSection.root,
-    endSection.root,
-    feedbackBox,
-    auxiliary.root
-  );
+  // Keep all original panels, grouped by use instead of one auxiliary drawer.
+  startSection.root.dataset.toolCategory='progress';
+  specialSection.root.dataset.toolCategory='progress';
+  endSection.root.dataset.toolCategory='progress';
+  movementSection.root.dataset.toolCategory='movement';
+  attackSection.root.dataset.toolCategory='attack';
+  units.dataset.toolCategory='units';
+  if(groups)groups.dataset.toolCategory='formations';
+  if(formation)formation.dataset.toolCategory='formations';
+  aside.replaceChildren(overview,units,startSection.root,movementSection.root,attackSection.root,
+    specialSection.root,endSection.root,feedbackBox,
+    ...[groups,formation,drafts].filter(Boolean),...additionalNodes);
 
   const unsubscribe = store.subscribe(sync);
 

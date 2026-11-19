@@ -824,6 +824,7 @@ export function mountBattleReportUI(store) {
       "button, input, select, textarea"
     )) {
       const browseControl =
+        control.closest(".tool-navigation") ||
         control.id === "branchFilter" ||
         control.id === "sideFilter" ||
         (
