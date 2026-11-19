@@ -1,4 +1,4 @@
-import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js";
+import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-2";
 import {mountFormationEditor} from "./formation-editor.js";
 import {mountFormationAttackUI} from "./formation-attack-ui.js";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
@@ -37,9 +37,9 @@ import {
 import { mountAttackUI } from "./simulation-attack-ui.js";
 import {
   mountSimulationWorkflow
-} from "./simulation-workflow-ui.js";
+} from "./simulation-workflow-ui.js?v=workspace-ui-2";
 
-import { mountBattleReportUI } from "./simulation-battle-report.js";
+import { mountBattleReportUI } from "./simulation-battle-report.js?v=workspace-ui-2";
 
 
 import {

@@ -1,4 +1,4 @@
-import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js";
+import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-2";
 import {mountFormationEditor} from "./formation-editor.js";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
 import {mountReliefControls} from './relief-controls.js';
@@ -9,7 +9,7 @@ import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
 import { mountSaveIndicator } from "./save-indicator.js";
 import { loadUnitData } from "../js/data-store.js";
 import { createBattleStore } from "../js/battle-state.js";
-import { mountEditor } from "./editor.js";
+import { mountEditor } from "./editor.js?v=workspace-ui-2";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js";
