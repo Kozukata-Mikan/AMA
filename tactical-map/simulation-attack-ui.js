@@ -1,4 +1,4 @@
-import { getPhaseLabel } from "./simulation-rulebook.js";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=naval-formation-2";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 

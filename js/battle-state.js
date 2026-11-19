@@ -1,4 +1,4 @@
-import {normalizeFormation, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js";
+import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=naval-formation-2";
 import { readSave, writeSave, subscribeSaveChanges } from "./save-database.js";
 import { MAX_SCENE_FILE_BYTES } from "./save-limits.js";
 import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";
@@ -980,7 +980,8 @@ export async function createBattleStore(units) {
       const center = formationCenter(members,group.formation);
       for (const point of formation.positions) {
         const unit = members.find(item => item.instanceId === point.id);
-        const x=center.x+point.x,y=center.y+point.y;
+        const offset = formationOffset(point, formation);
+        const x=center.x+offset.x,y=center.y+offset.y;
         const sample=sampleTerrain(candidate.terrain,x,y);
         if(!sample.inside || (sample.kind==='land' && !unit.underwater)) throw new Error('陣形の艦船を地図内の海域へ配置してください。');
         unit.x=x;unit.y=y;

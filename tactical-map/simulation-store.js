@@ -1,19 +1,19 @@
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=naval-formation-2";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js";
+import { runBackgroundTask } from "./background-client.js?v=naval-formation-2";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
-import { ensureShipRuntime } from "./ship-runtime.js";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js";
+import { ensureShipRuntime } from "./ship-runtime.js?v=naval-formation-2";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=naval-formation-2";
 
-import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js";
-import { ensureUnitCombatRuntime } from "./equipment-runtime.js";
-import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js";
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=naval-formation-2";
+import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=naval-formation-2";
+import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=naval-formation-2";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=naval-formation-2";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -23,24 +23,24 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=naval-formation-2";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=naval-formation-2";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=naval-formation-2";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=naval-formation-2";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=naval-formation-2";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=naval-formation-2";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=naval-formation-2";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { createRangeAttackPanel } from "./simulation-range-target-ui.js";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=naval-formation-2";
 
-import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js";
+import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=naval-formation-2";
 
 import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-runtime.js";
 
@@ -53,7 +53,7 @@ import { buildBattleReport } from "./simulation-battle-report.js";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=naval-formation-2";
 
 
 

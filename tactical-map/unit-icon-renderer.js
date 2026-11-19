@@ -1,3 +1,4 @@
+import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import { projectMap as project } from "./map-display.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -67,7 +68,7 @@ function getIconScale(sizeLevel) {
 // 它的长度变化由舰船形状函数单独处理。
 function getUnitScale(unit) {
   if (unit.branch === "navy") {
-    return UNIT_ICON_RULES.displayScale;
+    return NAVAL_ICON_SCALE;
   }
 
   return getIconScale(unit.sizeLevel);
@@ -100,29 +101,6 @@ function getHeadingRotation(heading = 0) {
 
   return screenAngle * 180 / Math.PI + 90;
 }
-
-// 海军：5个顶点，船头为最上方的尖端。
-function makeNavyPath(sizeLevel = 1) {
-  const level = getSizeLevel(sizeLevel);
-  const ratio = UNIT_ICON_RULES.navyLengthRatios[level - 1];
-
-  const bowY = -12;
-  const shoulderY = -4;
-  const halfWidth = 8;
-
-  const baseLength = 24;
-  const sternY = bowY + baseLength * ratio;
-
-  return [
-    `M 0 ${bowY}`,
-    `L ${halfWidth} ${shoulderY}`,
-    `L ${halfWidth} ${sternY}`,
-    `L ${-halfWidth} ${sternY}`,
-    `L ${-halfWidth} ${shoulderY}`,
-    "Z"
-  ].join(" ");
-}
-
 
 // 空军：保持指定尖头角，并归一化基础外框。
 // 后面的大小倍率负责统一放大。
@@ -192,7 +170,7 @@ function makeSpecialPath() {
 function getUnitIconPath(unit) {
   switch (unit.branch) {
     case "navy":
-      return makeNavyPath(unit.sizeLevel);
+      return navalSymbolPath(navalSymbolFor(unit), unit.sizeLevel);
 
     case "air":
       return makeAirPath(unit.sizeLevel);

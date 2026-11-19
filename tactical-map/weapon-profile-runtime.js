@@ -1,6 +1,6 @@
 import { parseHitExpression } from "./weapon-hit-runtime.js";
-import { getEquipmentLabel } from "../js/catalog-seed.js";
-import { readEffectiveInitialAmmo } from "./equipment-runtime.js";
+import { getEquipmentLabel } from "../js/catalog-seed.js?v=naval-formation-2";
+import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=naval-formation-2";
 
 
 // 只适配已经确认的图鉴字段。

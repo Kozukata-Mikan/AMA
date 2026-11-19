@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=naval-formation-2';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';

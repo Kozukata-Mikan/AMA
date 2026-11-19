@@ -1,4 +1,4 @@
-import { formationMembers } from "./formation-layout.js";
+import { formationMembers } from "./formation-layout.js?v=naval-formation-2";
 export function mountFormationAttackUI(store, parent) {
   const element = (tag, text = "") => {
     const node = document.createElement(tag);

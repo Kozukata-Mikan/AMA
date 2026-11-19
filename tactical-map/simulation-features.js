@@ -1,18 +1,18 @@
-import {formationMembers,formationCenter,normalizeFormation,validateFormationMembers} from "./formation-layout.js";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js";
+import {formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=naval-formation-2";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=naval-formation-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js";
+} from "./ship-runtime.js?v=naval-formation-2";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js";
+} from "./simulation-rescue.js?v=naval-formation-2";
 
 import {
   createShipEffectsState,
@@ -23,11 +23,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js";
+} from "./equipment-item-runtime.js?v=naval-formation-2";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js";
+} from "./simulation-autonomous-rescue.js?v=naval-formation-2";
 
 import {
   routeLength,
@@ -822,7 +822,8 @@ function buildPlan(scene, ref, x, y) {
   const formation = ref.kind === "group" ? scene.groups.find(group => group.id === ref.id)?.formation : null;
   if(formation)validateFormationMembers(members,formation);
   const destinations = members.map(unit => {
-    const offset = formation?.positions.find(point => point.id === unit.instanceId);
+    const point = formation?.positions.find(point => point.id === unit.instanceId);
+    const offset = point ? formationOffset(point, formation) : null;
     const to = offset ? {x:x+offset.x,y:y+offset.y} : {x:unit.x+dx,y:unit.y+dy};
     if (Math.hypot(to.x-unit.x,to.y-unit.y) > limitFor([unit])+EPSILON) fail("陣形移動が速力または航続距離を超えています。");
     validateRoute(scene, unit, to);

@@ -1,7 +1,7 @@
 import {
   findUnit,
   getBranchName
-} from "./data-store.js";
+} from "./data-store.js?v=naval-formation-2";
 
 export function previewAction({
   units,

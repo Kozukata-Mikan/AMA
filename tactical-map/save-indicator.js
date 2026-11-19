@@ -1,4 +1,4 @@
-import {subscribeBackgroundStatus} from './background-client.js';
+import {subscribeBackgroundStatus} from './background-client.js?v=naval-formation-2';
 // Saving/computing is visible; selection and panning remain usable.
 export function mountSaveIndicator(store) {
   const indicator = document.createElement('p');

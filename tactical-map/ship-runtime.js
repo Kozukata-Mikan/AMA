@@ -4,7 +4,7 @@ import {
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js";
+} from "./equipment-item-runtime.js?v=naval-formation-2";
 
 
 import {
@@ -23,12 +23,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js";
+} from "./equipment-runtime.js?v=naval-formation-2";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js";
+} from "./equipment-item-runtime.js?v=naval-formation-2";
 
 
 // ===== 舰船数据与推演状态接入 =====

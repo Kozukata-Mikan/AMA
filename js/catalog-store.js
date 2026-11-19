@@ -1,4 +1,5 @@
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js";
+import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=naval-formation-2";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -240,6 +241,7 @@ function normalizeUnit(value) {
     naval: {
       ...copy(naval),
       type: text(naval.type ?? "", "属性"),
+      iconType: normalizeNavalSymbol(naval.iconType),
 
       strength: number(
         naval.strength ?? null,

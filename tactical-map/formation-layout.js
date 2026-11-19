@@ -1,5 +1,31 @@
-export const FORMATION_RADIUS = 12.5;
-export const FORMATION_ICON_SCALE = 0.45;
+export const FORMATION_RADIUS = 25;
+export function formationReference(members) {
+  return members.find((unit) => unit.isFormationFlagship) ?? members[0];
+}
+
+export function rotateFormationPoint(point, heading) {
+  const angle = heading * Math.PI / 180;
+  return {x: point.x * Math.cos(angle) - point.y * Math.sin(angle),
+    y: point.x * Math.sin(angle) + point.y * Math.cos(angle)};
+}
+
+export function formationOffset(point, formation) {
+  return rotateFormationPoint(point, formation?.version === 2 ? formation.heading : 0);
+}
+
+// Legacy v1 positions are map-relative. Convert only the editing draft, keeping
+// their world placement and the stored original untouched until Apply.
+export function formationEditingDraft(members, formation) {
+  const reference = formationReference(members);
+  const heading = Number(reference.heading) || 0;
+  const center = formationCenter(members, formation);
+  const positions = formation?.positions ?? members.map(unit => ({
+    id: unit.instanceId, x: unit.x - center.x, y: unit.y - center.y,
+  }));
+  return {version: 2, overview: formation?.overview ?? true, heading,
+    positions: positions.map(point => ({id: point.id, ...rotateFormationPoint(
+      formation ? formationOffset(point, formation) : point, -heading)}))};
+}
 
 export function formationMembers(scene, id) {
   const ids = new Set([id]);
@@ -22,23 +48,26 @@ export function formationCenter(members, formation) {
   ) {
     throw new Error("編隊の全艦を地図に配置してください。");
   }
-  const anchor = members.find((unit) => unit.isFormationFlagship) ?? members[0];
+  const anchor = formationReference(members);
   const offset = formation?.positions.find(
     (point) => point.id === anchor.instanceId,
   );
-  return { x: anchor.x - (offset?.x ?? 0), y: anchor.y - (offset?.y ?? 0) };
+  const world = offset ? formationOffset(offset, formation) : {x: 0, y: 0};
+  return { x: anchor.x - world.x, y: anchor.y - world.y };
 }
 
 export function normalizeFormation(value) {
   if (value === undefined) return undefined;
   if (
     !value ||
-    value.version !== 1 ||
+    ![1, 2].includes(value.version) ||
     typeof value.overview !== "boolean" ||
     !Array.isArray(value.positions)
   ) {
     throw new Error("編隊陣形の保存形式が不正です。");
   }
+  if (value.version === 2 && !Number.isFinite(value.heading))
+    throw new Error("陣形の基準艦艏方位が不正です。");
   const ids = new Set();
   const positions = value.positions.map((point) => {
     if (
@@ -50,7 +79,7 @@ export function normalizeFormation(value) {
       !Number.isFinite(point.y) ||
       Math.hypot(point.x, point.y) > FORMATION_RADIUS + 1e-7
     ) {
-      throw new Error("陣形は直径25マスの円内に配置してください。");
+      throw new Error("陣形は直径50マスの円内に配置してください。");
     }
     ids.add(point.id);
     return { id: point.id, x: point.x, y: point.y };
@@ -66,7 +95,8 @@ export function normalizeFormation(value) {
         throw new Error("艦船同士は1.1マス以上離してください。");
       }
     }
-  return { version: 1, overview: value.overview, positions };
+  return { version: value.version, overview: value.overview, positions,
+    ...(value.version === 2 ? {heading: ((value.heading % 360) + 360) % 360} : {}) };
 }
 
 export function validateFormationMembers(members, formation) {
@@ -128,8 +158,8 @@ export function drawFormationViews(layer, scene, project, select) {
     const points = Array.from({ length: 49 }, (_, i) => {
       const angle = (i * Math.PI) / 24;
       const p = project(
-        center.x + 12.5 * Math.cos(angle),
-        center.y + 12.5 * Math.sin(angle),
+        center.x + FORMATION_RADIUS * Math.cos(angle),
+        center.y + FORMATION_RADIUS * Math.sin(angle),
         0,
       );
       return `${p.x},${p.y}`;
@@ -141,7 +171,7 @@ export function drawFormationViews(layer, scene, project, select) {
     circle.setAttribute("vector-effect", "non-scaling-stroke");
     circle.style.pointerEvents = "none";
     const text = document.createElementNS(ns, "text");
-    const p = project(center.x, center.y - 12.5, 0);
+    const p = project(center.x, center.y - FORMATION_RADIUS, 0);
     text.setAttribute("x", p.x);
     text.setAttribute("y", p.y - 8);
     text.setAttribute("fill", "#bce7ff");
@@ -159,8 +189,4 @@ export function drawFormationViews(layer, scene, project, select) {
 export function compactFormationIcon(root) {
   for (const node of root.querySelectorAll("text,.unit-stem,.unit-dot"))
     node.style.display = "none";
-  const icon = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  icon.setAttribute("transform", `scale(${FORMATION_ICON_SCALE})`);
-  while (root.firstChild) icon.append(root.firstChild);
-  root.append(icon);
 }

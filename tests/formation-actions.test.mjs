@@ -80,8 +80,8 @@ async function simulation() {
 test("layout rejects off-circle or overlapping ships and persists through custom export/import", async () => {
   assert.throws(
     () =>
-      normalizeFormation({ ...layout, positions: [{ id: "a", x: 13, y: 0 }] }),
-    /25/,
+      normalizeFormation({ ...layout, positions: [{ id: "a", x: 26, y: 0 }] }),
+    /50/,
   );
   assert.throws(
     () =>
@@ -255,7 +255,7 @@ test("repeated whole-group movement keeps a nonzero anchor offset and a fixed fo
 test("real worker plans a formation attack atomically and refuses orders for foreign formations", async () => {
   const { Worker } = await import("node:worker_threads");
   const { shutdownBackground } = await import(
-    "../tactical-map/background-client.js"
+    "../tactical-map/background-client.js?v=naval-formation-2"
   );
   const { id, store } = await simulation();
   globalThis.Worker = class {
@@ -296,4 +296,55 @@ test("real worker plans a formation attack atomically and refuses orders for for
     shutdownBackground();
     delete globalThis.Worker;
   }
+});
+
+const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} != ${expected}`);
+test("bow-relative editor migrates old map offsets without changing world placement", async () => {
+  const {formationEditingDraft, formationOffset, formationCenter} = await import('../tactical-map/formation-layout.js');
+  const members = fixture().instances.slice(0,2);
+  members[1].isFormationFlagship = true;
+  members[1].heading = 90;
+  const draft = formationEditingDraft(members, layout);
+  assert.equal(draft.version, 2);
+  assert.equal(draft.heading, 90);
+  for (const point of draft.positions) {
+    const old = layout.positions.find(p => p.id === point.id);
+    const world = formationOffset(point, draft);
+    near(world.x, old.x); near(world.y, old.y);
+  }
+  assert.deepEqual(formationCenter(members, draft), formationCenter(members, layout));
+  near(draft.positions[0].x, 0); near(draft.positions[0].y, -2);
+  assert.equal(layout.version, 1, 'opening an editor must not mutate legacy data');
+  assert.equal(normalizeFormation({...draft, positions:[{id:'a',x:25,y:0}]}).positions[0].x,25);
+  assert.throws(() => normalizeFormation({...draft, heading: NaN}), /艦艏/);
+});
+
+test("custom bow-relative placement and JSON reopen preserve the formation frame", async () => {
+  await resetDatabase();
+  globalThis.localStorage = {getItem:()=>null,setItem(){}};
+  const battle = await createBattleStore([]);
+  await battle.importScene(JSON.stringify({...battle.getScene(),...fixture(),terrainId:'demo-islands-v1'}));
+  const bowLayout = {version:2, heading:90, overview:true, positions:[{id:'a',x:0,y:0},{id:'a2',x:0,y:-20}]};
+  await battle.saveFormation('own', bowLayout);
+  near(battle.getScene().instances[1].x,20);
+  near(battle.getScene().instances[1].y,0);
+  await battle.importScene(battle.exportScene());
+  assert.deepEqual(battle.getScene().groups[0].formation,bowLayout);
+  await battle.destroy();
+});
+
+test("simulation bow-relative layout stays a movement plan and uses rotated offsets on translation", async () => {
+  const {id,store} = await simulation();
+  const bowLayout = {version:2, heading:90, overview:true, positions:[{id:'a',x:0,y:0},{id:'a2',x:0,y:-4}]};
+  await store.beginMovement();
+  await store.saveFormation('own',bowLayout);
+  let saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[1].x,0); near(saved.instances[1].y,4);
+  await store.planMovement({kind:'group',id:'own'},20,10);
+  await store.resolveMovement();
+  saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].x,20); near(saved.instances[0].y,10);
+  near(saved.instances[1].x,24); near(saved.instances[1].y,10);
+  const reopened=await openSimulation(id);
+  assert.deepEqual(reopened.getSceneSnapshot().groups[0].formation,bowLayout);
 });

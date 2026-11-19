@@ -1,20 +1,20 @@
 import {
   readWeaponProfile,
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js";
+} from "./weapon-profile-runtime.js?v=naval-formation-2";
 
 import {
   replaceAttackCommands
-} from "./simulation-attack-runtime.js";
+} from "./simulation-attack-runtime.js?v=naval-formation-2";
 
 import {
   filterUnreachableAttackCommands
-} from "./simulation-settlement.js";
+} from "./simulation-settlement.js?v=naval-formation-2";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js";
+} from "./simulation-features.js?v=naval-formation-2";
 
 // ===== 分旗舰攻击追随 =====
 // 只在store的候选事务内调用。

@@ -1,9 +1,12 @@
+import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {
   formationMembers,
-  formationCenter,
+  formationEditingDraft,
+  formationReference,
+  FORMATION_RADIUS,
   normalizeFormation,
   validateFormationMembers,
-} from "./formation-layout.js";
+} from "./formation-layout.js?v=naval-formation-2";
 
 export function mountFormationEditor(store, parent) {
   const element = (tag, text = "") => {
@@ -38,8 +41,8 @@ export function mountFormationEditor(store, parent) {
   workspace.className = "formation-editor-workspace";
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "-14 -14 28 28");
-  svg.setAttribute("aria-label", "直径25マスの陣形編集円");
+  svg.setAttribute("viewBox", "-29 -29 58 58");
+  svg.setAttribute("aria-label", "直径50マスの陣形編集円");
   const info = element("div");
   info.className = "formation-editor-info";
   workspace.append(svg, info);
@@ -59,7 +62,8 @@ export function mountFormationEditor(store, parent) {
   const status = element("p");
   status.className = "formation-editor-status";
   status.setAttribute("role", "status");
-  dialog.append(header, workspace, membersBar, actions, status);
+  const compass = element("p", "", "formation-editor-status");
+  dialog.append(header, compass, workspace, membersBar, actions, status);
   document.body.append(dialog);
   let draft = [],
     members = [],
@@ -68,6 +72,7 @@ export function mountFormationEditor(store, parent) {
     revision = null,
     drag = null;
   let applying = false;
+  let heading = 0;
   const scene = () => store.getSceneSnapshot();
   function eligibleGroups() {
     const current = scene();
@@ -116,7 +121,7 @@ export function mountFormationEditor(store, parent) {
       `状態 ${{ intact: "無傷", minor: "軽微", light: "小破", moderate: "中破", heavy: "大破", sinking: "沈没寸前", sunk: "沈没" }[unit.shipState?.status] ?? "配置中"}`,
       `速力 ${naval?.speedKnots ?? "—"} kn`,
       `艦種 ${naval?.type ?? "—"} / 装甲 ${naval?.armor ?? "—"}`,
-      `陣形位置 X ${point.x.toFixed(2)} / Y ${point.y.toFixed(2)}`,
+      `右舷方向 ${point.x.toFixed(2)} / 艦尾方向 ${point.y.toFixed(2)} マス`,
       ...(unit.equipmentState?.groups?.map(
         (group) =>
           `${unit.snapshot?.equipmentSnapshots?.find((item) => item.id === group.equipmentId)?.name ?? group.position} / 残弾 ${group.remainingAmmo ?? "—"}${group.damaged ? " / 損傷" : ""}`,
@@ -126,11 +131,19 @@ export function mountFormationEditor(store, parent) {
   function draw() {
     svg.replaceChildren();
     const circle = document.createElementNS(ns, "circle");
-    circle.setAttribute("r", "12.5");
+    circle.setAttribute("r", String(FORMATION_RADIUS));
     circle.setAttribute("fill", "#132d40");
     circle.setAttribute("stroke", "#81c9f2");
     circle.setAttribute("stroke-width", ".12");
     svg.append(circle);
+    for (const [x,y,label] of [[0,-26.5,"艦艏 ↑"],[26,0,"右舷"],[0,27.5,"艦尾"]]) {
+      const text = document.createElementNS(ns, "text");
+      text.setAttribute("x", x); text.setAttribute("y", y);
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("fill", "#bce7ff"); text.setAttribute("font-size", "1.6");
+      text.textContent = label;
+      svg.append(text);
+    }
     for (const point of draft) {
       const icon = document.createElementNS(ns, "g");
       icon.setAttribute("data-ship", point.id);
@@ -140,7 +153,11 @@ export function mountFormationEditor(store, parent) {
       const unit = members.find((item) => item.instanceId === point.id);
       icon.setAttribute("aria-label", unit.name);
       const body = document.createElementNS(ns, "path");
-      body.setAttribute("d", "M 0,-.8 L .38,.35 L 0,.65 L -.38,.35 Z");
+      body.setAttribute("d", navalSymbolPath(navalSymbolFor(unit), unit.sizeLevel));
+      body.setAttribute("transform", `rotate(${(Number(unit.heading) || 0) - heading}) scale(${NAVAL_ICON_SCALE})`);
+      const hit = document.createElementNS(ns, "circle");
+      hit.setAttribute("r", "2.6"); hit.setAttribute("fill", "transparent");
+      icon.append(hit);
       body.setAttribute("fill", selected === point.id ? "#ffd27b" : "#a8d8f7");
       icon.append(body);
       icon.addEventListener("pointerdown", (event) => {
@@ -162,7 +179,7 @@ export function mountFormationEditor(store, parent) {
         event.preventDefault();
         selected = point.id;
         const [dx, dy] = offsets[event.key];
-        if (Math.hypot(point.x + dx, point.y + dy) <= 12.5) {
+        if (Math.hypot(point.x + dx, point.y + dy) <= FORMATION_RADIUS) {
           point.x += dx;
           point.y += dy;
           draw();
@@ -177,7 +194,7 @@ export function mountFormationEditor(store, parent) {
     draft = members.map((unit, i) => {
       const angle = i * Math.PI * (3 - Math.sqrt(5)),
         radius =
-          members.length === 1 ? 0 : 11 * Math.sqrt((i + 0.5) / members.length);
+          members.length === 1 ? 0 : (FORMATION_RADIUS - 3) * Math.sqrt((i + 0.5) / members.length);
       return {
         id: unit.instanceId,
         x: radius * Math.cos(angle),
@@ -192,21 +209,18 @@ export function mountFormationEditor(store, parent) {
         group = current.groups.find((item) => item.id === select.value);
       groupId = group.id;
       members = formationMembers(current, group.id);
-      const center = formationCenter(members, group.formation);
+      const editing = formationEditingDraft(members, group.formation);
+      heading = editing.heading;
+      compass.textContent = `基準：${formationReference(members).name} / 艦艏 ${heading.toFixed(1)}° · 上＝前方 / 右＝右舷 · 直径50マス`;
       revision = current.revision ?? current.updatedAt;
       overview.checked = group.formation?.overview ?? true;
       title.textContent = `編隊陣形 / ${group.name}`;
-      draft =
-        group.formation?.positions.map((point) => ({ ...point })) ??
-        members.map((unit) => ({
-          id: unit.instanceId,
-          x: unit.x - center.x,
-          y: unit.y - center.y,
-        }));
+      draft = editing.positions;
       selected = members[0].instanceId;
       try {
         const value = normalizeFormation({
-          version: 1,
+          version: 2,
+          heading,
           overview: overview.checked,
           positions: draft,
         });
@@ -241,7 +255,7 @@ export function mountFormationEditor(store, parent) {
     );
     const point = draft.find((item) => item.id === drag.ship);
     const length = Math.hypot(p.x, p.y),
-      factor = length > 12.5 ? 12.5 / length : 1;
+      factor = length > FORMATION_RADIUS ? FORMATION_RADIUS / length : 1;
     point.x = p.x * factor;
     point.y = p.y * factor;
     draw();
@@ -260,7 +274,8 @@ export function mountFormationEditor(store, parent) {
     applying = true;
     try {
       await store.saveFormation(groupId, {
-        version: 1,
+        version: 2,
+          heading,
         overview: overview.checked,
         positions: draft,
       });

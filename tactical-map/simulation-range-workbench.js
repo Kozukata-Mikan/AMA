@@ -1,11 +1,11 @@
 import { listSaveMetadata } from "../js/save-database.js";
 import {
   openSimulation
-} from "./simulation-store.js";
+} from "./simulation-store.js?v=naval-formation-2";
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js";
+} from "./weapon-profile-runtime.js?v=naval-formation-2";
 
 // 专用范围攻击页面。
 // 不创建推演，不清理存档，不改部署快照。

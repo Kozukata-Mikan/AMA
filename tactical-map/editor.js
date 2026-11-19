@@ -1,12 +1,12 @@
-import { getBranchName } from "../js/data-store.js";
+import { getBranchName } from "../js/data-store.js?v=naval-formation-2";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js";
+import { createSimulation } from "./simulation-store.js?v=naval-formation-2";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
-import { mountCatalogEditor } from "./catalog-editor.js";
+import { mountCatalogEditor } from "./catalog-editor.js?v=naval-formation-2";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
-import { prepareSimulationAmmoSource } from "./equipment-runtime.js";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=naval-formation-2";
 import { getFlagshipDisplayName } from "./flagship-display.js";
 
 

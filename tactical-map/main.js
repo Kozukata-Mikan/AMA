@@ -1,15 +1,16 @@
+import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
-import {mountFormationEditor} from "./formation-editor.js";
-import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
+import {mountFormationEditor} from "./formation-editor.js?v=naval-formation-2";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=naval-formation-2";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js";
-import { loadUnitData } from "../js/data-store.js";
-import { createBattleStore } from "../js/battle-state.js";
-import { mountEditor } from "./editor.js?v=workspace-ui-3";
+import { mountSaveIndicator } from "./save-indicator.js?v=naval-formation-2";
+import { loadUnitData } from "../js/data-store.js?v=naval-formation-2";
+import { createBattleStore } from "../js/battle-state.js?v=naval-formation-2";
+import { mountEditor } from "./editor.js?v=naval-formation-2";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js";
@@ -30,7 +31,7 @@ import {
 } from "./cluster-engine.js";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js";
+import { mountTerrainEditor } from "./terrain-editor.js?v=naval-formation-2";
 
 let terrain = createDemoTerrain();
 let terrainController = null;
@@ -453,7 +454,7 @@ function getIconScale(sizeLevel) {
 // 它的长度变化由舰船形状函数单独处理。
 function getUnitScale(unit) {
   if (unit.branch === "navy") {
-    return UNIT_ICON_RULES.displayScale;
+    return NAVAL_ICON_SCALE;
   }
 
   return getIconScale(unit.sizeLevel);
@@ -486,29 +487,6 @@ function getHeadingRotation(heading = 0) {
 
   return screenAngle * 180 / Math.PI + 90;
 }
-
-// 海军：5个顶点，船头为最上方的尖端。
-function makeNavyPath(sizeLevel = 1) {
-  const level = getSizeLevel(sizeLevel);
-  const ratio = UNIT_ICON_RULES.navyLengthRatios[level - 1];
-
-  const bowY = -12;
-  const shoulderY = -4;
-  const halfWidth = 8;
-
-  const baseLength = 24;
-  const sternY = bowY + baseLength * ratio;
-
-  return [
-    `M 0 ${bowY}`,
-    `L ${halfWidth} ${shoulderY}`,
-    `L ${halfWidth} ${sternY}`,
-    `L ${-halfWidth} ${sternY}`,
-    `L ${-halfWidth} ${shoulderY}`,
-    "Z"
-  ].join(" ");
-}
-
 
 // 空军：保持指定尖头角，并归一化基础外框。
 // 后面的大小倍率负责统一放大。
@@ -578,7 +556,7 @@ function makeSpecialPath() {
 function getUnitIconPath(unit) {
   switch (unit.branch) {
     case "navy":
-      return makeNavyPath(unit.sizeLevel);
+      return navalSymbolPath(navalSymbolFor(unit), unit.sizeLevel);
 
     case "air":
       return makeAirPath(unit.sizeLevel);
@@ -1061,7 +1039,7 @@ if (unit.branch === "air") {
     createSVG("circle", {
       cx: 0,
       cy: 0,
-      r: (compactIds.has(unit.instanceId) ? 3 : 17) * scale,
+      r: 17 * scale,
       class: "hit-area"
     }, group);
 

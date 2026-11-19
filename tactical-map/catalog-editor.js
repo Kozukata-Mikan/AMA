@@ -1,4 +1,5 @@
-import { getCatalogStore } from "../js/catalog-store.js";
+import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
+import { getCatalogStore } from "../js/catalog-store.js?v=naval-formation-2";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -9,7 +10,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js";
+} from "../js/catalog-seed.js?v=naval-formation-2";
 
 // ===== 图鉴界面 =====
 
@@ -722,6 +723,8 @@ export function mountCatalogEditor({
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.type === "naval-symbol"
+            ? NAVAL_SYMBOL_OPTIONS.find(([key]) => key === (value ?? "combat"))?.[1]
             : field.key === "faction"
             ? getFactionName(value)
             : field.key === "protected"
@@ -937,6 +940,8 @@ export function mountCatalogEditor({
           ["army", "陸軍"],
           ["special", "特殊"]
         ], value);
+      } else if (field.type === "naval-symbol") {
+        control = select(NAVAL_SYMBOL_OPTIONS, value ?? "combat");
       } else if (field.type === "size") {
         control = select(
           [1, 2, 3, 4, 5].map(size => [
@@ -973,6 +978,26 @@ export function mountCatalogEditor({
         control,
         field.definition
       );
+    }
+
+    if (category === "units") {
+      const preview = node("div", "", "catalog-symbol-preview");
+      const ns = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(ns, "svg");
+      svg.setAttribute("viewBox", "-14 -22 28 42");
+      svg.setAttribute("width", "56");
+      svg.setAttribute("height", "84");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "艦船マークのプレビュー（上が艦艏）");
+      const path = document.createElementNS(ns, "path");
+      path.setAttribute("fill", "#a8d8f7");
+      svg.append(path);
+      const control = controls.get("naval.iconType");
+      const update = () => path.setAttribute("d", navalSymbolPath(control.value));
+      control.addEventListener("change", update);
+      update();
+      preview.append(svg, node("span", "上＝艦艏 / 表示専用"));
+      grid.append(preview);
     }
 
     form.append(grid);

@@ -8,7 +8,7 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js";
+} from "./equipment-runtime.js?v=naval-formation-2";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ITEM_IDS = EQUIPMENT_HIT_ITEMS.map(item => item.id);

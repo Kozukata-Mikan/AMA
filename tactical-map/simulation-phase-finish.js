@@ -11,31 +11,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js";
+} from "./ship-runtime.js?v=naval-formation-2";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js";
+} from "./equipment-runtime.js?v=naval-formation-2";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js";
+} from "./simulation-special-runtime.js?v=naval-formation-2";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js";
+} from "./simulation-rescue-runtime.js?v=naval-formation-2";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js";
+} from "./equipment-item-runtime.js?v=naval-formation-2";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js";
+} from "./simulation-rescue.js?v=naval-formation-2";
 
 import {
   initializeRoundTraitRuntime,

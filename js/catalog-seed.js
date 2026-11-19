@@ -71,6 +71,12 @@ export const UNIT_FIELDS = [
     definition: "海軍・航空機・陸軍・特殊の分類。配置条件と表示形状に使用します。"
   },
   {
+    key: "naval.iconType",
+    label: "艦船マーク",
+    type: "naval-symbol",
+    definition: "戦闘艦・補助艦・偵察艦・装甲艦・航空艦。上が艦艏。表示専用で戦闘属性には影響しません。"
+  },
+  {
     key: "naval.type",
     label: "属性",
     type: "text",

@@ -1,13 +1,13 @@
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
-import {mountFormationEditor} from "./formation-editor.js";
-import {mountFormationAttackUI} from "./formation-attack-ui.js";
-import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
+import {mountFormationEditor} from "./formation-editor.js?v=naval-formation-2";
+import {mountFormationAttackUI} from "./formation-attack-ui.js?v=naval-formation-2";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=naval-formation-2";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js";
+import { mountSaveIndicator } from "./save-indicator.js?v=naval-formation-2";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -19,22 +19,22 @@ import {
   showCampaignIntro
 } from "./campaign-intro.js";
 
-import { drawUnitIcon } from "./unit-icon-renderer.js";
+import { drawUnitIcon } from "./unit-icon-renderer.js?v=naval-formation-2";
 
 import { getDisplayUnits } from "./cluster-engine.js";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=naval-formation-2";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js";
+} from "./ship-runtime.js?v=naval-formation-2";
 
 import { mountSimulationFeatures } from "./simulation-feature-ui.js";
 import { mountRescueUI } from "./simulation-rescue-ui.js";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js";
-import { mountAttackUI } from "./simulation-attack-ui.js";
+} from "../js/catalog-seed.js?v=naval-formation-2";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=naval-formation-2";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=workspace-ui-3";
@@ -52,7 +52,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js";
+} from "./simulation-store.js?v=naval-formation-2";
 
 import {
   gridPosition,
@@ -749,7 +749,6 @@ if (statusFlags.length) {
     }, group);
 
     if (compactIds.has(unit.instanceId)) {
-      group.querySelector('.hit-area')?.setAttribute('r',3*scale);
       compactFormationIcon(group);
     }
 

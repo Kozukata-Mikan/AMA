@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js";
+} from "./formation-target-runtime.js?v=naval-formation-2";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js";
+} from "./simulation-features.js?v=naval-formation-2";
 
 import {
   resolveHitCoins
