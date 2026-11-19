@@ -276,6 +276,7 @@ button:disabled {
 .tool-sidebar details:not(.editor-disclosure) > :not(summary) {
   margin-left: 12px;
   margin-right: 12px;
+  max-width: calc(100% - 24px);
 }
 .tool-sidebar details:not(.editor-disclosure) > :last-child {
   margin-bottom: 12px;
@@ -296,6 +297,9 @@ button:disabled {
 .tool-sidebar input,
 .tool-sidebar select,
 .tool-sidebar textarea {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
   background: #0b1622;
   border-color: #344b60;
   padding: 9px 10px;
