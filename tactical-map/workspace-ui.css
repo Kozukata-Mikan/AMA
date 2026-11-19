@@ -518,3 +518,11 @@ button:disabled {
 .map-view-settings-content select {
   width: 100%;
 }
+
+/* Flagship badges stay compact beside the newly smaller ship icons. */
+#unitLayer .unit text.formation-flagship-mark {
+  font-size: 5px;
+  stroke-width: 1px;
+  fill: #ffd27b;
+  letter-spacing: 0;
+}
