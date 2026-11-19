@@ -207,8 +207,14 @@ export function mountToolNavigation(store, host, mode) {
     search.focus();
   });
 
+  // Ignore toggle events already queued by panels before navigation mounted.
+  const openStates = new WeakMap(
+    [...host.querySelectorAll("details")].map((node) => [node, node.open]),
+  );
   function followOpenedPanel(event) {
-    if (!event.target.open) return;
+    const wasOpen = openStates.get(event.target);
+    openStates.set(event.target, event.target.open);
+    if (!event.target.open || wasOpen === event.target.open) return;
     const panel = panels.find(
       (node) => node === event.target || node.contains(event.target),
     );
