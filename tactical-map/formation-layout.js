@@ -1,4 +1,4 @@
-import { getFlagshipMarks, normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-5";
+import { getFlagshipMarks, normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
 export const FORMATION_RADIUS = 25;
 export function formationReference(members) {
   return members.find((unit) => unit.isFormationFlagship) ?? members[0];

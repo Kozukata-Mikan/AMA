@@ -1,4 +1,4 @@
-import { formationMembers } from "./formation-layout.js?v=fleet-cohesion-5";
+import { formationMembers } from "./formation-layout.js?v=fleet-cohesion-6";
 export function mountFormationAttackUI(store, parent) {
   const element = (tag, text = "") => {
     const node = document.createElement(tag);

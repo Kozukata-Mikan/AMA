@@ -1,4 +1,4 @@
-import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-5";
+import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
 import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=naval-formation-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -12,7 +12,7 @@ import { sampleTerrain } from "./terrain-data.js";
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=fleet-cohesion-5";
+} from "./simulation-rescue.js?v=fleet-cohesion-6";
 
 import {
   createShipEffectsState,
@@ -27,7 +27,7 @@ import {
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=fleet-cohesion-5";
+} from "./simulation-autonomous-rescue.js?v=fleet-cohesion-6";
 
 import {
   routeLength,
@@ -866,14 +866,29 @@ function buildFollowPlan(scene, ref, x, y) {
   const members = movementMembers(scene,groupRef);
   if (!members.some(unit=>unit.instanceId===leader.instanceId)) fail("分旗艦が編隊円内にいません。");
   const memberIds = new Set(members.map(unit=>unit.instanceId));
+  const pending = scene.movementPlans.find(plan=>plan.formation && plan.ref.kind === "group" && plan.ref.id===leader.groupId && ["formation-layout","formation-follow"].includes(plan.mode));
   if (scene.movementPlans.some(plan=>plan.memberIds.some(id=>memberIds.has(id)) &&
+      plan !== pending &&
       !(plan.mode === "formation-follow" && plan.leaderId === leader.instanceId) &&
       !(plan.ref.kind === "unit" && plan.ref.id === leader.instanceId)))
     fail("編隊艦が別の移動計画に参加しています。先に取消してください。");
   const group = scene.groups.find(item=>item.id===leader.groupId);
   const center = formationCenter(members,group.formation);
-  const plan = buildPlan(scene,groupRef,center.x+x-leader.x,center.y+y-leader.y,{preserveOffsets:true});
-  return {...plan,mode:"formation-follow",leaderId:leader.instanceId,leaderRequestedX:x,leaderRequestedY:y};
+  let plan;
+  if (pending) {
+    const formation = normalizeFormation(pending.formation);
+    if (formation.positions.length !== members.length || formation.positions.some(point=>!memberIds.has(point.id))) fail("円内の陣形構成が変更されています。");
+    validateFormationMembers(formationMembers(scene,leader.groupId),formation);
+    const offset = formationOffset(formation.positions.find(point=>point.id===leader.instanceId),formation);
+    const planning = clone(scene);
+    planning.groups.find(item=>item.id===leader.groupId).formation = formation;
+    plan = buildPlan(planning,groupRef,x-offset.x,y-offset.y,{membersOverride:members});
+    plan.formation = formation;
+  } else {
+    plan = buildPlan(scene,groupRef,center.x+x-leader.x,center.y+y-leader.y,{preserveOffsets:true});
+  }
+  return {...plan,mode:"formation-follow",leaderId:leader.instanceId,leaderRequestedX:x,leaderRequestedY:y,
+    ...(Math.hypot(x-leader.x,y-leader.y)>EPSILON ? {heading:routeHeading([leader,{x,y}])} : {})};
 }
 
 /**
@@ -1600,7 +1615,7 @@ validationScene.controls.enemyAutonomy = false;
           );
         }
 
-        for (const plan of checked.filter(item=>item.mode === "formation-layout")) {
+        for (const plan of checked.filter(item=>item.formation && ["formation-layout","formation-follow"].includes(item.mode))) {
           const complete = plan.destinations.every(target=>{
             const unit = scene.instances.find(item=>item.instanceId===target.instanceId);
             return Math.hypot(unit.x-target.x, unit.y-target.y) <= EPSILON;

@@ -7,7 +7,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=fleet-cohesion-5";
+} from "./simulation-rescue.js?v=fleet-cohesion-6";
 
 import {
   ensureEquipmentRuntime

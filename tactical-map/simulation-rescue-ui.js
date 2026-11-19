@@ -1,4 +1,4 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-5";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 import {
   EQUIPMENT_HIT_ITEMS
 } from "./equipment-damage-runtime.js";

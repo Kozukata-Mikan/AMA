@@ -8,7 +8,7 @@ import {
   reconcileActiveRescues,
   resolveRescuesAtSpecial,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=fleet-cohesion-5";
+} from "./simulation-rescue.js?v=fleet-cohesion-6";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

@@ -1,7 +1,7 @@
 import { listSaveMetadata } from "../js/save-database.js";
 import {
   openSimulation
-} from "./simulation-store.js?v=fleet-cohesion-5";
+} from "./simulation-store.js?v=fleet-cohesion-6";
 
 import {
   readWeaponTargetScope

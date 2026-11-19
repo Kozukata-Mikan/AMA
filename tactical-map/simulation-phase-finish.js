@@ -20,13 +20,13 @@ import {
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=fleet-cohesion-5";
+} from "./simulation-special-runtime.js?v=fleet-cohesion-6";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=fleet-cohesion-5";
+} from "./simulation-rescue-runtime.js?v=fleet-cohesion-6";
 
 import {
   getEquipmentControlCandidates
@@ -35,7 +35,7 @@ import {
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=fleet-cohesion-5";
+} from "./simulation-rescue.js?v=fleet-cohesion-6";
 
 import {
   initializeRoundTraitRuntime,

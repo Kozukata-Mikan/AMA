@@ -1,4 +1,4 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-5";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 export function mountSimulationFeatures(store, context) {
   const {
     svg, viewport, view, project, screenPoint

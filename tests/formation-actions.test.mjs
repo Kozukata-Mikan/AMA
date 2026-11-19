@@ -255,7 +255,7 @@ test("repeated whole-group movement keeps a nonzero anchor offset and a fixed fo
 test("real worker plans a formation attack atomically and refuses orders for foreign formations", async () => {
   const { Worker } = await import("node:worker_threads");
   const { shutdownBackground } = await import(
-    "../tactical-map/background-client.js?v=fleet-cohesion-5"
+    "../tactical-map/background-client.js?v=fleet-cohesion-6"
   );
   const { id, store } = await simulation();
   globalThis.Worker = class {
@@ -467,4 +467,18 @@ test("rigid flagship follow stops the entire formation together at contact",asyn
   const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
   near(saved.instances[0].x,10);near(saved.instances[1].x,4);near(saved.instances[1].y,8);
   assert.equal(saved.instances[0].currentHp,5);
+});
+
+test("formation edits can be combined with rigid flagship follow in the same movement stage",async()=>{
+  const initial=fixture();initial.instances[0].isFormationFlagship=true;
+  const {id,store}=await simulation(initial);
+  await store.beginMovement();
+  await store.saveFormation('own',{version:2,heading:0,overview:true,emblem:'rook',positions:[{id:'a',x:0,y:0},{id:'a2',x:-6,y:8}]});
+  await store.planMovement({kind:'unit',id:'a'},20,-10,{followFormationMovement:true});
+  await store.resolveMovement();
+  const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].x,20);near(saved.instances[0].y,-10);
+  near(saved.instances[1].x,14);near(saved.instances[1].y,-2);
+  assert.equal(saved.instances[0].formationEmblem,'rook');
+  near(saved.groups[0].formation.positions[1].x,-6);
 });

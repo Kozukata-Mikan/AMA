@@ -1,20 +1,20 @@
-import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-5";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=fleet-cohesion-5";
+import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=fleet-cohesion-6";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=fleet-cohesion-5";
+import { runBackgroundTask } from "./background-client.js?v=fleet-cohesion-6";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
 import { ensureShipRuntime } from "./ship-runtime.js?v=naval-formation-2";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=fleet-cohesion-5";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=fleet-cohesion-6";
 
-import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=fleet-cohesion-5";
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=fleet-cohesion-6";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=naval-formation-2";
 import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=naval-formation-2";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=fleet-cohesion-5";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=fleet-cohesion-6";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -24,19 +24,19 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=fleet-cohesion-5";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=fleet-cohesion-6";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=fleet-cohesion-5";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=fleet-cohesion-6";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
 import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=naval-formation-2";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=fleet-cohesion-5";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=fleet-cohesion-6";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=fleet-cohesion-5";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=fleet-cohesion-5";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=fleet-cohesion-6";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=fleet-cohesion-6";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=fleet-cohesion-5";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=fleet-cohesion-6";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
 import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=naval-formation-2";
@@ -54,7 +54,7 @@ import { buildBattleReport } from "./simulation-battle-report.js";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=fleet-cohesion-5";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=fleet-cohesion-6";
 
 
 

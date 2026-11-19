@@ -1,5 +1,5 @@
-import { appendFleetOptions } from "./fleet-affiliation.js?v=fleet-cohesion-5";
-import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-5";
+import { appendFleetOptions } from "./fleet-affiliation.js?v=fleet-cohesion-6";
+import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {
   formationCircleMembers,
@@ -9,7 +9,7 @@ import {
   FORMATION_RADIUS,
   normalizeFormation,
   validateFormationMembers,
-} from "./formation-layout.js?v=fleet-cohesion-5";
+} from "./formation-layout.js?v=fleet-cohesion-6";
 
 export function mountFormationEditor(store, parent) {
   const element = (tag, text = "") => {
@@ -216,8 +216,7 @@ export function mountFormationEditor(store, parent) {
     try {
       const current = scene();
       if (current.mode === "simulation" && current.turn.phaseId !== "movement") throw new Error("陣形編集は移動段階でのみ利用できます。");
-      const
-        group = current.groups.find((item) => item.id === select.value);
+      const group = current.groups.find((item) => item.id === select.value);
       groupId = group.id;
       members = current.mode === "simulation" ? formationCircleMembers(current,group.id) : formationMembers(current, group.id);
       const flagship = members.find(unit=>unit.isFormationFlagship);

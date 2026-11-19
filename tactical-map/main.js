@@ -1,19 +1,19 @@
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
-import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-5";
-import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-cohesion-5";
+import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-6";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=fleet-cohesion-5";
+import { mountSaveIndicator } from "./save-indicator.js?v=fleet-cohesion-6";
 import { loadUnitData } from "../js/data-store.js?v=naval-formation-2";
-import { createBattleStore } from "../js/battle-state.js?v=fleet-cohesion-5";
-import { mountEditor } from "./editor.js?v=fleet-cohesion-5";
+import { createBattleStore } from "../js/battle-state.js?v=fleet-cohesion-6";
+import { mountEditor } from "./editor.js?v=fleet-cohesion-6";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
-import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-5";
+import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 
 import {
@@ -31,7 +31,7 @@ import {
 } from "./cluster-engine.js";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=fleet-cohesion-5";
+import { mountTerrainEditor } from "./terrain-editor.js?v=fleet-cohesion-6";
 
 let terrain = createDemoTerrain();
 let terrainController = null;
