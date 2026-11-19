@@ -215,9 +215,9 @@ export function mountToolNavigation(store, host, mode) {
     const wasOpen = openStates.get(event.target);
     openStates.set(event.target, event.target.open);
     if (!event.target.open || wasOpen === event.target.open) return;
-    const panel = panels.find(
-      (node) => node === event.target || node.contains(event.target),
-    );
+    // Nested unit-list disclosures can be rebuilt during every store update;
+    // only an original top-level section is allowed to navigate the workspace.
+    const panel = panels.find((node) => node === event.target);
     if (!panel) return;
     const key = categories.get(panel);
     if (key !== active || search.value) activate(key, false);
