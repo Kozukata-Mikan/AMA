@@ -1,3 +1,12 @@
+export const FORMATION_EMBLEMS = [["queen","♛ 后"],["knight","♞ 馬"],["rook","♜ 車"],["bishop","♝ 主教"]];
+export function normalizeFormationEmblem(value = "knight") {
+  if (!FORMATION_EMBLEMS.some(([key])=>key===value)) throw new Error("分艦隊徽章の指定が不正です。");
+  return value;
+}
+export function formationEmblemGlyph(value = "knight") {
+  return FORMATION_EMBLEMS.find(([key])=>key===value)?.[1].split(" ")[0] ?? "♞";
+}
+
 // ===== 旗舰显示 =====
 // 仅生成显示名称，不修改原始舰名或任何身份字段。
 
@@ -21,7 +30,8 @@ export function getFlagshipMarks(unit) {
   }
 
   if (ships.some(member => member.isFormationFlagship === true)) {
-    marks.push("♞");
+    const flagship = ships.find(member => member.isFormationFlagship === true);
+    marks.push(formationEmblemGlyph(flagship.formationEmblem));
   }
 
   return marks.join(" ");

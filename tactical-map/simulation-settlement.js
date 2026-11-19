@@ -1,4 +1,4 @@
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=fleet-course-3";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=fleet-cohesion-5";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -10,7 +10,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=fleet-course-3";
+} from "./simulation-attack-batch.js?v=fleet-cohesion-5";
 
 
 
@@ -29,7 +29,7 @@ import {
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=fleet-course-3";
+} from "./simulation-features.js?v=fleet-cohesion-5";
 
 import {
   getEquipmentDamagePlan,
@@ -72,11 +72,11 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=fleet-course-3";
+} from "./simulation-rescue.js?v=fleet-cohesion-5";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=fleet-course-3";
+} from "./simulation-phase-finish.js?v=fleet-cohesion-5";
 
 
 import {
@@ -93,11 +93,11 @@ import {
 
 import {
   getVisibility
-} from "./simulation-features.js?v=fleet-course-3";
+} from "./simulation-features.js?v=fleet-cohesion-5";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=fleet-course-3";
+} from "./formation-target-runtime.js?v=fleet-cohesion-5";
 
 import {
   readRangeCommandTarget
@@ -110,7 +110,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=fleet-course-3";
+} from "./range-projection-runtime.js?v=fleet-cohesion-5";
 
 import {
   initializeRoundTraitRuntime,

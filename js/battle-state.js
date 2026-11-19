@@ -1,4 +1,5 @@
-import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=fleet-course-3";
+import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-5";
+import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=fleet-cohesion-5";
 import { readSave, writeSave, subscribeSaveChanges } from "./save-database.js";
 import { MAX_SCENE_FILE_BYTES } from "./save-limits.js";
 import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";
@@ -318,6 +319,7 @@ export async function createBattleStore(units) {
       description,
       groupId,
       isOverallFlagship,
+      formationEmblem: normalizeFormationEmblem(item.formationEmblem),
       isFormationFlagship
     };
   }
@@ -708,6 +710,7 @@ export async function createBattleStore(units) {
       "description",
       "groupId",
       "isOverallFlagship",
+      "formationEmblem",
       "isFormationFlagship"
     ]);
 
@@ -985,6 +988,10 @@ export async function createBattleStore(units) {
         const sample=sampleTerrain(candidate.terrain,x,y);
         if(!sample.inside || (sample.kind==='land' && !unit.underwater)) throw new Error('陣形の艦船を地図内の海域へ配置してください。');
         unit.x=x;unit.y=y;
+      }
+      if (formation.emblem) {
+        const flagship = members.find(unit=>unit.isFormationFlagship);
+        if (flagship) flagship.formationEmblem = formation.emblem;
       }
       group.formation = formation;
     });

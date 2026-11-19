@@ -7,7 +7,7 @@ import {
 
 import {
   createBattleStore
-} from "./battle-state.js?v=fleet-course-3";
+} from "./battle-state.js?v=fleet-cohesion-5";
 
 import {
   previewAction

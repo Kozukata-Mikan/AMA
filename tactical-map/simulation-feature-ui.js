@@ -1,4 +1,4 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-course-3";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-5";
 export function mountSimulationFeatures(store, context) {
   const {
     svg, viewport, view, project, screenPoint
@@ -26,7 +26,7 @@ export function mountSimulationFeatures(store, context) {
 
   const panel = element("details");
   panel.open = true;
-  panel.append(element("summary", "観察陣営・艦船移動"));
+  panel.append(element("summary", "艦船移動・編隊行動"));
 
   const side = element("select");
   side.append(
@@ -37,6 +37,8 @@ export function mountSimulationFeatures(store, context) {
 
   const sideLabel = element("label");
   sideLabel.append(element("span", "観察陣営"), side);
+  sideLabel.className = "observation-control";
+  document.querySelector(".toolbar").prepend(sideLabel);
 
   const actor = element("select");
   const actorLabel = element("label");
@@ -51,7 +53,7 @@ export function mountSimulationFeatures(store, context) {
   const followLabel = element("label");
   followLabel.append(
     follow,
-    element("span", "分旗艦の航跡に編隊が追随する")
+    element("span", "分旗艦に陣形を保って追随する")
   );
 
   let followActorValue = "";
@@ -82,6 +84,11 @@ export function mountSimulationFeatures(store, context) {
 
     followActorValue = actor.value;
     follow.disabled = !allowed;
+    if (typeof editFormation !== "undefined") {
+      const selected = actor.value ? JSON.parse(actor.value) : null;
+      const groupId = selected?.kind === "group" ? selected.id : unit?.groupId;
+      editFormation.disabled = scene.turn.phaseId !== "movement" || !scene.groups.some(group=>group.id===groupId && group.formation?.overview && !group.observationForeign);
+    }
   }
 
 
@@ -171,10 +178,15 @@ if (!confirm(
        "攻撃段階は専用の一括結算操作で処理します。時刻は進めていません。";
   });
 
+  const editFormation = addButton("編隊陣形を編集", () => {
+    const selected = ref(), current = store.getSceneSnapshot();
+    const id = selected.kind === "group" ? selected.id : current.instances.find(unit=>unit.instanceId===selected.id)?.groupId;
+    document.dispatchEvent(new CustomEvent("formation-editor-open",{detail:id}));
+  });
   panel.append(
-    sideLabel,
     fleetPicker.field,
     actorLabel,
+    editFormation,
     followLabel,
     xLabel,
     yLabel,
@@ -182,7 +194,7 @@ if (!confirm(
     element(
       "p",
       "移動段階では自陣営の艦船をドラッグできます。" +
-      "分旗艦を選択して追随を指定すると、直属編隊の行動可能艦が航跡を追います。" +
+      "分旗艦を選択して追随を指定すると、編隊円内の所属艦が相対位置を保って同時に移動します。" +
       "他艦の保存済み移動計画は追随登録で変更しません。" +
       "水面艦は陸地の手前で停止し、河川・浅海は通行可能です。" +
       "艦船接触は移動処理時に撞撃として結算します。" +

@@ -1,12 +1,15 @@
+import { appendFleetOptions } from "./fleet-affiliation.js?v=fleet-cohesion-5";
+import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-5";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {
+  formationCircleMembers,
   formationMembers,
   formationEditingDraft,
   formationReference,
   FORMATION_RADIUS,
   normalizeFormation,
   validateFormationMembers,
-} from "./formation-layout.js?v=fleet-course-3";
+} from "./formation-layout.js?v=fleet-cohesion-5";
 
 export function mountFormationEditor(store, parent) {
   const element = (tag, text = "") => {
@@ -58,7 +61,11 @@ export function mountFormationEditor(store, parent) {
   apply.type = "button";
   const reset = element("button", "円内へ均等配置");
   reset.type = "button";
-  actions.append(overviewLabel, reset, apply);
+  const emblem = element("select");
+  emblem.setAttribute("aria-label","分艦隊徽章");
+  for (const [value,label] of FORMATION_EMBLEMS) emblem.append(new Option(label,value));
+  const emblemLabel = element("label"); emblemLabel.append(element("span","分艦隊徽章"),emblem);
+  actions.append(overviewLabel, emblemLabel, reset, apply);
   const status = element("p");
   status.className = "formation-editor-status";
   status.setAttribute("role", "status");
@@ -77,7 +84,7 @@ export function mountFormationEditor(store, parent) {
   function eligibleGroups() {
     const current = scene();
     return current.groups.filter((group) => {
-      const units = formationMembers(current, group.id);
+      const units = current.mode === "simulation" ? formationCircleMembers(current,group.id) : formationMembers(current, group.id);
       return (
         !group.observationForeign &&
         units.length &&
@@ -91,12 +98,14 @@ export function mountFormationEditor(store, parent) {
   }
   function sync() {
     const old = select.value;
-    select.replaceChildren();
-    for (const group of eligibleGroups())
-      select.append(new Option(group.name, group.id));
+    appendFleetOptions(select,scene(),eligibleGroups());
     if ([...select.options].some((option) => option.value === old))
       select.value = old;
-    open.disabled = !select.options.length;
+    const locked = scene().mode === "simulation" && scene().turn.phaseId !== "movement";
+    open.disabled = !select.options.length || locked;
+    select.disabled = locked;
+    if (locked) message.textContent = "陣形編集は移動段階でのみ利用できます。";
+    else if (message.textContent === "陣形編集は移動段階でのみ利用できます。") message.textContent = "";
     if (
       dialog.open &&
       !applying &&
@@ -205,11 +214,16 @@ export function mountFormationEditor(store, parent) {
   }
   open.addEventListener("click", () => {
     try {
-      const current = scene(),
+      const current = scene();
+      if (current.mode === "simulation" && current.turn.phaseId !== "movement") throw new Error("陣形編集は移動段階でのみ利用できます。");
+      const
         group = current.groups.find((item) => item.id === select.value);
       groupId = group.id;
-      members = formationMembers(current, group.id);
-      const editing = formationEditingDraft(members, group.formation);
+      members = current.mode === "simulation" ? formationCircleMembers(current,group.id) : formationMembers(current, group.id);
+      const flagship = members.find(unit=>unit.isFormationFlagship);
+      emblem.value = flagship?.formationEmblem ?? "knight";
+      emblem.disabled = !flagship;
+      const editing = formationEditingDraft(members, group.formation,current.mode === "simulation");
       heading = editing.heading;
       compass.textContent = `基準：${formationReference(members).name} / 艦艏 ${heading.toFixed(1)}° · 上＝前方 / 右＝右舷 · 直径50マス`;
       revision = current.revision ?? current.updatedAt;
@@ -278,6 +292,7 @@ export function mountFormationEditor(store, parent) {
           heading,
         overview: overview.checked,
         positions: draft,
+        ...(emblem.disabled ? {} : {emblem:emblem.value}),
       });
       dialog.close();
       message.textContent = "陣形を保存しました。";
@@ -289,10 +304,18 @@ export function mountFormationEditor(store, parent) {
       sync();
     }
   });
+  const openFromMap = event => {
+    sync();
+    if (!open.disabled && [...select.options].some(option=>option.value===event.detail)) {
+      select.value=event.detail;open.click();
+    }
+  };
+  document.addEventListener("formation-editor-open",openFromMap);
   const unsubscribe = store.subscribe(sync);
   sync();
   return () => {
     unsubscribe();
+    document.removeEventListener("formation-editor-open",openFromMap);
     dialog.remove();
     panel.remove();
     style.remove();

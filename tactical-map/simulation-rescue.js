@@ -4,7 +4,7 @@ import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=fleet-course-3";
+} from "./simulation-features.js?v=fleet-cohesion-5";
 
 import {
   getEquipmentControlCandidates,

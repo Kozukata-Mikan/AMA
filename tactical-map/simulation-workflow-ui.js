@@ -65,7 +65,7 @@ export function mountSimulationWorkflow(store) {
   const units = findPanel("参戦ユニット");
   const groups = findPanel("集群・編隊");
   const drafts = findPanel("行動・記録");
-  const movement = findPanel("観察陣営・艦船移動");
+  const movement = findPanel("艦船移動・編隊行動");
   const rescue = findPanel("艦船救助");
   const formation = findPanel("編隊陣形");
   const formationAttack = findPanel("編隊一括攻撃");

@@ -1,13 +1,13 @@
-import {planFormationAttack} from "./simulation-formation-attack.js?v=fleet-course-3";
-import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js?v=fleet-course-3";
+import {planFormationAttack} from "./simulation-formation-attack.js?v=fleet-cohesion-5";
+import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js?v=fleet-cohesion-5";
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import {freezeSpecialHistory} from './special-history-snapshot.js';
 import {generateTerrainTask} from './terrain-generation-task.js';
 import {applyBrush,resizeTerrain} from './terrain-data.js';
 import {beginTerrainEdit} from './terrain-edit-history.js';
-import {settleAttackPhase,prepareSettlementAttackPlan} from './simulation-settlement.js?v=fleet-course-3';
-import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js?v=fleet-course-3';
-import {resolveMovementScene} from './simulation-features.js?v=fleet-course-3';
+import {settleAttackPhase,prepareSettlementAttackPlan} from './simulation-settlement.js?v=fleet-cohesion-5';
+import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js?v=fleet-cohesion-5';
+import {resolveMovementScene} from './simulation-features.js?v=fleet-cohesion-5';
 const strokes=new Map();
 export function executeBackgroundTask(task,payload){
  if(task==='terrain-generate')return generateTerrainTask(payload);

@@ -1,14 +1,14 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-course-3";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-5";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
-import {mountFormationEditor} from "./formation-editor.js?v=fleet-course-3";
-import {mountFormationAttackUI} from "./formation-attack-ui.js?v=fleet-course-3";
-import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-course-3";
+import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-5";
+import {mountFormationAttackUI} from "./formation-attack-ui.js?v=fleet-cohesion-5";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-cohesion-5";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=fleet-course-3";
+import { mountSaveIndicator } from "./save-indicator.js?v=fleet-cohesion-5";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -23,22 +23,22 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js?v=naval-formation-2";
 
 import { getDisplayUnits } from "./cluster-engine.js";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=fleet-course-3";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=fleet-cohesion-5";
 import {
   getShipDetailLines,
   getReconConditions
 } from "./ship-runtime.js?v=naval-formation-2";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=fleet-course-3";
-import { mountRescueUI } from "./simulation-rescue-ui.js?v=fleet-course-3";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=fleet-cohesion-5";
+import { mountRescueUI } from "./simulation-rescue-ui.js?v=fleet-cohesion-5";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
 } from "../js/catalog-seed.js?v=naval-formation-2";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=fleet-course-3";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=fleet-cohesion-5";
 import {
   mountSimulationWorkflow
-} from "./simulation-workflow-ui.js?v=workspace-ui-3";
+} from "./simulation-workflow-ui.js?v=fleet-cohesion-5";
 
 import { mountBattleReportUI } from "./simulation-battle-report.js?v=workspace-ui-3";
 
@@ -53,7 +53,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=fleet-course-3";
+} from "./simulation-store.js?v=fleet-cohesion-5";
 
 import {
   gridPosition,
@@ -62,7 +62,7 @@ import {
 
 import { getFactionName } from "../js/faction-data.js";
 
-import { getFlagshipDisplayName } from "./flagship-display.js";
+import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-5";
 
 
 // ===== 推演页面 =====

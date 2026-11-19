@@ -1,13 +1,15 @@
+import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=fleet-cohesion-5";
+import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-5";
 import { getBranchName } from "../js/data-store.js?v=naval-formation-2";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=fleet-course-3";
+import { createSimulation } from "./simulation-store.js?v=fleet-cohesion-5";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js";
 import { mountCatalogEditor } from "./catalog-editor.js?v=naval-formation-2";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
 import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=naval-formation-2";
-import { getFlagshipDisplayName } from "./flagship-display.js";
+import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-5";
 
 
 
@@ -766,6 +768,7 @@ introSection.append(
     );
           let overallFlagship;
     let formationFlagship;
+    let formationEmblem;
 
     if (unit.branch === "navy") {
       overallFlagship = field(
@@ -776,10 +779,11 @@ introSection.append(
 
       formationFlagship = field(
         form,
-        "♞ 分旗艦（各編隊に1隻）",
+        "分旗艦（各編隊に1隻）",
         input(unit.isFormationFlagship, "checkbox")
       );
 
+      formationEmblem = field(form,"分艦隊徽章",select(FORMATION_EMBLEMS,unit.formationEmblem ?? "knight"));
       const flagshipNote = node("p", "", "editor-note");
       form.append(flagshipNote);
 
@@ -795,7 +799,7 @@ introSection.append(
         flagshipNote.textContent = hasGroup
           ? "分旗艦を指定すると、同じ編隊の旧分旗艦は解除されます。" +
             "総旗艦と分旗艦は兼任できます。" +
-            "攻撃・移動の追随機能は、まだ接続されていません。"
+            "移動追随は編隊の相対位置を維持します。"
           : "分旗艦を指定するには、所属編隊を選択してください。" +
             "総旗艦は所属なしでも指定できます。";
       }
@@ -935,6 +939,7 @@ introSection.append(
         if (overallFlagship) {
           patch.isOverallFlagship = overallFlagship.checked;
           patch.isFormationFlagship = formationFlagship.checked;
+          patch.formationEmblem = formationEmblem.value;
         }
 
         if ((patch.x === null) !== (patch.y === null)) {
@@ -1002,6 +1007,8 @@ introSection.append(
       ], selectedGroupId)
     );
 
+    appendFleetOptions(groupSelect,store.getSceneSnapshot(),groups,[["","新しい編隊"]]);
+    groupSelect.value = selectedGroupId;
     groupSelect.addEventListener("change", () => {
       selectedGroupId = groupSelect.value;
       renderGroups(store.getAll());
@@ -1066,13 +1073,24 @@ introSection.append(
 
     // 以迭代方式构造树，避免深层嵌套导致 JS 递归溢出。
     const root = node("ul", "", "group-tree");
-    const tasks = [{ parentId: null, host: root }];
+    const tasks = [];
+    for (const section of fleetSideSections(store.getSceneSnapshot(),groups)) {
+      const heading = node("li",section.label), bucket = node("ul","","group-tree");
+      heading.append(bucket);root.append(heading);
+      const sideIds = new Set(section.groups.map(group=>group.id));
+      for (const group of section.groups.filter(group=>!sideIds.has(group.parentId))) {
+        const li=node("li",group.name), children=node("ul","","group-tree");
+        for (const unit of instances.filter(unit=>unit.groupId===group.id)) children.append(node("li",getFlagshipDisplayName(unit)));
+        li.append(children);bucket.append(li);
+        tasks.push({parentId:group.id,host:children,sideIds});
+      }
+    }
 
     while (tasks.length) {
-      const { parentId, host } = tasks.pop();
+      const { parentId, host, sideIds } = tasks.pop();
 
       for (const group of groups.filter(
-        item => item.parentId === parentId
+        item => item.parentId === parentId && sideIds.has(item.id)
       )) {
         const li = node("li", group.name);
         const children = node("ul", "", "group-tree");
@@ -1085,7 +1103,7 @@ introSection.append(
 
         li.append(children);
         host.append(li);
-        tasks.push({ parentId: group.id, host: children });
+        tasks.push({ parentId: group.id, host: children, sideIds });
       }
     }
 

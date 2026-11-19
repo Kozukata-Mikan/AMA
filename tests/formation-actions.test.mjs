@@ -255,7 +255,7 @@ test("repeated whole-group movement keeps a nonzero anchor offset and a fixed fo
 test("real worker plans a formation attack atomically and refuses orders for foreign formations", async () => {
   const { Worker } = await import("node:worker_threads");
   const { shutdownBackground } = await import(
-    "../tactical-map/background-client.js?v=fleet-course-3"
+    "../tactical-map/background-client.js?v=fleet-cohesion-5"
   );
   const { id, store } = await simulation();
   globalThis.Worker = class {
@@ -396,4 +396,75 @@ test("trail-following ships turn to the final leg instead of the overall displac
   await store.resolveMovement();
   const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
   near(saved.instances[0].heading,45);near(saved.instances[1].heading,45);
+});
+
+test("formation follow translates the existing layout rigidly instead of joining a stern-following queue",async()=>{
+  const initial=fixture();initial.instances[0].isFormationFlagship=true;
+  initial.instances[1].x=-6;initial.instances[1].y=8;
+  const {id,store}=await simulation(initial);
+  await store.beginMovement();
+  await store.planMovement({kind:'unit',id:'a'},20,-10,{followFormationMovement:true});
+  let saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  assert.equal(saved.movementPlans[0].mode,'formation-follow');
+  assert.equal(saved.movementPlans[0].ref.kind,'group');
+  await store.resolveMovement();
+  saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].x,20);near(saved.instances[0].y,-10);
+  near(saved.instances[1].x,14);near(saved.instances[1].y,-2);
+  near(saved.instances[1].heading,saved.instances[0].heading);
+});
+
+test("simulation formation edit excludes out-of-circle and foreign ships and applies layout only after movement",async()=>{
+  const initial=fixture();initial.instances[0].isFormationFlagship=true;
+  const outside=ship('outside','ally',80);outside.faction='';outside.depth=12;outside.groupId='own';
+  initial.instances.push(outside);
+  initial.groups[0].formation={version:2,heading:0,overview:true,positions:[{id:'a',x:0,y:0},{id:'a2',x:0,y:4},{id:'outside',x:16,y:0}]};
+  initial.instances[2].x=10;initial.instances[2].y=10;
+  const {id,store}=await simulation(initial);
+  const {formationCircleMembers}=await import('../tactical-map/formation-layout.js');
+  assert.deepEqual(formationCircleMembers(store.getSceneSnapshot(),'own').map(u=>u.instanceId),['a','a2']);
+  const edit={version:2,heading:0,overview:true,emblem:'queen',positions:[{id:'a',x:0,y:0},{id:'a2',x:-4,y:4}]};
+  await assert.rejects(store.saveFormation('own',edit),/移動段階/);
+  await store.beginMovement();
+  const before=await readSave('junqi-simulation-v1:'+id);
+  await assert.rejects(store.saveFormation('own',{...edit,positions:[...edit.positions,{id:'outside',x:16,y:0}]}),/円内/);
+  assert.equal(await readSave('junqi-simulation-v1:'+id),before);
+  await store.saveFormation('own',edit);
+  let saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  assert.deepEqual(saved.groups[0].formation,initial.groups[0].formation);
+  near(saved.instances[1].x,0);
+  await store.resolveMovement();
+  saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[1].x,-4);near(saved.instances.find(u=>u.instanceId==='outside').x,80);
+  assert.equal(saved.groups[0].formation.membersOnly,true);
+  assert.equal(saved.instances[0].formationEmblem,'queen');
+  assert.equal((await openSimulation(id)).getSceneSnapshot().instances.find(u=>u.instanceId==='a').formationEmblem,'queen');
+});
+
+test("selectable squadron emblems persist in custom scenes and keep the overall crown unchanged",async()=>{
+  const {getFlagshipMarks}=await import('../tactical-map/flagship-display.js');
+  await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};
+  const battle=await createBattleStore([]);
+  await battle.importScene(JSON.stringify({...battle.getScene(),...fixture(),terrainId:'demo-islands-v1'}));
+  for(const [emblem,glyph] of [['queen','♛'],['knight','♞'],['rook','♜'],['bishop','♝']]){
+    await battle.updateUnit('a',{isFormationFlagship:true,isOverallFlagship:true,formationEmblem:emblem});
+    await battle.importScene(battle.exportScene());
+    assert.equal(getFlagshipMarks(battle.getScene().instances[0]),'👑 '+glyph);
+  }
+  const before=battle.exportScene();
+  await assert.rejects(battle.updateUnit('a',{formationEmblem:'invalid'}),/徽章/);
+  assert.equal(battle.exportScene(),before);
+  await battle.destroy();
+});
+
+test("rigid flagship follow stops the entire formation together at contact",async()=>{
+  const initial=fixture();initial.instances[0].isFormationFlagship=true;
+  initial.instances[1].x=-6;initial.instances[1].y=8;initial.instances[2].x=11;
+  const {id,store}=await simulation(initial);
+  await store.beginMovement();
+  await store.planMovement({kind:'unit',id:'a'},20,0,{followFormationMovement:true});
+  await store.resolveMovement();
+  const saved=JSON.parse(await readSave('junqi-simulation-v1:'+id));
+  near(saved.instances[0].x,10);near(saved.instances[1].x,4);near(saved.instances[1].y,8);
+  assert.equal(saved.instances[0].currentHp,5);
 });

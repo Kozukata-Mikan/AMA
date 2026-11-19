@@ -1,7 +1,7 @@
 import {
   selectRangeOccurrences,
   validateRangeSelection
-} from "./range-projection-runtime.js?v=fleet-course-3";
+} from "./range-projection-runtime.js?v=fleet-cohesion-5";
 
 import {
   withRangeCommandTarget,
@@ -11,7 +11,7 @@ import {
 import {
   expandFormationMemberIds,
   validateFormationTopology
-} from "./formation-target-runtime.js?v=fleet-course-3";
+} from "./formation-target-runtime.js?v=fleet-cohesion-5";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

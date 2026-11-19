@@ -1,5 +1,5 @@
-import { formationMembers } from './formation-layout.js?v=fleet-course-3';
-import { getFlagshipDisplayName } from './flagship-display.js';
+import { formationMembers } from './formation-layout.js?v=fleet-cohesion-5';
+import { getFlagshipDisplayName } from './flagship-display.js?v=fleet-cohesion-5';
 
 export const NO_FLEET = '__none__';
 export function fleetSelectionModel(scene, units) {

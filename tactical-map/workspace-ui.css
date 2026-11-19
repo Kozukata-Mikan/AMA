@@ -526,3 +526,19 @@ button:disabled {
   fill: #ffd27b;
   letter-spacing: 0;
 }
+
+.observation-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+.observation-control select {
+  width: auto;
+  padding: 7px 9px;
+  background: #0b1622;
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+}

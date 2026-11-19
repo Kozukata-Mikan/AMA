@@ -1,4 +1,4 @@
-import {formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-course-3";
+import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-5";
 import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=naval-formation-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -12,7 +12,7 @@ import { sampleTerrain } from "./terrain-data.js";
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=fleet-course-3";
+} from "./simulation-rescue.js?v=fleet-cohesion-5";
 
 import {
   createShipEffectsState,
@@ -27,7 +27,7 @@ import {
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=fleet-course-3";
+} from "./simulation-autonomous-rescue.js?v=fleet-cohesion-5";
 
 import {
   routeLength,
@@ -716,7 +716,8 @@ function entityMembers(scene, ref) {
 }
 
 function movementMembers(scene, ref) {
-  const members = entityMembers(scene, ref);
+  const members = ref.kind === "group" ? formationMovementMembers(scene,ref.id) : entityMembers(scene,ref);
+  if (!members.length) fail("編隊円内に移動する艦船がいません。");
   assertManualControl(scene, members);
 
   if (scene.turn.phaseId !== "movement") {
@@ -805,12 +806,19 @@ function validateRoute(scene, unit, to) {
 }
 
 
-function buildPlan(scene, ref, x, y) {
+function buildPlan(scene, ref, x, y, {preserveOffsets = false, membersOverride = null} = {}) {
+  const pending = !membersOverride && ref.kind === "group" && scene.movementPlans?.find(plan=>plan.mode === "formation-layout" && plan.ref.id===ref.id);
+  if (pending) {
+    const members = movementMembers(scene,ref);
+    const planning = clone(scene);
+    planning.groups.find(group=>group.id===ref.id).formation = pending.formation;
+    return {...buildPlan(planning,ref,x,y,{preserveOffsets,membersOverride:members}),mode:"formation-layout",formation:pending.formation};
+  }
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
     fail("移動先の座標は有限の数値で指定してください。");
   }
 
-  const members = movementMembers(scene, ref);
+  const members = membersOverride ?? movementMembers(scene, ref);
   const anchor = ref.kind === "group" ? formationCenter(members,scene.groups.find(group=>group.id===ref.id)?.formation) : members[0];
   const dx = x - anchor.x;
   const dy = y - anchor.y;
@@ -821,10 +829,10 @@ function buildPlan(scene, ref, x, y) {
   }
 
   const formation = ref.kind === "group" ? scene.groups.find(group => group.id === ref.id)?.formation : null;
-  if(formation)validateFormationMembers(members,formation);
+  if(formation)validateFormationMembers(formationMembers(scene,ref.id),formation);
   const destinations = members.map(unit => {
     const point = formation?.positions.find(point => point.id === unit.instanceId);
-    const offset = point ? formationOffset(point, formation) : null;
+    const offset = point && !preserveOffsets ? formationOffset(point, formation) : null;
     const to = offset ? {x:x+offset.x,y:y+offset.y} : {x:unit.x+dx,y:unit.y+dy};
     if (Math.hypot(to.x-unit.x,to.y-unit.y) > limitFor([unit])+EPSILON) fail("陣形移動が速力または航続距離を超えています。");
     validateRoute(scene, unit, to);
@@ -850,135 +858,22 @@ function buildPlan(scene, ref, x, y) {
 }
 
 function buildFollowPlan(scene, ref, x, y) {
-  if (ref?.kind !== "unit") {
-    fail("移動追随は分旗艦単体を選択して指定してください。");
-  }
-
+  if (ref?.kind !== "unit") fail("分旗艦単体を選択して編隊追随を指定してください。");
   const [leader] = movementMembers(scene, ref);
-
-  if (
-    leader.isFormationFlagship !== true ||
-    !scene.groups.some(group => group.id === leader.groupId)
-  ) {
-    fail("所属編隊の分旗艦のみ移動追随を指示できます。");
-  }
-
-  // 先使用原入口检查领舰额度与目标坐标。
-  const leaderPlan = buildPlan(scene, ref, x, y);
-  const rawLeaderRoute = [
-    { x: leader.x, y: leader.y },
-    { x, y }
-  ];
-
-  const leaderRoute = clipLandRoute(
-    scene.terrain,
-    leader,
-    rawLeaderRoute
-  ).route;
-
-  const leaderDistance = routeLength(leaderRoute);
-
-  // 不覆盖其他舰船已经保存的移动任务。
-  const occupied = new Set(
-    scene.movementPlans
-      .filter(plan =>
-        !(
-          plan.mode === "follow" &&
-          plan.ref?.kind === "unit" &&
-          plan.ref.id === leader.instanceId
-        ) &&
-        !(
-          plan.mode !== "follow" &&
-          plan.memberIds.length === 1 &&
-          plan.memberIds[0] === leader.instanceId
-        )
-      )
-      .flatMap(plan => plan.memberIds)
-  );
-
-  if (occupied.has(leader.instanceId)) {
-    fail("分旗艦が別の編隊移動計画に参加しています。先に取消してください。");
-  }
-
-  const members = [
-    leader,
-    ...scene.instances.filter(unit =>
-      unit.instanceId !== leader.instanceId &&
-      unit.groupId === leader.groupId &&
-      unit.side === leader.side &&
-      unit.branch === "navy" &&
-      operational(unit) &&
-      !occupied.has(unit.instanceId) &&
-      (unit.underwater === true) === (leader.underwater === true) &&
-      (
-        unit.underwater !== true ||
-        unit.depth === leader.depth
-      )
-    )
-  ];
-
-  assertManualControl(scene, members);
-
-  const destinations = [];
-  let previousRoute = leaderRoute;
-
-  for (let index = 0; index < members.length; index++) {
-    const unit = members[index];
-    let route;
-
-    if (index === 0) {
-      route = leaderRoute;
-    } else {
-      // 从自身起点接近前舰起点，再沿前舰已经规划的航迹走。
-      // 去掉前舰航迹末端1格，保留队列间距。
-      const trail = trimRoute(
-        previousRoute,
-        Math.max(0, routeLength(previousRoute) - 1)
-      );
-
-      const candidate = [
-        { x: unit.x, y: unit.y },
-        ...trail
-      ];
-
-      route = trimRoute(
-        candidate,
-        Math.min(leaderDistance, limitFor([unit]))
-      );
-
-      route = clipLandRoute(
-        scene.terrain,
-        unit,
-        route
-      ).route;
-    }
-
-    const end = route[route.length - 1];
-
-    destinations.push({
-      instanceId: unit.instanceId,
-      fromX: unit.x,
-      fromY: unit.y,
-      x: end.x,
-      y: end.y,
-      distance: routeLength(route),
-      route
-    });
-
-    previousRoute = route;
-  }
-
-  return {
-    mode: "follow",
-    turnNumber: scene.turn.number,
-    ref: clone(ref),
-    formationId: leader.groupId,
-    requestedX: x,
-    requestedY: y,
-    memberIds: members.map(unit => unit.instanceId),
-    distance: leaderPlan.distance,
-    destinations
-  };
+  if (!leader.isFormationFlagship || !scene.groups.some(group=>group.id===leader.groupId))
+    fail("所属編隊の分旗艦のみ編隊追随を指示できます。");
+  const groupRef = {kind:"group",id:leader.groupId};
+  const members = movementMembers(scene,groupRef);
+  if (!members.some(unit=>unit.instanceId===leader.instanceId)) fail("分旗艦が編隊円内にいません。");
+  const memberIds = new Set(members.map(unit=>unit.instanceId));
+  if (scene.movementPlans.some(plan=>plan.memberIds.some(id=>memberIds.has(id)) &&
+      !(plan.mode === "formation-follow" && plan.leaderId === leader.instanceId) &&
+      !(plan.ref.kind === "unit" && plan.ref.id === leader.instanceId)))
+    fail("編隊艦が別の移動計画に参加しています。先に取消してください。");
+  const group = scene.groups.find(item=>item.id===leader.groupId);
+  const center = formationCenter(members,group.formation);
+  const plan = buildPlan(scene,groupRef,center.x+x-leader.x,center.y+y-leader.y,{preserveOffsets:true});
+  return {...plan,mode:"formation-follow",leaderId:leader.instanceId,leaderRequestedX:x,leaderRequestedY:y};
 }
 
 /**
@@ -1180,7 +1075,7 @@ function createAutonomousMovementPlans(
   const rigidMembers=new Set();
   for(const group of planning.groups.filter(item=>item.formation && !item.parentId)
     .concat(planning.groups.filter(item=>item.formation && item.parentId))){
-    const members=formationMembers(planning,group.id);
+    const members=formationMovementMembers(planning,group.id);
     if(!members.length || members.some(item=>rigidMembers.has(item.instanceId)))continue;
     if(members.some(item=>!["enemy","neutral"].includes(item.side)))continue;
     for(const member of members)rigidMembers.add(member.instanceId);
@@ -1390,14 +1285,20 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
       const formation = normalizeFormation(value);
       await commit(scene => {
         const group = scene.groups.find(item => item.id === id);
-        const members = formationMembers(scene,id);
-        validateFormationMembers(members,formation);
+        const allMembers = formationMembers(scene,id);
+        const members = group?.formation?.overview ? formationCircleMembers(scene,id) : allMembers;
+        if (formation.positions.length !== members.length || formation.positions.some(point=>!members.some(unit=>unit.instanceId===point.id)))
+          fail("陣形編集は現在の編隊円内にいる本編隊艦だけ指定してください。");
+        if (members.length !== allMembers.length) formation.membersOnly = true;
+        validateFormationMembers(allMembers,formation);
         assertManualControl(scene,members);
         if (!group) fail("編隊が見つかりません。");
         if (scene.turn.phaseId !== "movement") fail("陣形変更は移動段階で計画してください。");
         const center = formationCenter(members,group.formation);
-        group.formation = formation;
-        const plan = buildPlan(scene,{kind:"group",id},center.x,center.y);
+        const planning = clone(scene);
+        planning.groups.find(item=>item.id===id).formation = formation;
+        const plan = buildPlan(planning,{kind:"group",id},center.x,center.y,{membersOverride:members});
+        plan.formation = formation;
         const ids = new Set(plan.memberIds);
         scene.movementPlans = scene.movementPlans.filter(old => !old.memberIds.some(id => ids.has(id)));
         plan.mode = "formation-layout";
@@ -1552,7 +1453,27 @@ validationScene.controls.enemyAutonomy = false;
 
           let rebuilt;
 
-          if (saved.mode === "follow") {
+          if (saved.mode === "formation-layout") {
+            const group = validationScene.groups.find(item=>item.id===saved.ref.id);
+            if (!group) fail("編隊が見つかりません。");
+            const members = group.formation?.overview ? formationCircleMembers(validationScene,group.id) : formationMembers(validationScene,group.id);
+            if (members.length !== saved.memberIds.length || members.some(unit=>!saved.memberIds.includes(unit.instanceId)))
+              fail("編隊円内の構成が変更されています。陣形計画を再指定してください。");
+            validationScene.controls.observationSide = members[0]?.side;
+            const formation = normalizeFormation(saved.formation);
+            validateFormationMembers(formationMembers(validationScene,group.id),formation);
+            assertManualControl(validationScene,members);
+            const planning = clone(validationScene);
+            planning.groups.find(item=>item.id===group.id).formation = formation;
+            rebuilt = buildPlan(planning,saved.ref,saved.requestedX,saved.requestedY,{membersOverride:members});
+            rebuilt.formation = formation;
+          } else if (saved.mode === "formation-follow") {
+            const leader = scene.instances.find(unit=>unit.instanceId===saved.leaderId);
+            if (!leader || leader.groupId !== saved.ref.id) fail("追随編隊が変更されています。計画を再指定してください。");
+            validationScene.controls.observationSide = leader.side;
+            rebuilt = buildFollowPlan(validationScene,{kind:"unit",id:leader.instanceId},saved.leaderRequestedX,saved.leaderRequestedY);
+            if (JSON.stringify(rebuilt) !== JSON.stringify(saved)) fail("編隊追随条件が変更されています。計画を再指定してください。");
+          } else if (saved.mode === "follow") {
             const leader = scene.instances.find(
               unit => unit.instanceId === saved.ref?.id
             );
@@ -1578,7 +1499,7 @@ validationScene.controls.enemyAutonomy = false;
               fail("追随条件が変更されています。計画を再指定してください。");
             }
           } else {
-            const members = entityMembers(scene, saved.ref);
+            const members = saved.ref.kind === "group" ? formationMovementMembers(scene,saved.ref.id) : entityMembers(scene,saved.ref);
 
             if (
               members.length !== saved.memberIds.length ||
@@ -1677,6 +1598,18 @@ validationScene.controls.enemyAutonomy = false;
             0,
             unit.shipState.remainingEndurance - destination.distance
           );
+        }
+
+        for (const plan of checked.filter(item=>item.mode === "formation-layout")) {
+          const complete = plan.destinations.every(target=>{
+            const unit = scene.instances.find(item=>item.instanceId===target.instanceId);
+            return Math.hypot(unit.x-target.x, unit.y-target.y) <= EPSILON;
+          });
+          if (complete) {
+            scene.groups.find(item=>item.id===plan.ref.id).formation = plan.formation;
+            const flagship = scene.instances.find(unit=>plan.memberIds.includes(unit.instanceId) && unit.isFormationFlagship);
+            if (flagship && plan.formation.emblem) flagship.formationEmblem = plan.formation.emblem;
+          }
         }
 
         const damageByUnit = new Map();

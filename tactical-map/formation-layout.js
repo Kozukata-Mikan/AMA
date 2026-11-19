@@ -1,4 +1,4 @@
-import { getFlagshipMarks } from "./flagship-display.js";
+import { getFlagshipMarks, normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-5";
 export const FORMATION_RADIUS = 25;
 export function formationReference(members) {
   return members.find((unit) => unit.isFormationFlagship) ?? members[0];
@@ -16,16 +16,17 @@ export function formationOffset(point, formation) {
 
 // Legacy v1 positions are map-relative. Convert only the editing draft, keeping
 // their world placement and the stored original untouched until Apply.
-export function formationEditingDraft(members, formation) {
+export function formationEditingDraft(members, formation, actual = false) {
   const reference = formationReference(members);
   const heading = Number(reference.heading) || 0;
   const center = formationCenter(members, formation);
-  const positions = formation?.positions ?? members.map(unit => ({
+  const memberIds = new Set(members.map(unit=>unit.instanceId));
+  const positions = (!actual && formation?.positions.filter(point=>memberIds.has(point.id))) || members.map(unit => ({
     id: unit.instanceId, x: unit.x - center.x, y: unit.y - center.y,
   }));
   return {version: 2, overview: formation?.overview ?? true, heading,
     positions: positions.map(point => ({id: point.id, ...rotateFormationPoint(
-      formation ? formationOffset(point, formation) : point, -heading)}))};
+      formation && !actual ? formationOffset(point, formation) : point, -heading)}))};
 }
 
 export function formationMembers(scene, id) {
@@ -97,6 +98,8 @@ export function normalizeFormation(value) {
       }
     }
   return { version: value.version, overview: value.overview, positions,
+    ...(value.membersOnly === true ? {membersOnly:true} : {}),
+    ...(value.emblem === undefined ? {} : {emblem:normalizeFormationEmblem(value.emblem)}),
     ...(value.version === 2 ? {heading: ((value.heading % 360) + 360) % 360} : {}) };
 }
 
@@ -106,17 +109,35 @@ export function validateFormationMembers(members, formation) {
     members.some(
       (unit) => unit.branch !== "navy" || unit.side !== members[0].side,
     ) ||
-    formation.positions.length !== members.length ||
-    members.some(
-      (unit) =>
-        !formation.positions.some((point) => point.id === unit.instanceId),
-    )
+    !formation.positions.length ||
+    (formation.membersOnly !== true && formation.positions.length !== members.length) ||
+    formation.positions.some(point=>!members.some(unit=>unit.instanceId===point.id))
   ) {
     throw new Error(
       "同じ陣営の全艦を陣形に含めてください。編隊構成を再読込してください。",
     );
   }
 }
+
+export function formationParticipants(scene, id) {
+  const members = formationMembers(scene,id);
+  const formation = scene.groups.find(group=>group.id===id)?.formation;
+  if (!formation?.membersOnly) return members;
+  const ids = new Set(formation.positions.map(point=>point.id));
+  return members.filter(unit=>ids.has(unit.instanceId));
+}
+export function formationCircleMembers(scene,id) {
+  return formationViews(scene).find(view=>view.group.id===id)?.members ?? [];
+}
+export function formationMovementMembers(scene,id) {
+  const group = scene.groups.find(item=>item.id===id);
+  return group?.formation?.overview ? formationCircleMembers(scene,id) : formationParticipants(scene,id);
+}
+export function formationSide(members) {
+  const sides = new Set(members.map(unit=>unit.side));
+  return sides.size === 1 ? [...sides][0] : sides.size ? "mixed" : "empty";
+}
+export const FORMATION_SIDE_COLORS = {ally:"#83dcff",enemy:"#ff9b65",neutral:"#b7bdcf",mixed:"#c9b6ed",empty:"#b7bdcf"};
 
 export function formationViews(scene) {
   const views = [];
@@ -127,7 +148,7 @@ export function formationViews(scene) {
     .concat(
       scene.groups.filter((item) => item.formation?.overview && item.parentId),
     )) {
-    const members = formationMembers(scene, group.id).filter(
+    let members = formationParticipants(scene, group.id).filter(
       (unit) =>
         unit.branch === "navy" &&
         Number.isFinite(unit.x) &&
@@ -142,6 +163,8 @@ export function formationViews(scene) {
           y: members.reduce((sum, u) => sum + u.y, 0) / members.length,
         }
       : formationCenter(members, group.formation);
+    members = members.filter(unit=>Math.hypot(unit.x-center.x, unit.y-center.y) <= FORMATION_RADIUS + 1e-7);
+    if (!members.length) continue;
     for (const unit of members) claimed.add(unit.instanceId);
     views.push({ group, members, center });
   }
@@ -154,7 +177,9 @@ export function drawFormationViews(layer, scene, project, select) {
   const ns = "http://www.w3.org/2000/svg";
   for (const { group, members, center } of views) {
     const root = document.createElementNS(ns, "g");
-    root.setAttribute("class", "formation-overview");
+    const side = formationSide(members), color = FORMATION_SIDE_COLORS[side];
+    root.setAttribute("class", `formation-overview ${side}`);
+    root.setAttribute("data-side", side);
     root.setAttribute("data-formation-id", group.id);
     const points = Array.from({ length: 49 }, (_, i) => {
       const angle = (i * Math.PI) / 24;
@@ -167,15 +192,15 @@ export function drawFormationViews(layer, scene, project, select) {
     });
     const circle = document.createElementNS(ns, "polygon");
     circle.setAttribute("points", points.join(" "));
-    circle.setAttribute("fill", "#4fa4d51a");
-    circle.setAttribute("stroke", "#80caff");
+    circle.setAttribute("fill", `${color}1a`);
+    circle.setAttribute("stroke", color);
     circle.setAttribute("vector-effect", "non-scaling-stroke");
     circle.style.pointerEvents = "none";
     const text = document.createElementNS(ns, "text");
     const p = project(center.x, center.y - FORMATION_RADIUS, 0);
     text.setAttribute("x", p.x);
     text.setAttribute("y", p.y - 8);
-    text.setAttribute("fill", "#bce7ff");
+    text.setAttribute("fill", color);
     text.textContent = group.name;
     text.style.cursor = "pointer";
     text.setAttribute("role", "button");
@@ -192,9 +217,13 @@ export function compactFormationIcon(root, unit) {
     node.style.display = "none";
   const marks = getFlagshipMarks(unit);
   if (!marks) return;
+  const height = unit.labelHeight ?? 65;
+  const leader = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  for (const [key,value] of Object.entries({x1:0,y1:0,x2:0,y2:-height,stroke:"currentColor","stroke-width":1,"vector-effect":"non-scaling-stroke","pointer-events":"none",class:"formation-flagship-leader"})) leader.setAttribute(key,value);
+  root.append(leader);
   const badge = document.createElementNS("http://www.w3.org/2000/svg", "text");
   badge.setAttribute("class", "formation-flagship-mark");
-  badge.setAttribute("x", "7"); badge.setAttribute("y", "-7");
+  badge.setAttribute("x", "7"); badge.setAttribute("y", String(-height + 4));
   badge.setAttribute("fill", "#ffd27b");
   badge.setAttribute("font-size", "11");
   badge.setAttribute("stroke", "#07131f");

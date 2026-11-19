@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=fleet-course-3';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=fleet-cohesion-5';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';
