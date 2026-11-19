@@ -1,3 +1,5 @@
+import {mountFormationEditor} from "./formation-editor.js";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
@@ -961,10 +963,11 @@ function drawInvalidUnit(unit, reason) {
 function drawUnits() {
   // 方便以后重新绘制，避免出现重复单位。
   layers.units.replaceChildren();
+  const compactIds=drawFormationViews(layers.units,{instances:units,groups:unitGroups},project);
 
   const displayUnits = getDisplayUnits(
     units,
-    unitGroups,
+    unitGroups.filter(group=>!group.formation?.overview && (group.kind!=="cluster" || !compactIds.size || !formationMembers({instances:units,groups:unitGroups},group.id).some(unit=>compactIds.has(unit.instanceId)))),
     terrain,
     getUnitSpatialState
   );
@@ -1051,11 +1054,13 @@ if (unit.branch === "air") {
 
    label.textContent = getFlagshipDisplayName(unit);
 
+    if (compactIds.has(unit.instanceId)) compactFormationIcon(group);
+
     // 点击区域随图标等级扩大。
     createSVG("circle", {
       cx: 0,
       cy: 0,
-      r: 17 * scale,
+      r: (compactIds.has(unit.instanceId) ? 3 : 17) * scale,
       class: "hit-area"
     }, group);
 
@@ -1775,6 +1780,8 @@ async function startEditor() {
 
 
     
+    const disposeFormationEditor=mountFormationEditor(store,container);
+
     window.addEventListener("pagehide", async event => {
       if (event.persisted) return;
 
@@ -1785,6 +1792,7 @@ async function startEditor() {
       editorController?.destroy();
       await store.destroy();
       disposeSaveIndicator();
+      disposeFormationEditor();
     });
   } catch (error) {
     console.error(error);

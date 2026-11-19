@@ -1,3 +1,4 @@
+import {normalizeFormation, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js";
 import { readSave, writeSave, subscribeSaveChanges } from "./save-database.js";
 import { MAX_SCENE_FILE_BYTES } from "./save-limits.js";
 import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";
@@ -6,7 +7,8 @@ import { freezeSnapshot } from "../tactical-map/read-only-snapshot.js";
 import {
   createDemoTerrain,
   validateTerrain,
-  freezeTerrainSnapshot
+  freezeTerrainSnapshot,
+  sampleTerrain
 } from "../tactical-map/terrain-data.js";
 
 import {
@@ -341,7 +343,8 @@ export async function createBattleStore(units) {
       id: requireText(item.id, "編隊番号"),
       name: requireText(item.name, "編隊名"),
       parentId,
-      kind
+      kind,
+      ...(item.formation === undefined ? {} : {formation:normalizeFormation(item.formation)})
     };
   }
 
@@ -967,6 +970,25 @@ export async function createBattleStore(units) {
     return copy(group);
   }
 
+  async function saveFormation(id, value) {
+    const formation = normalizeFormation(value);
+    await change(candidate => {
+      const group = candidate.groups.find(item => item.id === id);
+      if (!group) throw new Error('編隊が見つかりません。');
+      const members = formationMembers(candidate, id);
+      validateFormationMembers(members, formation);
+      const center = formationCenter(members,group.formation);
+      for (const point of formation.positions) {
+        const unit = members.find(item => item.instanceId === point.id);
+        const x=center.x+point.x,y=center.y+point.y;
+        const sample=sampleTerrain(candidate.terrain,x,y);
+        if(!sample.inside || (sample.kind==='land' && !unit.underwater)) throw new Error('陣形の艦船を地図内の海域へ配置してください。');
+        unit.x=x;unit.y=y;
+      }
+      group.formation = formation;
+    });
+  }
+
   async function updateGroup(id, patch) {
     if (!isObject(patch)) {
       throw new Error("編隊更新データの書式が不正です。");
@@ -1227,6 +1249,7 @@ export async function createBattleStore(units) {
     addCluster,
     addGroup,
     updateGroup,
+    saveFormation,
     removeGroup,
     updateView,
     renameScene,

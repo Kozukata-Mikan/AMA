@@ -8,6 +8,7 @@ import {
   applyAttackBatchResources,
   resolveAttackBatchHitStep,
   prepareAttackCommandPreview,
+  createAttackCommandPreviewer,
   prepareBatchHitChecks
 } from "./simulation-attack-batch.js";
 
@@ -1837,8 +1838,10 @@ if (profile.issues.length) {
 export function validateDeferredAttackPlans(
   scene,
   commands,
-  { includeCurrent = false } = {}
+  { includeCurrent = false } = {},
+  previewCommand = prepareAttackCommandPreview
 ) {
+  const entries = [];
   for (const command of commands) {
     if (
       !includeCurrent &&
@@ -1849,7 +1852,7 @@ export function validateDeferredAttackPlans(
 
 
     const { current, entry } =
-      prepareAttackCommandPreview(scene, command);
+      previewCommand(scene, command);
 
     const observedCurrent = {
       ...current,
@@ -1924,7 +1927,14 @@ export function validateDeferredAttackPlans(
     }
 
     assertEffectAlgorithms(current, current, effectEntries);
+    entries.push(entry);
   }
+  return entries;
+}
+
+export function createDeferredAttackValidator(scene) {
+  const preview = createAttackCommandPreviewer(scene);
+  return commands => validateDeferredAttackPlans(scene,commands,{includeCurrent:true},(_,command)=>preview(command));
 }
 
 // 只筛掉明确可跳过的射距、射高、射界错误。

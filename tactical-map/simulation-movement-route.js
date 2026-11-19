@@ -300,6 +300,16 @@ export function resolveMovementRoutes(scene, destinations, getLimit) {
     requested.set(item.instanceId, item);
   }
 
+  const rigidDurations = new Map();
+  for (const unit of scene.instances) {
+    const item = requested.get(unit.instanceId);
+    if (!item?.rigidGroup) continue;
+    const length = routeLength(item.route);
+    const speed = getLimit(unit);
+    const duration = length === 0 ? 0 : length / speed;
+    rigidDurations.set(item.rigidGroup, Math.max(rigidDurations.get(item.rigidGroup) ?? 0,duration));
+  }
+
   const tracks = [];
 
   for (const unit of scene.instances) {
@@ -320,12 +330,35 @@ export function resolveMovementRoutes(scene, destinations, getLimit) {
     const track = trajectory(
       unit,
       clipped.route,
-      item ? getLimit(unit) : 0
+      item?.rigidGroup && rigidDurations.get(item.rigidGroup) > 0
+        ? routeLength(input) / rigidDurations.get(item.rigidGroup)
+        : item ? getLimit(unit) : 0
     );
+    track.rigidGroup = item?.rigidGroup;
+    track.speed = item?.rigidGroup && rigidDurations.get(item.rigidGroup) > 0
+      ? routeLength(input) / rigidDurations.get(item.rigidGroup)
+      : item ? getLimit(unit) : 0;
 
     if (clipped.blocked) track.reason = "land";
     tracks.push(track);
   }
+
+  function synchronizeRigidStops() {
+    const stops = new Map();
+    for (const track of tracks) {
+      if (track.rigidGroup && (track.moving || track.reason)) {
+        stops.set(track.rigidGroup, Math.min(stops.get(track.rigidGroup) ?? 1,track.stop));
+      }
+    }
+    for (const track of tracks) {
+      const stop = stops.get(track.rigidGroup);
+      if (stop !== undefined && track.stop > stop + EPS) {
+        track.stop = stop;
+        track.reason = 'formation';
+      }
+    }
+  }
+  synchronizeRigidStops();
 
   // 旧集群可能重叠部署。不能把这种状态自动当作新撞击扣血。
   // 有移动参与时要求先使用合法的分散部署。
@@ -408,6 +441,7 @@ export function resolveMovementRoutes(scene, destinations, getLimit) {
       }
     }
 
+    synchronizeRigidStops();
     now = earliest;
   }
 
@@ -418,7 +452,7 @@ export function resolveMovementRoutes(scene, destinations, getLimit) {
 
     const actualDistance = Math.min(
       routeLength(track.route),
-      getLimit(track.unit) * track.stop
+      track.speed * track.stop
     );
 
     const route = trimRoute(track.route, actualDistance);

@@ -1,3 +1,6 @@
+import {mountFormationEditor} from "./formation-editor.js";
+import {mountFormationAttackUI} from "./formation-attack-ui.js";
+import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
@@ -528,6 +531,9 @@ function drawMap() {
   renderDistanceGrid();
 
   unitLayer.replaceChildren();
+  const compactIds=drawFormationViews(unitLayer,scene,project,id=>{
+    document.dispatchEvent(new CustomEvent('formation-select',{detail:id}));
+  });
 
   function spatialState(unit) {
     if (unit.x == null || unit.y == null) {
@@ -570,8 +576,7 @@ function drawMap() {
   );
 
   const displayGroups = scene.groups.filter(group =>
-    group.kind !== "cluster" ||
-    !groupsWithWrecks.has(group.id)
+    !group.formation?.overview && (group.kind !== "cluster" || (!groupsWithWrecks.has(group.id) && (!compactIds.size || !formationMembers(scene,group.id).some(unit=>compactIds.has(unit.instanceId)))))
   );
 
   const displayUnits = [
@@ -741,6 +746,11 @@ if (statusFlags.length) {
       r: 17 * scale,
       class: "hit-area"
     }, group);
+
+    if (compactIds.has(unit.instanceId)) {
+      group.querySelector('.hit-area')?.setAttribute('r',3*scale);
+      compactFormationIcon(group);
+    }
 
     group.addEventListener("click", () => {
       selectUnit(unit.instanceId);
@@ -1440,6 +1450,8 @@ await showCampaignIntro(
 );
 
 mountSimulationRulebook(store);
+registerPageDisposer(mountFormationEditor(store,document.querySelector('aside')));
+registerPageDisposer(mountFormationAttackUI(store,document.querySelector('aside')));
 
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
 registerPageDisposer(mountRescueUI(store));

@@ -67,6 +67,8 @@ export function mountSimulationWorkflow(store) {
   const drafts = findPanel("行動・記録");
   const movement = findPanel("観察陣営・艦船移動");
   const rescue = findPanel("艦船救助");
+  const formation = findPanel("編隊陣形");
+  const formationAttack = findPanel("編隊一括攻撃");
   const attack = findPanel(
     "単体攻撃・段階結算",
     "攻撃装備・一括確認"
@@ -276,7 +278,9 @@ export function mountSimulationWorkflow(store) {
   startSection.body.append(environment);
   movementSection.body.insertBefore(movement, repairNote);
   movementSection.body.insertBefore(rescue, repairNote);
+  if(formation)movementSection.body.insertBefore(formation,repairNote);
   attackSection.body.prepend(attack);
+  if(formationAttack)attackSection.body.insertBefore(formationAttack,attack);
 
 
   attackActions.append(execute);
@@ -287,7 +291,7 @@ export function mountSimulationWorkflow(store) {
 
   const knownPanels = new Set([
     environment, units, groups, drafts,
-    movement, rescue, attack
+    movement, rescue, attack, formation, formationAttack
   ]);
 
   // 保留其他模块创建的侧栏节点，不因布局重排而删除。

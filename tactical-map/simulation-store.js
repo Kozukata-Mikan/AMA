@@ -707,7 +707,7 @@ export async function openSimulation(id) {
     }
   }
 
-    async function commit(change, backgroundOperation = null, attackPreflight = false) {
+    async function commit(change, backgroundOperation = null, attackPreflight = false, backgroundRequest = null) {
     if (saving) throw new Error("保存中です。完了してから次の操作を行ってください。");
     setSaving(true);
     try {
@@ -753,7 +753,7 @@ export async function openSimulation(id) {
     if (backgroundOperation) {
       // The worker gets an isolated current scene, never the immutable deployment history.
       const calculation = await runBackgroundTask('simulation', {
-        operation: backgroundOperation, scene: encodeSpecialHistory({...candidate, initialScene: null})
+        operation: backgroundOperation, request:backgroundRequest, scene: encodeSpecialHistory({...candidate, initialScene: null})
       });
       if (!calculation?.fields || 'terrain' in calculation.fields || 'initialScene' in calculation.fields) {
         throw new Error('計算結果の保存形式が不正です。');
@@ -911,8 +911,8 @@ export async function openSimulation(id) {
     } finally { setSaving(false); }
   }
 
-  async function commitBackground(operation) {
-    return commit(() => {}, operation);
+  async function commitBackground(operation, request = null) {
+    return commit(() => {}, operation, false, request);
   }
 
 
@@ -2445,6 +2445,12 @@ if (equipmentPower) {
           ruling: preview.ruling
         });
       });
+    },
+
+    async saveFormationAttack(request, expectedRevision) {
+      if (expectedRevision !== state.revision) throw new Error("状態が変更されています。もう一度確認してください。");
+      const receipt = await commitBackground('formation-attack',copy(request));
+      return {...receipt,revision:state.revision};
     },
 
     async createGroup({ name, kind, memberIds }) {

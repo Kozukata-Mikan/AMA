@@ -1,0 +1,87 @@
+.formation-dialog {
+  width: min(940px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: #101e2c;
+  color: #dfedf7;
+  border: 1px solid #6b9ebc;
+  border-radius: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.formation-dialog::backdrop {
+  background: #020810c9;
+}
+.formation-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+.formation-dialog h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.formation-editor-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 240px;
+  gap: 18px;
+  margin: 18px 0;
+}
+.formation-editor-workspace svg {
+  width: 100%;
+  max-height: 52vh;
+  aspect-ratio: 1;
+  touch-action: none;
+  background: #07131f;
+  border-radius: 50%;
+}
+.formation-editor-workspace [data-ship] {
+  cursor: grab;
+}
+.formation-editor-workspace [data-ship]:focus {
+  outline: none;
+  stroke: #ffc869;
+  stroke-width: 0.25;
+}
+.formation-editor-info {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  background: #142b3d;
+  padding: 14px;
+  border-radius: 8px;
+}
+.formation-editor-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.formation-editor-members button {
+  width: auto;
+  margin: 0;
+}
+.formation-editor-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.formation-editor-status {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.formation-overview text {
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: #07101a;
+  stroke-width: 3px;
+}
+@media (max-width: 640px) {
+  .formation-editor-workspace {
+    grid-template-columns: 1fr;
+  }
+  .formation-editor-info {
+    min-height: 70px;
+  }
+}

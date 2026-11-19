@@ -1,3 +1,4 @@
+import {planFormationAttack} from "./simulation-formation-attack.js";
 import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js";
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import {freezeSpecialHistory} from './special-history-snapshot.js';
@@ -41,6 +42,7 @@ export function executeBackgroundTask(task,payload){
     break;
    }
    case 'attack':receipt=settleAttackPhase(scene);break;
+   case 'formation-attack':receipt=planFormationAttack(scene,payload.request);break;
    case 'special':receipt=finishSpecialPhase(scene);break;
    case 'turn-end': {
     const roundNumber = scene.turn.number;

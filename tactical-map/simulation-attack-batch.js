@@ -1152,6 +1152,24 @@ const firingReports = assertBroadsideQuotas(
  * 改变的是预览副本的规则上下文，不创建阶段开始快照。
  * 不可用于正式扣弹、命中或结算。
  */
+// A planning transaction may inspect many weapons against the same unchanged
+// positions. Share that isolated snapshot and its per-side visibility queries.
+export function createAttackCommandPreviewer(scene) {
+  initializeAttackRuntime(scene);
+  const base = copy({terrain:scene.terrain,environment:scene.environment,controls:scene.controls,
+    turn:scene.turn,instances:scene.instances,groups:scene.groups,rayTargetRuntime:scene.rayTargetRuntime});
+  validateFormationTopology(base);
+  const visibilityBySide = new Map();
+  const phases = new Map();
+  return command => {
+    if (!phases.has(command.phaseId)) {
+      phases.set(command.phaseId,{...base,turn:{...base.turn,phaseId:command.phaseId}});
+    }
+    const current = phases.get(command.phaseId);
+    return {current,entry:prepareCommand(current,command,visibilityBySide)};
+  };
+}
+
 export function prepareAttackCommandPreview(scene, command) {
   initializeAttackRuntime(scene);
 

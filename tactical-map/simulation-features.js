@@ -1,3 +1,4 @@
+import {formationMembers,formationCenter,normalizeFormation,validateFormationMembers} from "./formation-layout.js";
 import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -64,6 +65,7 @@ function operational(unit) {
 }
 
 export function initializeSimulationFeatures(scene) {
+  for (const group of scene.groups) if (group.formation !== undefined) normalizeFormation(group.formation);
   scene.controls ??= {};
   scene.controls.enemyAutonomy =
     scene.controls.enemyAutonomy === true;
@@ -536,6 +538,21 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
     );
   });
 
+  const visibleForeign = new Set(instances.filter(unit => !unit.observationOwn && unit.observationLevel === "identified").map(unit => unit.groupId).filter(Boolean));
+  for(let changed=true;changed;){
+    changed=false;
+    for(const group of scene.groups){
+      if(visibleForeign.has(group.id) && group.parentId && !visibleForeign.has(group.parentId)){
+        visibleForeign.add(group.parentId);changed=true;
+      }
+    }
+  }
+  for (const group of scene.groups) {
+    if (visibleForeign.has(group.id) && !safeGroups.some(item => item.id === group.id)) {
+      safeGroups.push({id:group.id,name:group.name,kind:group.kind,parentId:group.parentId ?? null,observationForeign:true,
+        ...(group.formation ? {formation:{version:1,overview:group.formation.overview,positions:[]}} : {})});
+    }
+  }
   const safeGroupIds = new Set(safeGroups.map(group => group.id));
 
   for (const unit of instances) {
@@ -793,7 +810,7 @@ function buildPlan(scene, ref, x, y) {
   }
 
   const members = movementMembers(scene, ref);
-  const anchor = members[0];
+  const anchor = ref.kind === "group" ? formationCenter(members,scene.groups.find(group=>group.id===ref.id)?.formation) : members[0];
   const dx = x - anchor.x;
   const dy = y - anchor.y;
   const distance = Math.hypot(dx, dy);
@@ -802,8 +819,12 @@ function buildPlan(scene, ref, x, y) {
     fail("速力または残り航続距離の上限を超えています。");
   }
 
+  const formation = ref.kind === "group" ? scene.groups.find(group => group.id === ref.id)?.formation : null;
+  if(formation)validateFormationMembers(members,formation);
   const destinations = members.map(unit => {
-    const to = { x: unit.x + dx, y: unit.y + dy };
+    const offset = formation?.positions.find(point => point.id === unit.instanceId);
+    const to = offset ? {x:x+offset.x,y:y+offset.y} : {x:unit.x+dx,y:unit.y+dy};
+    if (Math.hypot(to.x-unit.x,to.y-unit.y) > limitFor([unit])+EPSILON) fail("陣形移動が速力または航続距離を超えています。");
     validateRoute(scene, unit, to);
 
     return {
@@ -818,6 +839,7 @@ function buildPlan(scene, ref, x, y) {
   return {
     turnNumber: scene.turn.number,
     ref: clone(ref),
+    ...(ref.kind === "group" ? {requestedX:x,requestedY:y} : {}),
     memberIds: members.map(unit => unit.instanceId),
     distance,
     destinations
@@ -1151,8 +1173,25 @@ function createAutonomousMovementPlans(
           : 0
     );
 
+  const rigidActors=new Map();
+  const rigidMembers=new Set();
+  for(const group of planning.groups.filter(item=>item.formation && !item.parentId)
+    .concat(planning.groups.filter(item=>item.formation && item.parentId))){
+    const members=formationMembers(planning,group.id);
+    if(!members.length || members.some(item=>rigidMembers.has(item.instanceId)))continue;
+    if(members.some(item=>!["enemy","neutral"].includes(item.side)))continue;
+    for(const member of members)rigidMembers.add(member.instanceId);
+    if(members.some(item=>excludedIds.has(item.instanceId) || !operational(item)))continue;
+    const anchor=members.find(item=>item.isFormationFlagship) ?? members[0];
+    rigidActors.set(anchor.instanceId,{ref:{kind:"group",id:group.id},members});
+  }
+
   const visibilityBySide=new Map();
   for (const unit of autonomousUnits) {
+    const rigid=rigidActors.get(unit.instanceId);
+    if(rigidMembers.has(unit.instanceId) && !rigid)continue;
+    const moveRef=rigid?.ref ?? {kind:"unit",id:unit.instanceId};
+    const origin=rigid ? formationCenter(rigid.members,planning.groups.find(group=>group.id===moveRef.id)?.formation) : unit;
     if (unit.branch !== "navy") {
       fail(
         "海軍以外の自律移動は未接続です。" +
@@ -1189,7 +1228,7 @@ function createAutonomousMovementPlans(
     // 暂无可见目标时保持位置，不伪造追踪情报。
     if (!relevantTargets.length) continue;
 
-    const movementLimit = limitFor([unit]);
+    const movementLimit = limitFor(rigid?.members ?? [unit]);
 
     if (
       !Number.isFinite(movementLimit) ||
@@ -1208,7 +1247,7 @@ function createAutonomousMovementPlans(
       );
     }
 
-    const initialDistance = nearestDistance(unit.x, unit.y);
+    const initialDistance = nearestDistance(origin.x, origin.y);
     const holdsRange = unit.side === "enemy" &&
       !["moderate", "heavy"].includes(unit.shipState.status);
     const engagementRange = holdsRange
@@ -1224,7 +1263,7 @@ function createAutonomousMovementPlans(
     if (travelLimit <= EPSILON) continue;
 
     // 候选采样属于决策策略，不是新增移动规则。
-    const candidates = [{ x: unit.x, y: unit.y }];
+    const candidates = [{ x: origin.x, y: origin.y }];
 
     function addDirection(dx, dy) {
       const length = Math.hypot(dx, dy);
@@ -1234,8 +1273,8 @@ function createAutonomousMovementPlans(
         const distance = travelLimit * fraction;
 
         candidates.push({
-          x: unit.x + dx / length * distance,
-          y: unit.y + dy / length * distance
+          x: origin.x + dx / length * distance,
+          y: origin.y + dy / length * distance
         });
       }
     }
@@ -1246,8 +1285,8 @@ function createAutonomousMovementPlans(
     }
 
     for (const target of relevantTargets) {
-      const dx = target.x - unit.x;
-      const dy = target.y - unit.y;
+      const dx = target.x - origin.x;
+      const dy = target.y - origin.y;
 
       addDirection(dx, dy);
       addDirection(-dx, -dy);
@@ -1263,8 +1302,8 @@ function createAutonomousMovementPlans(
 
         if (distance > EPSILON && travel > EPSILON) {
           candidates.push({
-            x: unit.x + dx / distance * travel,
-            y: unit.y + dy / distance * travel
+            x: origin.x + dx / distance * travel,
+            y: origin.y + dy / distance * travel
           });
         }
       }
@@ -1282,7 +1321,7 @@ function createAutonomousMovementPlans(
       try {
         plan = buildPlan(
           planning,
-          { kind: "unit", id: unit.instanceId },
+          moveRef,
           destination.x,
           destination.y
         );
@@ -1335,12 +1374,31 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
       const scene = getState();
       const members = movementMembers(scene, ref);
 
+      const anchor = ref.kind === "group" ? formationCenter(members,scene.groups.find(group=>group.id===ref.id)?.formation) : members[0];
       return {
-        x: members[0].x,
-        y: members[0].y,
+        x: anchor.x,
+        y: anchor.y,
         limit: limitFor(members),
         memberIds: members.map(unit => unit.instanceId)
       };
+    },
+
+    async saveFormation(id, value) {
+      const formation = normalizeFormation(value);
+      await commit(scene => {
+        const group = scene.groups.find(item => item.id === id);
+        const members = formationMembers(scene,id);
+        validateFormationMembers(members,formation);
+        assertManualControl(scene,members);
+        if (!group) fail("編隊が見つかりません。");
+        if (scene.turn.phaseId !== "movement") fail("陣形変更は移動段階で計画してください。");
+        const center = formationCenter(members,group.formation);
+        group.formation = formation;
+        const plan = buildPlan(scene,{kind:"group",id},center.x,center.y);
+        const ids = new Set(plan.memberIds);
+        scene.movementPlans = scene.movementPlans.filter(old => !old.memberIds.some(id => ids.has(id)));
+        scene.movementPlans.push(plan);
+      });
     },
 
     async setObservationSide(side) {
@@ -1537,8 +1595,8 @@ validationScene.controls.enemyAutonomy = false;
             rebuilt = buildPlan(
               validationScene,
               saved.ref,
-              anchor.x,
-              anchor.y
+              saved.requestedX ?? anchor.x,
+              saved.requestedY ?? anchor.y
             );
           }
 
@@ -1574,6 +1632,7 @@ validationScene.controls.enemyAutonomy = false;
         const routes = checked.flatMap(plan =>
           plan.destinations.map(destination => ({
             instanceId: destination.instanceId,
+            rigidGroup:plan.ref.kind === "group" ? plan.ref.id : null,
             route: destination.route ?? [
               { x: destination.fromX, y: destination.fromY },
               { x: destination.x, y: destination.y }

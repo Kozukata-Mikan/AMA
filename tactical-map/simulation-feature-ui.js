@@ -529,6 +529,12 @@ if (!movement) {
     }
   });
 
+  document.addEventListener('formation-select',event=>{
+    const value=JSON.stringify({kind:'group',id:event.detail});
+    if([...actor.options].some(option=>option.value===value)){
+      actor.value=value;syncFollow(store.getSceneSnapshot());drawRange();
+    }
+  });
   store.subscribe(sync);
   sync();
 }
