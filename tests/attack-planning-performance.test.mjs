@@ -54,7 +54,7 @@ test('all-out-of-range manual plan is rejected atomically and empty phase still 
 
 test('manual plan full preflight runs in a real worker before the atomic save',async()=>{
  const {Worker}=await import('node:worker_threads');
- const {shutdownBackground}=await import('../tactical-map/background-client.js?v=submarine-rules-1');
+ const {shutdownBackground}=await import('../tactical-map/background-client.js?v=catalog-layout-2');
  const {store,scene}=await fixture();let dispatched=0;
  globalThis.Worker=class{
   constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error))}

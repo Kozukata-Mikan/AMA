@@ -70,10 +70,7 @@ export const UNIT_FIELDS = [
     type: "branch",
     definition: "海軍・航空機・陸軍・特殊の分類。配置条件と表示形状に使用します。"
   },
-  {key:"naval.kind",label:"种类",type:"naval-kind",definition:"空中舰、水面舰、水下舰、陆上舰。用于海军舰船，与军种和外观标识独立。"},
-  {key:"naval.aswRecon",label:"对潜侦察",type:"text",definition:"用于发现潜航中的水下舰；留空表示无对潜侦察能力。等级与对海侦察一致。"},
-  {key:"naval.surfaceSpeedKnots",label:"水上航速（节）",type:"optional-number",definition:"水下舰浮航（深度0）时的航速。留空沿用原航速。"},
-  {key:"naval.submergedSpeedKnots",label:"水下航速（节）",type:"optional-number",definition:"水下舰潜航时的航速。旧资料留空沿用原航速。"},
+  {key:"naval.kind",label:"種類",type:"naval-kind",definition:"空中艦・水上艦・水中艦・陸上艦の行動区分。軍種や艦船マークとは別の設定です。"},
   {
     key: "naval.iconType",
     label: "艦船マーク",
@@ -122,20 +119,21 @@ export const UNIT_FIELDS = [
     key: "naval.detection",
     label: "探測強度",
     type: "text",
-    definition: "探測能力の等級。等級表と偵察能力との組合せ式は未設定です。"
+    definition: "目標の発見しにくさを表す等級。偵察側の等級と比較します。"
   },
   {
     key: "naval.seaRecon",
     label: "対海偵察",
     type: "text",
-    definition: "海上目標に対する偵察能力の等級。判定式は未設定です。"
+    definition: "水上目標に対する偵察等級。潜航目標には対潜偵察を使います。"
   },
   {
     key: "naval.airRecon",
     label: "対空偵察",
     type: "text",
-    definition: "航空目標に対する偵察能力の等級。判定式は未設定です。"
+    definition: "航空目標に対する偵察能力の等級。"
   },
+  {key:"naval.aswRecon",label:"対潜偵察",type:"text",definition:"潜航目標の偵察等級。対海偵察と同じ判定を使います。空欄は対潜偵察能力なしです。"},
   {
     key: "naval.armor",
     label: "装甲",
@@ -146,8 +144,9 @@ export const UNIT_FIELDS = [
     key: "naval.speedKnots",
     label: "航速（ノット）",
     type: "optional-number",
-    definition: "ノット単位の航行速度。地図距離と行動時間への換算は未設定です。"
+    definition: "通常の航速。水中艦では浮航時（深度0）に使用します。"
   },
+  {key:"naval.submergedSpeedKnots",label:"水中航速（ノット）",type:"optional-number",definition:"水中艦の潜航時に使う航速。空欄は通常の航速を引き継ぎます。"},
   {
     key: "naval.endurance",
     label: "続航力",
@@ -248,7 +247,7 @@ export const EQUIPMENT_FIELDS = [
     key: "guidance",
     label: "引導方式",
     type: "guidance",
-    definition: "抛射・平射などの攻撃方式。対応する軌道・判定規則は未設定です。"
+    definition: "曲射・平射などの攻撃方式。「水中」は潜航中も使用できる水中武器です。"
   },
 
   {

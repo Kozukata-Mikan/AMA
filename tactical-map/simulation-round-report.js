@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=submarine-rules-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=catalog-layout-2';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';

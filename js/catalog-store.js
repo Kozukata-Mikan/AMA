@@ -1,6 +1,6 @@
-import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=submarine-rules-1";
+import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=submarine-rules-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=catalog-layout-2";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -209,6 +209,7 @@ function normalizeUnit(value) {
     throw new Error("艦船属性の書式が不正です。");
   }
 
+  const {surfaceSpeedKnots: legacySurfaceSpeed, ...navalFields} = naval;
   const hullNames = value.hullNames ?? [];
   const mounts = value.mounts ?? [];
   const embarked = value.embarked ?? [];
@@ -240,13 +241,12 @@ function normalizeUnit(value) {
 
 
     naval: {
-      ...copy(naval),
+      ...copy(navalFields),
       type: text(naval.type ?? "", "属性"),
       iconType: normalizeNavalSymbol(naval.iconType),
       ...(naval.kind === undefined || naval.kind === "" ? {} : {kind:normalizeNavalKind(naval.kind)}),
-      aswRecon: text(naval.aswRecon ?? "", "对潜侦察"),
-      surfaceSpeedKnots: number(naval.surfaceSpeedKnots ?? null,"水上航速",{nullable:true,min:0}),
-      submergedSpeedKnots: number(naval.submergedSpeedKnots ?? null,"水下航速",{nullable:true,min:0}),
+      aswRecon: text(naval.aswRecon ?? "", "対潜偵察"),
+      submergedSpeedKnots: number(naval.submergedSpeedKnots ?? null,"水中航速",{nullable:true,min:0}),
 
       strength: number(
         naval.strength ?? null,
@@ -260,7 +260,7 @@ function normalizeUnit(value) {
       armor: text(naval.armor ?? "", "装甲"),
 
       speedKnots: number(
-        naval.speedKnots ?? null,
+        legacySurfaceSpeed ?? naval.speedKnots ?? null,
         "航速",
         { nullable: true }
       ),

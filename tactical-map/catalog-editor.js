@@ -1,7 +1,7 @@
-import { GUIDANCE_OPTIONS } from "./weapon-profile-runtime.js?v=submarine-rules-1";
-import { NAVAL_KINDS } from "./naval-kind.js?v=submarine-rules-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=catalog-layout-2";
+import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=submarine-rules-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=catalog-layout-2";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -12,7 +12,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=submarine-rules-1";
+} from "../js/catalog-seed.js?v=catalog-layout-2";
 
 // ===== 图鉴界面 =====
 
@@ -190,13 +190,33 @@ function labeled(parent, labelText, control, definition = "") {
   return control;
 }
 
+function catalogFieldSections(fields, category) {
+  const sections = category === "units" ? [
+    ["basic", "基本情報", ["name","branch","naval.kind","faction","naval.type","naval.iconType","protected"]],
+    ["hull", "船体・防御", ["sizeLevel","maxHp","naval.strength","naval.armor"]],
+    ["recon", "偵察・探測", ["naval.detection","naval.seaRecon","naval.airRecon","naval.aswRecon"]],
+    ["mobility", "航速・航続", ["naval.speedKnots","naval.submergedSpeedKnots","naval.endurance"]],
+    ["traits", "練度・特殊能力", ["trainingTraits"]]
+  ] : [
+    ["basic", "基本情報", ["name","kind","faction","slot"]],
+    ["weapon", "射撃・誘導", ["guidance","range","ceilingU","maxOrder","targetScope"]],
+    ["power", "威力・投射・弾薬", ["powerRule","penetration","barrelCount","projectionCoefficient","projectionSuffix","ammo"]],
+    ["notes", "補足", ["note"]]
+  ];
+  const result=sections.map(([id,title,keys])=>({id,title,fields:keys.map(key=>fields.find(field=>field.key===key)).filter(Boolean)}));
+  const assigned=new Set(result.flatMap(section=>section.fields.map(field=>field.key)));
+  const remaining=fields.filter(field=>!assigned.has(field.key));
+  if(remaining.length)result.push({id:"other",title:"その他",fields:remaining});
+  return result;
+}
+
 function ensureStyles() {
   if (document.querySelector("#catalog-styles")) return;
 
   const link = node("link");
   link.id = "catalog-styles";
   link.rel = "stylesheet";
-  link.href = new URL("./catalog.css", import.meta.url).href;
+  link.href = new URL("./catalog.css?v=catalog-layout-2", import.meta.url).href;
 
   document.head.append(link);
 }
@@ -716,15 +736,18 @@ export function mountCatalogEditor({
       ? UNIT_FIELDS
       : EQUIPMENT_FIELDS;
 
-    detail.append(table(
+    for (const section of catalogFieldSections(fields, category)) {
+    detail.append(node("h4", section.title), table(
       ["項目", "値"],
-      fields.map(field => {
+      section.fields.map(field => {
         const value = getPath(item, field.key);
 
         return [
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.type === "guidance"
+            ? getGuidanceLabel(value)
             : field.type === "naval-kind"
             ? NAVAL_KINDS.find(([key])=>key===(value ?? "surface"))?.[1]
             : field.type === "naval-symbol"
@@ -746,6 +769,8 @@ export function mountCatalogEditor({
         ];
       })
     ));
+
+    }
 
     if (category === "equipment") {
       detail.append(node(
@@ -876,7 +901,7 @@ export function mountCatalogEditor({
       node("p", `ID：${draft.id}`, "catalog-muted")
     );
 
-    const form = node("form");
+    const form = node("form", "", "catalog-edit-form");
     const grid = node("div", "", "catalog-form-grid");
 
     const fields = category === "units"
@@ -884,13 +909,22 @@ export function mountCatalogEditor({
       : EQUIPMENT_FIELDS;
 
     const controls = new Map();
+    const sectionHosts = new Map();
+    for (const section of catalogFieldSections(fields, category)) {
+      if (section.id === "traits") continue;
+      const group=node("fieldset", "", `catalog-section catalog-section-${section.id}`);
+      group.append(node("legend", section.title));
+      const host=node("div", "", "catalog-section-grid");
+      group.append(host);grid.append(group);
+      for (const field of section.fields) sectionHosts.set(field.key,host);
+    }
 
     for (const field of fields) {
       const value = getPath(draft, field.key);
       let control;
 
            if (field.type === "training-traits") {
-        const group = node("fieldset", "", "catalog-field");
+        const group = node("fieldset", "", "catalog-section catalog-traits");
         group.append(node("legend", field.label));
         group.append(node("small", field.definition));
 
@@ -946,7 +980,7 @@ export function mountCatalogEditor({
         ], value);
       } else if (field.type === "guidance") {
         const values=GUIDANCE_OPTIONS.includes(value) || !value ? GUIDANCE_OPTIONS : [value,...GUIDANCE_OPTIONS];
-        control=select([["","请选择引导方式"],...values.map(id=>[id,id])],value ?? "");
+        control=select([["","誘導方式を選択してください"],...values.map(id=>[id,getGuidanceLabel(id)])],value ?? "");
       } else if (field.type === "naval-kind") {
         control = select(NAVAL_KINDS, value ?? "surface");
       } else if (field.type === "naval-symbol") {
@@ -982,11 +1016,12 @@ export function mountCatalogEditor({
       controls.set(field.key, control);
 
       labeled(
-        grid,
+        sectionHosts.get(field.key),
         field.label,
         control,
         field.definition
       );
+      control.closest("label").dataset.field = field.key;
     }
 
     if (category === "units") {
@@ -1006,7 +1041,7 @@ export function mountCatalogEditor({
       control.addEventListener("change", update);
       update();
       preview.append(svg, node("span", "上＝艦艏 / 表示専用"));
-      grid.append(preview);
+      sectionHosts.get("naval.iconType").append(preview);
     }
 
     form.append(grid);
@@ -1266,6 +1301,7 @@ export function mountCatalogEditor({
       })
     );
 
+    actions.classList.add("catalog-save-actions");
     form.append(actions);
 
     form.addEventListener("submit", event => {

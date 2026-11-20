@@ -1,21 +1,21 @@
-import { navalHeight, isSubmerged } from "./naval-kind.js?v=submarine-rules-1";
+import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=submarine-rules-1";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=catalog-layout-2";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=submarine-rules-1";
+import { runBackgroundTask } from "./background-client.js?v=catalog-layout-2";
 import { freezeSnapshot } from "./read-only-snapshot.js";
-import { assessCluster } from "./cluster-engine.js?v=submarine-rules-1";
+import { assessCluster } from "./cluster-engine.js?v=catalog-layout-2";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
-import { ensureShipRuntime } from "./ship-runtime.js?v=submarine-rules-1";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=submarine-rules-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=catalog-layout-2";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=catalog-layout-2";
 
-import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=submarine-rules-1";
-import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=submarine-rules-1";
-import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=submarine-rules-1";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=submarine-rules-1";
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=catalog-layout-2";
+import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=catalog-layout-2";
+import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=catalog-layout-2";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=catalog-layout-2";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -25,24 +25,24 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=submarine-rules-1";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=catalog-layout-2";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=submarine-rules-1";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=catalog-layout-2";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=submarine-rules-1";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=catalog-layout-2";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=submarine-rules-1";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=catalog-layout-2";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=submarine-rules-1";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=submarine-rules-1";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=catalog-layout-2";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=catalog-layout-2";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=submarine-rules-1";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=catalog-layout-2";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=submarine-rules-1";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=catalog-layout-2";
 
-import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=submarine-rules-1";
+import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=catalog-layout-2";
 
 import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-runtime.js";
 
@@ -55,7 +55,7 @@ import { buildBattleReport } from "./simulation-battle-report.js";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=submarine-rules-1";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=catalog-layout-2";
 
 
 
@@ -1510,8 +1510,8 @@ mountEquipmentRepairPanel(container, rescuerId) {
       const terrainInterior = entersTerrainInterior(trace);
       const tolerance = 1e-7;
 
-                  // “数字（水下）”威力或“平射（水下）”引导，
-      // 任一条件成立即属于水下武器。
+                  // “数字（水下）”威力或“平射（水中）”引导，
+      // 任一条件成立即属于水中武器。
       // 同时兼容标准化后的profile和部署快照原始引导文本。
       const underwaterPower =
         typeof profile.powerRule === "string" &&
@@ -1532,16 +1532,16 @@ mountEquipmentRepairPanel(container, rescuerId) {
         underwaterDirect;
 
       // 水下平射仍按平射检查真实地形。
-      // 只有“平射（水下）”需要在这里归一为direct；
+      // 只有“平射（水中）”需要在这里归一为direct；
       // 不把其他引导方式的水下数字武器强行改为平射。
       const attackGuidance = underwaterDirect
         ? "direct"
         : profile.guidance;
 
-      if (isSubmerged(actor) && !underwaterWeapon) issues.push("潜航中的水下舰只能使用水下武器。");
+      if (isSubmerged(actor) && !underwaterWeapon) issues.push("潜航中の水中艦は水中武器のみ使用できます。");
       if (underwaterWeapon) {
         // 海平面是高度0，而不是发射舰自身的高度。
-        // 水下武器可以攻击水面和水下，不能攻击海平面以上。
+        // 水中武器可以攻击水面和水下，不能攻击海平面以上。
         if (to.z > tolerance) {
           issues.push(
             "水中武器は海面より上の目標を攻撃できません。"

@@ -1,4 +1,4 @@
-import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=submarine-rules-1";
+import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";
 import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=fleet-cohesion-6";
 import { readSave, writeSave, subscribeSaveChanges } from "./save-database.js";
@@ -26,7 +26,7 @@ import {
 import { normalizeFaction } from "./faction-data.js";
 
 
-import { assessCluster } from "../tactical-map/cluster-engine.js?v=submarine-rules-1";
+import { assessCluster } from "../tactical-map/cluster-engine.js?v=catalog-layout-2";
 
 import { normalizeCampaignIntro } from "../tactical-map/campaign-intro-data.js";
 

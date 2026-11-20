@@ -11,7 +11,7 @@ import {readWeaponProfile} from '../tactical-map/weapon-profile-runtime.js';
 import {initializeCatalog} from '../js/catalog-store.js';
 
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
-function submarine(unit){unit.snapshot.naval.kind='submarine';unit.depth=2;unit.underwater=true;unit.snapshot.naval.surfaceSpeedKnots=20;unit.snapshot.naval.submergedSpeedKnots=10;return unit;}
+function submarine(unit){unit.snapshot.naval.kind='submarine';unit.depth=2;unit.underwater=true;unit.snapshot.naval.speedKnots=20;unit.snapshot.naval.submergedSpeedKnots=10;return unit;}
 async function simulation(scene=source()){
  await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};
  const id=await createSimulation(scene,()=>({valid:true}));return{id,store:await openSimulation(id)};
@@ -25,8 +25,8 @@ test('four ship kinds, depth zero surfacing, vertical minima and legacy submarin
  assert.equal(navalKind(legacy),'submarine');assert.equal(legacy.depth,12);
  const sub=submarine(ship('s'));normalizeNavalPosition(sub);assert.ok(isSubmerged(sub));
  sub.depth=0;normalizeNavalPosition(sub);assert.equal(sub.underwater,false);assert.equal(navalKind(sub),'submarine');
- sub.depth=.5;assert.throws(()=>normalizeNavalPosition(sub),/至少1/);
- const air=ship('air');air.snapshot.naval.kind='air';air.altitude=0;assert.throws(()=>normalizeNavalPosition(air),/至少为1/);
+ sub.depth=.5;assert.throws(()=>normalizeNavalPosition(sub),/1以上/);
+ const air=ship('air');air.snapshot.naval.kind='air';air.altitude=0;assert.throws(()=>normalizeNavalPosition(air),/1以上/);
  const kinds=['sea','land','river','shallow'];
  for(const kind of ['air','surface','land','submarine']){
   const u=ship('u');u.snapshot.naval.kind=kind;u.altitude=20;u.depth=kind==='submarine'?1:0;normalizeNavalPosition(u);
@@ -38,9 +38,9 @@ test('four ship kinds, depth zero surfacing, vertical minima and legacy submarin
 test('catalog kind, both speeds and ASW fields survive save/export/import',()=>{
  globalThis.localStorage={getItem:()=>null,setItem(){}};const catalog=initializeCatalog([]);
  const base=catalog.units.find(u=>u.branch==='navy');
- const value=structuredClone(base);value.id='sub-new';value.protected=false;Object.assign(value.naval,{kind:'submarine',surfaceSpeedKnots:18,submergedSpeedKnots:9,aswRecon:'B'});
+ const value=structuredClone(base);value.id='sub-new';value.protected=false;Object.assign(value.naval,{kind:'submarine',speedKnots:18,submergedSpeedKnots:9,aswRecon:'B'});
  catalog.saveUnit(value);catalog.importJSON(catalog.exportJSON());const item=catalog.units.find(u=>u.id==='sub-new');
- for(const key of ['kind','surfaceSpeedKnots','submergedSpeedKnots','aswRecon'])assert.equal(item.naval[key],value.naval[key]);
+ for(const key of ['kind','speedKnots','submergedSpeedKnots','aswRecon'])assert.equal(item.naval[key],value.naval[key]);
  const before=catalog.exportJSON();assert.throws(()=>catalog.saveUnit({...value,naval:{...value.naval,kind:'unknown'}}),/種類/);assert.equal(catalog.exportJSON(),before);
 });
 
@@ -59,7 +59,7 @@ test('diving speed and depth validation reject illegal orders atomically',async(
  const scene=source();submarine(scene.instances[0]);scene.instances[0].depth=0;scene.instances[0].underwater=false;
  const{id,store}=await simulation(scene);await store.beginMovement();const before=await readSave('junqi-simulation-v1:'+id);
  await assert.rejects(store.planMovement({kind:'unit',id:'a'},80,0,{depth:2}),/上限/);
- await assert.rejects(store.planMovement({kind:'unit',id:'a'},0,0,{depth:.5}),/至少1/);
+ await assert.rejects(store.planMovement({kind:'unit',id:'a'},0,0,{depth:.5}),/1以上/);
  await assert.rejects(store.planMovement({kind:'unit',id:'b'},250,0,{depth:2}),/操作|陣営|控制|权限/);
  assert.equal(await readSave('junqi-simulation-v1:'+id),before);
  await store.planMovement({kind:'unit',id:'a'},0,0,{depth:1});await store.resolveMovement();assert.ok((await saved(id)).instances[0].underwater);
@@ -107,7 +107,7 @@ test('new underwater guidance retains algorithms for half-width parentheses and 
 
 test('real background worker settles vertical orders with the selected surface speed',async()=>{
  const {Worker}=await import('node:worker_threads');
- const {shutdownBackground}=await import('../tactical-map/background-client.js?v=submarine-rules-1');
+ const {shutdownBackground}=await import('../tactical-map/background-client.js?v=catalog-layout-2');
  const scene=source();submarine(scene.instances[0]);const {id,store}=await simulation(scene);
  globalThis.Worker=class{
   constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error));}
@@ -115,4 +115,16 @@ test('real background worker settles vertical orders with the selected surface s
  };
  try{await store.beginMovement();await store.planMovement({kind:'unit',id:'a'},80,0,{depth:0});await store.resolveMovement();const raw=await saved(id);near(raw.instances[0].x,80);assert.equal(raw.instances[0].depth,0);assert.equal(raw.instances[0].underwater,false);}
  finally{shutdownBackground();delete globalThis.Worker;}
+});
+
+
+test('duplicate legacy surface speed migrates to the original speed field',()=>{
+ globalThis.localStorage={getItem:()=>null,setItem(){}};
+ const catalog=initializeCatalog([]);const value=structuredClone(catalog.units.find(u=>u.branch==='navy'));
+ value.id='legacy-speed';value.protected=false;Object.assign(value.naval,{kind:'submarine',speedKnots:10,surfaceSpeedKnots:18,submergedSpeedKnots:9});
+ catalog.saveUnit(value);let naval=catalog.units.find(u=>u.id===value.id).naval;
+ assert.equal(naval.speedKnots,18);assert.equal(naval.submergedSpeedKnots,9);assert.ok(!('surfaceSpeedKnots' in naval));
+ const edited=structuredClone(catalog.units.find(u=>u.id===value.id));edited.naval.speedKnots=22;catalog.saveUnit(edited);assert.equal(catalog.units.find(u=>u.id===value.id).naval.speedKnots,22);
+ const unit=ship('legacy');Object.assign(unit.snapshot.naval,{kind:'submarine',speedKnots:10,surfaceSpeedKnots:18,submergedSpeedKnots:9});normalizeNavalPosition(unit);
+ assert.equal(readShipProfile(unit).speedKnots,18);assert.ok(!('surfaceSpeedKnots' in unit.snapshot.naval));
 });

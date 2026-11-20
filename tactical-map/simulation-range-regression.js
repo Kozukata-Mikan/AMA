@@ -1,7 +1,7 @@
 import {
   selectRangeOccurrences,
   validateRangeSelection
-} from "./range-projection-runtime.js?v=submarine-rules-1";
+} from "./range-projection-runtime.js?v=catalog-layout-2";
 
 import {
   withRangeCommandTarget,
@@ -11,7 +11,7 @@ import {
 import {
   expandFormationMemberIds,
   validateFormationTopology
-} from "./formation-target-runtime.js?v=submarine-rules-1";
+} from "./formation-target-runtime.js?v=catalog-layout-2";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

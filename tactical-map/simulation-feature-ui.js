@@ -1,4 +1,4 @@
-import { navalKind } from "./naval-kind.js?v=submarine-rules-1";
+import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 export function mountSimulationFeatures(store, context) {
   const {
@@ -103,7 +103,7 @@ export function mountSimulationFeatures(store, context) {
     verticalLabel.hidden = !unit || !["air","submarine"].includes(kind);
     vertical.disabled = scene.turn.phaseId!=="movement" || verticalLabel.hidden;
     if (!verticalLabel.hidden) {
-      verticalTitle.textContent = kind==="air" ? "空中舰高度（至少1）" : "潜深（0＝水面，至少1＝潜航）";
+      verticalTitle.textContent = kind==="air" ? "空中艦の高度（1以上）" : "潜深（0＝水面、1以上＝潜航）";
       const pending=scene.movementPlans?.find(plan=>plan.vertical?.id===unit.instanceId)?.vertical;
       vertical.value=kind==="air" ? pending?.altitude ?? unit.altitude : pending?.depth ?? unit.depth;
       vertical.min=kind==="air" ? "1" : "0";
@@ -111,7 +111,7 @@ export function mountSimulationFeatures(store, context) {
   }
   function verticalOptions() {
     if (verticalLabel.hidden) return {};
-    if (!vertical.value.trim()) throw new Error("请填写高度／深度。");
+    if (!vertical.value.trim()) throw new Error("高度／深度を入力してください。");
     const selected=ref(), unit=store.getSceneSnapshot().instances.find(item=>item.instanceId===selected.id);
     const key=navalKind(unit)==="air" ? "altitude" : "depth";
     const value=Number(vertical.value);
@@ -365,7 +365,7 @@ if (!movement) {
 
   vertical.addEventListener("change", async () => await run(() => {
     const info=store.getMovementInfo(ref(),verticalOptions());
-    status.textContent=`当前高度／深度对应的最大移动距离：${info.limit}`;
+    status.textContent=`指定した高度／深度での最大移動距離：${info.limit}`;
     drawRange();
   }));
 

@@ -1,15 +1,15 @@
-import { navalKind } from "./naval-kind.js?v=submarine-rules-1";
+import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=fleet-cohesion-6";
 import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
-import { getBranchName } from "../js/data-store.js?v=submarine-rules-1";
+import { getBranchName } from "../js/data-store.js?v=catalog-layout-2";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=submarine-rules-1";
+import { createSimulation } from "./simulation-store.js?v=catalog-layout-2";
 import { mountSceneLibrary } from "./scene-library.js";
-import { assessCluster } from "./cluster-engine.js?v=submarine-rules-1";
-import { mountCatalogEditor } from "./catalog-editor.js?v=submarine-rules-1";
+import { assessCluster } from "./cluster-engine.js?v=catalog-layout-2";
+import { mountCatalogEditor } from "./catalog-editor.js?v=catalog-layout-2";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
-import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=submarine-rules-1";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=catalog-layout-2";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 
@@ -859,11 +859,11 @@ introSection.append(
     let altitude;
 
     if (unit.branch === "navy" && navalKind(unit)==="submarine") {
-      depth = field(form,"深度（0＝水面，至少1＝潜航）",input(unit.depth ?? 1,"number"));
+      depth = field(form,"深度（0＝水面、1以上＝潜航）",input(unit.depth ?? 1,"number"));
       depth.min="0";
     }
     if (unit.branch === "navy" && navalKind(unit)==="air") {
-      altitude = field(form,"空中舰高度（至少1）",input(unit.altitude ?? 1,"number"));
+      altitude = field(form,"空中艦の高度（1以上）",input(unit.altitude ?? 1,"number"));
       altitude.min="1";
     }
 

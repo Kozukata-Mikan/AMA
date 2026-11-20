@@ -1,4 +1,4 @@
-import { navalHeight } from "./naval-kind.js?v=submarine-rules-1";
+import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 // ===== 集群规则与显示 =====
 // 集群保留独立成员，只合并地图显示。
 

@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=submarine-rules-1";
+} from "./formation-target-runtime.js?v=catalog-layout-2";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=submarine-rules-1";
+} from "./simulation-features.js?v=catalog-layout-2";
 
 import {
   resolveHitCoins

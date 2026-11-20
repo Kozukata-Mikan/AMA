@@ -1,4 +1,4 @@
-import { navalCanTraverse, navalKind, isSubmerged } from "./naval-kind.js?v=submarine-rules-1";
+import { navalCanTraverse, navalKind, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { sampleTerrain } from "./terrain-data.js";
 
 const EPS = 1e-7;
@@ -130,7 +130,7 @@ export function clipLandRoute(terrain, unit, route) {
   }
 
   if (!navalCanTraverse(unit,sampleTerrain(terrain, route[0].x, route[0].y))) {
-    fail("舰船当前种类与起点地形不符，请检查部署。");
+    fail("艦船の種類と出発点の地形が適合しません。配置を確認してください。");
   }
 
   const result = [copy(route[0])];

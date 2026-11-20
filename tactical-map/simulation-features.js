@@ -1,19 +1,19 @@
-import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=submarine-rules-1";
+import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=submarine-rules-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=catalog-layout-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=submarine-rules-1";
+} from "./ship-runtime.js?v=catalog-layout-2";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=submarine-rules-1";
+} from "./simulation-rescue.js?v=catalog-layout-2";
 
 import {
   createShipEffectsState,
@@ -24,11 +24,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=submarine-rules-1";
+} from "./equipment-item-runtime.js?v=catalog-layout-2";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=submarine-rules-1";
+} from "./simulation-autonomous-rescue.js?v=catalog-layout-2";
 
 import {
   routeLength,
@@ -36,7 +36,7 @@ import {
   clipLandRoute,
   routeHeading,
   resolveMovementRoutes
-} from "./simulation-movement-route.js?v=submarine-rules-1";
+} from "./simulation-movement-route.js?v=catalog-layout-2";
 
 
 const SIDES = ["ally", "enemy", "neutral"];
@@ -1292,7 +1292,7 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
       const scene = getState();
       let members = movementMembers(scene, ref);
       if (options.depth !== undefined || options.altitude !== undefined) {
-        if (ref.kind !== "unit") fail("高度／深度预览请选单舰。");
+        if (ref.kind !== "unit") fail("高度／深度の確認には単艦を選択してください。");
         const unit=members[0];
         const copy={...unit,snapshot:{...unit.snapshot,naval:{...unit.snapshot.naval}}};
         members=[setNavalVertical(copy,options)];
@@ -1379,9 +1379,9 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
         const changingVertical = options.depth !== undefined || options.altitude !== undefined;
         let planning = scene, vertical = null;
         if (changingVertical) {
-          if (ref.kind !== "unit" || follow) fail("高度／深度调整请使用单舰操作，并取消整队跟随。");
+          if (ref.kind !== "unit" || follow) fail("高度／深度の変更は単艦で指定し、編隊追随を解除してください。");
           const unit = scene.instances.find(item=>item.instanceId===ref.id);
-          if (!unit || unit.branch !== "navy") fail("该操作只适用于舰船。");
+          if (!unit || unit.branch !== "navy") fail("この操作は艦船にのみ指定できます。");
           assertManualControl(scene,[unit]);
           vertical = {id:unit.instanceId,fromDepth:unit.depth,fromAltitude:unit.altitude ?? null,
             ...(options.depth === undefined ? {} : {depth:options.depth}),
@@ -1496,7 +1496,7 @@ validationScene.controls.enemyAutonomy = false;
             const unit = validationScene.instances.find(item=>item.instanceId===saved.vertical.id);
             if (saved.ref.kind !== "unit" || saved.ref.id !== saved.vertical.id || saved.memberIds.length !== 1 ||
                 !unit || unit.depth !== saved.vertical.fromDepth || (unit.altitude ?? null)!==saved.vertical.fromAltitude)
-              fail("高度／深度的起始状态已变化，请重新规划。");
+              fail("高度／深度の開始状態が変わりました。計画を再登録してください。");
             setNavalVertical(unit,saved.vertical);
           }
           if (saved.mode === "formation-layout") {

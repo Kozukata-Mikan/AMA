@@ -1,4 +1,4 @@
-import { navalPlacement, navalHeight } from "./naval-kind.js?v=submarine-rules-1";
+import { navalPlacement, navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
 import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-6";
@@ -8,10 +8,10 @@ import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=submarine-rules-1";
-import { loadUnitData } from "../js/data-store.js?v=submarine-rules-1";
-import { createBattleStore } from "../js/battle-state.js?v=submarine-rules-1";
-import { mountEditor } from "./editor.js?v=submarine-rules-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=catalog-layout-2";
+import { loadUnitData } from "../js/data-store.js?v=catalog-layout-2";
+import { createBattleStore } from "../js/battle-state.js?v=catalog-layout-2";
+import { mountEditor } from "./editor.js?v=catalog-layout-2";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
@@ -29,10 +29,10 @@ import {
   getDisplayUnits,
   makeClusterProxy,
   getDeploymentUpdates
-} from "./cluster-engine.js?v=submarine-rules-1";
+} from "./cluster-engine.js?v=catalog-layout-2";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=submarine-rules-1";
+import { mountTerrainEditor } from "./terrain-editor.js?v=catalog-layout-2";
 
 let terrain = createDemoTerrain();
 let terrainController = null;

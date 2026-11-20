@@ -1,4 +1,4 @@
-import {readWeaponProfile, readWeaponTargetScope} from "./weapon-profile-runtime.js?v=submarine-rules-1";
+import {readWeaponProfile, readWeaponTargetScope} from "./weapon-profile-runtime.js?v=catalog-layout-2";
 import {getMaximumCannonHitCredits} from "./cannon-damage-runtime.js";
 import {resolveNumericDamage} from "./numeric-damage-runtime.js";
 import {parseDamageRule} from "./weapon-damage-rule.js";

@@ -294,3 +294,38 @@
     padding: 14px;
   }
 }
+
+/* 資料の項目を用途ごとにまとめ、関連値を横並びで比較できるようにする。 */
+.catalog-form-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.catalog-section { min-width: 0; margin: 0; padding: 16px; border: 1px solid #294259; border-radius: 10px; background: #0d1a28; }
+.catalog-section > legend { padding: 0 8px; color: #a8d8f7; font-size: 14px; font-weight: 650; }
+.catalog-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.catalog-section .catalog-field { margin: 0; gap: 7px; }
+.catalog-section .catalog-field > span { font-weight: 600; color: #dceaf5; }
+.catalog-section-recon .catalog-section-grid,
+.catalog-section-mobility .catalog-section-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.catalog-section-recon [data-field="naval.detection"] { grid-column: 1 / -1; max-width: calc((100% - 32px) / 3); }
+.catalog-traits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.catalog-traits > small { grid-column: 1 / -1; color: #93adc2; line-height: 1.6; }
+.catalog-traits > label { grid-template-columns: auto minmax(0, 1fr); align-items: center; padding: 10px; border-radius: 6px; background: #101f2f; }
+.catalog-traits > label > span { grid-column: 2; grid-row: 1; }
+.catalog-traits > label > input { grid-column: 1; grid-row: 1; }
+.catalog-traits > label > small { grid-column: 2; }
+.catalog-symbol-preview { display: flex; align-items: center; gap: 14px; grid-column: 1 / -1; color: #93adc2; font-size: 12px; }
+.catalog-symbol-preview svg { width: 30px; height: 46px; }
+.catalog-save-actions { position: sticky; bottom: -20px; z-index: 1; padding: 14px 0; margin-bottom: 0; border-top: 1px solid #294259; background: #09121e; }
+.catalog-save-actions button:first-child { background: #193d55; border-color: #6cafd4; }
+@media (max-width: 900px) {
+  .catalog-section-grid,
+  .catalog-section-recon .catalog-section-grid,
+  .catalog-section-mobility .catalog-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catalog-section-recon [data-field="naval.detection"] { max-width: none; }
+}
+@media (max-width: 720px) {
+  .catalog-section-grid,
+  .catalog-section-recon .catalog-section-grid,
+  .catalog-section-mobility .catalog-section-grid,
+  .catalog-traits { grid-template-columns: minmax(0, 1fr); }
+  .catalog-section { padding: 12px; }
+  .catalog-save-actions { bottom: -14px; }
+}

@@ -1,4 +1,4 @@
-import { getBranchName } from "../js/data-store.js?v=submarine-rules-1";
+import { getBranchName } from "../js/data-store.js?v=catalog-layout-2";
 
 // ===== 行动草案面板 =====
 // 这里只记录意图，不执行战斗裁定或修改参战状态。
