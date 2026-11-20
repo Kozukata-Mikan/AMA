@@ -1,8 +1,8 @@
 import {forkTerrainForEditing, MAX_TERRAIN_SAMPLES} from "./terrain-data.js";
 import {applyTerrainFrame} from "./terrain-edit-history.js";
-import {createTerrainStrokeSession} from "./terrain-stroke-session.js?v=fleet-cohesion-6";
-import {mountTerrainGenerator} from './terrain-generator-panel.js?v=fleet-cohesion-6';
-import {runBackgroundTask} from "./background-client.js?v=fleet-cohesion-6";
+import {createTerrainStrokeSession} from "./terrain-stroke-session.js?v=submarine-rules-1";
+import {mountTerrainGenerator} from './terrain-generator-panel.js?v=submarine-rules-1';
+import {runBackgroundTask} from "./background-client.js?v=submarine-rules-1";
 
 import {
   mountEnvironmentEditor

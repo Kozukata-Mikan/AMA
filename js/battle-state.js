@@ -1,3 +1,4 @@
+import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=submarine-rules-1";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";
 import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=fleet-cohesion-6";
 import { readSave, writeSave, subscribeSaveChanges } from "./save-database.js";
@@ -25,7 +26,7 @@ import {
 import { normalizeFaction } from "./faction-data.js";
 
 
-import { assessCluster } from "../tactical-map/cluster-engine.js";
+import { assessCluster } from "../tactical-map/cluster-engine.js?v=submarine-rules-1";
 
 import { normalizeCampaignIntro } from "../tactical-map/campaign-intro-data.js";
 
@@ -191,6 +192,7 @@ export async function createBattleStore(units) {
       unitId
     );
 
+    const spatial = normalizeNavalPosition({...item,branch:snapshot.branch,snapshot});
     const name = requireText(item.name ?? snapshot.name, "ユニット名");
     const side = item.side ?? "ally";
 
@@ -227,7 +229,7 @@ export async function createBattleStore(units) {
     const heading = ((rawHeading % 360) + 360) % 360;
 
     const underwater = requireBoolean(
-      item.underwater ?? false,
+      spatial.underwater ?? false,
       "水中設定"
     );
 
@@ -235,7 +237,7 @@ export async function createBattleStore(units) {
       throw new Error("水中設定は海軍ユニットにのみ指定できます。");
     }
 
-    const altitude = item.altitude ?? null;
+    const altitude = spatial.altitude ?? null;
 
     if (altitude !== null) {
       requireNumber(altitude, "海抜高度");
@@ -306,9 +308,9 @@ export async function createBattleStore(units) {
       y,
       altitude,
       depth: requireNumber(
-        item.depth ?? 12,
+        spatial.depth ?? 0,
         "水中深度",
-        Number.MIN_VALUE
+        0
       ),
       labelHeight: requireNumber(
         item.labelHeight ?? 65,
@@ -390,7 +392,7 @@ export async function createBattleStore(units) {
       altitude,
       heading: requireNumber(value.heading, "記録方位"),
       underwater: requireBoolean(value.underwater, "記録水中設定"),
-      depth: requireNumber(value.depth, "記録水中深度", Number.MIN_VALUE)
+      depth: requireNumber(value.depth, "記録水中深度", 0)
     };
   }
 

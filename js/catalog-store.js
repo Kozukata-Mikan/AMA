@@ -1,5 +1,6 @@
+import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=submarine-rules-1";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=naval-formation-2";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=submarine-rules-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -242,6 +243,10 @@ function normalizeUnit(value) {
       ...copy(naval),
       type: text(naval.type ?? "", "属性"),
       iconType: normalizeNavalSymbol(naval.iconType),
+      ...(naval.kind === undefined || naval.kind === "" ? {} : {kind:normalizeNavalKind(naval.kind)}),
+      aswRecon: text(naval.aswRecon ?? "", "对潜侦察"),
+      surfaceSpeedKnots: number(naval.surfaceSpeedKnots ?? null,"水上航速",{nullable:true,min:0}),
+      submergedSpeedKnots: number(naval.submergedSpeedKnots ?? null,"水下航速",{nullable:true,min:0}),
 
       strength: number(
         naval.strength ?? null,

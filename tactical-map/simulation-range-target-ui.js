@@ -4,7 +4,7 @@ import {
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=naval-formation-2";
+} from "./weapon-profile-runtime.js?v=submarine-rules-1";
 
 
 function fail(message) {

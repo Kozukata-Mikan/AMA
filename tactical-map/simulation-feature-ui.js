@@ -1,3 +1,4 @@
+import { navalKind } from "./naval-kind.js?v=submarine-rules-1";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 export function mountSimulationFeatures(store, context) {
   const {
@@ -92,6 +93,30 @@ export function mountSimulationFeatures(store, context) {
   }
 
 
+  const vertical = element("input");vertical.type="number";vertical.step="any";
+  const verticalTitle = element("span","高度／深度");
+  const verticalLabel = element("label");verticalLabel.append(verticalTitle,vertical);verticalLabel.hidden=true;
+  function syncVertical(scene) {
+    const selected=actor.value ? JSON.parse(actor.value) : null;
+    const unit=selected?.kind==="unit" ? scene.instances.find(item=>item.instanceId===selected.id) : null;
+    const kind=unit ? navalKind(unit) : null;
+    verticalLabel.hidden = !unit || !["air","submarine"].includes(kind);
+    vertical.disabled = scene.turn.phaseId!=="movement" || verticalLabel.hidden;
+    if (!verticalLabel.hidden) {
+      verticalTitle.textContent = kind==="air" ? "空中舰高度（至少1）" : "潜深（0＝水面，至少1＝潜航）";
+      const pending=scene.movementPlans?.find(plan=>plan.vertical?.id===unit.instanceId)?.vertical;
+      vertical.value=kind==="air" ? pending?.altitude ?? unit.altitude : pending?.depth ?? unit.depth;
+      vertical.min=kind==="air" ? "1" : "0";
+    }
+  }
+  function verticalOptions() {
+    if (verticalLabel.hidden) return {};
+    if (!vertical.value.trim()) throw new Error("请填写高度／深度。");
+    const selected=ref(), unit=store.getSceneSnapshot().instances.find(item=>item.instanceId===selected.id);
+    const key=navalKind(unit)==="air" ? "altitude" : "depth";
+    const value=Number(vertical.value);
+    return value===unit[key] ? {} : {[key]:value};
+  }
   const x = element("input");
   const y = element("input");
   x.type = y.type = "number";
@@ -148,7 +173,8 @@ export function mountSimulationFeatures(store, context) {
       ref(),
       Number(x.value),
       Number(y.value),
-      { followFormationMovement: follow.checked }
+      { followFormationMovement: follow.checked,
+        ...verticalOptions() }
     );
     status.textContent = "移動計画を保存しました。位置と航続距離はまだ変更していません。";
   });
@@ -190,6 +216,7 @@ if (!confirm(
     followLabel,
     xLabel,
     yLabel,
+    verticalLabel,
     buttons,
     element(
       "p",
@@ -224,7 +251,7 @@ if (!confirm(
 
 
     try {
-      const info = store.getMovementInfo(ref());
+      const info = store.getMovementInfo(ref(),verticalOptions());
       const points = [];
 
       for (let index = 0; index <= 96; index++) {
@@ -327,6 +354,7 @@ if (!movement) {
 }
 
     syncFollow(scene);
+    syncVertical(scene);
     drawRange();
   }
 
@@ -335,7 +363,14 @@ if (!movement) {
     status.textContent = "観察陣営を変更しました。表示情報を再判定しました。";
   }));
 
+  vertical.addEventListener("change", async () => await run(() => {
+    const info=store.getMovementInfo(ref(),verticalOptions());
+    status.textContent=`当前高度／深度对应的最大移动距离：${info.limit}`;
+    drawRange();
+  }));
+
   actor.addEventListener("change", async () => {
+  syncVertical(store.getSceneSnapshot());
   syncFollow(store.getSceneSnapshot());
   const movement =
     store.getSceneSnapshot().turn.phaseId === "movement";
@@ -392,6 +427,7 @@ if (!movement) {
       const point = screenPoint(event);
 
       fleetPicker.select(JSON.stringify(movementRef));
+      syncVertical(scene);
       syncFollow(scene);
       x.value = info.x;
       y.value = info.y;
@@ -466,7 +502,8 @@ if (!movement) {
         Number(x.value),
         Number(y.value),
         {
-          followFormationMovement: current.followFormationMovement
+          followFormationMovement: current.followFormationMovement,
+          ...verticalOptions()
         }
       );
 
@@ -499,6 +536,7 @@ if (!movement) {
     });
 
     if (fleetPicker.select(value)) {
+      syncVertical(store.getSceneSnapshot());
       syncFollow(store.getSceneSnapshot());
       drawRange();
     }
@@ -506,7 +544,7 @@ if (!movement) {
 
   document.addEventListener('formation-select',event=>{
     const value=JSON.stringify({kind:'group',id:event.detail});
-    if(fleetPicker.select(value)){syncFollow(store.getSceneSnapshot());drawRange();
+    if(fleetPicker.select(value)){syncVertical(store.getSceneSnapshot());syncFollow(store.getSceneSnapshot());drawRange();
     }
   });
   store.subscribe(sync);

@@ -1,7 +1,7 @@
 import {
   findUnit,
   getBranchName
-} from "./data-store.js?v=naval-formation-2";
+} from "./data-store.js?v=submarine-rules-1";
 
 export function previewAction({
   units,

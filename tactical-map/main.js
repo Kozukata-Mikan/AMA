@@ -1,3 +1,4 @@
+import { navalPlacement, navalHeight } from "./naval-kind.js?v=submarine-rules-1";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
 import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-6";
@@ -7,10 +8,10 @@ import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=fleet-cohesion-6";
-import { loadUnitData } from "../js/data-store.js?v=naval-formation-2";
-import { createBattleStore } from "../js/battle-state.js?v=fleet-cohesion-6";
-import { mountEditor } from "./editor.js?v=fleet-cohesion-6";
+import { mountSaveIndicator } from "./save-indicator.js?v=submarine-rules-1";
+import { loadUnitData } from "../js/data-store.js?v=submarine-rules-1";
+import { createBattleStore } from "../js/battle-state.js?v=submarine-rules-1";
+import { mountEditor } from "./editor.js?v=submarine-rules-1";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
@@ -28,10 +29,10 @@ import {
   getDisplayUnits,
   makeClusterProxy,
   getDeploymentUpdates
-} from "./cluster-engine.js";
+} from "./cluster-engine.js?v=submarine-rules-1";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=fleet-cohesion-6";
+import { mountTerrainEditor } from "./terrain-editor.js?v=submarine-rules-1";
 
 let terrain = createDemoTerrain();
 let terrainController = null;
@@ -761,68 +762,7 @@ function getUnitSpatialState(unit) {
   const ground = sample.surface;
 
   switch (unit.branch) {
-      case "navy": {
-      if (sample.kind === "land") {
-        return {
-          valid: false,
-          reason: "海軍ユニットは陸地に配置できません。"
-        };
-      }
-
-      const restricted =
-        sample.kind === "river" ||
-        sample.kind === "shallow";
-
-      const waterName = sample.kind === "river" ? "河川" : "浅海";
-
-      if (restricted) {
-        const level = Number(unit.sizeLevel);
-
-        if (unit.underwater === true) {
-          return {
-            valid: false,
-            reason: `${waterName}に水中ユニットは進入できません。`
-          };
-        }
-
-        if (!Number.isInteger(level) || level < 1 || level > 2) {
-          return {
-            valid: false,
-            reason:
-              `${waterName}に進入できるのは、` +
-              "サイズレベル 1～2 の水上ユニットのみです。"
-          };
-        }
-      }
-
-      if (unit.underwater === true) {
-        const depth = Number(unit.depth ?? 12);
-
-        if (!Number.isFinite(depth) || depth <= 0) {
-          return {
-            valid: false,
-            reason: "水中深度は 0 より大きくしてください。"
-          };
-        }
-
-        return {
-          valid: true,
-          height: -depth,
-          ground: 0,
-          note: `水中深度：${depth} 地図高度単位`
-        };
-      }
-
-      return {
-        valid: true,
-        height: ground,
-        ground,
-        note: restricted
-          ? `${waterName}の水面に配置されています。サイズレベル ${unit.sizeLevel}：進入可能。`
-          : "海面に配置されています。"
-      };
-    }
-
+      case "navy": return navalPlacement(unit,sample);
 
       case "army":
       if (sample.kind !== "land") {
@@ -1228,8 +1168,8 @@ function pickUnitPlacement(event, unit) {
   const fixedHeight =
     unit.branch === "air"
       ? Number(unit.altitude ?? 80)
-      : unit.branch === "navy" && unit.underwater === true
-        ? -Number(unit.depth ?? 12)
+      : unit.branch === "navy"
+        ? navalHeight(unit,sampleTerrain(terrain,unit.x,unit.y))
         : unit.branch === "special" && unit.altitude !== null
           ? Number(unit.altitude)
           : null;
@@ -1272,8 +1212,8 @@ function drawDeploymentPreview(unit, spatial) {
     ? spatial.height
     : unit.branch === "air"
       ? Number(unit.altitude ?? 80)
-      : unit.branch === "navy" && unit.underwater === true
-        ? -Number(unit.depth ?? 12)
+      : unit.branch === "navy"
+        ? navalHeight(unit,sampleTerrain(terrain,unit.x,unit.y))
         : sample.surface;
 
   const position = project(unit.x, unit.y, height);

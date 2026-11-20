@@ -1,18 +1,19 @@
+import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=submarine-rules-1";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=naval-formation-2";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=submarine-rules-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=naval-formation-2";
+} from "./ship-runtime.js?v=submarine-rules-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=fleet-cohesion-6";
+} from "./simulation-rescue.js?v=submarine-rules-1";
 
 import {
   createShipEffectsState,
@@ -23,11 +24,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=naval-formation-2";
+} from "./equipment-item-runtime.js?v=submarine-rules-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=fleet-cohesion-6";
+} from "./simulation-autonomous-rescue.js?v=submarine-rules-1";
 
 import {
   routeLength,
@@ -35,7 +36,7 @@ import {
   clipLandRoute,
   routeHeading,
   resolveMovementRoutes
-} from "./simulation-movement-route.js?v=fleet-course-3";
+} from "./simulation-movement-route.js?v=submarine-rules-1";
 
 
 const SIDES = ["ally", "enemy", "neutral"];
@@ -66,6 +67,7 @@ function operational(unit) {
 }
 
 export function initializeSimulationFeatures(scene) {
+  for (const unit of scene.instances) normalizeNavalPosition(unit);
   for (const group of scene.groups) if (group.formation !== undefined) normalizeFormation(group.formation);
   scene.controls ??= {};
   scene.controls.enemyAutonomy =
@@ -278,6 +280,7 @@ function getNormalObserverVisibility(scene, observer, target) {
     return null;
   }
 
+  if (isSubmerged(target) && (observer.branch !== "navy" || navalGrade(observer,"aswRecon") === null)) return null;
   if (distance <= 100) return "identified";
 
   if (
@@ -289,7 +292,7 @@ function getNormalObserverVisibility(scene, observer, target) {
   }
 
   const detection = navalGrade(target, "detection");
-  const recon = navalGrade(observer, "seaRecon");
+  const recon = navalGrade(observer, isSubmerged(target) ? "aswRecon" : "seaRecon");
 
   return (
     detection !== null &&
@@ -319,6 +322,7 @@ export function getEquipmentReconSourceVisibility(
   }
 
   if (itemId === "sea-recon") {
+    if (isSubmerged(target)) return null;
     if (target.branch !== "navy") return null;
 
     if (
@@ -354,6 +358,7 @@ export function getEquipmentReconSourceVisibility(
  */
 function observerVisibility(scene, observer, target, readRecon) {
   if (!operational(observer) || !positioned(target)) return null;
+  if (isSubmerged(target)) return getNormalObserverVisibility(scene,observer,target);
   if (observer.branch === "navy" && target.branch === "navy") {
     const state=readRecon(observer);
     if(state.damaged){
@@ -1283,9 +1288,15 @@ function createAutonomousMovementPlans(
 
 export function createSimulationFeatures(getState, commit, commitBackground = null) {
   return {
-    getMovementInfo(ref) {
+    getMovementInfo(ref, options = {}) {
       const scene = getState();
-      const members = movementMembers(scene, ref);
+      let members = movementMembers(scene, ref);
+      if (options.depth !== undefined || options.altitude !== undefined) {
+        if (ref.kind !== "unit") fail("高度／深度预览请选单舰。");
+        const unit=members[0];
+        const copy={...unit,snapshot:{...unit.snapshot,naval:{...unit.snapshot.naval}}};
+        members=[setNavalVertical(copy,options)];
+      }
 
       const anchor = ref.kind === "group" ? formationCenter(members,scene.groups.find(group=>group.id===ref.id)?.formation) : members[0];
       return {
@@ -1365,10 +1376,23 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
 
       await commit(scene => {
         const follow = options.followFormationMovement === true;
-
+        const changingVertical = options.depth !== undefined || options.altitude !== undefined;
+        let planning = scene, vertical = null;
+        if (changingVertical) {
+          if (ref.kind !== "unit" || follow) fail("高度／深度调整请使用单舰操作，并取消整队跟随。");
+          const unit = scene.instances.find(item=>item.instanceId===ref.id);
+          if (!unit || unit.branch !== "navy") fail("该操作只适用于舰船。");
+          assertManualControl(scene,[unit]);
+          vertical = {id:unit.instanceId,fromDepth:unit.depth,fromAltitude:unit.altitude ?? null,
+            ...(options.depth === undefined ? {} : {depth:options.depth}),
+            ...(options.altitude === undefined ? {} : {altitude:options.altitude})};
+          planning = clone(scene);
+          setNavalVertical(planning.instances.find(item=>item.instanceId===unit.instanceId),vertical);
+        }
         const plan = follow
-          ? buildFollowPlan(scene, ref, x, y)
-          : buildPlan(scene, ref, x, y);
+          ? buildFollowPlan(planning, ref, x, y)
+          : buildPlan(planning, ref, x, y);
+        if (vertical) plan.vertical = vertical;
 
         const ids = new Set(plan.memberIds);
 
@@ -1468,6 +1492,13 @@ validationScene.controls.enemyAutonomy = false;
 
           let rebuilt;
 
+          if (saved.vertical) {
+            const unit = validationScene.instances.find(item=>item.instanceId===saved.vertical.id);
+            if (saved.ref.kind !== "unit" || saved.ref.id !== saved.vertical.id || saved.memberIds.length !== 1 ||
+                !unit || unit.depth !== saved.vertical.fromDepth || (unit.altitude ?? null)!==saved.vertical.fromAltitude)
+              fail("高度／深度的起始状态已变化，请重新规划。");
+            setNavalVertical(unit,saved.vertical);
+          }
           if (saved.mode === "formation-layout") {
             const group = validationScene.groups.find(item=>item.id===saved.ref.id);
             if (!group) fail("編隊が見つかりません。");
@@ -1571,8 +1602,12 @@ validationScene.controls.enemyAutonomy = false;
             rebuilt.mode = saved.mode;
             delete rebuilt.heading;
           }
+          if (saved.vertical) rebuilt.vertical = clone(saved.vertical);
           checked.push(rebuilt);
         }
+
+        for (const plan of checked) if (plan.vertical)
+          setNavalVertical(scene.instances.find(unit=>unit.instanceId===plan.vertical.id),plan.vertical);
 
         const routes = checked.flatMap(plan =>
           plan.destinations.map(destination => ({

@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=fleet-cohesion-6';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=submarine-rules-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';

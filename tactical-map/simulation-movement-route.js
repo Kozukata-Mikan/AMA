@@ -1,3 +1,4 @@
+import { navalCanTraverse, navalKind, isSubmerged } from "./naval-kind.js?v=submarine-rules-1";
 import { sampleTerrain } from "./terrain-data.js";
 
 const EPS = 1e-7;
@@ -70,7 +71,7 @@ export function trimRoute(route, budget) {
 
 // 精确划分网格三角面与最近顶点遮罩分区。
 // 不用固定步长采样，避免漏过狭窄陆地。
-function terrainIntervals(terrain, from, to) {
+function terrainIntervals(terrain, from, to, ceiling = 0) {
   const x0 = (from.x + terrain.width / 2) *
     (terrain.cols - 1) / terrain.width;
   const y0 = (from.y + terrain.height / 2) *
@@ -110,8 +111,8 @@ function terrainIntervals(terrain, from, to) {
     const b = base[i];
     const pa = interpolate(from, to, a);
     const pb = interpolate(from, to, b);
-    const ha = sampleTerrain(terrain, pa.x, pa.y).height;
-    const hb = sampleTerrain(terrain, pb.x, pb.y).height;
+    const ha = sampleTerrain(terrain, pa.x, pa.y).height - ceiling;
+    const hb = sampleTerrain(terrain, pb.x, pb.y).height - ceiling;
 
     if ((ha < 0 && hb > 0) || (ha > 0 && hb < 0)) {
       values.push(a + (b - a) * (-ha) / (hb - ha));
@@ -128,13 +129,8 @@ export function clipLandRoute(terrain, unit, route) {
     }
   }
 
-  // 本批不增加水下通行规则。
-  if (unit.underwater === true) {
-    return { route: copy(route), blocked: false };
-  }
-
-  if (sampleTerrain(terrain, route[0].x, route[0].y).kind === "land") {
-    fail("水面艦の開始位置が陸地です。配置を確認してください。");
+  if (!navalCanTraverse(unit,sampleTerrain(terrain, route[0].x, route[0].y))) {
+    fail("舰船当前种类与起点地形不符，请检查部署。");
   }
 
   const result = [copy(route[0])];
@@ -146,14 +142,14 @@ export function clipLandRoute(terrain, unit, route) {
 
     if (length <= EPS) continue;
 
-    const breaks = terrainIntervals(terrain, from, to);
+    const breaks = terrainIntervals(terrain, from, to, navalKind(unit)==="air" ? unit.altitude : 0);
 
     for (let j = 1; j < breaks.length; j++) {
       const middle = interpolate(
         from, to, (breaks[j - 1] + breaks[j]) / 2
       );
 
-      if (sampleTerrain(terrain, middle.x, middle.y).kind !== "land") {
+      if (navalCanTraverse(unit,sampleTerrain(terrain, middle.x, middle.y))) {
         continue;
       }
 
@@ -165,7 +161,7 @@ export function clipLandRoute(terrain, unit, route) {
       return { route: result, blocked: true };
     }
 
-    if (sampleTerrain(terrain, to.x, to.y).kind === "land") {
+    if (!navalCanTraverse(unit,sampleTerrain(terrain, to.x, to.y))) {
       const t = Math.max(0, 1 - EPS / length);
       if (t > EPS) result.push(interpolate(from, to, t));
       return { route: result, blocked: true };
@@ -178,11 +174,13 @@ export function clipLandRoute(terrain, unit, route) {
 }
 
 function sameLayer(a, b) {
-  if ((a.underwater === true) !== (b.underwater === true)) {
+  const airA=navalKind(a)==='air', airB=navalKind(b)==='air';
+  if (airA || airB) return airA && airB && Math.abs(a.altitude-b.altitude)<=EPS;
+  if (isSubmerged(a) !== isSubmerged(b)) {
     return false;
   }
 
-  if (a.underwater !== true) return true;
+  if (!isSubmerged(a)) return true;
 
   if (
     !Number.isFinite(a.depth) || a.depth < 0 ||

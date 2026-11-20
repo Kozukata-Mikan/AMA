@@ -1,6 +1,6 @@
 import { parseHitExpression } from "./weapon-hit-runtime.js";
-import { getEquipmentLabel } from "../js/catalog-seed.js?v=naval-formation-2";
-import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=naval-formation-2";
+import { getEquipmentLabel } from "../js/catalog-seed.js?v=submarine-rules-1";
+import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=submarine-rules-1";
 
 
 // 只适配已经确认的图鉴字段。
@@ -25,6 +25,10 @@ const GUIDANCE = new Map([
   ["数控", { id: "computer", underwater: false }],
   ["数控誘導", { id: "computer", underwater: false }]
 ]);
+
+for (const [name,id] of [["抛射","lobbed"],["拋射","lobbed"],["雷达","radar"],["レーダー","radar"],["数控","computer"],["数控誘導","computer"],["惯性","inertial"],["慣性","inertial"]]) {
+  for (const suffix of ["（水下）","(水下)"]) GUIDANCE.set(name+suffix,{id,underwater:true});
+}
 
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -275,3 +279,5 @@ if (source === "集群") {
     maximumTargets
   };
 }
+
+export const GUIDANCE_OPTIONS = ["抛射","平射","惯性","惯性（大型）","射线","雷达","数控","平射（水下）","抛射（水下）","雷达（水下）","数控（水下）","惯性（水下）"];

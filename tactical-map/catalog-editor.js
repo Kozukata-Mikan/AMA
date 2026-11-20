@@ -1,5 +1,7 @@
+import { GUIDANCE_OPTIONS } from "./weapon-profile-runtime.js?v=submarine-rules-1";
+import { NAVAL_KINDS } from "./naval-kind.js?v=submarine-rules-1";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=naval-formation-2";
+import { getCatalogStore } from "../js/catalog-store.js?v=submarine-rules-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -10,7 +12,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=naval-formation-2";
+} from "../js/catalog-seed.js?v=submarine-rules-1";
 
 // ===== 图鉴界面 =====
 
@@ -723,6 +725,8 @@ export function mountCatalogEditor({
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.type === "naval-kind"
+            ? NAVAL_KINDS.find(([key])=>key===(value ?? "surface"))?.[1]
             : field.type === "naval-symbol"
             ? NAVAL_SYMBOL_OPTIONS.find(([key]) => key === (value ?? "combat"))?.[1]
             : field.key === "faction"
@@ -940,6 +944,11 @@ export function mountCatalogEditor({
           ["army", "陸軍"],
           ["special", "特殊"]
         ], value);
+      } else if (field.type === "guidance") {
+        const values=GUIDANCE_OPTIONS.includes(value) || !value ? GUIDANCE_OPTIONS : [value,...GUIDANCE_OPTIONS];
+        control=select([["","请选择引导方式"],...values.map(id=>[id,id])],value ?? "");
+      } else if (field.type === "naval-kind") {
+        control = select(NAVAL_KINDS, value ?? "surface");
       } else if (field.type === "naval-symbol") {
         control = select(NAVAL_SYMBOL_OPTIONS, value ?? "combat");
       } else if (field.type === "size") {

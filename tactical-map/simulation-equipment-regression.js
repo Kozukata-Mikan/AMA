@@ -1,11 +1,11 @@
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=naval-formation-2";
+} from "./ship-runtime.js?v=submarine-rules-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=naval-formation-2";
+} from "./equipment-runtime.js?v=submarine-rules-1";
 
 import {
   ensureEquipmentItemRuntime,
@@ -15,17 +15,17 @@ import {
   getEquipmentControlCandidates,
   readEquipmentItemState,
   getRetainedEquipmentDiscovery
-} from "./equipment-item-runtime.js?v=naval-formation-2";
+} from "./equipment-item-runtime.js?v=submarine-rules-1";
 
 import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=fleet-cohesion-6";
+} from "./simulation-rescue.js?v=submarine-rules-1";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=fleet-cohesion-6";
+} from "./simulation-rescue-runtime.js?v=submarine-rules-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

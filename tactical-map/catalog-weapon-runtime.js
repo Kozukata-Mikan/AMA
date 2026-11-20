@@ -40,6 +40,8 @@ function normalizeGuidance(value) {
     "数控": ["computer", true]
   };
 
+  for (const [name,id] of [["抛射","lobbed"],["拋射","lobbed"],["平射","direct"],["雷达","radar"],["レーダー","radar"],["数控","computer"],["数控誘導","computer"],["惯性","inertial"],["慣性","inertial"]])
+    for (const suffix of ["（水下）","(水下)"]) table[name+suffix]=[id,true];
   const key = typeof value === "string" ? value.trim() : "";
   const entry = table[key];
 

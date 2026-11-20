@@ -1,14 +1,15 @@
+import { navalKind } from "./naval-kind.js?v=submarine-rules-1";
 import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=fleet-cohesion-6";
 import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
-import { getBranchName } from "../js/data-store.js?v=naval-formation-2";
+import { getBranchName } from "../js/data-store.js?v=submarine-rules-1";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=fleet-cohesion-6";
+import { createSimulation } from "./simulation-store.js?v=submarine-rules-1";
 import { mountSceneLibrary } from "./scene-library.js";
-import { assessCluster } from "./cluster-engine.js";
-import { mountCatalogEditor } from "./catalog-editor.js?v=naval-formation-2";
+import { assessCluster } from "./cluster-engine.js?v=submarine-rules-1";
+import { mountCatalogEditor } from "./catalog-editor.js?v=submarine-rules-1";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
-import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=naval-formation-2";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=submarine-rules-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 
@@ -857,18 +858,13 @@ introSection.append(
     let depth;
     let altitude;
 
-    if (unit.branch === "navy") {
-      underwater = field(
-        form,
-        "水中ユニット",
-        input(unit.underwater, "checkbox")
-      );
-
-      depth = field(
-        form,
-        "水中深度（地図高度単位）",
-        input(unit.depth, "number")
-      );
+    if (unit.branch === "navy" && navalKind(unit)==="submarine") {
+      depth = field(form,"深度（0＝水面，至少1＝潜航）",input(unit.depth ?? 1,"number"));
+      depth.min="0";
+    }
+    if (unit.branch === "navy" && navalKind(unit)==="air") {
+      altitude = field(form,"空中舰高度（至少1）",input(unit.altitude ?? 1,"number"));
+      altitude.min="1";
     }
 
     if (unit.branch === "air" || unit.branch === "special") {
@@ -946,13 +942,13 @@ introSection.append(
           throw new Error("X と Y は両方入力するか、両方空欄にしてください。");
         }
 
-        if (underwater) {
-          patch.underwater = underwater.checked;
-          patch.depth = numberValue(depth, "水中深度");
+        if (depth) {
+          patch.depth = numberValue(depth,"水中深度");
+          patch.underwater = patch.depth > 0;
         }
 
         if (altitude) {
-          patch.altitude = numberValue(altitude, "海抜高度", true);
+          patch.altitude = numberValue(altitude, "海抜高度", unit.branch !== "navy");
         }
 
         // 已部署单位保存前检查海陆和高度条件。

@@ -1,10 +1,11 @@
+import { NAVAL_KINDS, navalKind, isSubmerged } from "./naval-kind.js?v=submarine-rules-1";
 import {
   EQUIPMENT_HIT_ITEMS
 } from "./equipment-damage-runtime.js";
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=naval-formation-2";
+} from "./equipment-item-runtime.js?v=submarine-rules-1";
 
 
 import {
@@ -23,12 +24,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=naval-formation-2";
+} from "./equipment-runtime.js?v=submarine-rules-1";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=naval-formation-2";
+} from "./equipment-item-runtime.js?v=submarine-rules-1";
 
 
 // ===== 舰船数据与推演状态接入 =====
@@ -142,7 +143,8 @@ export function readShipProfile(unit) {
     throw new Error("艦種が登録されていません。");
   }
 
-  const speedKnots = requireNumber(naval.speedKnots, "速力");
+  const selectedSpeed = navalKind(unit)==='submarine' ? isSubmerged(unit) ? naval.submergedSpeedKnots ?? naval.speedKnots : naval.surfaceSpeedKnots ?? naval.speedKnots : naval.speedKnots;
+  const speedKnots = requireNumber(selectedSpeed, "速力");
   const endurance = parseShipEndurance(naval.endurance);
 
   return {
@@ -152,6 +154,8 @@ export function readShipProfile(unit) {
     detection: requireGrade(naval.detection, "探測強度"),
     seaRecon: requireGrade(naval.seaRecon, "対海偵察"),
     airRecon: requireGrade(naval.airRecon, "対空偵察"),
+    aswRecon: naval.aswRecon?.trim() || null,
+    kind: navalKind(unit),
 
     // 带有正负修饰的装甲值原样保留，暂不解释伤害公式。
     armor: typeof naval.armor === "string" ? naval.armor : "",
@@ -400,7 +404,10 @@ export function getShipDetailLines(unit, environment) {
       `探測強度：${profile.detection}`,
       `対海偵察：${profile.seaRecon}`,
       `対空偵察：${profile.airRecon}`,
-      `速力：${profile.speedKnots}ノット`,
+    `种类：${NAVAL_KINDS.find(([id])=>id===profile.kind)?.[1]}`,
+    `状态：${isSubmerged(unit) ? '潜深 '+unit.depth : profile.kind==='air' ? '高度 '+unit.altitude : '水面／地面'}`,
+    `对潜侦察：${profile.aswRecon ?? '无'}`,
+    `速力：${profile.speedKnots}ノット`,
       "残弾・装備損傷・航続距離の残量・内部状態は非公開です。"
     ];
   }
@@ -449,6 +456,9 @@ const equipmentLines = EQUIPMENT_HIT_ITEMS.map(item => {
     `現在の通常偵察距離：${recon.normalRange}`,
     `近距離識別距離：${recon.identificationRange}`,
     "偵察には等級条件と地形遮蔽の判定も必要です。",
+    `种类：${NAVAL_KINDS.find(([id])=>id===profile.kind)?.[1]}`,
+    `状态：${isSubmerged(unit) ? '潜深 '+unit.depth : profile.kind==='air' ? '高度 '+unit.altitude : '水面／地面'}`,
+    `对潜侦察：${profile.aswRecon ?? '无'}`,
     `速力：${profile.speedKnots}ノット`,
     `最大移動距離：${profile.movementLimit}マス／ラウンド`,
     `残り航続距離：${state.remainingEndurance}マス`,

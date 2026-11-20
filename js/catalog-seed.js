@@ -70,6 +70,10 @@ export const UNIT_FIELDS = [
     type: "branch",
     definition: "海軍・航空機・陸軍・特殊の分類。配置条件と表示形状に使用します。"
   },
+  {key:"naval.kind",label:"种类",type:"naval-kind",definition:"空中舰、水面舰、水下舰、陆上舰。用于海军舰船，与军种和外观标识独立。"},
+  {key:"naval.aswRecon",label:"对潜侦察",type:"text",definition:"用于发现潜航中的水下舰；留空表示无对潜侦察能力。等级与对海侦察一致。"},
+  {key:"naval.surfaceSpeedKnots",label:"水上航速（节）",type:"optional-number",definition:"水下舰浮航（深度0）时的航速。留空沿用原航速。"},
+  {key:"naval.submergedSpeedKnots",label:"水下航速（节）",type:"optional-number",definition:"水下舰潜航时的航速。旧资料留空沿用原航速。"},
   {
     key: "naval.iconType",
     label: "艦船マーク",
@@ -243,7 +247,7 @@ export const EQUIPMENT_FIELDS = [
   {
     key: "guidance",
     label: "引導方式",
-    type: "text",
+    type: "guidance",
     definition: "抛射・平射などの攻撃方式。対応する軌道・判定規則は未設定です。"
   },
 

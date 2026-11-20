@@ -9,7 +9,7 @@ function failWorker(error){
 }
 function getWorker(){
  if(worker)return worker;
- worker=new Worker(new URL('./background-worker.js?v=fleet-cohesion-6',import.meta.url),{type:'module'});
+ worker=new Worker(new URL('./background-worker.js?v=submarine-rules-1',import.meta.url),{type:'module'});
  worker.onmessage=event=>{
   const message=event.data,entry=pending.get(message.id);if(!entry)return;
   pending.delete(message.id);clearTimeout(entry.timer);
@@ -24,7 +24,7 @@ export async function runBackgroundTask(task,payload){
  if(typeof globalThis.Worker!=='function'){
   // Compatibility path only: never rerun a failed worker/random calculation here.
   await new Promise(resolve=>setTimeout(resolve,0));
-  const {executeBackgroundTask}=await import('./background-tasks.js?v=fleet-cohesion-6');
+  const {executeBackgroundTask}=await import('./background-tasks.js?v=submarine-rules-1');
   return executeBackgroundTask(task,payload);
  }
  let active;

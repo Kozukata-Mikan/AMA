@@ -1,4 +1,4 @@
-import { initializeCatalog } from "./catalog-store.js?v=naval-formation-2";
+import { initializeCatalog } from "./catalog-store.js?v=submarine-rules-1";
 
 const BRANCH_NAMES = {
   navy: "海軍",

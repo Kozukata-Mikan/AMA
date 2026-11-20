@@ -1,4 +1,5 @@
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=fleet-cohesion-6";
+import { navalHeight, isSubmerged } from "./naval-kind.js?v=submarine-rules-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=submarine-rules-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -10,7 +11,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=fleet-cohesion-6";
+} from "./simulation-attack-batch.js?v=submarine-rules-1";
 
 
 
@@ -20,16 +21,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=naval-formation-2";
+} from "./ship-runtime.js?v=submarine-rules-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=naval-formation-2";
+} from "./equipment-runtime.js?v=submarine-rules-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=fleet-cohesion-6";
+} from "./simulation-features.js?v=submarine-rules-1";
 
 import {
   getEquipmentDamagePlan,
@@ -39,7 +40,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=naval-formation-2";
+} from "./equipment-item-runtime.js?v=submarine-rules-1";
 
 
 import {
@@ -72,32 +73,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=fleet-cohesion-6";
+} from "./simulation-rescue.js?v=submarine-rules-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=fleet-cohesion-6";
+} from "./simulation-phase-finish.js?v=submarine-rules-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=naval-formation-2";
+} from "./weapon-profile-runtime.js?v=submarine-rules-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=naval-formation-2";
+} from "./simulation-attack-runtime.js?v=submarine-rules-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=naval-formation-2";
+} from "./weapon-profile-runtime.js?v=submarine-rules-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=fleet-cohesion-6";
+} from "./simulation-features.js?v=submarine-rules-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=fleet-cohesion-6";
+} from "./formation-target-runtime.js?v=submarine-rules-1";
 
 import {
   readRangeCommandTarget
@@ -110,7 +111,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=fleet-cohesion-6";
+} from "./range-projection-runtime.js?v=submarine-rules-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -567,19 +568,7 @@ function navalPoint(scene, unit) {
     fail("攻撃位置が地図の範囲外です。");
   }
 
-  let z = sample.surface;
-
-  if (unit.underwater === true) {
-    // 正式結算では欠落深度を12で代用しない。
-    if (
-      !Number.isFinite(unit.depth) ||
-      unit.depth < 0
-    ) {
-      fail("水中艦船の深度が未登録、または不正です。");
-    }
-
-    z = -unit.depth;
-  }
+  const z = navalHeight(unit,sample);
 
   if (!Number.isFinite(z)) {
     fail("攻撃位置の高さが不正です。");
@@ -834,6 +823,8 @@ try {
   const underwaterWeapon =
     profile.underwater === true ||
     damageRule.underwater;
+
+  if (isSubmerged(actor) && !underwaterWeapon) ineligible("潜航中的水下舰只能使用水下武器。");
 
   const from = navalPoint(start, actor);
   const to = navalPoint(start, target);

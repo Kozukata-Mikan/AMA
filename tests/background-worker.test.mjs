@@ -8,7 +8,7 @@ import {executeBackgroundTask} from '../tactical-map/background-tasks.js';
 import {readSave} from '../js/save-database.js';
 import {applyBrush,readTerrainVertex,resizeTerrain} from '../tactical-map/terrain-data.js';
 import {createTerrainStrokeSession} from '../tactical-map/terrain-stroke-session.js';
-import {runBackgroundTask,shutdownBackground,subscribeBackgroundStatus} from '../tactical-map/background-client.js?v=fleet-cohesion-6';
+import {runBackgroundTask,shutdownBackground,subscribeBackgroundStatus} from '../tactical-map/background-client.js?v=submarine-rules-1';
 class BrowserWorker{
  constructor(){this.worker=new NodeWorker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error))}
  postMessage(data){this.worker.postMessage(data)}terminate(){this.worker.terminate()}

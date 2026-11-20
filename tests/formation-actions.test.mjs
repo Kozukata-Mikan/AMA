@@ -255,7 +255,7 @@ test("repeated whole-group movement keeps a nonzero anchor offset and a fixed fo
 test("real worker plans a formation attack atomically and refuses orders for foreign formations", async () => {
   const { Worker } = await import("node:worker_threads");
   const { shutdownBackground } = await import(
-    "../tactical-map/background-client.js?v=fleet-cohesion-6"
+    "../tactical-map/background-client.js?v=submarine-rules-1"
   );
   const { id, store } = await simulation();
   globalThis.Worker = class {

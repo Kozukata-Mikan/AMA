@@ -1,3 +1,4 @@
+import { navalHeight } from "./naval-kind.js?v=submarine-rules-1";
 // ===== 集群规则与显示 =====
 // 集群保留独立成员，只合并地图显示。
 
@@ -14,9 +15,7 @@ function getMemberHeight(unit, terrain) {
     return unit.altitude ?? 80;
   }
 
-  if (unit.branch === "navy" && unit.underwater === true) {
-    return -(unit.depth ?? 12);
-  }
+  if (unit.branch === "navy") return navalHeight(unit,sample);
 
   if (unit.branch === "special") {
     return unit.altitude ?? sample.surface;
