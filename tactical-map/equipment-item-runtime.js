@@ -8,7 +8,7 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=building-foundations-2";
+} from "./equipment-runtime.js?v=building-symbols-3";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ITEM_IDS = EQUIPMENT_HIT_ITEMS.map(item => item.id);

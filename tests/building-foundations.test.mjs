@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeBuilding,normalizeBuildingUnit,buildingPlacement,buildingSymbolParts,BUILDING_DIAMETER} from '../tactical-map/building-runtime.js';
+import {normalizeBuilding,normalizeBuildingUnit,buildingPlacement,buildingSymbolParts,BUILDING_DIAMETER,buildingPartPresentation,drawBuildingIcon,transformBuildingPath} from '../tactical-map/building-runtime.js';
 import {BUILDING_FIELDS} from '../js/catalog-seed.js';
 import {initializeCatalog} from '../js/catalog-store.js';
 import {createBattleStore} from '../js/battle-state.js';
@@ -43,8 +43,9 @@ test('facility symbols use an exact 50-grid ring, runway counts and selective ba
   const ring=parts.find(p=>p.role==='ring'),coords=ring.d.match(/-?\d+(?:\.\d+)?/g).map(Number),x=coords.filter((_,i)=>i%2===0),y=coords.filter((_,i)=>i%2===1);
   assert.equal(Math.max(...x)-Math.min(...x),50);assert.equal(Math.max(...y)-Math.min(...y),50);
  }
- const cargo=buildingSymbolParts({kind:'port',portType:'cargo'}),supply=buildingSymbolParts({kind:'port',portType:'supply'});
- assert.deepEqual(cargo,supply.filter(p=>p.role!=='base'));assert.equal(supply[0].role,'base');
+ for(const permanence of ['temporary','permanent'])for(const portType of ['trade','cargo','supply']){
+  const parts=buildingSymbolParts({kind:'port',portType,permanence});assert.equal(parts.filter(p=>p.role==='base').length,permanence==='permanent'?1:0);assert.ok(parts.some(p=>p.role==='anchor'));assert.equal(parts.filter(p=>p.role===portType).length,portType==='cargo'?3:1);
+ }
  assert.equal(normalizeBuilding().kind,'airport');
 });
 test('building deployment saves side, color, equipment and fixed body through scene reload',async()=>{
@@ -68,4 +69,16 @@ test('non-firing facilities preserve unregistered ammo without weakening ship st
  const building=facility();building.snapshot.equipmentSnapshots=[{id:'empty-gun',kind:'weapon',name:'未登録弾薬',ammo:null}];building.snapshot.mounts=[{equipmentId:'empty-gun',position:'中央',count:1}];
  const input={instances:[building]};const result=prepareSimulationAmmoSource(input,[]);assert.equal(result.instances[0].snapshot.equipmentSnapshots[0].ammo,null);assert.equal(input.instances[0].snapshot.equipmentSnapshots[0].ammo,null);
  const navy=structuredClone(building);navy.branch=navy.snapshot.branch='navy';assert.throws(()=>prepareSimulationAmmoSource({instances:[navy]},[]),/予備弾数/);
+});
+
+
+test('reference runway layouts have a horizontal strip, with the three-strip cross above it',()=>{
+ const points=path=>{const a=path.match(/-?\d+(?:\.\d+)?/g).map(Number);return Array.from({length:a.length/2},(_,i)=>({x:a[i*2],y:a[i*2+1]}));};
+ const center=ps=>({x:ps.reduce((n,p)=>n+p.x,0)/ps.length,y:ps.reduce((n,p)=>n+p.y,0)/ps.length});
+ for(const n of [2,3]){const runways=buildingSymbolParts({runways:n}).filter(p=>p.role==='runway').map(p=>points(p.d));assert.equal(runways.length,n);const horizontal=runways[0];assert.ok(Math.max(...horizontal.map(p=>p.x))-Math.min(...horizontal.map(p=>p.x))>10*(Math.max(...horizontal.map(p=>p.y))-Math.min(...horizontal.map(p=>p.y))));if(n===3)assert.ok(center(horizontal).y>center(runways[1]).y+8);}
+});
+test('upright logo rendering is reduced and lifted without projecting it onto the ground or changing data',()=>{
+ const oldDocument=globalThis.document;const make=()=>({attributes:{},children:[],setAttribute(k,v){this.attributes[k]=v;},append(child){this.children.push(child);}});globalThis.document={createElementNS:make};
+ try{const u=facility(),before=JSON.stringify(u),root=make();let projected=0;drawBuildingIcon(u,root,path=>{projected++;return transformBuildingPath(path,(x,y)=>({x:x-y,y:(x+y)*.43}));});assert.equal(projected,2);assert.equal(JSON.stringify(u),before);const parts=root.children[0].children;assert.equal(parts.filter(p=>p.attributes['data-plane']==='ground').length,2);assert.equal(parts.filter(p=>p.attributes['data-plane']==='upright').length,3);for(const part of buildingSymbolParts(u.snapshot.building)){const view=buildingPartPresentation(part);if(['ring','base'].includes(part.role))assert.deepEqual(view,{plane:'ground',scale:1,lift:0});else{assert.ok(view.scale<=.5);assert.ok(view.lift>0&&view.lift<25);}}}
+ finally{globalThis.document=oldDocument;}
 });

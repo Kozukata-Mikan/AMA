@@ -3,15 +3,15 @@ import {
   findUnit,
   getUnitsByBranch,
   getBranchName
-} from "./data-store.js?v=building-foundations-2";
+} from "./data-store.js?v=building-symbols-3";
 
 import {
   createBattleStore
-} from "./battle-state.js?v=building-foundations-2";
+} from "./battle-state.js?v=building-symbols-3";
 
 import {
   previewAction
-} from "./combat-engine.js?v=building-foundations-2";
+} from "./combat-engine.js?v=building-symbols-3";
 
 const views = {
   "navy-calculator": {

@@ -1,16 +1,16 @@
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=building-foundations-2";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=building-foundations-2";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=building-foundations-2";
-import { ensureShipRuntime } from "./ship-runtime.js?v=building-foundations-2";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=building-symbols-3";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=building-symbols-3";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=building-symbols-3";
+import { ensureShipRuntime } from "./ship-runtime.js?v=building-symbols-3";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=building-foundations-2";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=building-symbols-3";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=building-foundations-2";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=building-foundations-2";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=building-symbols-3";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=building-symbols-3";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=building-foundations-2";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=building-symbols-3";
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
 
 

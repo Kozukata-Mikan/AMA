@@ -1,4 +1,4 @@
-import { initializeCatalog } from "./catalog-store.js?v=building-foundations-2";
+import { initializeCatalog } from "./catalog-store.js?v=building-symbols-3";
 
 const BRANCH_NAMES = {
   navy: "海軍",

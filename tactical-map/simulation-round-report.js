@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=building-foundations-2';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=building-symbols-3';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';

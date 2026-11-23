@@ -1,4 +1,4 @@
-import { drawBuildingIcon } from "./building-runtime.js?v=building-foundations-2";
+import { drawBuildingIcon } from "./building-runtime.js?v=building-symbols-3";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import { projectMap as project } from "./map-display.js";
 

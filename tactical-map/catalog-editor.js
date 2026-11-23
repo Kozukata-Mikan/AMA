@@ -1,8 +1,8 @@
-import { BUILDING_KINDS, AIRPORT_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, buildingSymbolParts } from "./building-runtime.js?v=building-foundations-2";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=building-foundations-2";
+import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=building-symbols-3";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=building-symbols-3";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=building-foundations-2";
+import { getCatalogStore } from "../js/catalog-store.js?v=building-symbols-3";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -13,7 +13,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=building-foundations-2";
+} from "../js/catalog-seed.js?v=building-symbols-3";
 
 // ===== 图鉴界面 =====
 
@@ -219,7 +219,7 @@ function ensureStyles() {
   const link = node("link");
   link.id = "catalog-styles";
   link.rel = "stylesheet";
-  link.href = new URL("./catalog.css?v=building-foundations-2", import.meta.url).href;
+  link.href = new URL("./catalog.css?v=building-symbols-3", import.meta.url).href;
 
   document.head.append(link);
 }
@@ -744,7 +744,7 @@ export function mountCatalogEditor({
     for (const section of catalogFieldSections(fields, category)) {
     detail.append(node("h4", section.title), table(
       ["項目", "値"],
-      section.fields.filter(field=>item.branch!=="building" || !field.key.startsWith("building.") || field.key==="building.kind" || (item.building.kind==="port"?field.key==="building.portType":field.key!=="building.portType"&&(field.key!=="building.runways"||item.building.airportType==="runway"))).map(field => {
+      section.fields.filter(field=>item.branch!=="building" || !field.key.startsWith("building.") || field.key==="building.kind" || field.key==="building.permanence" || (item.building.kind==="port"?field.key==="building.portType":field.key!=="building.portType"&&(field.key!=="building.runways"||item.building.airportType==="runway"))).map(field => {
         const value = getPath(item, field.key);
 
         return [
@@ -752,7 +752,7 @@ export function mountCatalogEditor({
           field.key === "branch"
             ? branchName(value)
             : ["building-kind","airport-durability","airport-type","port-type"].includes(field.type)
-            ? ({"building-kind":BUILDING_KINDS,"airport-durability":AIRPORT_DURABILITY,"airport-type":AIRPORT_TYPES,"port-type":PORT_TYPES}[field.type].find(([id])=>id===value)?.[1] ?? value)
+            ? ({"building-kind":BUILDING_KINDS,"airport-durability":FACILITY_DURABILITY,"airport-type":AIRPORT_TYPES,"port-type":PORT_TYPES}[field.type].find(([id])=>id===value)?.[1] ?? value)
             : field.type === "guidance"
             ? getGuidanceLabel(value)
             : field.type === "naval-kind"
@@ -993,7 +993,7 @@ export function mountCatalogEditor({
       } else if (field.type === "building-size") {
         control=select([["1","1"]],1);control.disabled=true;
       } else if (field.type === "building-kind") {control=select(BUILDING_KINDS,value);
-      } else if (field.type === "airport-durability") {control=select(AIRPORT_DURABILITY,value);
+      } else if (field.type === "airport-durability") {control=select(FACILITY_DURABILITY,value);
       } else if (field.type === "airport-type") {control=select(AIRPORT_TYPES,value);
       } else if (field.type === "port-type") {control=select(PORT_TYPES,value);
       } else if (field.type === "runway-count") {control=select([["1","1"],["2","2"],["3","3"]],value);
@@ -1065,12 +1065,12 @@ export function mountCatalogEditor({
 
     if(category==='units' && draft.branch==='building') {
       const preview=node('div','','catalog-symbol-preview');
-      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','-31 -31 62 66');svg.style.width='90px';svg.style.height='96px';svg.setAttribute('role','img');svg.setAttribute('aria-label','施設マークのプレビュー');preview.append(svg,node('span','直径50マス / 地形に追随'));
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','-38 -34 76 57');svg.style.width='90px';svg.style.height='96px';svg.setAttribute('role','img');svg.setAttribute('aria-label','施設マークのプレビュー');preview.append(svg,node('span','直径50マス / 標識は表示上のみ浮上'));
       sectionHosts.get('building.kind').append(preview);
       function syncBuilding(){
         const building=Object.fromEntries(['kind','permanence','airportType','portType','runways'].map(key=>[key,key==='runways'?Number(controls.get('building.'+key).value):controls.get('building.'+key).value]));
-        for(const key of ['permanence','airportType','runways','portType'])controls.get('building.'+key).closest('label').hidden=key==='portType'?building.kind!=='port':building.kind!=='airport'||(key==='runways'&&building.airportType!=='runway');
-        svg.replaceChildren();for(const part of buildingSymbolParts(building)){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',part.d);path.setAttribute('fill',part.fill);path.setAttribute('fill-opacity',part.role==='base'?'.16':'1');path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','1.5');svg.append(path);}
+        for(const key of ['permanence','airportType','runways','portType'])controls.get('building.'+key).closest('label').hidden=key==='permanence'?false:key==='portType'?building.kind!=='port':building.kind!=='airport'||(key==='runways'&&building.airportType!=='runway');
+        svg.replaceChildren();drawBuildingIcon({snapshot:{building}},svg,path=>transformBuildingPath(path,(x,y)=>({x:(x-y)*.95,y:(x+y)*.43})));
       }
       for(const key of ['kind','permanence','airportType','portType','runways'])controls.get('building.'+key).addEventListener('change',syncBuilding);
       syncBuilding();

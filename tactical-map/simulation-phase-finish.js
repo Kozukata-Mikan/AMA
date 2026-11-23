@@ -11,31 +11,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=building-foundations-2";
+} from "./ship-runtime.js?v=building-symbols-3";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=building-foundations-2";
+} from "./equipment-runtime.js?v=building-symbols-3";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=building-foundations-2";
+} from "./simulation-special-runtime.js?v=building-symbols-3";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=building-foundations-2";
+} from "./simulation-rescue-runtime.js?v=building-symbols-3";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=building-foundations-2";
+} from "./equipment-item-runtime.js?v=building-symbols-3";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=building-foundations-2";
+} from "./simulation-rescue.js?v=building-symbols-3";
 
 import {
   initializeRoundTraitRuntime,

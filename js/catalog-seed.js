@@ -167,10 +167,10 @@ export const UNIT_FIELDS = [
 export const BUILDING_FIELDS = [
   ...UNIT_FIELDS.filter(field=>['name','branch','faction','maxHp','sizeLevel','protected','naval.armor','naval.strength','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='sizeLevel'?{...field,type:'building-size',definition:'現在の建築の体型は1のみ。地図上の施設円は直径50マスです。'}:field),
   {key:'building.kind',label:'施設種別',type:'building-kind',definition:'飛行場または港湾を選択します。地形による配置制限はありません。'},
-  {key:'building.permanence',label:'飛行場区分',type:'airport-durability',definition:'恒久飛行場には台座を表示します。'},
+  {key:'building.permanence',label:'施設区分',type:'airport-durability',definition:'飛行場・港湾ともに臨時／恒久を選択します。恒久施設は二重の円で表示します。'},
   {key:'building.airportType',label:'飛行場形式',type:'airport-type',definition:'滑走路・空中艦・泊地から選択します。'},
   {key:'building.runways',label:'滑走路数',type:'runway-count',definition:'1～3本。泊地は2本の滑走路と波の記号で表示します。'},
-  {key:'building.portType',label:'港湾区分',type:'port-type',definition:'貨物港または補給港。補給港には台座を表示します。'}
+  {key:'building.portType',label:'港湾区分',type:'port-type',definition:'貿易港（$）・貨物港（積み荷）・補給港（フック）。施設区分とは独立しています。'}
 ];
 export const getUnitFields = unit => unit.branch==='building'?BUILDING_FIELDS:UNIT_FIELDS;
 

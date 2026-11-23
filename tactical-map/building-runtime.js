@@ -2,7 +2,10 @@
 export const BUILDING_KINDS = [['airport','飛行場'],['port','港湾']];
 export const AIRPORT_DURABILITY = [['temporary','臨時飛行場'],['permanent','恒久飛行場']];
 export const AIRPORT_TYPES = [['runway','滑走路飛行場'],['airship','空中艦飛行場'],['anchorage','泊地']];
-export const PORT_TYPES = [['cargo','貨物港'],['supply','補給港']];
+export const PORT_TYPES = [['trade','貿易港'],['cargo','貨物港'],['supply','補給港']];
+export const FACILITY_DURABILITY = [['temporary','臨時'],['permanent','恒久']];
+export const BUILDING_LOGO_SCALE = 0.4;
+export const BUILDING_LOGO_LIFT = 18;
 export const BUILDING_DIAMETER = 50;
 function option(value,options,label) {
   if(!options.some(([id])=>id===value))throw new Error(`${label}の設定が不正です。`);
@@ -11,7 +14,7 @@ function option(value,options,label) {
 export function normalizeBuilding(value={}) {
   if(!value || typeof value!=='object' || Array.isArray(value))throw new Error('建築の設定が不正です。');
   const kind=option(value.kind??'airport',BUILDING_KINDS,'施設種別');
-  const permanence=option(value.permanence??'temporary',AIRPORT_DURABILITY,'飛行場区分');
+  const permanence=option(value.permanence??'temporary',FACILITY_DURABILITY,'施設区分');
   const airportType=option(value.airportType??'runway',AIRPORT_TYPES,'飛行場形式');
   const portType=option(value.portType??'cargo',PORT_TYPES,'港湾区分');
   const runways=value.runways??1;
@@ -34,7 +37,8 @@ export function buildingDetailLines(unit) {
   const b=normalizeBuilding(unit.snapshot.building),stats=unit.snapshot.naval??{};
   return [
     `施設種別：${label(BUILDING_KINDS,b.kind)}`,
-    ...(b.kind==='airport'?[`飛行場区分：${label(AIRPORT_DURABILITY,b.permanence)}`,`形式：${label(AIRPORT_TYPES,b.airportType)}`,...(b.airportType==='runway'?[`滑走路数：${b.runways}`]:[])]:[`港湾区分：${label(PORT_TYPES,b.portType)}`]),
+    `施設区分：${label(FACILITY_DURABILITY,b.permanence)}`,
+    ...(b.kind==='airport'?[`形式：${label(AIRPORT_TYPES,b.airportType)}`,...(b.airportType==='runway'?[`滑走路数：${b.runways}`]:[])]:[`港湾区分：${label(PORT_TYPES,b.portType)}`]),
     '直径：50マス / 高度：地形に追随',
     ...[['装甲','armor'],['強度','strength'],['探測強度','detection'],['対海偵察','seaRecon'],['対空偵察','airRecon'],['対潜偵察','aswRecon']].map(([name,key])=>`${name}：${stats[key] === '' || stats[key] == null ? '未設定' : stats[key]}`)
   ];
@@ -45,29 +49,43 @@ function runway(angle,halfLength=16,cy=0){const a=angle*Math.PI/180;return polyg
 export function buildingSymbolParts(value) {
   const b=normalizeBuilding(value),parts=[];
   const add=(role,d,fill='none')=>parts.push({role,d,fill});
-  if(b.kind==='airport'?b.permanence==='permanent':b.portType==='supply')add('base',polygon([[-18,19],[18,19],[23,29],[-23,29]]),'currentColor');
+  if(b.permanence==='permanent')add('base',ellipse(0,0,22,22));
   add('ring',ellipse(0,0,25,25));
   if(b.kind==='port') {
-    add('logo',ellipse(0,-12,3.5,3.5,20));
-    add('logo','M 0 -8.5 L 0 16 M -8 -3 L 8 -3 M -13 5 L -11 11 L -6 15 L 0 17 L 6 15 L 11 11 L 13 5 M -13 5 L -13 10 M -13 5 L -8 7 M 13 5 L 13 10 M 13 5 L 8 7');
+    // 锚与附加符号构成一组；附加符号不决定港口是否为永久设施。
+    const anchor=[ellipse(0,-12,3.5,3.5,20),'M 0 -8.5 L 0 16 M -8 -3 L 8 -3 M -13 5 L -11 11 L -6 15 L 0 17 L 6 15 L 11 11 L 13 5 M -13 5 L -13 10 M -13 5 L -8 7 M 13 5 L 13 10 M 13 5 L 8 7'];
+    for(const d of anchor)add('anchor',transformBuildingPath(d,(x,y)=>({x:x*.65-7,y:y*.8})));
+    if(b.portType==='trade')add('trade','M 16 -9 L 13 -12 L 7 -12 L 4 -9 L 4 -5 L 7 -2 L 13 -2 L 16 1 L 16 5 L 13 8 L 7 8 L 4 5 M 10 -16 L 10 12');
+    else if(b.portType==='cargo'){
+      for(const [x,y] of [[6,-12],[1,0],[12,0]])add('cargo',polygon([[x,y],[x+8,y],[x+8,y+9],[x,y+9]]));
+    }else add('supply','M 10 -17 L 10 -6 M 5 -6 L 15 -6 L 15 -2 L 12 1 L 12 5 L 9 9 L 5 9 L 2 6 L 2 2 M 7 -17 L 13 -17');
   } else if(b.airportType==='airship') {
     add('logo',ellipse(0,-4,16,7,32));
     add('logo','M -12 -8 L -19 -13 L -17 -4 L -19 3 L -12 0 M -6 3 L -4 9 L 5 9 L 7 2 M -4 -11 L -7 -15 L 3 -14 L 7 -10');
   } else {
     const count=b.airportType==='anchorage'?2:b.runways;
-    const angles=count===1?[0]:count===2?[-45,45]:[0,-60,60];
-    for(const angle of angles)add('runway',runway(angle,b.airportType==='anchorage'?12:16,b.airportType==='anchorage'?-5:0),'currentColor');
+    const offset=b.airportType==='anchorage'?-5:0;
+    const layout=count===1?[[90,16,0]]:count===2?[[90,16,0],[60,18,0]]:[[90,16,9],[-40,19,-2],[40,19,-2]];
+    for(const [angle,length,y] of layout)add('runway',runway(angle,length,y+offset),'currentColor');
     if(b.airportType==='anchorage')add('wave','M -16 13 L -12 11 L -8 13 L -4 15 L 0 13 L 4 11 L 8 13 L 12 15 L 16 13 M -14 18 L -10 16 L -6 18 L -2 20 L 2 18 L 6 16 L 10 18 L 14 20');
   }
   return parts;
+}
+// 圆环投影在地面上，标志采用朝向观察者的竖直平面；抬升仅用于显示。
+export function transformBuildingPath(path, transform) {
+  return path.replace(/([ML])\s*(-?[\d.]+)\s+(-?[\d.]+)/g,(_,command,x,y)=>{const p=transform(Number(x),Number(y));return `${command} ${p.x.toFixed(4)} ${p.y.toFixed(4)}`;});
+}
+export function buildingPartPresentation(part) {
+  return ['ring','base'].includes(part.role)?{plane:'ground',scale:1,lift:0}:{plane:'upright',scale:BUILDING_LOGO_SCALE,lift:BUILDING_LOGO_LIFT};
 }
 export function drawBuildingIcon(unit,parent,projectPath) {
   const ns='http://www.w3.org/2000/svg',icon=document.createElementNS(ns,'g');
   icon.setAttribute('class','unit-icon is-building');parent.append(icon);
   for(const part of buildingSymbolParts(unit.snapshot.building)){
-    const path=document.createElementNS(ns,'path');
-    path.setAttribute('d',projectPath(part.d));path.setAttribute('class',`unit-symbol building-${part.role}`);
-    path.setAttribute('style',`fill:${part.fill};fill-opacity:${part.role==='base'?'.16':'1'};stroke:currentColor;stroke-width:${part.role==='ring'?'1.4':'1.7'};stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke`);
+    const presentation=buildingPartPresentation(part),path=document.createElementNS(ns,'path');
+    path.setAttribute('d',presentation.plane==='ground'?projectPath(part.d):transformBuildingPath(part.d,(x,y)=>({x:x*presentation.scale,y:y*presentation.scale-presentation.lift})));
+    path.setAttribute('class',`unit-symbol building-${part.role}`);path.setAttribute('data-plane',presentation.plane);
+    path.setAttribute('style',`fill:${part.fill};stroke:${part.role==='runway'?'none':'currentColor'};stroke-width:${presentation.plane==='ground'?'1.2':'1.25'};stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke`);
     icon.append(path);
   }
   return 1;

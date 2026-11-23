@@ -1,4 +1,4 @@
-import { drawBuildingIcon, buildingPlacement } from "./building-runtime.js?v=building-foundations-2";
+import { drawBuildingIcon, buildingPlacement } from "./building-runtime.js?v=building-symbols-3";
 import { navalPlacement, navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
@@ -9,10 +9,10 @@ import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=building-foundations-2";
-import { loadUnitData } from "../js/data-store.js?v=building-foundations-2";
-import { createBattleStore } from "../js/battle-state.js?v=building-foundations-2";
-import { mountEditor } from "./editor.js?v=building-foundations-2";
+import { mountSaveIndicator } from "./save-indicator.js?v=building-symbols-3";
+import { loadUnitData } from "../js/data-store.js?v=building-symbols-3";
+import { createBattleStore } from "../js/battle-state.js?v=building-symbols-3";
+import { mountEditor } from "./editor.js?v=building-symbols-3";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
@@ -30,10 +30,10 @@ import {
   getDisplayUnits,
   makeClusterProxy,
   getDeploymentUpdates
-} from "./cluster-engine.js?v=building-foundations-2";
+} from "./cluster-engine.js?v=building-symbols-3";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=building-foundations-2";
+import { mountTerrainEditor } from "./terrain-editor.js?v=building-symbols-3";
 
 let terrain = createDemoTerrain();
 let terrainController = null;
