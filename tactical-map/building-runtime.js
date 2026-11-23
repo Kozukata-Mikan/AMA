@@ -54,7 +54,7 @@ export function buildingSymbolParts(value) {
   if(b.kind==='port') {
     // 锚与附加符号构成一组；附加符号不决定港口是否为永久设施。
     const anchor=[ellipse(0,-12,3.5,3.5,20),'M 0 -8.5 L 0 16 M -8 -3 L 8 -3 M -13 5 L -11 11 L -6 15 L 0 17 L 6 15 L 11 11 L 13 5 M -13 5 L -13 10 M -13 5 L -8 7 M 13 5 L 13 10 M 13 5 L 8 7'];
-    for(const d of anchor)add('anchor',transformBuildingPath(d,(x,y)=>({x:x*.65-7,y:y*.8})));
+    for(const d of anchor)add('anchor',transformBuildingPath(d,(x,y)=>({x:x*.9-5,y:y})));
     if(b.portType==='trade')add('trade','M 16 -9 L 13 -12 L 7 -12 L 4 -9 L 4 -5 L 7 -2 L 13 -2 L 16 1 L 16 5 L 13 8 L 7 8 L 4 5 M 10 -16 L 10 12');
     else if(b.portType==='cargo'){
       for(const [x,y] of [[6,-12],[1,0],[12,0]])add('cargo',polygon([[x,y],[x+8,y],[x+8,y+9],[x,y+9]]));
@@ -65,10 +65,11 @@ export function buildingSymbolParts(value) {
   } else {
     const count=b.airportType==='anchorage'?2:b.runways;
     const offset=b.airportType==='anchorage'?-5:0;
-    const layout=count===1?[[90,16,0]]:count===2?[[90,16,0],[60,18,0]]:[[90,16,9],[-40,19,-2],[40,19,-2]];
+    const layout=count===1?[[90,16,0]]:count===2?[[90,16,0],[60,18,0]]:[[90,16,0],[-40,19,-6],[40,19,-6]];
     for(const [angle,length,y] of layout)add('runway',runway(angle,length,y+offset),'currentColor');
     if(b.airportType==='anchorage')add('wave','M -16 13 L -12 11 L -8 13 L -4 15 L 0 13 L 4 11 L 8 13 L 12 15 L 16 13 M -14 18 L -10 16 L -6 18 L -2 20 L 2 18 L 6 16 L 10 18 L 14 20');
   }
+  if(b.kind==='port')for(const part of parts)if(['trade','cargo','supply'].includes(part.role))part.d=transformBuildingPath(part.d,(x,y)=>({x:12+(x-10)*.6,y:y*.6}));
   return parts;
 }
 // 圆环投影在地面上，标志采用朝向观察者的竖直平面；抬升仅用于显示。

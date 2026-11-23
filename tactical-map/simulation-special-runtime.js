@@ -2,16 +2,16 @@ import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=building-symbols-3";
+} from "./ship-runtime.js?v=support-stations-1";
 
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=building-symbols-3";
+} from "./simulation-rescue.js?v=support-stations-1";
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=building-symbols-3";
+} from "./equipment-runtime.js?v=support-stations-1";
 
 import {
   validateEquipmentItemControlReport

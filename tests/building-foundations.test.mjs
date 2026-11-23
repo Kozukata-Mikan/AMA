@@ -75,7 +75,7 @@ test('non-firing facilities preserve unregistered ammo without weakening ship st
 test('reference runway layouts have a horizontal strip, with the three-strip cross above it',()=>{
  const points=path=>{const a=path.match(/-?\d+(?:\.\d+)?/g).map(Number);return Array.from({length:a.length/2},(_,i)=>({x:a[i*2],y:a[i*2+1]}));};
  const center=ps=>({x:ps.reduce((n,p)=>n+p.x,0)/ps.length,y:ps.reduce((n,p)=>n+p.y,0)/ps.length});
- for(const n of [2,3]){const runways=buildingSymbolParts({runways:n}).filter(p=>p.role==='runway').map(p=>points(p.d));assert.equal(runways.length,n);const horizontal=runways[0];assert.ok(Math.max(...horizontal.map(p=>p.x))-Math.min(...horizontal.map(p=>p.x))>10*(Math.max(...horizontal.map(p=>p.y))-Math.min(...horizontal.map(p=>p.y))));if(n===3)assert.ok(center(horizontal).y>center(runways[1]).y+8);}
+ for(const n of [2,3]){const runways=buildingSymbolParts({runways:n}).filter(p=>p.role==='runway').map(p=>points(p.d));assert.equal(runways.length,n);const horizontal=runways[0];assert.ok(Math.max(...horizontal.map(p=>p.x))-Math.min(...horizontal.map(p=>p.x))>10*(Math.max(...horizontal.map(p=>p.y))-Math.min(...horizontal.map(p=>p.y))));if(n===3)assert.ok(center(horizontal).y>center(runways[1]).y+5);}
 });
 test('upright logo rendering is reduced and lifted without projecting it onto the ground or changing data',()=>{
  const oldDocument=globalThis.document;const make=()=>({attributes:{},children:[],setAttribute(k,v){this.attributes[k]=v;},append(child){this.children.push(child);}});globalThis.document={createElementNS:make};

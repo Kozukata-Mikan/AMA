@@ -1,19 +1,19 @@
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
 import { formationMembers } from "./formation-layout.js?v=fleet-cohesion-6";
-import { assertManualControl, getVisibility } from "./simulation-features.js?v=building-symbols-3";
+import { assertManualControl, getVisibility } from "./simulation-features.js?v=support-stations-1";
 import {
   readWeaponProfile,
   readWeaponTargetScope,
-} from "./weapon-profile-runtime.js?v=building-symbols-3";
+} from "./weapon-profile-runtime.js?v=support-stations-1";
 import {
   getAttackExecutionPhase,
   initializeAttackRuntime,
-} from "./simulation-attack-runtime.js?v=building-symbols-3";
+} from "./simulation-attack-runtime.js?v=support-stations-1";
 import {
   createDeferredAttackValidator,
   filterUnreachableAttackCommands,
   prepareSettlementAttackPlan,
-} from "./simulation-settlement.js?v=building-symbols-3";
+} from "./simulation-settlement.js?v=support-stations-1";
 
 function shuffle(values) {
   const result = [...values];

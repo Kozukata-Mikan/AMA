@@ -144,6 +144,14 @@ export function mountSimulationFeatures(store, context) {
     }
   }
 
+  async function planWithSupportConfirmation(actor,x,y,options) {
+    try { await store.planMovement(actor,x,y,options); return true; }
+    catch(error) {
+      if(error.code!=="SUPPORT_INTERRUPTION_REQUIRED")throw error;
+      if(!confirm('支援中の艦船を移動しますか？この艦船に関係する支援を中止します。完了済みの救助・損管・補給の効果は取り消しません。'))return false;
+      await store.planMovement(actor,x,y,{...options,confirmSupportInterruption:true});return true;
+    }
+  }
   function addButton(text, action) {
     const result = element("button", text);
     result.type = "button";
@@ -169,13 +177,13 @@ export function mountSimulationFeatures(store, context) {
       throw new Error("移動先のXとYを入力してください。");
     }
 
-    await store.planMovement(
+    if (!await planWithSupportConfirmation(
       ref(),
       Number(x.value),
       Number(y.value),
       { followFormationMovement: follow.checked,
         ...verticalOptions() }
-    );
+    )) return;
     status.textContent = "移動計画を保存しました。位置と航続距離はまだ変更していません。";
   });
 
@@ -497,7 +505,7 @@ if (!movement) {
     suppressClickUntil = performance.now() + 400;
 
     await run(async () => {
-        await store.planMovement(
+        if (!await planWithSupportConfirmation(
         current.ref,
         Number(x.value),
         Number(y.value),
@@ -505,7 +513,7 @@ if (!movement) {
           followFormationMovement: current.followFormationMovement,
           ...verticalOptions()
         }
-      );
+      )) return;
 
       status.textContent = "ドラッグした移動計画を保存しました。";
     });

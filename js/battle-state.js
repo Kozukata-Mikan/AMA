@@ -1,4 +1,4 @@
-import { normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=building-symbols-3";
+import { normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=support-stations-1";
 import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";
 import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=fleet-cohesion-6";

@@ -4,7 +4,7 @@ import {
   readShipProfile,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=building-symbols-3";
+} from "./ship-runtime.js?v=support-stations-1";
 
 import {
   summarizeCannonImpacts
@@ -18,7 +18,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=building-symbols-3";
+} from "./simulation-rescue.js?v=support-stations-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ATTACK_PHASE = /^(order-[1-5]|pas)$/;

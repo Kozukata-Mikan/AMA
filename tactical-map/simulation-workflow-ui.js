@@ -151,8 +151,8 @@ export function mountSimulationWorkflow(store) {
 
   const repairNote = element(
     "p",
-    "参戦ユニットで自艦を選択すると、設備修復パネルを表示します。" +
-    "外部設備修復の新規登録は正式規則の確認待ちです。"
+    "救助・外部損管・補給は進行タブの支援パネルで指定します。" +
+    "特殊段階で支援円内の艦を選択してください。"
   );
   repairNote.className = "note";
 

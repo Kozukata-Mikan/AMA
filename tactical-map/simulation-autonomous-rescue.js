@@ -1,11 +1,12 @@
+import { supportRadius } from "./support-equipment.js?v=support-stations-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile
-} from "./ship-runtime.js?v=building-symbols-3";
+} from "./ship-runtime.js?v=support-stations-1";
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=building-symbols-3";
+} from "./simulation-rescue.js?v=support-stations-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -142,7 +143,7 @@ export function appendAutonomousRescuePlans(
         rescuer.instanceId !== target.instanceId &&
         !reserved.has(rescuer.instanceId) &&
         availableRescuer(rescuer) &&
-        distance(rescuer, target) <= 2
+        distance(rescuer, target) <= supportRadius(rescuer)
       );
 
       const safeCandidates = side === "neutral"

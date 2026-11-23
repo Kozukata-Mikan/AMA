@@ -1,15 +1,16 @@
-import { readShipProfile } from "./ship-runtime.js?v=building-symbols-3";
+import { rescueSupported, supportRadius } from "./support-equipment.js?v=support-stations-1";
+import { readShipProfile } from "./ship-runtime.js?v=support-stations-1";
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=building-symbols-3";
+} from "./simulation-features.js?v=support-stations-1";
 
 import {
   getEquipmentControlCandidates,
   applyExternalEquipmentRepairResult
-} from "./equipment-item-runtime.js?v=building-symbols-3";
+} from "./equipment-item-runtime.js?v=support-stations-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -112,7 +113,7 @@ function rescueCanContinue(task, rescuer, target) {
     Math.hypot(
       rescuer.x - target.x,
       rescuer.y - target.y
-    ) <= 2
+    ) <= supportRadius(rescuer)
   );
 }
 
@@ -352,7 +353,7 @@ export function startPlannedRescues(scene) {
       Math.hypot(
         rescuer.x - target.x,
         rescuer.y - target.y
-      ) <= 2;
+      ) <= supportRadius(rescuer);
 
     if (!valid) continue;
 
@@ -388,7 +389,7 @@ export function startPlannedRescues(scene) {
 export function isSinkingTimerPaused(scene, unit) {
   if (unit.branch !== "navy") return false;
 
-  return scene.rescueTasks.some(task =>
+  return rescueSupported(scene,unit.instanceId) || scene.rescueTasks.some(task =>
     taskKind(task) === "rescue" &&
     task.status === "active" &&
     task.targetId === unit.instanceId &&

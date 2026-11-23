@@ -1,3 +1,4 @@
+import { supportCapacity } from "./support-equipment.js?v=support-stations-1";
 import { NAVAL_KINDS, navalKind, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import {
   EQUIPMENT_HIT_ITEMS
@@ -5,7 +6,7 @@ import {
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=building-symbols-3";
+} from "./equipment-item-runtime.js?v=support-stations-1";
 
 
 import {
@@ -20,16 +21,16 @@ import {
   getOwnShipEffectLines,
   resolveShipEffectAcquisition,
   resolveShipDamageControlPhase
-} from "./ship-effects-runtime.js";
+} from "./ship-effects-runtime.js?v=support-stations-1";
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=building-symbols-3";
+} from "./equipment-runtime.js?v=support-stations-1";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=building-symbols-3";
+} from "./equipment-item-runtime.js?v=support-stations-1";
 
 
 // ===== 舰船数据与推演状态接入 =====
@@ -165,7 +166,7 @@ export function readShipProfile(unit) {
     movementLimit: convertDistance(speedKnots),
     enduranceBudget: convertDistance(endurance),
     strengthArmor: GRADES[strength],
-    isRepairShip: naval.type.trim().toUpperCase() === "AR"
+    get isRepairShip() { return supportCapacity(unit,"repair-station") > 0; }
   };
 }
 
@@ -974,7 +975,8 @@ const result = resolveShipDamageControlPhase(
   {
     state: working.shipState.effects,
     turnNumber: context.turnNumber,
-    damagedEquipmentIds: []
+    damagedEquipmentIds: [],
+    allowAdditionalControl: context.externalSupport === true
   },
   {
     coinSource,

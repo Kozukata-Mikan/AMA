@@ -196,13 +196,14 @@ export function resolveShipEffectAcquisition({
  */
 export function resolveShipFireFloodingPhase({
   state: stateValue,
-  turnNumber
+  turnNumber,
+  allowAdditionalControl = false
 }, coinSource = randomCoin) {
   requireTurn(turnNumber);
 
   const state = readState(stateValue);
 
-  if (turnNumber <= state.lastResolvedTurn) {
+  if (turnNumber < state.lastResolvedTurn || (turnNumber === state.lastResolvedTurn && !allowAdditionalControl)) {
     throw new Error("このラウンドの火災・浸水はすでに処理済みです。");
   }
 
@@ -412,7 +413,8 @@ function randomEquipmentRepairIndex(candidateCount) {
 export function resolveShipDamageControlPhase({
   state: stateValue,
   turnNumber,
-  damagedEquipmentIds
+  damagedEquipmentIds,
+  allowAdditionalControl = false
 }, {
   coinSource = randomCoin,
   selectRepairIndex = randomEquipmentRepairIndex
@@ -450,7 +452,8 @@ export function resolveShipDamageControlPhase({
   // 本回合刚获得的火灾、浸水也会参与损管。
   const fireFlooding = resolveShipFireFloodingPhase({
     state: stateValue,
-    turnNumber
+    turnNumber,
+    allowAdditionalControl
   }, coinSource);
 
   const rolls = copy(fireFlooding.rolls);

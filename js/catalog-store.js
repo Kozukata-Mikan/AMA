@@ -1,7 +1,8 @@
-import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=building-symbols-3";
+import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=support-stations-1";
+import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=support-stations-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=building-symbols-3";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=support-stations-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -103,12 +104,15 @@ function normalizeEquipment(value) {
     throw new Error("装備種別が不正です。");
   }
 
+  if(value.supportEffect && (value.kind!=="support" || !STATION_IDS.includes(value.supportEffect)))throw new Error("支援装備の機能を確認してください。");
   return {
     id: text(value.id, "装備 ID", true),
     name: text(value.name, "装備名", true),
     faction: normalizeFaction(value.faction ?? ""),
     protected: normalizeProtected(value.protected ?? false),
     kind: value.kind,
+    supportEffect: text(value.supportEffect ?? "", "支援機能"),
+    runwayControlLimit: number(value.runwayControlLimit ?? null,"起降管制数",{nullable:true,min:0,integer:true}),
 
     barrelCount: number(
       value.barrelCount ?? null,
@@ -282,7 +286,7 @@ function normalizeUnit(value) {
       }
 
       return {
-        position: text(item.position, "装備位置", true),
+        position: value.branch === "building" ? (item.position === "地下" ? "地下" : "露天") : text(item.position, "装備位置", true),
         equipmentId: text(item.equipmentId, "装備 ID", true),
 
         count: number(
@@ -363,7 +367,7 @@ function normalizeCatalog(value) {
     }
   }
 
-  return { version: VERSION, units, equipment };
+  return { version: VERSION, units, equipment, supportStationsVersion: value.supportStationsVersion ?? 0 };
 }
 
 export function initializeCatalog(baseUnits) {
@@ -404,6 +408,12 @@ export function initializeCatalog(baseUnits) {
       "「保存原文を書き出し」でバックアップし、有効な図鑑 JSON を読み込んでください。";
 
     console.error(error);
+  }
+
+  if(!recoveryError && data.supportStationsVersion<1){
+    const existing=new Set(data.equipment.map(item=>item.id));
+    data=normalizeCatalog({...data,supportStationsVersion:1,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>!existing.has(item.id))]});
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
   }
 
   const units = [];

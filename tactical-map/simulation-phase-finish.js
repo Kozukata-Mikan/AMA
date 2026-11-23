@@ -1,3 +1,5 @@
+import { hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=support-stations-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -11,31 +13,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=building-symbols-3";
+} from "./ship-runtime.js?v=support-stations-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=building-symbols-3";
+} from "./equipment-runtime.js?v=support-stations-1";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=building-symbols-3";
+} from "./simulation-special-runtime.js?v=support-stations-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=building-symbols-3";
+} from "./simulation-rescue-runtime.js?v=support-stations-1";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=building-symbols-3";
+} from "./equipment-item-runtime.js?v=support-stations-1";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=building-symbols-3";
+} from "./simulation-rescue.js?v=support-stations-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -286,7 +288,7 @@ function preflightSpecial(scene) {
     
    
 
-    if (unit.branch === "building") continue;
+    if (unit.branch === "building" || (unit.branch !== "navy" && hasSupportEquipment(unit))) continue;
     if (unit.branch !== "navy") {
       fail(
         "海軍以外の特殊段階処理が未接続です。"
@@ -379,7 +381,7 @@ function preflightSinkingTime(scene) {
 
     let pausedMinutes = 0;
 
-    for (const task of scene.rescueTasks) {
+    for (const task of [...scene.rescueTasks, ...(scene.supportRuntime?.tasks ?? [])]) {
       if (
       (task.kind ?? "rescue") !== "rescue" ||
        task.status !== "active" ||
@@ -454,6 +456,8 @@ export function finishSpecialPhase(scene) {
   // 即使随后救助协调使舰船沉没，也保留进入时刻。
   recordSinkingStarts(working, fireFlooding.shipReports);
 
+  const externalSupport = resolveSupportsAtSpecial(working);
+  recordSinkingStarts(working, externalSupport.filter(item=>item.report).map(item=>item.report));
   const rescue = applyRescueSpecialStep(working);
 
   working.phaseFinishRuntime.records.push({
@@ -470,6 +474,7 @@ export function finishSpecialPhase(scene) {
   validateScene(working);
 
   scene.instances = working.instances;
+  scene.supportRuntime = working.supportRuntime;
   scene.rescueTasks = working.rescueTasks;
   scene.specialRuntime = working.specialRuntime;
   scene.rescueRuntime = working.rescueRuntime;
@@ -557,6 +562,7 @@ export function finishTurn(scene) {
   validateScene(working);
 
   scene.instances = working.instances;
+  scene.supportRuntime = working.supportRuntime;
   scene.rescueTasks = working.rescueTasks;
   scene.rescueRuntime = working.rescueRuntime;
   scene.phaseFinishRuntime = working.phaseFinishRuntime;

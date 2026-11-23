@@ -1,8 +1,9 @@
-import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=building-symbols-3";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=building-symbols-3";
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=support-stations-1";
+import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=support-stations-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=support-stations-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=building-symbols-3";
+import { getCatalogStore } from "../js/catalog-store.js?v=support-stations-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -13,7 +14,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=building-symbols-3";
+} from "../js/catalog-seed.js?v=support-stations-1";
 
 // ===== 图鉴界面 =====
 
@@ -201,7 +202,7 @@ function catalogFieldSections(fields, category) {
     ["facility", "施設設定", ["building.kind","building.permanence","building.airportType","building.runways","building.portType"]],
     ["traits", "練度・特殊能力", ["trainingTraits"]]
   ] : [
-    ["basic", "基本情報", ["name","kind","faction","slot"]],
+    ["basic", "基本情報", ["name","kind","faction","slot","supportEffect","runwayControlLimit"]],
     ["weapon", "射撃・誘導", ["guidance","range","ceilingU","maxOrder","targetScope"]],
     ["power", "威力・投射・弾薬", ["powerRule","penetration","barrelCount","projectionCoefficient","projectionSuffix","ammo"]],
     ["notes", "補足", ["note"]]
@@ -751,6 +752,7 @@ export function mountCatalogEditor({
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.type === "support-effect" ? SUPPORT_EFFECTS.find(([id])=>id===(value??""))?.[1]
             : ["building-kind","airport-durability","airport-type","port-type"].includes(field.type)
             ? ({"building-kind":BUILDING_KINDS,"airport-durability":FACILITY_DURABILITY,"airport-type":AIRPORT_TYPES,"port-type":PORT_TYPES}[field.type].find(([id])=>id===value)?.[1] ?? value)
             : field.type === "guidance"
@@ -990,6 +992,7 @@ export function mountCatalogEditor({
           ["special", "特殊"],
           ["building", "建築"]
         ], value);
+      } else if (field.type === "support-effect") {control=select(SUPPORT_EFFECTS,value ?? "");
       } else if (field.type === "building-size") {
         control=select([["1","1"]],1);control.disabled=true;
       } else if (field.type === "building-kind") {control=select(BUILDING_KINDS,value);
@@ -1157,7 +1160,7 @@ export function mountCatalogEditor({
         const position = labeled(
           row,
           "位置",
-          input(value.position)
+          draft.branch === "building" ? select([["露天","露天"],["地下","地下"]], value.position === "地下" ? "地下" : "露天") : input(value.position)
         );
 
         const equipmentSelect = labeled(
@@ -1414,6 +1417,7 @@ export function mountCatalogEditor({
       })();
     });
 
+    controls.get("supportEffect")?.addEventListener("change",()=>{if(controls.get("supportEffect").value)controls.get("kind").value="support";});
     controls.get("branch")?.addEventListener("change",()=>{
       const next=copy(draft);
       for(const field of fields){const control=controls.get(field.key);setPath(next,field.key,field.type==='training-traits'?control.read():field.type==='checkbox'?control.checked:['number','optional-number','size','building-size','runway-count'].includes(field.type)?(control.value.trim()?Number(control.value):null):control.value);}

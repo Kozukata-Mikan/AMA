@@ -1,4 +1,4 @@
-import { buildingDetailLines } from "./building-runtime.js?v=building-symbols-3";
+import { buildingDetailLines } from "./building-runtime.js?v=support-stations-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
@@ -10,7 +10,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=building-symbols-3";
+import { mountSaveIndicator } from "./save-indicator.js?v=support-stations-1";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -22,25 +22,26 @@ import {
   showCampaignIntro
 } from "./campaign-intro.js";
 
-import { drawUnitIcon } from "./unit-icon-renderer.js?v=building-symbols-3";
+import { drawUnitIcon } from "./unit-icon-renderer.js?v=support-stations-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=building-symbols-3";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=building-symbols-3";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=support-stations-1";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=building-symbols-3";
+} from "./ship-runtime.js?v=support-stations-1";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=catalog-layout-2";
-import { mountRescueUI } from "./simulation-rescue-ui.js?v=fleet-cohesion-6";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=support-stations-1";
+import { mountSupportUI } from "./simulation-support-ui.js?v=support-stations-1";
+import { drawSupportOverlay } from "./support-map-display.js?v=support-stations-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=building-symbols-3";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=building-symbols-3";
+} from "../js/catalog-seed.js?v=support-stations-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=support-stations-1";
 import {
   mountSimulationWorkflow
-} from "./simulation-workflow-ui.js?v=fleet-cohesion-6";
+} from "./simulation-workflow-ui.js?v=support-stations-1";
 
 import { mountBattleReportUI } from "./simulation-battle-report.js?v=workspace-ui-3";
 
@@ -55,7 +56,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=building-symbols-3";
+} from "./simulation-store.js?v=support-stations-1";
 
 import {
   gridPosition,
@@ -150,12 +151,7 @@ function syncSelectedUnitPanels(scene, unit) {
   try {
   
 
-   selectedRepairPanel = store.mountEquipmentRepairPanel(
-   $("equipmentRepairPanelSlot"),
-   unit.instanceId
-    );
-
-
+   $("equipmentRepairPanelSlot").textContent = "外部損管・救助・補給は進行タブの支援パネルから指定します。";
     selectedPanelKey = key;
   } catch (error) {
     clearSelectedUnitPanels();
@@ -515,6 +511,8 @@ if (unit.observationLevel === "shadow") {
 
 }
 
+let supportHighlightId = "";
+document.addEventListener("support-provider-select",event=>{supportHighlightId=event.detail;drawMap();});
 function drawMap() {
   const scene = getRenderScene();
   const terrain = scene.terrain;
@@ -536,6 +534,7 @@ function drawMap() {
   renderDistanceGrid();
 
   unitLayer.replaceChildren();
+  drawSupportOverlay(unitLayer,scene,project,supportHighlightId);
   const compactIds=drawFormationViews(unitLayer,scene,project,id=>{
     document.dispatchEvent(new CustomEvent('formation-select',{detail:id}));
   });
@@ -729,7 +728,7 @@ if (ownMembers.some(member =>
 }
 
 if (ownMembers.some(member =>
-  member.shipState?.rescueTaskId != null
+  member.supportLocked || member.shipState?.rescueTaskId != null
 )) {
   statusFlags.push("任務中");
 }
@@ -1381,7 +1380,7 @@ registerPageDisposer(mountFormationEditor(store,document.querySelector('aside'))
 registerPageDisposer(mountFormationAttackUI(store,document.querySelector('aside')));
 
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
-registerPageDisposer(mountRescueUI(store));
+registerPageDisposer(mountSupportUI(store));
 registerPageDisposer(mountAttackUI(store));
 registerPageDisposer(mountSimulationWorkflow(store));
 registerPageDisposer(mountToolNavigation(store,document.querySelector("aside"),"simulation"));

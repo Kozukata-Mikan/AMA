@@ -1,5 +1,6 @@
+import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=building-symbols-3";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=support-stations-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -11,7 +12,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=building-symbols-3";
+} from "./simulation-attack-batch.js?v=support-stations-1";
 
 
 
@@ -21,16 +22,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=building-symbols-3";
+} from "./ship-runtime.js?v=support-stations-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=building-symbols-3";
+} from "./equipment-runtime.js?v=support-stations-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=building-symbols-3";
+} from "./simulation-features.js?v=support-stations-1";
 
 import {
   getEquipmentDamagePlan,
@@ -40,7 +41,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=building-symbols-3";
+} from "./equipment-item-runtime.js?v=support-stations-1";
 
 
 import {
@@ -73,32 +74,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=building-symbols-3";
+} from "./simulation-rescue.js?v=support-stations-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=building-symbols-3";
+} from "./simulation-phase-finish.js?v=support-stations-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=building-symbols-3";
+} from "./weapon-profile-runtime.js?v=support-stations-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=building-symbols-3";
+} from "./simulation-attack-runtime.js?v=support-stations-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=building-symbols-3";
+} from "./weapon-profile-runtime.js?v=support-stations-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=building-symbols-3";
+} from "./simulation-features.js?v=support-stations-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=building-symbols-3";
+} from "./formation-target-runtime.js?v=support-stations-1";
 
 import {
   readRangeCommandTarget
@@ -111,7 +112,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=building-symbols-3";
+} from "./range-projection-runtime.js?v=support-stations-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -686,7 +687,7 @@ function assertNoUnconnectedSupport(scene) {
 
       const source = equipment.get(group.equipmentId);
 
-      if (source?.kind === "support") {
+      if (source?.kind === "support" && !STATION_IDS.includes(source.supportEffect)) {
         fail(
           "支援装備の電子効果・追加効果の照合が未接続です。" +
           "補正を0として代用せず、結算を停止します。"
@@ -1031,7 +1032,7 @@ try {
 // 旧阶段快照没有destroyed字段时，按旧状态语义视为false。
 function equipmentDamageSignature(unit) {
   const checked = copy(unit);
-  const runtime = unit.branch === "building" ? null : ensureEquipmentItemRuntime(checked);
+  const runtime = unit.branch !== "navy" ? null : ensureEquipmentItemRuntime(checked);
 
   return JSON.stringify({
     groups: checked.equipmentState.groups.map(group => ({
@@ -1517,7 +1518,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
 
   const actors = start.instances
     .filter(unit =>
-      unit.branch !== "building" && (unit.side === "enemy" || unit.side === "neutral")
+      unit.branch !== "building" && (unit.branch === "navy" || !hasSupportEquipment(unit)) && (unit.side === "enemy" || unit.side === "neutral")
     )
     .sort((a, b) =>
       compareText(a.instanceId, b.instanceId)
@@ -1539,7 +1540,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
 
     if (
       ["sinking", "sunk"].includes(actor.shipState.status) ||
-      actor.shipState.rescueTaskId !== null
+      actor.rescueSupportLocked || actor.shipState.rescueTaskId !== null
     ) {
       continue;
     }

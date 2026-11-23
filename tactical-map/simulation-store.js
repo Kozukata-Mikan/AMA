@@ -1,21 +1,22 @@
+import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=support-stations-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=building-symbols-3";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=support-stations-1";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=building-symbols-3";
+import { runBackgroundTask } from "./background-client.js?v=support-stations-1";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js?v=building-symbols-3";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
-import { ensureShipRuntime } from "./ship-runtime.js?v=building-symbols-3";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=building-symbols-3";
+import { ensureShipRuntime } from "./ship-runtime.js?v=support-stations-1";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=support-stations-1";
 
-import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=building-symbols-3";
-import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=building-symbols-3";
-import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=building-symbols-3";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=building-symbols-3";
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=support-stations-1";
+import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=support-stations-1";
+import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=support-stations-1";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=support-stations-1";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -25,24 +26,24 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=building-symbols-3";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=support-stations-1";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=building-symbols-3";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=support-stations-1";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=building-symbols-3";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=support-stations-1";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=building-symbols-3";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=support-stations-1";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=building-symbols-3";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=building-symbols-3";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=support-stations-1";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=support-stations-1";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=building-symbols-3";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=support-stations-1";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=building-symbols-3";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=support-stations-1";
 
-import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=building-symbols-3";
+import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=support-stations-1";
 
 import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-runtime.js";
 
@@ -55,7 +56,7 @@ import { buildBattleReport } from "./simulation-battle-report.js";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=building-symbols-3";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=support-stations-1";
 
 
 
@@ -843,6 +844,7 @@ export async function openSimulation(id) {
     }
 
     initializeCombatRuntime(candidate);
+    reconcileSupports(candidate);
     initializeSimulationFeatures(candidate);
 
 
@@ -1009,6 +1011,12 @@ export async function openSimulation(id) {
     subscribeSaving,
   ...createSimulationFeatures(() => state, commit, commitBackground),
   ...createRescueFeatures(() => state, commit),
+  async startSupport(request) { await commit(scene=>{startSupport(scene,request);}); },
+  async cancelSupport(taskId) { await commit(scene=>{
+    if(!['movement','special'].includes(scene.turn.phaseId))throw new Error('支援の中止は移動・特殊段階で行ってください。');
+    const task=scene.supportRuntime.tasks.find(t=>t.id===taskId);
+    const unit=scene.instances.find(u=>u.instanceId===task?.providerId);if(!unit)throw new Error('支援任務がありません。');assertManualControl(scene,[unit]);endSupport(scene,task,'手動で中止しました。');
+  }); },
 
   getSimulationStatus() {
   const runtime = state.simulationEndRuntime;
@@ -1268,7 +1276,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           unitIssues.push("沈没寸前・沈没の艦船は行動できません。");
         }
 
-        if (unit.shipState.rescueTaskId !== null) {
+        if (unit.rescueSupportLocked || unit.shipState.rescueTaskId !== null) {
           unitIssues.push("救助中の艦船は他の行動を実行できません。");
         }
       } else {

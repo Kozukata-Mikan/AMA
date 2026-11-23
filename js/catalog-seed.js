@@ -1,3 +1,4 @@
+import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=support-stations-1";
 // ===== 图鉴初始资料与字段定义 =====
 // 界面文案使用日文，注释使用中文。
 // 未确定的规则只保存参数，不执行计算。
@@ -278,6 +279,11 @@ export const EQUIPMENT_FIELDS = [
   }
 ];
 
+EQUIPMENT_FIELDS.splice(3,0,
+ {key:'supportEffect',label:'支援機能',type:'support-effect',definition:'装備名とは別に支援機能を選択します。艦船・建築などで共通です。組数が同時支援数／駐機枠数です。'},
+ {key:'runwayControlLimit',label:'起降管制数（未接続）',type:'optional-number',definition:'管制塔用。今後の航空規則に接続するため、現在は空欄で保持します。'}
+);
+
 export const EXTRA_DEFINITIONS = [
   ["艦名", "同じ艦級テンプレートから作成する個体の名称候補。名称自体は能力補正を与えません。"],
   ["装備位置", "装備の取付区域。射界や局部損傷の規則は未設定です。"],
@@ -438,6 +444,7 @@ export function createCatalogSeed() {
     }
   ];
 
+  equipment.push(...supportEquipmentSeed());
   return { units, equipment };
 }
 

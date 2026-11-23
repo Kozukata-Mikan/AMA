@@ -1,35 +1,37 @@
-import { normalizeBuildingUnit } from "./building-runtime.js?v=building-symbols-3";
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=support-stations-1";
+import { normalizeBuildingUnit } from "./building-runtime.js?v=support-stations-1";
 import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=building-symbols-3";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=support-stations-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=building-symbols-3";
+} from "./ship-runtime.js?v=support-stations-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=building-symbols-3";
+} from "./simulation-rescue.js?v=support-stations-1";
 
 import {
   createShipEffectsState,
   getFloodingMovementFactor
-} from "./ship-effects-runtime.js";
+} from "./ship-effects-runtime.js?v=support-stations-1";
 
 import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=building-symbols-3";
+} from "./equipment-item-runtime.js?v=support-stations-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=building-symbols-3";
+} from "./simulation-autonomous-rescue.js?v=support-stations-1";
 
 import {
   routeLength,
@@ -58,7 +60,7 @@ function operational(unit) {
   if (!positioned(unit)) return false;
 
   if (unit.branch === "navy") {
-    return !["sinking", "sunk"].includes(unit.shipState?.status) &&
+    return !unit.rescueSupportLocked && !["sinking", "sunk"].includes(unit.shipState?.status) &&
       unit.shipState?.rescueTaskId === null;
   }
 
@@ -68,6 +70,7 @@ function operational(unit) {
 }
 
 export function initializeSimulationFeatures(scene) {
+  initializeSupportRuntime(scene);
   for (const unit of scene.instances) normalizeBuildingUnit(normalizeNavalPosition(unit));
   for (const group of scene.groups) if (group.formation !== undefined) normalizeFormation(group.formation);
   scene.controls ??= {};
@@ -454,6 +457,8 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         // 外方识别只开放可识别资料，不开放内部运行状态。
         delete observed.equipmentState;
         delete observed.trainingState;
+        delete observed.supportLocked;
+        delete observed.rescueSupportLocked;
 
         if (observed.shipState) {
           // 损伤等级保留；续航、损管、救助计时等不对外公开。
@@ -601,6 +606,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         : null
     })),
     actions,
+    supportRuntime: {version:1, tasks:(scene.supportRuntime?.tasks??[]).filter(task=>visibility.get(task.providerId)==='identified'&&visibility.get(task.targetId)==='identified').map(task=>({id:task.id,kind:task.kind,providerId:task.providerId,targetId:task.targetId,status:task.status,startedTurn:task.startedTurn}))},
     rescuePlans: (scene.rescuePlans ?? []).filter(plan =>
       scene.instances.some(unit =>
         unit.instanceId === plan.rescuerId &&
@@ -721,7 +727,7 @@ function entityMembers(scene, ref) {
   return members;
 }
 
-function movementMembers(scene, ref) {
+function movementMembers(scene, ref, supportPreview=false) {
   const members = ref.kind === "group" ? formationMovementMembers(scene,ref.id) : entityMembers(scene,ref);
   if (!members.length) fail("編隊円内に移動する艦船がいません。");
   assertManualControl(scene, members);
@@ -734,7 +740,7 @@ function movementMembers(scene, ref) {
     fail("この移動処理は艦船専用です。混合軍種の移動は未定義です。");
   }
 
-  if (members.some(unit => !operational(unit))) {
+  if (members.some(unit => (!operational(unit) || unit.supportLocked) && !(supportPreview && unit.supportLocked && !["sinking","sunk"].includes(unit.shipState?.status) && unit.shipState?.rescueTaskId===null))) {
     fail("行動不能または救助中の艦船は移動できません。");
   }
 
@@ -950,7 +956,7 @@ function createAutonomousRescueApproachPlans(scene) {
       unit.branch === "navy" &&
       positioned(unit) &&
       unit.shipState.status === "sinking" &&
-      unit.shipState.rescueTaskId === null &&
+      !unit.supportLocked && unit.shipState.rescueTaskId === null &&
       !reserved.has(unit.instanceId)
     ).sort((a, b) =>
       b.shipState.sinkingElapsedMinutes -
@@ -983,7 +989,7 @@ function createAutonomousRescueApproachPlans(scene) {
         const distance = Math.hypot(dx, dy);
 
         // 本回合必须能够到达救助有效距离，才登记配对。
-        const travel = Math.max(0, distance - 1.5);
+        const travel = Math.max(0, distance - (supportRadius(rescuer) - .5));
 
         if (travel > limitFor([rescuer]) + EPSILON) continue;
 
@@ -1058,7 +1064,7 @@ function createAutonomousRescueApproachPlans(scene) {
     }
   }
 
-  scene.rescuePlans.push(...rescuePlans);
+  // 自律支援任务改在特殊阶段、支援圈内注册。
 
   return movementPlans;
 }
@@ -1081,7 +1087,7 @@ function createAutonomousMovementPlans(
   const autonomousUnits = planning.instances
     .filter(unit =>
     ["enemy", "neutral"].includes(unit.side) &&
-    unit.branch !== "building" &&
+    unit.branch !== "building" && (unit.branch === "navy" || !hasSupportEquipment(unit)) &&
     !excludedIds.has(unit.instanceId)
   )
 
@@ -1101,7 +1107,7 @@ function createAutonomousMovementPlans(
     if(!members.length || members.some(item=>rigidMembers.has(item.instanceId)))continue;
     if(members.some(item=>!["enemy","neutral"].includes(item.side)))continue;
     for(const member of members)rigidMembers.add(member.instanceId);
-    if(members.some(item=>excludedIds.has(item.instanceId) || !operational(item)))continue;
+    if(members.some(item=>excludedIds.has(item.instanceId) || item.supportLocked || !operational(item)))continue;
     const anchor=members.find(item=>item.isFormationFlagship) ?? members[0];
     rigidActors.set(anchor.instanceId,{ref:{kind:"group",id:group.id},members});
   }
@@ -1120,7 +1126,7 @@ function createAutonomousMovementPlans(
     }
 
     // 濒临沉没、沉没、正在执行任务的舰船不生成移动。
-    if (!operational(unit)) continue;
+    if (unit.supportLocked || !operational(unit)) continue;
 
     planning.controls.observationSide = unit.side;
 
@@ -1292,7 +1298,7 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
   return {
     getMovementInfo(ref, options = {}) {
       const scene = getState();
-      let members = movementMembers(scene, ref);
+      let members = movementMembers(scene, ref, true);
       if (options.depth !== undefined || options.altitude !== undefined) {
         if (ref.kind !== "unit") fail("高度／深度の確認には単艦を選択してください。");
         const unit=members[0];
@@ -1377,6 +1383,9 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
       }
 
       await commit(scene => {
+        const moving = ref.kind === 'unit' && options.followFormationMovement!==true ? scene.instances.filter(u=>u.instanceId===ref.id) : formationMovementMembers(scene,ref.kind==='group'?ref.id:scene.instances.find(u=>u.instanceId===ref.id)?.groupId);
+        assertManualControl(scene,moving);
+        interruptSupportForMovement(scene,moving.map(u=>u.instanceId),options.confirmSupportInterruption);
         const follow = options.followFormationMovement === true;
         const changingVertical = options.depth !== undefined || options.altitude !== undefined;
         let planning = scene, vertical = null;
@@ -1727,7 +1736,7 @@ validationScene.controls.enemyAutonomy = false;
 
         // 全部舰船已完成移动，使用移动后的真实位置决策。
 // 自主计划与玩家计划一起进入原任务启动流程。
-        appendAutonomousRescuePlans(scene, getVisibility);
+        // 自律支援统一在特殊阶段注册。
 
         startPlannedRescues(scene);
 

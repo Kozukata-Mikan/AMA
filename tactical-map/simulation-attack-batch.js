@@ -1,16 +1,16 @@
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=building-symbols-3";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=building-symbols-3";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=building-symbols-3";
-import { ensureShipRuntime } from "./ship-runtime.js?v=building-symbols-3";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=support-stations-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=support-stations-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=support-stations-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=support-stations-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=building-symbols-3";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=support-stations-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=building-symbols-3";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=building-symbols-3";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=support-stations-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=support-stations-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=building-symbols-3";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=support-stations-1";
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
 
 
@@ -368,7 +368,7 @@ function prepareCommand(startScene, command, visibilityBySide) {
     throw error;
   }
 
-  if (actor.shipState?.rescueTaskId !== null) {
+  if (actor.rescueSupportLocked || actor.shipState?.rescueTaskId !== null) {
     // 救助任务是否已正确结束，不能由攻击模块自行判断。
     // 不清除引用、不把任务异常当作普通失效计划跳过。
     const error = new Error([
