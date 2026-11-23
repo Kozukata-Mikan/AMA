@@ -1,3 +1,4 @@
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=aircraft-template-1';
 import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 export function mountSimulationFeatures(store, context) {
@@ -27,7 +28,7 @@ export function mountSimulationFeatures(store, context) {
 
   const panel = element("details");
   panel.open = true;
-  panel.append(element("summary", "艦船移動・編隊行動"));
+  panel.append(element("summary", "ユニット移動・編隊行動"));
 
   const side = element("select");
   side.append(
@@ -43,7 +44,7 @@ export function mountSimulationFeatures(store, context) {
 
   const actor = element("select");
   const actorLabel = element("label");
-  actorLabel.append(element("span", "移動する単艦"), actor);
+  actorLabel.append(element("span", "移動する単体"), actor);
   const fleetPicker = createFleetUnitSelector(actor, {label:"移動する編隊", wholeGroups:true,
     encodeUnit:id => JSON.stringify({kind:"unit",id})});
 
@@ -99,11 +100,11 @@ export function mountSimulationFeatures(store, context) {
   function syncVertical(scene) {
     const selected=actor.value ? JSON.parse(actor.value) : null;
     const unit=selected?.kind==="unit" ? scene.instances.find(item=>item.instanceId===selected.id) : null;
-    const kind=unit ? navalKind(unit) : null;
+    const kind=unit ? hasAircraftTemplate(unit)?"air":navalKind(unit) : null;
     verticalLabel.hidden = !unit || !["air","submarine"].includes(kind);
     vertical.disabled = scene.turn.phaseId!=="movement" || verticalLabel.hidden;
     if (!verticalLabel.hidden) {
-      verticalTitle.textContent = kind==="air" ? "空中艦の高度（1以上）" : "潜深（0＝水面、1以上＝潜航）";
+      verticalTitle.textContent = hasAircraftTemplate(unit) ? `航空機の高度（1～${unit.snapshot.aircraft.ceiling}）` : kind==="air" ? "空中艦の高度（1以上）" : "潜深（0＝水面、1以上＝潜航）";
       const pending=scene.movementPlans?.find(plan=>plan.vertical?.id===unit.instanceId)?.vertical;
       vertical.value=kind==="air" ? pending?.altitude ?? unit.altitude : pending?.depth ?? unit.depth;
       vertical.min=kind==="air" ? "1" : "0";
@@ -113,7 +114,7 @@ export function mountSimulationFeatures(store, context) {
     if (verticalLabel.hidden) return {};
     if (!vertical.value.trim()) throw new Error("高度／深度を入力してください。");
     const selected=ref(), unit=store.getSceneSnapshot().instances.find(item=>item.instanceId===selected.id);
-    const key=navalKind(unit)==="air" ? "altitude" : "depth";
+    const key=hasAircraftTemplate(unit)||navalKind(unit)==="air" ? "altitude" : "depth";
     const value=Number(vertical.value);
     return value===unit[key] ? {} : {[key]:value};
   }
@@ -333,12 +334,12 @@ if (!confirm(
 
     const ships = scene.instances.filter(unit =>
       unit.side === currentSide &&
-      unit.branch === "navy" &&
+      (hasAircraftTemplate(unit)?aircraftCanAct(unit,"move"):unit.branch === "navy" &&
       !["sinking", "sunk"].includes(unit.shipState?.status) &&
-      unit.shipState?.rescueTaskId === null
+      unit.shipState?.rescueTaskId === null)
     );
 
-    fleetPicker.sync(scene, ships);
+    fleetPicker.sync(scene, ships.map(u=>hasAircraftTemplate(u)?{...u,groupId:null}:u));
 
     const movement = scene.turn.phaseId === "movement";
 
@@ -425,7 +426,7 @@ if (!movement) {
 
     if (
       scene.turn.phaseId !== "movement" ||
-      unit?.branch !== "navy" ||
+      (unit?.branch !== "navy" && !hasAircraftTemplate(unit)) ||
       unit.side !== scene.controls.observationSide
     ) return;
 

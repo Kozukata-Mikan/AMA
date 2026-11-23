@@ -173,7 +173,19 @@ export const BUILDING_FIELDS = [
   {key:'building.runways',label:'滑走路数',type:'runway-count',definition:'1～3本。泊地は2本の滑走路と波の記号で表示します。'},
   {key:'building.portType',label:'港湾区分',type:'port-type',definition:'貿易港（$）・貨物港（積み荷）・補給港（フック）。施設区分とは独立しています。'}
 ];
-export const getUnitFields = unit => unit.branch==='building'?BUILDING_FIELDS:UNIT_FIELDS;
+export const AIRCRAFT_FIELDS = [
+  ...UNIT_FIELDS.filter(field=>['name','branch','faction','sizeLevel','protected','naval.armor','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='naval.detection'?{...field,label:'探測難度'}:field),
+  {key:'aircraft.type',label:'種別',type:'aircraft-type',definition:'艦載機・陸上機・水上機・無人機・陸上無人機。起降可能な母艦・施設の区分です。'},
+  {key:'aircraft.engines',label:'発動機数 / 最大耐性',type:'number',definition:'発動機数が最大耐性です。耐性0は大破、その後の被攻撃で撃墜。小破・中破はありません。'},
+  {key:'aircraft.crew',label:'乗員数',type:'number',definition:'搭乗する乗員の人数。無人機の初期値は0。現時点では性能補正はありません。'},
+  {key:'naval.speedKnots',label:'最高速度（ノット）',type:'optional-number',definition:'艦船と同じ速度換算を使用します。滞空時間は航続距離 ÷（最高速度 ÷ 2）の小数切捨てです。'},
+  {key:'aircraft.maneuverability',label:'機動性',type:'text',definition:'1R・2Rなど。空戦規則への接続は後続更新で行います。'},
+  {key:'aircraft.ceiling',label:'上昇限度（高度単位）',type:'optional-number',definition:'移動できる最大高度。地図の高度1単位は100mです。'},
+  {key:'naval.endurance',label:'航続力',type:'text',definition:'艦船と同じ距離表記。1kは1000。入力すると滞空時間を自動計算します。'},
+  {key:'aircraft.training',label:'練度（空戦規則未接続）',type:'text',definition:'航空機用の練度を原表記で保存します。艦船の練度補正は適用しません。'},
+  {key:'aircraft.remoteRange',label:'遠隔操作範囲（マス・未接続）',type:'optional-number',definition:'無人機用の予約項目。操作元・起降・整備規則は今後接続します。'}
+];
+export const getUnitFields = unit => unit.branch==='building'?BUILDING_FIELDS:unit.branch==='air'?AIRCRAFT_FIELDS:UNIT_FIELDS;
 
 export const EQUIPMENT_FIELDS = [
   {

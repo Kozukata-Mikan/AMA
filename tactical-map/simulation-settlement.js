@@ -1,6 +1,7 @@
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=aircraft-template-1';
 import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=support-stations-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=aircraft-template-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -12,7 +13,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=support-stations-1";
+} from "./simulation-attack-batch.js?v=aircraft-template-1";
 
 
 
@@ -22,16 +23,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=support-stations-1";
+} from "./ship-runtime.js?v=aircraft-template-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=support-stations-1";
+} from "./equipment-runtime.js?v=aircraft-template-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=support-stations-1";
+} from "./simulation-features.js?v=aircraft-template-1";
 
 import {
   getEquipmentDamagePlan,
@@ -41,7 +42,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=support-stations-1";
+} from "./equipment-item-runtime.js?v=aircraft-template-1";
 
 
 import {
@@ -74,32 +75,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=support-stations-1";
+} from "./simulation-rescue.js?v=aircraft-template-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=support-stations-1";
+} from "./simulation-phase-finish.js?v=aircraft-template-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=support-stations-1";
+} from "./weapon-profile-runtime.js?v=aircraft-template-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=support-stations-1";
+} from "./simulation-attack-runtime.js?v=aircraft-template-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=support-stations-1";
+} from "./weapon-profile-runtime.js?v=aircraft-template-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=support-stations-1";
+} from "./simulation-features.js?v=aircraft-template-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=support-stations-1";
+} from "./formation-target-runtime.js?v=aircraft-template-1";
 
 import {
   readRangeCommandTarget
@@ -112,7 +113,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=support-stations-1";
+} from "./range-projection-runtime.js?v=aircraft-template-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -669,7 +670,7 @@ function assertNoUnconnectedSupport(scene) {
   // 已生成装备组的支援效果仍保留原有保护，
   // 避免把真实存在的支援修正擅自当成0。
   for (const unit of scene.instances) {
-    if (unit.branch === "building") continue;
+    if (unit.branch === "building" || hasAircraftTemplate(unit)) continue;
     if (
       unit.branch === "navy" &&
       unit.shipState.status === "sunk"
@@ -1518,7 +1519,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
 
   const actors = start.instances
     .filter(unit =>
-      unit.branch !== "building" && (unit.branch === "navy" || !hasSupportEquipment(unit)) && (unit.side === "enemy" || unit.side === "neutral")
+      unit.branch !== "building" && !hasAircraftTemplate(unit) && (unit.branch === "navy" || !hasSupportEquipment(unit)) && (unit.side === "enemy" || unit.side === "neutral")
     )
     .sort((a, b) =>
       compareText(a.instanceId, b.instanceId)
@@ -1558,7 +1559,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
     const visibility = visibilityBySide.get(actor.side);
 
     const targets = start.instances.filter(target =>
-      target.branch !== "building" &&
+      target.branch !== "building" && !hasAircraftTemplate(target) &&
       target.instanceId !== actor.instanceId &&
       target.side !== actor.side &&
       visibility.get(target.instanceId) === "identified" &&

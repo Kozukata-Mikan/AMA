@@ -1,5 +1,5 @@
 import {supportCapacity,inSupportRange,SUPPORT_NAMES} from './support-equipment.js?v=support-stations-1';
-import {needsSupport,supportLimit} from './simulation-support.js?v=support-stations-1';
+import {needsSupport,supportLimit} from './simulation-support.js?v=aircraft-template-1';
 export function mountSupportUI(store){
  const el=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;return n;};
  const panel=el('details');panel.dataset.toolCategory='progress';panel.open=true;panel.append(el('summary','外部支援・救助・補給'));

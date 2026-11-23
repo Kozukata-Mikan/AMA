@@ -1,3 +1,4 @@
+import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=aircraft-template-1';
 import { normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=support-stations-1";
 import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";
@@ -193,7 +194,7 @@ export async function createBattleStore(units) {
       unitId
     );
 
-    const spatial = normalizeBuildingUnit(normalizeNavalPosition({...item,branch:snapshot.branch,snapshot}));
+    const spatial = normalizeAircraftPosition(normalizeBuildingUnit(normalizeNavalPosition({...item,branch:snapshot.branch,snapshot})));
     const name = requireText(item.name ?? snapshot.name, "ユニット名");
     const side = item.side ?? "ally";
 
@@ -674,7 +675,7 @@ export async function createBattleStore(units) {
       currentHp: base.maxHp,
       sizeLevel: base.sizeLevel ?? 1,
 
-      altitude: base.branch === "air" ? 80 : null
+      altitude: base.branch === "air" ? Math.min(80,base.aircraft?.ceiling??80) : null
     });
 
     await change(candidate => {
@@ -918,7 +919,7 @@ export async function createBattleStore(units) {
         currentHp: base.maxHp,
         sizeLevel,
         groupId: group.id,
-        altitude: base.branch === "air" ? 80 : null
+        altitude: base.branch === "air" ? Math.min(80,base.aircraft?.ceiling??80) : null
       })
     );
 

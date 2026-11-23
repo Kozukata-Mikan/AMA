@@ -1,3 +1,4 @@
+import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=aircraft-template-1';
 import { buildingDetailLines } from "./building-runtime.js?v=support-stations-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
@@ -10,7 +11,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=support-stations-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=aircraft-template-1";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -25,20 +26,20 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js?v=support-stations-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=building-symbols-3";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=support-stations-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=aircraft-template-1";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=support-stations-1";
+} from "./ship-runtime.js?v=aircraft-template-1";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=support-stations-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=support-stations-1";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=aircraft-template-1";
+import { mountSupportUI } from "./simulation-support-ui.js?v=aircraft-template-1";
 import { drawSupportOverlay } from "./support-map-display.js?v=support-stations-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=support-stations-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=support-stations-1";
+} from "../js/catalog-seed.js?v=aircraft-template-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=aircraft-template-1";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=support-stations-1";
@@ -56,7 +57,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=support-stations-1";
+} from "./simulation-store.js?v=aircraft-template-1";
 
 import {
   gridPosition,
@@ -463,6 +464,7 @@ if (unit.observationLevel === "shadow") {
       getShipDetailLines(unit, scene.environment).join("\n");
   }
 
+  if(hasAircraftTemplate(unit))$("unitInfo").textContent+="\n\n【航空機性能・状態】\n"+aircraftDetailLines(unit).join("\n");
   if (unit.branch === "building") $("unitInfo").textContent += "\n\n" + buildingDetailLines(unit).join("\n");
 
   const combatLines = getOwnCombatDetailLines(
@@ -706,6 +708,8 @@ function drawMap() {
     }, group);
 
   label.textContent = getFlagshipDisplayName(unit);
+    const aircraftTimer=aircraftTimerDisplay(unit);
+    if(aircraftTimer){const timer=svgNode('tspan',{fill:aircraftTimer.color,'font-weight':'800',dx:8},label);timer.textContent=aircraftTimer.text;}
     // 集群代理只汇总观察副本中允许显示的己方状态。
 // 不读取或推断外方装备损伤、任务种类。
 const statusMembers = unit.clusterMembers?.length

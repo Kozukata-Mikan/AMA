@@ -1,16 +1,16 @@
 import { rescueSupported, supportRadius } from "./support-equipment.js?v=support-stations-1";
-import { readShipProfile } from "./ship-runtime.js?v=support-stations-1";
+import { readShipProfile } from "./ship-runtime.js?v=aircraft-template-1";
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=support-stations-1";
+} from "./simulation-features.js?v=aircraft-template-1";
 
 import {
   getEquipmentControlCandidates,
   applyExternalEquipmentRepairResult
-} from "./equipment-item-runtime.js?v=support-stations-1";
+} from "./equipment-item-runtime.js?v=aircraft-template-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

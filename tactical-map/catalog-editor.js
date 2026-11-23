@@ -1,9 +1,11 @@
+import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=aircraft-template-1';
+import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=aircraft-template-1';
 import { SUPPORT_EFFECTS } from "./support-equipment.js?v=support-stations-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=support-stations-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=support-stations-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=aircraft-template-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=support-stations-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=aircraft-template-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -14,7 +16,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=support-stations-1";
+} from "../js/catalog-seed.js?v=aircraft-template-1";
 
 // ===== 图鉴界面 =====
 
@@ -195,19 +197,19 @@ function labeled(parent, labelText, control, definition = "") {
 
 function catalogFieldSections(fields, category) {
   const sections = category === "units" ? [
-    ["basic", "基本情報", ["name","branch","naval.kind","faction","naval.type","naval.iconType","protected"]],
-    ["hull", "船体・防御", ["sizeLevel","maxHp","naval.strength","naval.armor"]],
+    ["basic", "基本情報", ["name","branch","naval.kind","faction","naval.type","naval.iconType","aircraft.type","protected"]],
+    ["hull", "船体・防御", ["sizeLevel","maxHp","aircraft.engines","aircraft.crew","naval.strength","naval.armor"]],
     ["recon", "偵察・探測", ["naval.detection","naval.seaRecon","naval.airRecon","naval.aswRecon"]],
-    ["mobility", "航速・航続", ["naval.speedKnots","naval.submergedSpeedKnots","naval.endurance"]],
+    ["mobility", "航速・航続", ["naval.speedKnots","naval.submergedSpeedKnots","naval.endurance","aircraft.ceiling","aircraft.maneuverability","aircraft.remoteRange"]],
     ["facility", "施設設定", ["building.kind","building.permanence","building.airportType","building.runways","building.portType"]],
-    ["traits", "練度・特殊能力", ["trainingTraits"]]
+    ["traits", "練度・特殊能力", ["trainingTraits","aircraft.training"]]
   ] : [
     ["basic", "基本情報", ["name","kind","faction","slot","supportEffect","runwayControlLimit"]],
     ["weapon", "射撃・誘導", ["guidance","range","ceilingU","maxOrder","targetScope"]],
     ["power", "威力・投射・弾薬", ["powerRule","penetration","barrelCount","projectionCoefficient","projectionSuffix","ammo"]],
     ["notes", "補足", ["note"]]
   ];
-  const result=sections.map(([id,title,keys])=>({id,title: id==="hull" && fields.some(field=>field.key==="building.kind") ? "構造・防御" : title,fields:keys.map(key=>fields.find(field=>field.key===key)).filter(Boolean)})).filter(section=>section.fields.length);
+  const result=sections.map(([id,title,keys])=>({id,title: fields.some(f=>f.key==="aircraft.type")&&id==="hull"?"機体・乗員・防御":fields.some(f=>f.key==="aircraft.type")&&id==="mobility"?"飛行性能・航続":id==="hull" && fields.some(field=>field.key==="building.kind") ? "構造・防御" : title,fields:keys.map(key=>fields.find(field=>field.key===key)).filter(Boolean)})).filter(section=>section.fields.length);
   const assigned=new Set(result.flatMap(section=>section.fields.map(field=>field.key)));
   const remaining=fields.filter(field=>!assigned.has(field.key));
   if(remaining.length)result.push({id:"other",title:"その他",fields:remaining});
@@ -220,7 +222,7 @@ function ensureStyles() {
   const link = node("link");
   link.id = "catalog-styles";
   link.rel = "stylesheet";
-  link.href = new URL("./catalog.css?v=building-symbols-3", import.meta.url).href;
+  link.href = new URL("./catalog.css?v=aircraft-template-1", import.meta.url).href;
 
   document.head.append(link);
 }
@@ -389,7 +391,7 @@ export function mountCatalogEditor({
       trainingTraits: [],
       description: "",
       protected: false,
-      ...(branchFilter === "building" ? {building:normalizeBuilding()} : {}),
+      ...(branchFilter === "building" ? {building:normalizeBuilding()} : branchFilter === "air" ? {aircraft:normalizeAircraft()} : {}),
       naval: {
         type: "",
         strength: null,
@@ -752,6 +754,7 @@ export function mountCatalogEditor({
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.type === "aircraft-type" ? AIRCRAFT_TYPES.find(([id])=>id===value)?.[1]
             : field.type === "support-effect" ? SUPPORT_EFFECTS.find(([id])=>id===(value??""))?.[1]
             : ["building-kind","airport-durability","airport-type","port-type"].includes(field.type)
             ? ({"building-kind":BUILDING_KINDS,"airport-durability":FACILITY_DURABILITY,"airport-type":AIRPORT_TYPES,"port-type":PORT_TYPES}[field.type].find(([id])=>id===value)?.[1] ?? value)
@@ -781,6 +784,7 @@ export function mountCatalogEditor({
 
     }
 
+    if(category==='units' && item.branch==='air')appendAircraftSummary(detail,item,store.getData().equipment);
     if (category === "equipment") {
       detail.append(node(
         "p",
@@ -789,7 +793,7 @@ export function mountCatalogEditor({
       ));
 
       const users = data.units.filter(unit =>
-        unit.mounts.some(mount =>
+        aircraftMounts(unit).some(mount =>
           mount.equipmentId === item.id
         )
       );
@@ -865,7 +869,7 @@ export function mountCatalogEditor({
         detail.append(node("p", "装備未登録"));
       }
 
-      if (item.branch !== "building") {
+      if (!["building","air"].includes(item.branch)) {
       detail.append(node("h4", "搭載機"));
 
       if (item.embarked.length) {
@@ -908,6 +912,7 @@ export function mountCatalogEditor({
 
     const draft = copy(source);
     if(draft.branch==="building")draft.building=normalizeBuilding(draft.building);
+    if(draft.branch==="air")draft.aircraft=normalizeAircraft(draft.aircraft);
 
     detail.append(
       node("h3", "資料を編集"),
@@ -924,7 +929,7 @@ export function mountCatalogEditor({
     const controls = new Map();
     const sectionHosts = new Map();
     for (const section of catalogFieldSections(fields, category)) {
-      if (section.id === "traits") continue;
+      if (section.id === "traits" && section.fields.every(f=>f.type==='training-traits')) continue;
       const group=node("fieldset", "", `catalog-section catalog-section-${section.id}`);
       group.append(node("legend", section.title));
       const host=node("div", "", "catalog-section-grid");
@@ -992,6 +997,7 @@ export function mountCatalogEditor({
           ["special", "特殊"],
           ["building", "建築"]
         ], value);
+      } else if (field.type === "aircraft-type") {control=select(AIRCRAFT_TYPES,value);
       } else if (field.type === "support-effect") {control=select(SUPPORT_EFFECTS,value ?? "");
       } else if (field.type === "building-size") {
         control=select([["1","1"]],1);control.disabled=true;
@@ -1046,7 +1052,7 @@ export function mountCatalogEditor({
       control.closest("label").dataset.field = field.key;
     }
 
-    if (category === "units" && draft.branch!=="building") {
+    if (category === "units" && controls.has("naval.iconType")) {
       const preview = node("div", "", "catalog-symbol-preview");
       const ns = "http://www.w3.org/2000/svg";
       const svg = document.createElementNS(ns, "svg");
@@ -1066,6 +1072,10 @@ export function mountCatalogEditor({
       sectionHosts.get("naval.iconType").append(preview);
     }
 
+    let readLoadouts=null;
+    if(category==='units' && draft.branch==='air'){
+      mountAircraftDerivedFields(controls,sectionHosts.get('naval.endurance'));
+    }
     if(category==='units' && draft.branch==='building') {
       const preview=node('div','','catalog-symbol-preview');
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','-38 -34 76 57');svg.style.width='90px';svg.style.height='96px';svg.setAttribute('role','img');svg.setAttribute('aria-label','施設マークのプレビュー');preview.append(svg,node('span','直径50マス / 標識は表示上のみ浮上'));
@@ -1160,7 +1170,7 @@ export function mountCatalogEditor({
         const position = labeled(
           row,
           "位置",
-          draft.branch === "building" ? select([["露天","露天"],["地下","地下"]], value.position === "地下" ? "地下" : "露天") : input(value.position)
+          draft.branch === "building" ? select([["露天","露天"],["地下","地下"]], value.position === "地下" ? "地下" : "露天") : draft.branch === "air" ? select(AIRCRAFT_WEAPON_ROLES.map(([,label])=>[label,label]),value.position||"主動武器") : input(value.position)
         );
 
         const equipmentSelect = labeled(
@@ -1187,6 +1197,12 @@ export function mountCatalogEditor({
         const preview = node("p", "", "catalog-muted");
 
         function updatePreview() {
+          if(draft.branch==='air'){
+            const previous=equipmentSelect.value;
+            const available=equipment.filter(e=>position.value!=='ポッド'||e.kind==='support');
+            equipmentSelect.replaceChildren(...available.map(e=>new Option(getEquipmentLabel(e),e.id)));
+            if(available.some(e=>e.id===previous))equipmentSelect.value=previous;
+          }
           const item = equipment.find(
             candidate => candidate.id === equipmentSelect.value
           );
@@ -1203,6 +1219,7 @@ export function mountCatalogEditor({
               : "総砲身数：未設定 / 対象外";
         }
 
+        position.addEventListener("change",updatePreview);
         count.addEventListener("input", updatePreview);
 
         equipmentSelect.addEventListener(
@@ -1256,8 +1273,9 @@ export function mountCatalogEditor({
         })
       );
 
+      if(draft.branch==='air')readLoadouts=mountAircraftLoadoutEditor(form,equipment,draft.aircraft.loadouts);
       // ----- 舰载机编辑 -----
-      if (draft.branch !== "building") {
+      if (!["building","air"].includes(draft.branch)) {
 
       form.append(node("h4", "搭載機"));
 
@@ -1389,10 +1407,11 @@ export function mountCatalogEditor({
             .filter(reader => reader.active)
             .map(reader => reader.read());
 
-          next.embarked = draft.branch === "building" ? (draft.embarked ?? []) : embarkedReaders
+          next.embarked = ["building","air"].includes(draft.branch) ? (draft.embarked ?? []) : embarkedReaders
             .filter(reader => reader.active)
             .map(reader => reader.read());
 
+          if(next.branch==='air'){next.aircraft.loadouts=readLoadouts();next.maxHp=next.aircraft.engines;}
           const saved = withProtectionAuthorization(() => {
             store.saveUnit(next);
             return true;
@@ -1422,7 +1441,9 @@ export function mountCatalogEditor({
       const next=copy(draft);
       for(const field of fields){const control=controls.get(field.key);setPath(next,field.key,field.type==='training-traits'?control.read():field.type==='checkbox'?control.checked:['number','optional-number','size','building-size','runway-count'].includes(field.type)?(control.value.trim()?Number(control.value):null):control.value);}
       next.hullNames=hullNames.value.split(/\r?\n/).filter(Boolean);next.description=description.value;
-      next.mounts=mountReaders.filter(reader=>reader.active).map(reader=>reader.read());next.embarked=draft.branch === "building" ? (draft.embarked ?? []) : embarkedReaders.filter(reader=>reader.active).map(reader=>reader.read());
+      next.mounts=mountReaders.filter(reader=>reader.active).map(reader=>reader.read());next.embarked=["building","air"].includes(draft.branch) ? (draft.embarked ?? []) : embarkedReaders.filter(reader=>reader.active).map(reader=>reader.read());
+      if(draft.branch==='air')next.aircraft.loadouts=readLoadouts();
+      if(next.branch==='air')next.aircraft=normalizeAircraft(next.aircraft);
       if(next.branch==='building'){next.sizeLevel=1;next.building=normalizeBuilding(next.building);}
       renderForm(next);
     });

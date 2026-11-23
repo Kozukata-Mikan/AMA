@@ -1,22 +1,23 @@
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=aircraft-template-1';
 import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=support-stations-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=aircraft-template-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=support-stations-1";
 import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=support-stations-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=aircraft-template-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=support-stations-1";
+} from "./ship-runtime.js?v=aircraft-template-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=support-stations-1";
+} from "./simulation-rescue.js?v=aircraft-template-1";
 
 import {
   createShipEffectsState,
@@ -27,11 +28,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=support-stations-1";
+} from "./equipment-item-runtime.js?v=aircraft-template-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=support-stations-1";
+} from "./simulation-autonomous-rescue.js?v=aircraft-template-1";
 
 import {
   routeLength,
@@ -56,6 +57,12 @@ function positioned(unit) {
   return Number.isFinite(unit.x) && Number.isFinite(unit.y);
 }
 
+function setUnitVertical(unit,value){
+  if(!hasAircraftTemplate(unit))return setNavalVertical(unit,value);
+  if(value.depth!==undefined)fail('航空機の潜深は変更できません。');
+  if(value.altitude!==undefined)unit.altitude=value.altitude;
+  return normalizeAircraftPosition(unit);
+}
 function operational(unit) {
   if (!positioned(unit)) return false;
 
@@ -64,6 +71,7 @@ function operational(unit) {
       unit.shipState?.rescueTaskId === null;
   }
 
+  if(hasAircraftTemplate(unit))return aircraftCanAct(unit,'recon');
   // 其他兵种的完整行动规则尚未定义。
   // 已经明确耐性为0的单位不作为侦察来源。
   return Number.isFinite(unit.currentHp) && unit.currentHp > 0;
@@ -71,7 +79,7 @@ function operational(unit) {
 
 export function initializeSimulationFeatures(scene) {
   initializeSupportRuntime(scene);
-  for (const unit of scene.instances) normalizeBuildingUnit(normalizeNavalPosition(unit));
+  for (const unit of scene.instances) normalizeAircraftPosition(normalizeBuildingUnit(normalizeNavalPosition(unit)));
   for (const group of scene.groups) if (group.formation !== undefined) normalizeFormation(group.formation);
   scene.controls ??= {};
   scene.controls.enemyAutonomy =
@@ -393,6 +401,7 @@ export function getVisibility(scene, targetIds) {
   };
 
   for (const target of scene.instances) {
+    if(hasAircraftTemplate(target)&&target.aircraftState?.status==='destroyed')continue;
     if (targetIds && !targetIds.has(target.instanceId)) continue;
     if (target.side === side) {
       result.set(target.instanceId, "identified");
@@ -432,6 +441,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
   const instances = [];
 
   for (const unit of scene.instances) {
+    if(hasAircraftTemplate(unit)&&unit.aircraftState?.status==='destroyed')continue;
     const level = visibility.get(unit.instanceId);
     if (!level) continue;
 
@@ -457,6 +467,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         // 外方识别只开放可识别资料，不开放内部运行状态。
         delete observed.equipmentState;
         delete observed.trainingState;
+        delete observed.aircraftState;
         delete observed.supportLocked;
         delete observed.rescueSupportLocked;
 
@@ -736,11 +747,11 @@ function movementMembers(scene, ref, supportPreview=false) {
     fail("移動計画は移動段階でのみ指定できます。");
   }
 
-  if (members.some(unit => unit.branch !== "navy")) {
+  if (members.some(unit => unit.branch !== "navy" && !hasAircraftTemplate(unit)) || (ref.kind==='group' && members.some(hasAircraftTemplate))) {
     fail("この移動処理は艦船専用です。混合軍種の移動は未定義です。");
   }
 
-  if (members.some(unit => (!operational(unit) || unit.supportLocked) && !(supportPreview && unit.supportLocked && !["sinking","sunk"].includes(unit.shipState?.status) && unit.shipState?.rescueTaskId===null))) {
+  if (members.some(unit => (!(hasAircraftTemplate(unit)?aircraftCanAct(unit,'move'):operational(unit)) || unit.supportLocked) && !(supportPreview && unit.supportLocked && !["sinking","sunk"].includes(unit.shipState?.status) && unit.shipState?.rescueTaskId===null))) {
     fail("行動不能または救助中の艦船は移動できません。");
   }
 
@@ -749,6 +760,7 @@ function movementMembers(scene, ref, supportPreview=false) {
 
 function limitFor(members) {
   return Math.min(...members.map(unit => {
+    if(hasAircraftTemplate(unit))return Math.min(readAircraftProfile(unit).movementLimit,unit.aircraftState.remainingEndurance);
     const profile = readShipProfile(unit);
 
     // 旧框架尚无词条字段时，仅按无进水计算。
@@ -797,6 +809,7 @@ function validateRoute(scene, unit, to) {
     fail("移動先が地図の範囲外です。");
   }
 
+  if(hasAircraftTemplate(unit))return;
   for (const wreck of scene.instances) {
     if (
       wreck.instanceId !== unit.instanceId &&
@@ -1087,7 +1100,7 @@ function createAutonomousMovementPlans(
   const autonomousUnits = planning.instances
     .filter(unit =>
     ["enemy", "neutral"].includes(unit.side) &&
-    unit.branch !== "building" && (unit.branch === "navy" || !hasSupportEquipment(unit)) &&
+    unit.branch !== "building" && !hasAircraftTemplate(unit) && (unit.branch === "navy" || !hasSupportEquipment(unit)) &&
     !excludedIds.has(unit.instanceId)
   )
 
@@ -1135,6 +1148,7 @@ function createAutonomousMovementPlans(
 
     const relevantTargets = planning.instances.filter(target => {
       if (
+        hasAircraftTemplate(target) ||
         target.instanceId === unit.instanceId ||
         target.side === unit.side ||
         !positioned(target) ||
@@ -1303,7 +1317,7 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
         if (ref.kind !== "unit") fail("高度／深度の確認には単艦を選択してください。");
         const unit=members[0];
         const copy={...unit,snapshot:{...unit.snapshot,naval:{...unit.snapshot.naval}}};
-        members=[setNavalVertical(copy,options)];
+        members=[setUnitVertical(copy,options)];
       }
 
       const anchor = ref.kind === "group" ? formationCenter(members,scene.groups.find(group=>group.id===ref.id)?.formation) : members[0];
@@ -1392,13 +1406,13 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
         if (changingVertical) {
           if (ref.kind !== "unit" || follow) fail("高度／深度の変更は単艦で指定し、編隊追随を解除してください。");
           const unit = scene.instances.find(item=>item.instanceId===ref.id);
-          if (!unit || unit.branch !== "navy") fail("この操作は艦船にのみ指定できます。");
+          if (!unit || (unit.branch !== "navy" && !hasAircraftTemplate(unit))) fail("この操作は艦船・航空機に指定してください。");
           assertManualControl(scene,[unit]);
           vertical = {id:unit.instanceId,fromDepth:unit.depth,fromAltitude:unit.altitude ?? null,
             ...(options.depth === undefined ? {} : {depth:options.depth}),
             ...(options.altitude === undefined ? {} : {altitude:options.altitude})};
           planning = clone(scene);
-          setNavalVertical(planning.instances.find(item=>item.instanceId===unit.instanceId),vertical);
+          setUnitVertical(planning.instances.find(item=>item.instanceId===unit.instanceId),vertical);
         }
         const plan = follow
           ? buildFollowPlan(planning, ref, x, y)
@@ -1508,7 +1522,7 @@ validationScene.controls.enemyAutonomy = false;
             if (saved.ref.kind !== "unit" || saved.ref.id !== saved.vertical.id || saved.memberIds.length !== 1 ||
                 !unit || unit.depth !== saved.vertical.fromDepth || (unit.altitude ?? null)!==saved.vertical.fromAltitude)
               fail("高度／深度の開始状態が変わりました。計画を再登録してください。");
-            setNavalVertical(unit,saved.vertical);
+            setUnitVertical(unit,saved.vertical);
           }
           if (saved.mode === "formation-layout") {
             const group = validationScene.groups.find(item=>item.id===saved.ref.id);
@@ -1618,7 +1632,7 @@ validationScene.controls.enemyAutonomy = false;
         }
 
         for (const plan of checked) if (plan.vertical)
-          setNavalVertical(scene.instances.find(unit=>unit.instanceId===plan.vertical.id),plan.vertical);
+          setUnitVertical(scene.instances.find(unit=>unit.instanceId===plan.vertical.id),plan.vertical);
 
         const routes = checked.flatMap(plan =>
           plan.destinations.map(destination => ({
@@ -1637,6 +1651,15 @@ validationScene.controls.enemyAutonomy = false;
           unit => limitFor([unit])
         );
 
+        // 航空機の直線移動。空戦・空中衝突規則は後続更新で接続する。
+        for(const destination of routes){
+          const unit=scene.instances.find(u=>u.instanceId===destination.instanceId);
+          if(!hasAircraftTemplate(unit))continue;
+          const proxy={...unit,branch:'navy',snapshot:{...unit.snapshot,naval:{...unit.snapshot.naval,kind:'air'}}};
+          const clipped=clipLandRoute(scene.terrain,proxy,destination.route);
+          const route=trimRoute(clipped.route,limitFor([unit])),last=route.at(-1);
+          movement.destinations.push({instanceId:unit.instanceId,x:last.x,y:last.y,distance:routeLength(route),route});
+        }
         const formationHeadings = new Map();
         for (const plan of checked) {
           if (Number.isFinite(plan.heading))
@@ -1655,10 +1678,8 @@ validationScene.controls.enemyAutonomy = false;
               routeHeading(destination.route, unit.heading);
           }
 
-          unit.shipState.remainingEndurance = Math.max(
-            0,
-            unit.shipState.remainingEndurance - destination.distance
-          );
+          const movingState=hasAircraftTemplate(unit)?unit.aircraftState:unit.shipState;
+          movingState.remainingEndurance=Math.max(0,movingState.remainingEndurance-destination.distance);
         }
 
         for (const plan of checked.filter(item=>item.formation && ["formation-layout","formation-follow"].includes(item.mode))) {
