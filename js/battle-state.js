@@ -1,3 +1,4 @@
+import { normalizeBuilding, normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=building-foundations-1";
 import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";
 import {normalizeFormation, formationOffset, formationMembers, formationCenter, validateFormationMembers} from "../tactical-map/formation-layout.js?v=fleet-cohesion-6";
@@ -26,7 +27,7 @@ import {
 import { normalizeFaction } from "./faction-data.js";
 
 
-import { assessCluster } from "../tactical-map/cluster-engine.js?v=catalog-layout-2";
+import { assessCluster } from "../tactical-map/cluster-engine.js?v=building-foundations-1";
 
 import { normalizeCampaignIntro } from "../tactical-map/campaign-intro-data.js";
 
@@ -34,7 +35,7 @@ const STORAGE_KEY = "junqi-battle-scene-v2";
 const LEGACY_KEY = "junqi-battle-state-v1";
 const VERSION = 2;
 
-const BRANCHES = new Set(["navy", "air", "army", "special"]);
+const BRANCHES = new Set(["navy", "air", "army", "special", "building"]);
 const SIDES = new Set(["ally", "enemy", "neutral"]);
 
 function copy(value) {
@@ -192,7 +193,7 @@ export async function createBattleStore(units) {
       unitId
     );
 
-    const spatial = normalizeNavalPosition({...item,branch:snapshot.branch,snapshot});
+    const spatial = normalizeBuildingUnit(normalizeNavalPosition({...item,branch:snapshot.branch,snapshot}));
     const name = requireText(item.name ?? snapshot.name, "ユニット名");
     const side = item.side ?? "ally";
 

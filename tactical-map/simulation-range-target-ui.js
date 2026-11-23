@@ -4,7 +4,7 @@ import {
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=catalog-layout-2";
+} from "./weapon-profile-runtime.js?v=building-foundations-1";
 
 
 function fail(message) {

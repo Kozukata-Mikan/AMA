@@ -1,4 +1,4 @@
-import { TRAINING_TRAIT_OPTIONS } from "../js/catalog-seed.js?v=catalog-layout-2";
+import { TRAINING_TRAIT_OPTIONS } from "../js/catalog-seed.js?v=building-foundations-1";
 
 // ===== 推演装备与词条运行状态 =====
 // 不修改图鉴快照，不消耗弹药，不执行攻击。

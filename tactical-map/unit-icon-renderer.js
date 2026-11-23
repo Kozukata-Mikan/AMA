@@ -1,3 +1,4 @@
+import { drawBuildingIcon } from "./building-runtime.js?v=building-foundations-1";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import { projectMap as project } from "./map-display.js";
 
@@ -67,6 +68,7 @@ function getIconScale(sizeLevel) {
 // 海军不使用等级整体放大。
 // 它的长度变化由舰船形状函数单独处理。
 function getUnitScale(unit) {
+  if (unit.branch === "building") return 1;
   if (unit.branch === "navy") {
     return NAVAL_ICON_SCALE;
   }
@@ -272,6 +274,7 @@ function makeProjectedCenterDot(unit) {
 }
 
 function drawUnitIcon(unit, parent) {
+  if (unit.branch === "building") return drawBuildingIcon(unit,parent,path=>projectIconPath(unit,path));
   const filled = unit.filled === true;
   const underwater =
     unit.branch === "navy" && unit.underwater === true;

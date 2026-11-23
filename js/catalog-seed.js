@@ -68,7 +68,7 @@ export const UNIT_FIELDS = [
     key: "branch",
     label: "軍種",
     type: "branch",
-    definition: "海軍・航空機・陸軍・特殊の分類。配置条件と表示形状に使用します。"
+    definition: "海軍・航空機・陸軍・特殊・建築の分類。配置条件と表示形状に使用します。"
   },
   {key:"naval.kind",label:"種類",type:"naval-kind",definition:"空中艦・水上艦・水中艦・陸上艦の行動区分。軍種や艦船マークとは別の設定です。"},
   {
@@ -162,6 +162,17 @@ export const UNIT_FIELDS = [
       "図鑑では能力を登録し、発動判定と補正計算は推演で行います。"
   }
 ];
+
+// 建筑复用共用性能槽位，但不展示舰船航速、舰型、训练字段。
+export const BUILDING_FIELDS = [
+  ...UNIT_FIELDS.filter(field=>['name','branch','faction','maxHp','sizeLevel','protected','naval.armor','naval.strength','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='sizeLevel'?{...field,type:'building-size',definition:'現在の建築の体型は1のみ。地図上の施設円は直径50マスです。'}:field),
+  {key:'building.kind',label:'施設種別',type:'building-kind',definition:'飛行場または港湾を選択します。地形による配置制限はありません。'},
+  {key:'building.permanence',label:'飛行場区分',type:'airport-durability',definition:'恒久飛行場には台座を表示します。'},
+  {key:'building.airportType',label:'飛行場形式',type:'airport-type',definition:'滑走路・空中艦・泊地から選択します。'},
+  {key:'building.runways',label:'滑走路数',type:'runway-count',definition:'1～3本。泊地は2本の滑走路と波の記号で表示します。'},
+  {key:'building.portType',label:'港湾区分',type:'port-type',definition:'貨物港または補給港。補給港には台座を表示します。'}
+];
+export const getUnitFields = unit => unit.branch==='building'?BUILDING_FIELDS:UNIT_FIELDS;
 
 export const EQUIPMENT_FIELDS = [
   {

@@ -1,10 +1,11 @@
-import { initializeCatalog } from "./catalog-store.js?v=catalog-layout-2";
+import { initializeCatalog } from "./catalog-store.js?v=building-foundations-1";
 
 const BRANCH_NAMES = {
   navy: "海軍",
   air: "航空機",
   army: "陸軍",
-  special: "特殊"
+  special: "特殊",
+  building: "建築"
 };
 
 export async function loadUnitData() {

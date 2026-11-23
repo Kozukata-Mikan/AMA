@@ -1,3 +1,4 @@
+import { buildingDetailLines } from "./building-runtime.js?v=building-foundations-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
@@ -9,7 +10,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=catalog-layout-2";
+import { mountSaveIndicator } from "./save-indicator.js?v=building-foundations-1";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -21,22 +22,22 @@ import {
   showCampaignIntro
 } from "./campaign-intro.js";
 
-import { drawUnitIcon } from "./unit-icon-renderer.js?v=naval-formation-2";
+import { drawUnitIcon } from "./unit-icon-renderer.js?v=building-foundations-1";
 
-import { getDisplayUnits } from "./cluster-engine.js?v=catalog-layout-2";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=catalog-layout-2";
+import { getDisplayUnits } from "./cluster-engine.js?v=building-foundations-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=building-foundations-1";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=catalog-layout-2";
+} from "./ship-runtime.js?v=building-foundations-1";
 
 import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=catalog-layout-2";
 import { mountRescueUI } from "./simulation-rescue-ui.js?v=fleet-cohesion-6";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=catalog-layout-2";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=catalog-layout-2";
+} from "../js/catalog-seed.js?v=building-foundations-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=building-foundations-1";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=fleet-cohesion-6";
@@ -54,7 +55,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=catalog-layout-2";
+} from "./simulation-store.js?v=building-foundations-1";
 
 import {
   gridPosition,
@@ -170,7 +171,8 @@ const BRANCH_LABELS = {
   navy: "海軍",
   air: "航空機",
   army: "陸軍",
-  special: "特殊"
+  special: "特殊",
+  building: "建築"
 };
 
 const SIDE_LABELS = {
@@ -464,6 +466,8 @@ if (unit.observationLevel === "shadow") {
       "\n\n【艦船性能・推演状態】\n" +
       getShipDetailLines(unit, scene.environment).join("\n");
   }
+
+  if (unit.branch === "building") $("unitInfo").textContent += "\n\n" + buildingDetailLines(unit).join("\n");
 
   const combatLines = getOwnCombatDetailLines(
     unit,

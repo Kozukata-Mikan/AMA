@@ -329,3 +329,5 @@
   .catalog-section { padding: 12px; }
   .catalog-save-actions { bottom: -14px; }
 }
+
+.catalog-field[hidden] { display:none; }

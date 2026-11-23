@@ -1,11 +1,11 @@
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile
-} from "./ship-runtime.js?v=catalog-layout-2";
+} from "./ship-runtime.js?v=building-foundations-1";
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=catalog-layout-2";
+} from "./simulation-rescue.js?v=building-foundations-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

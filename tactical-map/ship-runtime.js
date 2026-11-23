@@ -5,7 +5,7 @@ import {
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=catalog-layout-2";
+} from "./equipment-item-runtime.js?v=building-foundations-1";
 
 
 import {
@@ -24,12 +24,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=catalog-layout-2";
+} from "./equipment-runtime.js?v=building-foundations-1";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=catalog-layout-2";
+} from "./equipment-item-runtime.js?v=building-foundations-1";
 
 
 // ===== 舰船数据与推演状态接入 =====

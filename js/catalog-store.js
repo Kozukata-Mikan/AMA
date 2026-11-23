@@ -1,6 +1,7 @@
+import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=building-foundations-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=catalog-layout-2";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=building-foundations-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -10,7 +11,7 @@ import { normalizeFaction } from "./faction-data.js";
 
 const STORAGE_KEY = "junqi-catalog-v1";
 const VERSION = 1;
-const BRANCHES = new Set(["navy", "air", "army", "special"]);
+const BRANCHES = new Set(["navy", "air", "army", "special", "building"]);
 
 let currentStore = null;
 
@@ -199,6 +200,8 @@ function normalizeUnit(value) {
     { min: 1, integer: true }
   );
 
+  if (value.branch === "building" && sizeLevel !== 1) throw new Error("建築の体型は現在1のみです。");
+
   if (sizeLevel > 5) {
     throw new Error("体型は 1～5 で指定してください。");
   }
@@ -236,6 +239,7 @@ function normalizeUnit(value) {
     }),
 
     sizeLevel,
+    ...(value.branch === "building" ? {building: normalizeBuilding(value.building)} : {}),
     trainingTraits: normalizeTrainingTraits(value.trainingTraits),
     description: text(value.description ?? "", "説明"),
 

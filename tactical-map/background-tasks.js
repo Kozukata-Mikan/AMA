@@ -1,13 +1,13 @@
-import {planFormationAttack} from "./simulation-formation-attack.js?v=catalog-layout-2";
-import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js?v=catalog-layout-2";
+import {planFormationAttack} from "./simulation-formation-attack.js?v=building-foundations-1";
+import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js?v=building-foundations-1";
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import {freezeSpecialHistory} from './special-history-snapshot.js';
 import {generateTerrainTask} from './terrain-generation-task.js';
 import {applyBrush,resizeTerrain} from './terrain-data.js';
 import {beginTerrainEdit} from './terrain-edit-history.js';
-import {settleAttackPhase,prepareSettlementAttackPlan} from './simulation-settlement.js?v=catalog-layout-2';
-import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js?v=catalog-layout-2';
-import {resolveMovementScene} from './simulation-features.js?v=catalog-layout-2';
+import {settleAttackPhase,prepareSettlementAttackPlan} from './simulation-settlement.js?v=building-foundations-1';
+import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js?v=building-foundations-1';
+import {resolveMovementScene} from './simulation-features.js?v=building-foundations-1';
 const strokes=new Map();
 export function executeBackgroundTask(task,payload){
  if(task==='terrain-generate')return generateTerrainTask(payload);

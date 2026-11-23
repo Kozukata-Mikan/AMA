@@ -1,5 +1,5 @@
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=catalog-layout-2";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=building-foundations-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -11,7 +11,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=catalog-layout-2";
+} from "./simulation-attack-batch.js?v=building-foundations-1";
 
 
 
@@ -21,16 +21,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=catalog-layout-2";
+} from "./ship-runtime.js?v=building-foundations-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=catalog-layout-2";
+} from "./equipment-runtime.js?v=building-foundations-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=catalog-layout-2";
+} from "./simulation-features.js?v=building-foundations-1";
 
 import {
   getEquipmentDamagePlan,
@@ -40,7 +40,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=catalog-layout-2";
+} from "./equipment-item-runtime.js?v=building-foundations-1";
 
 
 import {
@@ -73,32 +73,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=catalog-layout-2";
+} from "./simulation-rescue.js?v=building-foundations-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=catalog-layout-2";
+} from "./simulation-phase-finish.js?v=building-foundations-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=catalog-layout-2";
+} from "./weapon-profile-runtime.js?v=building-foundations-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=catalog-layout-2";
+} from "./simulation-attack-runtime.js?v=building-foundations-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=catalog-layout-2";
+} from "./weapon-profile-runtime.js?v=building-foundations-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=catalog-layout-2";
+} from "./simulation-features.js?v=building-foundations-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=catalog-layout-2";
+} from "./formation-target-runtime.js?v=building-foundations-1";
 
 import {
   readRangeCommandTarget
@@ -111,7 +111,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=catalog-layout-2";
+} from "./range-projection-runtime.js?v=building-foundations-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -668,6 +668,7 @@ function assertNoUnconnectedSupport(scene) {
   // 已生成装备组的支援效果仍保留原有保护，
   // 避免把真实存在的支援修正擅自当成0。
   for (const unit of scene.instances) {
+    if (unit.branch === "building") continue;
     if (
       unit.branch === "navy" &&
       unit.shipState.status === "sunk"
@@ -1030,7 +1031,7 @@ try {
 // 旧阶段快照没有destroyed字段时，按旧状态语义视为false。
 function equipmentDamageSignature(unit) {
   const checked = copy(unit);
-  const runtime = ensureEquipmentItemRuntime(checked);
+  const runtime = unit.branch === "building" ? null : ensureEquipmentItemRuntime(checked);
 
   return JSON.stringify({
     groups: checked.equipmentState.groups.map(group => ({
@@ -1516,7 +1517,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
 
   const actors = start.instances
     .filter(unit =>
-      unit.side === "enemy" || unit.side === "neutral"
+      unit.branch !== "building" && (unit.side === "enemy" || unit.side === "neutral")
     )
     .sort((a, b) =>
       compareText(a.instanceId, b.instanceId)
@@ -1556,6 +1557,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
     const visibility = visibilityBySide.get(actor.side);
 
     const targets = start.instances.filter(target =>
+      target.branch !== "building" &&
       target.instanceId !== actor.instanceId &&
       target.side !== actor.side &&
       visibility.get(target.instanceId) === "identified" &&

@@ -1,15 +1,16 @@
+import { buildingDetailLines } from "./building-runtime.js?v=building-foundations-1";
 import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=fleet-cohesion-6";
 import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
-import { getBranchName } from "../js/data-store.js?v=catalog-layout-2";
+import { getBranchName } from "../js/data-store.js?v=building-foundations-1";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=catalog-layout-2";
+import { createSimulation } from "./simulation-store.js?v=building-foundations-1";
 import { mountSceneLibrary } from "./scene-library.js";
-import { assessCluster } from "./cluster-engine.js?v=catalog-layout-2";
-import { mountCatalogEditor } from "./catalog-editor.js?v=catalog-layout-2";
+import { assessCluster } from "./cluster-engine.js?v=building-foundations-1";
+import { mountCatalogEditor } from "./catalog-editor.js?v=building-foundations-1";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
-import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=catalog-layout-2";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=building-foundations-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 
@@ -353,7 +354,9 @@ introSection.append(
     select([
       ["navy", "海軍"],
       ["air", "航空機"],
-      ["army", "陸軍"]
+      ["army", "陸軍"],
+      ["special", "特殊"],
+      ["building", "建築"]
     ], "navy")
   );
 
@@ -748,6 +751,8 @@ introSection.append(
       "editor-note"
     ));
 
+    if (unit.branch === "building") form.append(node("p", buildingDetailLines(unit).join("\n"), "editor-note"));
+
     const name = field(form, "表示名", input(unit.name));
     const side = field(form, "作戦関係", select([
       ["ally", "味方"],
@@ -828,7 +833,7 @@ introSection.append(
     );
 
     const level = field(grid, "サイズレベル", select(
-      [1, 2, 3, 4, 5].map(value => [String(value), String(value)]),
+      (unit.branch === "building" ? [1] : [1, 2, 3, 4, 5]).map(value => [String(value), String(value)]),
       String(unit.sizeLevel)
     ));
 

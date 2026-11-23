@@ -1,19 +1,20 @@
+import { normalizeBuildingUnit } from "./building-runtime.js?v=building-foundations-1";
 import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=catalog-layout-2";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=building-foundations-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=catalog-layout-2";
+} from "./ship-runtime.js?v=building-foundations-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=catalog-layout-2";
+} from "./simulation-rescue.js?v=building-foundations-1";
 
 import {
   createShipEffectsState,
@@ -24,11 +25,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=catalog-layout-2";
+} from "./equipment-item-runtime.js?v=building-foundations-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=catalog-layout-2";
+} from "./simulation-autonomous-rescue.js?v=building-foundations-1";
 
 import {
   routeLength,
@@ -67,7 +68,7 @@ function operational(unit) {
 }
 
 export function initializeSimulationFeatures(scene) {
-  for (const unit of scene.instances) normalizeNavalPosition(unit);
+  for (const unit of scene.instances) normalizeBuildingUnit(normalizeNavalPosition(unit));
   for (const group of scene.groups) if (group.formation !== undefined) normalizeFormation(group.formation);
   scene.controls ??= {};
   scene.controls.enemyAutonomy =
@@ -280,12 +281,12 @@ function getNormalObserverVisibility(scene, observer, target) {
     return null;
   }
 
-  if (isSubmerged(target) && (observer.branch !== "navy" || navalGrade(observer,"aswRecon") === null)) return null;
+  if (isSubmerged(target) && (!["navy","building"].includes(observer.branch) || navalGrade(observer,"aswRecon") === null)) return null;
   if (distance <= 100) return "identified";
 
   if (
-    observer.branch !== "navy" ||
-    target.branch !== "navy" ||
+    !["navy","building"].includes(observer.branch) ||
+    !["navy","building"].includes(target.branch) ||
     distance > range
   ) {
     return null;
@@ -1080,6 +1081,7 @@ function createAutonomousMovementPlans(
   const autonomousUnits = planning.instances
     .filter(unit =>
     ["enemy", "neutral"].includes(unit.side) &&
+    unit.branch !== "building" &&
     !excludedIds.has(unit.instanceId)
   )
 

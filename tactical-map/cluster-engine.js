@@ -29,6 +29,8 @@ export function assessCluster(
   terrain,
   { allowUnplaced = false } = {}
 ) {
+  if (members.some(unit=>unit.branch==="building")) return {valid:false,reason:"建築は個別の施設円で表示します。集群にはまとめられません。"};
+
   if (members.length < 2) {
     return {
       valid: false,

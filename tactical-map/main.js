@@ -1,3 +1,4 @@
+import { drawBuildingIcon, buildingPlacement } from "./building-runtime.js?v=building-foundations-1";
 import { navalPlacement, navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
@@ -8,10 +9,10 @@ import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=catalog-layout-2";
-import { loadUnitData } from "../js/data-store.js?v=catalog-layout-2";
-import { createBattleStore } from "../js/battle-state.js?v=catalog-layout-2";
-import { mountEditor } from "./editor.js?v=catalog-layout-2";
+import { mountSaveIndicator } from "./save-indicator.js?v=building-foundations-1";
+import { loadUnitData } from "../js/data-store.js?v=building-foundations-1";
+import { createBattleStore } from "../js/battle-state.js?v=building-foundations-1";
+import { mountEditor } from "./editor.js?v=building-foundations-1";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
@@ -29,10 +30,10 @@ import {
   getDisplayUnits,
   makeClusterProxy,
   getDeploymentUpdates
-} from "./cluster-engine.js?v=catalog-layout-2";
+} from "./cluster-engine.js?v=building-foundations-1";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=catalog-layout-2";
+import { mountTerrainEditor } from "./terrain-editor.js?v=building-foundations-1";
 
 let terrain = createDemoTerrain();
 let terrainController = null;
@@ -454,6 +455,7 @@ function getIconScale(sizeLevel) {
 // 海军不使用等级整体放大。
 // 它的长度变化由舰船形状函数单独处理。
 function getUnitScale(unit) {
+  if (unit.branch === "building") return 1;
   if (unit.branch === "navy") {
     return NAVAL_ICON_SCALE;
   }
@@ -659,6 +661,7 @@ function makeProjectedCenterDot(unit) {
 }
 
 function drawUnitIcon(unit, parent) {
+  if (unit.branch === "building") return drawBuildingIcon(unit,parent,path=>projectIconPath(unit,path));
   const filled = unit.filled === true;
   const underwater =
     unit.branch === "navy" && unit.underwater === true;
@@ -762,6 +765,7 @@ function getUnitSpatialState(unit) {
   const ground = sample.surface;
 
   switch (unit.branch) {
+      case "building": return buildingPlacement(sample);
       case "navy": return navalPlacement(unit,sample);
 
       case "army":

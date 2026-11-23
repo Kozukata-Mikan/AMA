@@ -11,31 +11,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=catalog-layout-2";
+} from "./ship-runtime.js?v=building-foundations-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=catalog-layout-2";
+} from "./equipment-runtime.js?v=building-foundations-1";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=catalog-layout-2";
+} from "./simulation-special-runtime.js?v=building-foundations-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=catalog-layout-2";
+} from "./simulation-rescue-runtime.js?v=building-foundations-1";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=catalog-layout-2";
+} from "./equipment-item-runtime.js?v=building-foundations-1";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=catalog-layout-2";
+} from "./simulation-rescue.js?v=building-foundations-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -286,6 +286,7 @@ function preflightSpecial(scene) {
     
    
 
+    if (unit.branch === "building") continue;
     if (unit.branch !== "navy") {
       fail(
         "海軍以外の特殊段階処理が未接続です。"
