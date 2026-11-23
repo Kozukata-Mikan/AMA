@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=aircraft-template-2';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=aviation-operations-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';

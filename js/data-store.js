@@ -1,4 +1,4 @@
-import { initializeCatalog } from "./catalog-store.js?v=aircraft-template-2";
+import { initializeCatalog } from "./catalog-store.js?v=aviation-operations-1";
 
 const BRANCH_NAMES = {
   navy: "海軍",

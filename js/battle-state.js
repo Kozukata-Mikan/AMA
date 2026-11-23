@@ -1,4 +1,4 @@
-import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=aircraft-template-1';
+import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=aviation-operations-1';
 import { normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=support-stations-1";
 import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";
@@ -28,7 +28,7 @@ import {
 import { normalizeFaction } from "./faction-data.js";
 
 
-import { assessCluster } from "../tactical-map/cluster-engine.js?v=building-symbols-3";
+import { assessCluster } from "../tactical-map/cluster-engine.js?v=aviation-operations-1";
 
 import { normalizeCampaignIntro } from "../tactical-map/campaign-intro-data.js";
 

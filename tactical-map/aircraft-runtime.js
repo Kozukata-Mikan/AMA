@@ -1,4 +1,4 @@
-import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=aircraft-template-1';
+import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=aviation-operations-1';
 import {TURN_DURATION_MINUTES} from './rules-engine.js';
 export const hasAircraftTemplate=unit=>unit?.branch==='air'&&unit.snapshot?.aircraft?.version===1;
 const fail=message=>{throw new Error(message);};
@@ -26,8 +26,9 @@ export function ensureAircraftRuntime(unit){
  normalizeAircraftPosition(unit);const profile=readAircraftProfile(unit);
  unit.aircraftState??={version:1,status:unit.currentHp===0?'heavy':'operational',mission:'airborne',remainingAirTime:profile.maximumAirTime,remainingEndurance:profile.enduranceBudget,lastElapsedTurn:0,activeLoadoutId:null,destroyedReason:null};
  const s=unit.aircraftState;
- if(s.version!==1||!['operational','heavy','destroyed'].includes(s.status)||!['airborne','parked'].includes(s.mission)||!Number.isSafeInteger(s.remainingAirTime)||s.remainingAirTime<0||s.remainingAirTime>profile.maximumAirTime||!Number.isFinite(s.remainingEndurance)||s.remainingEndurance<0||s.remainingEndurance>profile.enduranceBudget||!Number.isSafeInteger(s.lastElapsedTurn)||s.lastElapsedTurn<0)fail('航空機の保存状態が不正です。');
+ if(s.version!==1||!['operational','heavy','destroyed'].includes(s.status)||!['airborne','parked','ready','launching','landing'].includes(s.mission)||!Number.isSafeInteger(s.remainingAirTime)||s.remainingAirTime<0||s.remainingAirTime>profile.maximumAirTime||!Number.isFinite(s.remainingEndurance)||s.remainingEndurance<0||s.remainingEndurance>profile.enduranceBudget||!Number.isSafeInteger(s.lastElapsedTurn)||s.lastElapsedTurn<0)fail('航空機の保存状態が不正です。');
  if((s.status==='operational'&&unit.currentHp===0)||(s.status!=='operational'&&unit.currentHp!==0))fail('航空機の損傷状態と耐性が一致しません。');
+ if(s.status!=='destroyed'&&['parked','ready','launching','landing'].includes(s.mission)){if(typeof s.hostId!=='string'||!s.hostId)fail('駐機・起降中の母艦参照がありません。');if(['ready','launching'].includes(s.mission)&&(s.prepared!==true||typeof s.runwayId!=='string'))fail('滑走路待機機の整備記録が不正です。');if(['launching','landing'].includes(s.mission)&&(!Number.isSafeInteger(s.dueTurn)||s.dueTurn<1))fail('起降完了ラウンドが不正です。');}
  if(s.activeLoadoutId!==null&&!profile.loadouts.some(l=>l.id===s.activeLoadoutId))fail('航空機の搭載構成が資料にありません。');
  return s;
 }

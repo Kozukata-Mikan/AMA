@@ -71,7 +71,7 @@ function toss(source) {
  * 6和7拒绝重抽，避免直接取模造成部位概率不等。
  * 六个部位始终参与，不根据装备是否为空改变概率。
  */
-function choosePosition(coinSource) {
+export function choosePosition(coinSource = randomCoin) {
   const attempts = [];
 
   for (;;) {

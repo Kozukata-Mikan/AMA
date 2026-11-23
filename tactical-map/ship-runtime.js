@@ -1,4 +1,4 @@
-import { supportCapacity } from "./support-equipment.js?v=support-stations-1";
+import { supportCapacity } from "./support-equipment.js?v=aviation-operations-1";
 import { NAVAL_KINDS, navalKind, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import {
   EQUIPMENT_HIT_ITEMS
@@ -6,7 +6,7 @@ import {
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=aircraft-template-2";
+} from "./equipment-item-runtime.js?v=aviation-operations-1";
 
 
 import {
@@ -25,12 +25,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=aircraft-template-2";
+} from "./equipment-runtime.js?v=aviation-operations-1";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=aircraft-template-2";
+} from "./equipment-item-runtime.js?v=aviation-operations-1";
 
 
 // ===== 舰船数据与推演状态接入 =====

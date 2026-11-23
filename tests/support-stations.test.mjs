@@ -15,7 +15,7 @@ async function special(store){await store.beginMovement();await store.resolveMov
 
 test('station catalog adds five generic support types once and building positions are exposed/underground',()=>{
  const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v)};let catalog=initializeCatalog([]);for(const eq of supportEquipmentSeed())assert.ok(catalog.getData().equipment.some(e=>e.id===eq.id));
- const existing=catalog.getData();existing.supportStationsVersion=0;existing.equipment=existing.equipment.filter(e=>!e.supportEffect);memory.set('junqi-catalog-v1',JSON.stringify(existing));catalog=initializeCatalog([]);assert.equal(catalog.getData().equipment.filter(e=>e.supportEffect).length,5);
+ const existing=catalog.getData();existing.supportStationsVersion=0;existing.equipment=existing.equipment.filter(e=>!e.supportEffect);memory.set('junqi-catalog-v1',JSON.stringify(existing));catalog=initializeCatalog([]);assert.equal(catalog.getData().equipment.filter(e=>e.supportEffect).length,supportEquipmentSeed().length);
  const value={...structuredClone(catalog.units[0]),id:'building-stations',protected:false,branch:'building',building:{kind:'port'},sizeLevel:1,mounts:[{equipmentId:supportEquipmentSeed()[0].id,position:'中央',count:2},{equipmentId:supportEquipmentSeed()[1].id,position:'地下',count:1}]};catalog.saveUnit(value);const found=catalog.units.find(u=>u.id===value.id);assert.deepEqual(found.mounts.map(m=>m.position),['露天','地下']);assert.equal(found.equipmentSnapshots[0].supportEffect,'repair-station');
 });
 test('station capacity counts usable groups, with no AR-type automatic rescue guarantee',()=>{
@@ -59,7 +59,7 @@ test('a non-naval unit with a repair station supplies guaranteed rescue without 
 });
 
 test('worker special-phase settlement saves support recovery and locks',async()=>{
- const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=aircraft-template-2');
+ const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=aviation-operations-1');
  globalThis.Worker=class{constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}};
  try{const input=field({effect:'supply-station',targets:1});input.instances[1].shipState.remainingEndurance=0;const{id,store}=await sim(input);await special(store);await store.startSupport({providerId:'p',targetId:'t0',kind:'supply'});await store.finishSpecialPhase(store.getSceneSnapshot().revision);const raw=await saved(id);assert.equal(raw.instances[1].shipState.remainingEndurance,readShipProfile(raw.instances[1]).enduranceBudget*.25);assert.ok(raw.instances[0].supportLocked);assert.equal(raw.supportRuntime.records[0].results[0].kind,'supply');}finally{shutdownBackground();delete globalThis.Worker;}
 });

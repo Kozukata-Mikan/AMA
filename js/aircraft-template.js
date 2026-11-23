@@ -53,7 +53,7 @@ export function normalizeAircraft(value={}) {
     })};
   });
   return {...value,version:1,type,engines,crew,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,remoteRange,loadouts:normalized,
-    operations:{takeoff:null,preparation:null}};
+    operations:{takeoff:'runway-or-catapult',preparation:'preparation-area'}};
 }
 export const aircraftParkingSlots = aircraft => normalizeAircraft(aircraft).engines;
 export function aircraftMounts(unit) {
@@ -66,4 +66,12 @@ export function aircraftFacilityCompatible(type,host) {
   if(branch==='navy')return !land;
   if(branch!=='building'||b?.kind!=='airport')return false;
   return water?b.airportType==='anchorage':b.airportType!=='anchorage';
+}
+
+export function activeAircraftMounts(unit){
+ const base=unit.snapshot?.mounts??[];
+ if(unit.branch!=='air'||!unit.aircraftState?.activeLoadoutId)return base;
+ const loadout=unit.snapshot.aircraft?.loadouts?.find(l=>l.id===unit.aircraftState.activeLoadoutId);
+ if(!loadout)throw new Error('選択した掛載構成がありません。');
+ return [...base,...loadout.mounts.map(m=>({...m,position:'掛載'}))];
 }

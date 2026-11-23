@@ -2,16 +2,16 @@ import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=aircraft-template-2";
+} from "./ship-runtime.js?v=aviation-operations-1";
 
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=aircraft-template-2";
+} from "./simulation-rescue.js?v=aviation-operations-1";
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=aircraft-template-2";
+} from "./equipment-runtime.js?v=aviation-operations-1";
 
 import {
   validateEquipmentItemControlReport

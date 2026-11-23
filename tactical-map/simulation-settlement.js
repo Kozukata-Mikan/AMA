@@ -1,7 +1,11 @@
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=aircraft-template-1';
-import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition} from './combat-target-runtime.js?v=aviation-operations-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=aviation-operations-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=aviation-operations-1';
+import {choosePosition} from './cannon-damage-runtime.js?v=aviation-operations-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=aviation-operations-1';
+import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=aviation-operations-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=aircraft-template-2";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=aviation-operations-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -13,7 +17,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=aircraft-template-2";
+} from "./simulation-attack-batch.js?v=aviation-operations-1";
 
 
 
@@ -23,16 +27,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=aircraft-template-2";
+} from "./ship-runtime.js?v=aviation-operations-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=aircraft-template-2";
+} from "./equipment-runtime.js?v=aviation-operations-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=aircraft-template-2";
+} from "./simulation-features.js?v=aviation-operations-1";
 
 import {
   getEquipmentDamagePlan,
@@ -42,7 +46,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=aircraft-template-2";
+} from "./equipment-item-runtime.js?v=aviation-operations-1";
 
 
 import {
@@ -60,7 +64,7 @@ import {
   getCannonDamagePreview,
   resolveCannonImpact,
   summarizeCannonImpacts
-} from "./cannon-damage-runtime.js";
+} from "./cannon-damage-runtime.js?v=aviation-operations-1";
 
 import {
   resolveNumericDamage
@@ -75,32 +79,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=aircraft-template-2";
+} from "./simulation-rescue.js?v=aviation-operations-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=aircraft-template-2";
+} from "./simulation-phase-finish.js?v=aviation-operations-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=aircraft-template-2";
+} from "./weapon-profile-runtime.js?v=aviation-operations-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=aircraft-template-2";
+} from "./simulation-attack-runtime.js?v=aviation-operations-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=aircraft-template-2";
+} from "./weapon-profile-runtime.js?v=aviation-operations-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=aircraft-template-2";
+} from "./simulation-features.js?v=aviation-operations-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=aircraft-template-2";
+} from "./formation-target-runtime.js?v=aviation-operations-1";
 
 import {
   readRangeCommandTarget
@@ -113,7 +117,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=aircraft-template-2";
+} from "./range-projection-runtime.js?v=aviation-operations-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -570,7 +574,7 @@ function navalPoint(scene, unit) {
     fail("攻撃位置が地図の範囲外です。");
   }
 
-  const z = navalHeight(unit,sample);
+  const z = unit.branch==='building'?sample.surface:navalHeight(unit,sample);
 
   if (!Number.isFinite(z)) {
     fail("攻撃位置の高さが不正です。");
@@ -705,7 +709,7 @@ function finalPreflight(start, entry ,roundTraitOptions = {}) {
   const actor = unitFor(start, entry.unitId);
   const target = unitFor(start, entry.targetId);
   const profile = entry.profile;
-  const targetProfile = readShipProfile(target);
+  const targetProfile = readCombatTargetProfile(target);
 
   const scope = readWeaponTargetScope(
     profile.targetScope
@@ -725,7 +729,7 @@ function finalPreflight(start, entry ,roundTraitOptions = {}) {
   if (
     actor.instanceId === target.instanceId ||
     actor.side === target.side ||
-    target.shipState.status === "sunk"
+    combatTargetState(target)?.status === "sunk" || target.branch==='building'&&target.currentHp===0
   ) {
     ineligible(
       "自艦・同一陣営・沈没艦は攻撃対象外です。"
@@ -990,7 +994,7 @@ try {
       strength: targetProfile.strength,
       strengthRemaining:
         targetProfile.strength -
-        target.shipState.underwaterStrengthUses
+        combatTargetState(target).underwaterStrengthUses
     });
   }
 
@@ -1055,6 +1059,7 @@ function assertStartStateUnchanged(scene, start) {
     if (
       JSON.stringify(current.shipState) !==
         JSON.stringify(oldUnit.shipState) ||
+      JSON.stringify(current.buildingState)!==JSON.stringify(oldUnit.buildingState) ||
       current.currentHp !== oldUnit.currentHp ||
       equipmentDamageSignature(current) !==
       equipmentDamageSignature(oldUnit) ||
@@ -1104,7 +1109,7 @@ function assertEffectAlgorithms(scene, start, entries) {
         ? "flooding"
         : null;
 
-    if (type === null) continue;
+    if (type === null || target.branch==='building') continue;
 
     // 隔离副本上的确定性支持检查，不消耗正式随机数。
     applyShipEffectAcquisition(
@@ -1239,23 +1244,26 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
 
 
   const targetReports = [];
+  const queuedAircraftHosts=new Set(scene.instances.filter(p=>p.aircraftState&&['ready','launching'].includes(p.aircraftState.mission)&&p.aircraftState.status!=='destroyed').map(p=>p.aircraftState.hostId));
   const effects = [];
   const context = contextFor(scene);
 
   for (const targetId of [...grouped.keys()].sort(compareText)) {
     const startTarget = unitFor(start, targetId);
     const target = unitFor(scene, targetId);
-    const naval = readShipProfile(startTarget);
+    const naval = readCombatTargetProfile(startTarget);
     const attacks = grouped.get(targetId);
 
     const cannonImpacts = [];
+    const runwayPositions=[];
+    const targetRunways=queuedAircraftHosts.has(targetId)?aviationRunways(target):[];
     const numericReports = [];
     const equipmentReports = [];
     let hpDamage = 0;
     let hasDamageEffect = false;
     let strengthRemaining =
       naval.strength -
-      startTarget.shipState.underwaterStrengthUses;
+      combatTargetState(startTarget).underwaterStrengthUses;
 
     // 硬币调用顺序按稳定装备键，而非传入计划列表。
     attacks.sort((a, b) =>
@@ -1307,7 +1315,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         : naval.armor;
 
       for (let index = 0; index < attack.hitCount; index++) {
-        const impact = coinSource === undefined
+        const impact = target.branch==='building' ? resolveBuildingCannonImpact({penetration:attack.entry.profile.penetration,armor},coinSource) : coinSource === undefined
           ? resolveCannonImpact({
               penetration: attack.entry.profile.penetration,
               armor
@@ -1325,7 +1333,8 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         });
 
 
-        if (impact.fireEligible) {
+        if(targetRunways.length)runwayPositions.push(impact.position.label);
+        if (impact.fireEligible && target.branch!=='building') {
           effects.push({
             targetId,
             attackId: attack.entry.commandId,
@@ -1337,7 +1346,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
 
     const cannon = summarizeCannonImpacts(
       cannonImpacts.map(item => item.impact),
-      startTarget.shipState.normalHitRemainder
+      combatTargetState(startTarget).normalHitRemainder
     );
 
     hpDamage += cannon.hpDamage;
@@ -1378,7 +1387,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         strengthRemaining = damage.strengthRemainingAfter;
 
         // 获取资格按每枚水下数字威力命中记录。
-        for (let index = 0; index < attack.hitCount; index++) {
+        for (let index = 0; index < attack.hitCount && target.branch!=='building'; index++) {
           effects.push({
             targetId,
             attackId: attack.entry.commandId,
@@ -1387,6 +1396,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         }
       }
 
+      if(targetRunways.length)for(let n=0;n<attack.hitCount;n++)runwayPositions.push(target.branch==='building'?buildingHitPosition(coinSource):choosePosition(coinSource).label);
       numericReports.push({
         commandId: attack.entry.commandId,
         occurrenceIndex: attack.entry.occurrenceIndex,
@@ -1426,7 +1436,11 @@ for (const attack of attacks) {
   });
 }
 
-    const applied = applyShipDamageAttack(
+    const detonation=explodeRunwayPayloads(scene,target,runwayPositions,coinSource,strengthRemaining);
+    effects.push(...detonation.effects);
+    const combinedRemainder=cannon.normalHitRemainder+detonation.normalHitRemainder-(combatTargetState(target).normalHitRemainder??0);
+    hpDamage+=detonation.hpDamage+Math.floor(combinedRemainder/3);hasDamageEffect||=detonation.hasDamageEffect;strengthRemaining-=detonation.strengthConsumed??0;
+    const applied = applyCombatTargetDamage(
       target,
       {
         attackId: recordKey(context.turnNumber, context.phaseId) +
@@ -1434,12 +1448,12 @@ for (const attack of attacks) {
         kind: "batch",
         hpDamage,
         hasDamageEffect,
-        normalHitRemainder: cannon.normalHitRemainder
+        normalHitRemainder: ((combinedRemainder%3)+3)%3
       },
       context
     );
 
-    target.shipState.underwaterStrengthUses =
+    combatTargetState(target).underwaterStrengthUses =
       naval.strength - strengthRemaining;
 
     ensureShipRuntime(target);
@@ -1448,14 +1462,15 @@ for (const attack of attacks) {
       version: 1,
       targetId,
       hpDamage,
+      detonation,
       cannonImpacts,
       cannonSummary: cannon,
       numericReports,
       equipmentReports,
       strengthUsesBefore:
-        startTarget.shipState.underwaterStrengthUses,
+        combatTargetState(startTarget).underwaterStrengthUses,
       strengthUsesAfter:
-        target.shipState.underwaterStrengthUses,
+        combatTargetState(target).underwaterStrengthUses,
       applied,
 
       // 不重置既有计时；本报告永久保留第一次实际进入记录。
@@ -1559,11 +1574,11 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
     const visibility = visibilityBySide.get(actor.side);
 
     const targets = start.instances.filter(target =>
-      target.branch !== "building" && !hasAircraftTemplate(target) &&
+      !hasAircraftTemplate(target) &&
       target.instanceId !== actor.instanceId &&
       target.side !== actor.side &&
       visibility.get(target.instanceId) === "identified" &&
-      target.shipState?.status !== "sunk" &&
+      target.shipState?.status !== "sunk" && (target.branch!=='building'||target.currentHp>0) &&
       (
         actor.side === "enemy"
           ? target.side === "ally"
@@ -2327,6 +2342,7 @@ for (const report of resourceReports) {
     coinSource
   );
 
+  reconcileAviation(working);
   recordSinkingStarts(
     working,
     damage.targetReports.map(report => report.applied)
@@ -2413,6 +2429,7 @@ for (const report of resourceReports) {
 
   // 只写回本正式事务负责的数据。
   scene.instances = working.instances;
+  scene.aviationRuntime = working.aviationRuntime;
   scene.rescueTasks = working.rescueTasks;
   scene.rayTargetRuntime = working.rayTargetRuntime;
   scene.attackRuntime = working.attackRuntime;

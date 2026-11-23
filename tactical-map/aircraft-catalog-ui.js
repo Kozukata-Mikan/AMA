@@ -1,4 +1,5 @@
-import {aircraftAirTime,aircraftParkingSlots,AIRCRAFT_TYPES,isDroneType} from '../js/aircraft-template.js?v=aircraft-template-1';
+import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
+import {aircraftAirTime,aircraftParkingSlots,AIRCRAFT_TYPES,isDroneType} from '../js/aircraft-template.js?v=aviation-operations-1';
 const node=(tag,text='',className='')=>{const n=document.createElement(tag);n.textContent=text;if(className)n.className=className;return n;};
 const button=(text,fn)=>{const b=node('button',text);b.type='button';b.addEventListener('click',fn);return b;};
 function field(parent,title,control){const label=node('label');label.append(node('span',title),control);parent.append(label);return control;}
@@ -12,12 +13,12 @@ export function mountAircraftDerivedFields(controls,host){
  syncRemote();update();return note;
 }
 export function mountAircraftLoadoutEditor(parent,equipment,value=[]){
- const section=node('fieldset','','catalog-section');section.append(node('legend','掛載・搭載構成'),node('p','出撃ごとに選ぶ構成は1種類です。ここでは組合せを登録します。離陸・整備・出撃時の選択は後続規則で接続します。','catalog-muted'));
+ const section=node('fieldset','','catalog-section');section.append(node('legend','掛載（出撃ごとに1構成／空載）'),node('p','固定の主動武器・自衛武器・ポッドとは別枠です。整備時に構成1つ、または空載を選択します。','catalog-muted'));
  const host=node('div','','catalog-repeat-list'),readers=[];section.append(host);
  function addLoadout(value={id:crypto.randomUUID(),name:'',mounts:[]}){
   const group=node('fieldset','','catalog-section');const title=field(group,'構成名',input(value.name));const mountHost=node('div','','catalog-repeat-list'),mounts=[];group.append(mountHost);
   function addMount(value={equipmentId:equipment[0]?.id??'',count:1}){
-   const row=node('div','','catalog-repeat-row');const select=node('select');for(const e of equipment)select.append(new Option(e.name,e.id));select.value=value.equipmentId;
+   const row=node('div','','catalog-repeat-row');const select=node('select');fillEquipmentOptions(select,equipment.filter(e=>e.kind==='weapon'),value.equipmentId);
    field(row,'装備',select);const count=field(row,'数量',input(value.count,'number'));count.min='1';count.step='1';
    const reader={active:true,read(){const quantity=Number(count.value);if(!count.value.trim()||!Number.isSafeInteger(quantity)||quantity<1)throw new Error('搭載装備数は1以上の整数で指定してください。');return{equipmentId:select.value,count:quantity};}};mounts.push(reader);
    row.append(button('この装備を削除',()=>{reader.active=false;row.remove();}));mountHost.append(row);
@@ -27,14 +28,14 @@ export function mountAircraftLoadoutEditor(parent,equipment,value=[]){
   group.append(button('構成に装備を追加',()=>addMount()),button('この構成を削除',()=>{reader.active=false;group.remove();}));host.append(group);
  }
  for(const entry of value)addLoadout(entry);
- section.append(button('搭載構成を追加',()=>addLoadout()));parent.append(section);return()=>readers.filter(r=>r.active).map(r=>r.read());
+ section.dataset.aircraftLoadouts='true';section.append(button('搭載構成を追加',()=>addLoadout()));parent.append(section);const read=()=>readers.filter(r=>r.active).map(r=>r.read());read.add=()=>addLoadout();return read;
 }
 export function appendAircraftSummary(parent,item,equipment){
  if(!item.aircraft)return;
  const time=aircraftAirTime(item.naval.endurance,item.naval.speedKnots);
  parent.append(node('p',`種別：${AIRCRAFT_TYPES.find(([id])=>id===item.aircraft.type)?.[1]} / 必要駐機枠：${aircraftParkingSlots(item.aircraft)} / 滞空時間：${time??'未計算'}ラウンド${time===null?'':'（'+time*.5+'時間）'}`,'catalog-aircraft-calculation'));
- parent.append(node('h4','掛載・搭載構成'));
+ parent.append(node('h4','掛載（整備時に構成1つ／空載を選択）'));
  for(const loadout of item.aircraft.loadouts){parent.append(node('p',`${loadout.name}：${loadout.mounts.map(m=>`${equipment.find(e=>e.id===m.equipmentId)?.name??m.equipmentId} × ${m.count}`).join(' / ')||'装備なし'}`));}
  if(!item.aircraft.loadouts.length)parent.append(node('p','搭載構成未登録'));
- parent.append(node('p','起降・整備・出撃処理は未接続です。','catalog-muted'));
+ parent.append(node('p','固定武装は構成を変更しても保持します。掛載は整備時に選択します。','catalog-muted'));
 }

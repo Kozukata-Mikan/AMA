@@ -1,16 +1,16 @@
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=aircraft-template-2";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=aircraft-template-2";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=aircraft-template-2";
-import { ensureShipRuntime } from "./ship-runtime.js?v=aircraft-template-2";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=aviation-operations-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=aviation-operations-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=aviation-operations-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=aviation-operations-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=aircraft-template-2";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=aviation-operations-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=aircraft-template-2";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=aircraft-template-2";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=aviation-operations-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=aviation-operations-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=aircraft-template-2";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=aviation-operations-1";
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
 
 
@@ -438,7 +438,7 @@ let memberIds;
   const members = memberIds.map(id => findUnit(startScene, id));
 
   // 未接入军种不能当作“不合格成员”静默跳过。
-  if (members.some(unit => unit.branch !== "navy")) {
+  if (members.some(unit => !["navy","building"].includes(unit.branch))) {
     fail("範囲に未対応の軍種が含まれているため、結算できません。");
   }
 
@@ -471,7 +471,7 @@ let memberIds;
       fail("自分自身または同一陣営への攻撃は結算できません。");
     }
 
-        if (singleTarget.shipState.status === "sunk") {
+        if (singleTarget.shipState?.status === "sunk" || singleTarget.branch==='building'&&singleTarget.currentHp===0) {
       // 目标已经沉没：本条计划失效，允许筛选层跳过。
       // 不扣弹、不改使用记录，也不自动换目标。
       const error = new Error(

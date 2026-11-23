@@ -1,23 +1,24 @@
-import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=aircraft-template-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=aircraft-template-2";
+import {reconcileAviation} from './aviation-operations.js?v=aviation-operations-1';
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=aviation-operations-1';
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=aviation-operations-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=aviation-operations-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=support-stations-1";
 import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=aircraft-template-2";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=aviation-operations-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=aircraft-template-2";
+} from "./ship-runtime.js?v=aviation-operations-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=aircraft-template-2";
+} from "./simulation-rescue.js?v=aviation-operations-1";
 
 import {
   createShipEffectsState,
@@ -28,11 +29,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=aircraft-template-2";
+} from "./equipment-item-runtime.js?v=aviation-operations-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=aircraft-template-2";
+} from "./simulation-autonomous-rescue.js?v=aviation-operations-1";
 
 import {
   routeLength,
@@ -403,6 +404,7 @@ export function getVisibility(scene, targetIds) {
   for (const target of scene.instances) {
     if(hasAircraftTemplate(target)&&target.aircraftState?.status==='destroyed')continue;
     if (targetIds && !targetIds.has(target.instanceId)) continue;
+    if(hasAircraftTemplate(target)&&target.side!==side&&!['airborne','landing'].includes(target.aircraftState?.mission))continue;
     if (target.side === side) {
       result.set(target.instanceId, "identified");
       continue;
@@ -468,6 +470,8 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         delete observed.equipmentState;
         delete observed.trainingState;
         delete observed.aircraftState;
+        delete observed.snapshot.aircraftSnapshots;
+        delete observed.snapshot.aviationComplement;
         delete observed.supportLocked;
         delete observed.rescueSupportLocked;
 
@@ -482,6 +486,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
       instances.push({
         ...observed,
         observationOwn,
+        aviationStored: hasAircraftTemplate(unit)&&!['airborne','landing'].includes(unit.aircraftState?.mission),
         observationLevel: "identified"
       });
       continue;
@@ -617,6 +622,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         : null
     })),
     actions,
+    aviationRuntime: {version:1,runwayUse:(scene.aviationRuntime?.runwayUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side)),preparationUse:(scene.aviationRuntime?.preparationUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side))},
     supportRuntime: {version:1, tasks:(scene.supportRuntime?.tasks??[]).filter(task=>visibility.get(task.providerId)==='identified'&&visibility.get(task.targetId)==='identified').map(task=>({id:task.id,kind:task.kind,providerId:task.providerId,targetId:task.targetId,status:task.status,startedTurn:task.startedTurn}))},
     rescuePlans: (scene.rescuePlans ?? []).filter(plan =>
       scene.instances.some(unit =>
@@ -738,8 +744,11 @@ function entityMembers(scene, ref) {
   return members;
 }
 
+function movementGroupMembers(scene,id){
+  return scene.groups.find(g=>g.id===id)?.aviationCluster ? scene.instances.filter(u=>u.groupId===id&&hasAircraftTemplate(u)) : formationMovementMembers(scene,id);
+}
 function movementMembers(scene, ref, supportPreview=false) {
-  const members = ref.kind === "group" ? formationMovementMembers(scene,ref.id) : entityMembers(scene,ref);
+  const members = ref.kind === "group" ? movementGroupMembers(scene,ref.id) : entityMembers(scene,ref);
   if (!members.length) fail("編隊円内に移動する艦船がいません。");
   assertManualControl(scene, members);
 
@@ -747,7 +756,7 @@ function movementMembers(scene, ref, supportPreview=false) {
     fail("移動計画は移動段階でのみ指定できます。");
   }
 
-  if (members.some(unit => unit.branch !== "navy" && !hasAircraftTemplate(unit)) || (ref.kind==='group' && members.some(hasAircraftTemplate))) {
+  if (members.some(unit => unit.branch !== "navy" && !hasAircraftTemplate(unit)) || (ref.kind==='group' && members.some(hasAircraftTemplate) && !scene.groups.find(g=>g.id===ref.id)?.aviationCluster)) {
     fail("この移動処理は艦船専用です。混合軍種の移動は未定義です。");
   }
 
@@ -1397,7 +1406,7 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
       }
 
       await commit(scene => {
-        const moving = ref.kind === 'unit' && options.followFormationMovement!==true ? scene.instances.filter(u=>u.instanceId===ref.id) : formationMovementMembers(scene,ref.kind==='group'?ref.id:scene.instances.find(u=>u.instanceId===ref.id)?.groupId);
+        const moving = ref.kind === 'unit' && options.followFormationMovement!==true ? scene.instances.filter(u=>u.instanceId===ref.id) : movementGroupMembers(scene,ref.kind==='group'?ref.id:scene.instances.find(u=>u.instanceId===ref.id)?.groupId);
         assertManualControl(scene,moving);
         interruptSupportForMovement(scene,moving.map(u=>u.instanceId),options.confirmSupportInterruption);
         const follow = options.followFormationMovement === true;
@@ -1570,7 +1579,7 @@ validationScene.controls.enemyAutonomy = false;
               fail("追随条件が変更されています。計画を再指定してください。");
             }
           } else {
-            const members = saved.ref.kind === "group" ? formationMovementMembers(scene,saved.ref.id) : entityMembers(scene,saved.ref);
+            const members = saved.ref.kind === "group" ? movementGroupMembers(scene,saved.ref.id) : entityMembers(scene,saved.ref);
 
             if (
               members.length !== saved.memberIds.length ||
@@ -1739,6 +1748,7 @@ validationScene.controls.enemyAutonomy = false;
         }
 
         reconcileActiveRescues(scene);
+        reconcileAviation(scene);
 
         scene.movementRuntime ??= {
           version: 1,

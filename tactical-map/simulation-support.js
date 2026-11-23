@@ -1,9 +1,10 @@
-import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=support-stations-1';
-import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=aircraft-template-2';
-import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=aircraft-template-2';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=aviation-operations-1';
+import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=aviation-operations-1';
+import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=aviation-operations-1';
+import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=aviation-operations-1';
 const fail=message=>{throw new Error(message);};
 const find=(scene,id)=>scene.instances.find(u=>u.instanceId===id);
-const alive=unit=>unit&&Number.isFinite(unit.x)&&Number.isFinite(unit.y)&&(unit.branch==='navy'?!['sinking','sunk'].includes(unit.shipState?.status):unit.currentHp>0);
+const alive=unit=>unit&&(!hasAircraftTemplate(unit)||aircraftCanAct(unit,'support'))&&Number.isFinite(unit.x)&&Number.isFinite(unit.y)&&(unit.branch==='navy'?!['sinking','sunk'].includes(unit.shipState?.status):unit.currentHp>0);
 const station={rescue:'repair-station','damage-control':'damage-control-station',supply:'supply-station'};
 export function supportLimit(unit,kind){return kind==='rescue'&&unit.branch==='navy'?Math.max(1,supportCapacity(unit,station[kind])):supportCapacity(unit,station[kind]);}
 export function needsSupport(unit,kind){

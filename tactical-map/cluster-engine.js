@@ -39,6 +39,11 @@ export function assessCluster(
   }
 
   const first = members[0];
+  if(first.branch==='air'){
+    if(members.length>27)return{valid:false,reason:'航空集群は27機以内です。'};
+    const key=u=>JSON.stringify([u.snapshot,u.aircraftState?.activeLoadoutId??null,u.aircraftState?.formationId??u.groupId]);
+    const identity=key(first);if(members.some(u=>u.branch!=='air'||key(u)!==identity))return{valid:false,reason:'航空集群の機体資料・掛載・航空編隊は一致させてください。'};
+  }
 
   for (const member of members) {
     if (
@@ -177,6 +182,7 @@ export function getDisplayUnits(
   terrain,
   spatialState
 ) {
+  instances=instances.filter(u=>!u.aviationStored);
   const clusters = getActiveClusters(
     instances,
     groups,

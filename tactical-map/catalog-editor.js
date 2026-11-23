@@ -1,11 +1,13 @@
-import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=aircraft-template-1';
-import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=aircraft-template-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=support-stations-1";
+import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=aviation-operations-1';
+import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=aviation-operations-1';
+import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=aviation-operations-1';
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=aviation-operations-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=support-stations-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=aircraft-template-2";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=aviation-operations-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=aircraft-template-2";
+import { getCatalogStore } from "../js/catalog-store.js?v=aviation-operations-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -16,7 +18,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=aircraft-template-2";
+} from "../js/catalog-seed.js?v=aviation-operations-1";
 
 // ===== 图鉴界面 =====
 
@@ -240,6 +242,7 @@ export function mountCatalogEditor({
 
   let category = "units";
   let branchFilter = "navy";
+  let equipmentFilter="weapon";
   let selectedId = "navy-yamato-class-1941";
   let editing = false;
 
@@ -297,7 +300,8 @@ export function mountCatalogEditor({
     ["air", "航空機"],
     ["special", "特殊"],
     ["building", "建築"],
-    ["equipment", "装備"]
+    ["equipment-weapon", "武器"],
+    ["equipment-support", "支援装備"]
   ], "navy");
 
   const factionFilter = select(FACTION_OPTIONS);
@@ -412,7 +416,7 @@ export function mountCatalogEditor({
     return {
       id: newId("eq"),
       name: "",
-      kind: "weapon",
+      kind: equipmentFilter,
       barrelCount: null,
       projectionCoefficient: null,
       projectionSuffix: "R",
@@ -509,7 +513,7 @@ export function mountCatalogEditor({
     categorySelect.addEventListener("change", () => {
     if (!confirmDiscard()) {
       categorySelect.value = category === "equipment"
-        ? "equipment"
+        ? "equipment-"+equipmentFilter
         : branchFilter;
 
       return;
@@ -517,8 +521,9 @@ export function mountCatalogEditor({
 
     const value = categorySelect.value;
 
-    category = value === "equipment" ? "equipment" : "units";
-    branchFilter = value === "equipment" ? "" : value;
+    category = value.startsWith("equipment-") ? "equipment" : "units";
+    if(category==="equipment")equipmentFilter=value.slice(10);
+    branchFilter = category==="equipment" ? "" : value;
 
     selectedId = "";
     editing = false;
@@ -538,6 +543,7 @@ export function mountCatalogEditor({
 
     const items = data[category].filter(item =>
       item.name.toLowerCase().includes(term) &&
+      (category!=="equipment"||item.kind===equipmentFilter) &&
       (
         category === "equipment" ||
         item.branch === branchFilter
@@ -784,6 +790,7 @@ export function mountCatalogEditor({
 
     }
 
+    if(category==='units'&&item.aviationComplement?.length)detail.append(node('h4','搭載航空機（航空運用）'),table(['機体','機数','航空編隊'],item.aviationComplement.map(e=>[store.units.find(u=>u.id===e.unitId)?.name??e.unitId,e.count,e.groupId??'なし'])));
     if(category==='units' && item.branch==='air')appendAircraftSummary(detail,item,store.getData().equipment);
     if (category === "equipment") {
       detail.append(node(
@@ -839,7 +846,7 @@ export function mountCatalogEditor({
           getEquipmentLabel(equipment),
           () => {
             category = "equipment";
-            categorySelect.value = category;
+            equipmentFilter=equipment.kind;categorySelect.value = "equipment-"+equipmentFilter;
             factionFilter.value = "";
             selectedId = equipment.id;
             search.value = "";
@@ -1072,7 +1079,7 @@ export function mountCatalogEditor({
       sectionHosts.get("naval.iconType").append(preview);
     }
 
-    let readLoadouts=null;
+    let readLoadouts=null,readComplement=null,aircraftEquipmentCategory=null;
     if(category==='units' && draft.branch==='air'){
       mountAircraftDerivedFields(controls,sectionHosts.get('naval.endurance'));
     }
@@ -1156,6 +1163,10 @@ export function mountCatalogEditor({
       // ----- 装备配置编辑 -----
 
       form.append(node("h4", "装備配置"));
+      if(draft.branch==='air'){
+        aircraftEquipmentCategory=select([['主動武器','主動武器'],['自衛武器','自衛武器'],['ポッド','ポッド'],['掛載','掛載（構成を登録）']],'主動武器');
+        labeled(form,'航空機の装備区分',aircraftEquipmentCategory,'掛載は固定武装とは別枠です。掛載を選択して「装備配置を追加」を押すと、新しい掛載構成を追加します。');
+      }
 
       const mountHost = node("div", "", "catalog-repeat-list");
       const equipment = store.getData().equipment;
@@ -1200,7 +1211,7 @@ export function mountCatalogEditor({
           if(draft.branch==='air'){
             const previous=equipmentSelect.value;
             const available=equipment.filter(e=>position.value!=='ポッド'||e.kind==='support');
-            equipmentSelect.replaceChildren(...available.map(e=>new Option(getEquipmentLabel(e),e.id)));
+            fillEquipmentOptions(equipmentSelect,available,previous,getEquipmentLabel);
             if(available.some(e=>e.id===previous))equipmentSelect.value=previous;
           }
           const item = equipment.find(
@@ -1220,6 +1231,7 @@ export function mountCatalogEditor({
         }
 
         position.addEventListener("change",updatePreview);
+        fillEquipmentOptions(equipmentSelect,equipment,value.equipmentId,getEquipmentLabel);
         count.addEventListener("input", updatePreview);
 
         equipmentSelect.addEventListener(
@@ -1269,10 +1281,12 @@ export function mountCatalogEditor({
             return;
           }
 
-          addMount();
+          if(draft.branch==='air'&&aircraftEquipmentCategory.value==='掛載')readLoadouts.add();
+          else addMount({position:draft.branch==='air'?aircraftEquipmentCategory.value:'',equipmentId:equipment[0]?.id??'',count:1});
         })
       );
 
+      if(['navy','building'].includes(draft.branch))readComplement=mountAviationComplementEditor(form,store.units,draft.aviationComplement??[]);
       if(draft.branch==='air')readLoadouts=mountAircraftLoadoutEditor(form,equipment,draft.aircraft.loadouts);
       // ----- 舰载机编辑 -----
       if (!["building","air"].includes(draft.branch)) {
@@ -1411,6 +1425,7 @@ export function mountCatalogEditor({
             .filter(reader => reader.active)
             .map(reader => reader.read());
 
+          if(readComplement)next.aviationComplement=readComplement();
           if(next.branch==='air'){next.aircraft.loadouts=readLoadouts();next.maxHp=next.aircraft.engines;}
           const saved = withProtectionAuthorization(() => {
             store.saveUnit(next);
@@ -1421,6 +1436,7 @@ export function mountCatalogEditor({
 
         } else {
           store.saveEquipment(next);
+          equipmentFilter=next.kind;categorySelect.value="equipment-"+equipmentFilter;
         }
 
         selectedId = next.id;
@@ -1442,6 +1458,7 @@ export function mountCatalogEditor({
       for(const field of fields){const control=controls.get(field.key);setPath(next,field.key,field.type==='training-traits'?control.read():field.type==='checkbox'?control.checked:['number','optional-number','size','building-size','runway-count'].includes(field.type)?(control.value.trim()?Number(control.value):null):control.value);}
       next.hullNames=hullNames.value.split(/\r?\n/).filter(Boolean);next.description=description.value;
       next.mounts=mountReaders.filter(reader=>reader.active).map(reader=>reader.read());next.embarked=["building","air"].includes(draft.branch) ? (draft.embarked ?? []) : embarkedReaders.filter(reader=>reader.active).map(reader=>reader.read());
+      if(readComplement)next.aviationComplement=readComplement();
       if(draft.branch==='air')next.aircraft.loadouts=readLoadouts();
       if(next.branch==='air')next.aircraft=normalizeAircraft(next.aircraft);
       if(next.branch==='building'){next.sizeLevel=1;next.building=normalizeBuilding(next.building);}

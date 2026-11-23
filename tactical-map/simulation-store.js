@@ -1,50 +1,52 @@
-import {ensureAircraftRuntime} from './aircraft-runtime.js?v=aircraft-template-1';
-import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=aircraft-template-2";
+import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=aviation-operations-1';
+import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation} from './aviation-operations.js?v=aviation-operations-1';
+import {ensureAircraftRuntime} from './aircraft-runtime.js?v=aviation-operations-1';
+import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=aviation-operations-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=aircraft-template-2";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=aviation-operations-1";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=aircraft-template-2";
+import { runBackgroundTask } from "./background-client.js?v=aviation-operations-1";
 import { freezeSnapshot } from "./read-only-snapshot.js";
-import { assessCluster } from "./cluster-engine.js?v=building-symbols-3";
+import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
-import { ensureShipRuntime } from "./ship-runtime.js?v=aircraft-template-2";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=aircraft-template-2";
+import { ensureShipRuntime } from "./ship-runtime.js?v=aviation-operations-1";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=aviation-operations-1";
 
-import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=aircraft-template-2";
-import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=aircraft-template-2";
-import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=aircraft-template-2";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=aircraft-template-2";
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=aviation-operations-1";
+import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=aviation-operations-1";
+import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=aviation-operations-1";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=aviation-operations-1";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
 import { sampleTerrain, validateTerrain, freezeTerrainSnapshot } from "./terrain-data.js";
 import { getArmorPreview } from "./armor-runtime.js";
-import { getCannonDamagePreview } from "./cannon-damage-runtime.js";
+import { getCannonDamagePreview } from "./cannon-damage-runtime.js?v=aviation-operations-1";
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=aircraft-template-2";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=aviation-operations-1";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=aircraft-template-2";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=aviation-operations-1";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=aircraft-template-2";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=aviation-operations-1";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=aircraft-template-2";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=aviation-operations-1";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=aircraft-template-2";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=aircraft-template-2";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=aviation-operations-1";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=aviation-operations-1";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=aircraft-template-2";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=aviation-operations-1";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=aircraft-template-2";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=aviation-operations-1";
 
-import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=aircraft-template-2";
+import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=aviation-operations-1";
 
 import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-runtime.js";
 
@@ -57,7 +59,7 @@ import { buildBattleReport } from "./simulation-battle-report.js";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=aircraft-template-2";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=aviation-operations-1";
 
 
 
@@ -208,8 +210,10 @@ function initializeCombatRuntime(scene) {
     initializeRoundTraitRuntime(scene);
 
 
+  initializeAviationRuntime(scene);
   for (const unit of scene.instances) {
     ensureShipRuntime(unit);
+    ensureBuildingCombatRuntime(unit);
     const aircraft=ensureAircraftRuntime(unit);
     if(aircraft?.lastElapsedTurn>turn.number)throw new Error("航空機の滞空履歴が未来になっています。");
     ensureUnitCombatRuntime(unit);
@@ -848,6 +852,7 @@ export async function openSimulation(id) {
 
     initializeCombatRuntime(candidate);
     reconcileSupports(candidate);
+    reconcileAviation(candidate);
     initializeSimulationFeatures(candidate);
 
 
@@ -1010,6 +1015,9 @@ export async function openSimulation(id) {
   }
 
        const api = {
+    async prepareAircraft(request){await commit(scene=>prepareAircraft(scene,request));},
+    async launchAircraft(request){await commit(scene=>launchAircraft(scene,request));},
+    async landAircraft(request){await commit(scene=>landAircraft(scene,request));},
     isSaving: () => saving,
     subscribeSaving,
   ...createSimulationFeatures(() => state, commit, commitBackground),
@@ -1443,7 +1451,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
         boundaries.push("同一陣営への攻撃ルールは未接続です。");
       }
 
-      if (actor.branch !== "navy" || target.branch !== "navy") {
+      if (actor.branch !== "navy" || !["navy","building"].includes(target.branch)) {
         return {
           revision: state.revision,
           distance3D: null,
@@ -1481,7 +1489,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
         }
 
         // 与现有地图显示的舰船高度规则保持一致。
-        const z = navalHeight(unit,sample);
+        const z = unit.branch==='building'?sample.surface:navalHeight(unit,sample);
 
         if (!Number.isFinite(z)) {
           throw new Error("艦船の深度が不正です。");

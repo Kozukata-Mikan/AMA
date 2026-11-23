@@ -1,9 +1,10 @@
-import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=aircraft-template-1';
-import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=support-stations-1";
+import {normalizeAviationComplement} from './equipment-options.js?v=aviation-operations-1';
+import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=aviation-operations-1';
+import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=aviation-operations-1";
 import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=support-stations-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=aircraft-template-2";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=aviation-operations-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -248,6 +249,7 @@ function normalizeUnit(value) {
     ...(aircraft ? {aircraft} : {}),
     ...(value.branch === "building" ? {building: normalizeBuilding(value.building)} : {}),
     trainingTraits: normalizeTrainingTraits(value.trainingTraits),
+    aviationComplement: normalizeAviationComplement(value.aviationComplement),
     description: text(value.description ?? "", "説明"),
 
 
@@ -319,6 +321,7 @@ function normalizeUnit(value) {
 
   // 此字段由当前装备资料重新生成，不接受导入文件中的旧副本。
   delete result.equipmentSnapshots;
+  delete result.aircraftSnapshots;
   if(aircraft){
     if(result.mounts.some(m=>!AIRCRAFT_WEAPON_ROLES.some(([,label])=>label===m.position)))throw new Error('航空機の固定装備は主動武器・自衛武器・ポッドで指定してください。');
     aircraftAirTime(result.naval.endurance,result.naval.speedKnots);
@@ -359,6 +362,7 @@ function normalizeCatalog(value) {
   }
 
   const equipmentById=new Map(equipment.map(e=>[e.id,e]));
+  const aircraftById=new Map(units.filter(u=>u.branch==='air'&&u.aircraft).map(u=>[u.id,u]));
   for (const unit of units) {
     if (unitIds.has(unit.id)) {
       throw new Error(`ユニット ID が重複しています：${unit.id}`);
@@ -366,6 +370,7 @@ function normalizeCatalog(value) {
 
     unitIds.add(unit.id);
 
+    for(const entry of unit.aviationComplement){if(!['navy','building'].includes(unit.branch)||!aircraftById.has(entry.unitId))throw new Error(`${unit.name}：搭載航空機の図鑑参照が不正です。`);}
     for (const mount of aircraftMounts(unit)) {
       if (!equipmentIds.has(mount.equipmentId)) {
         throw new Error(
@@ -374,6 +379,7 @@ function normalizeCatalog(value) {
       }
     }
     if(unit.branch==='air' && unit.aircraft){
+      if(unit.aircraft.loadouts.some(l=>l.mounts.some(m=>equipmentById.get(m.equipmentId)?.kind!=='weapon')))throw new Error(`${unit.name}：掛載には武器だけを登録してください。`);
       if(unit.mounts.some(m=>m.position==='ポッド'&&equipmentById.get(m.equipmentId)?.kind!=='support'))throw new Error(`${unit.name}：ポッドには支援装備だけを搭載できます。`);
     }
   }
@@ -421,9 +427,9 @@ export function initializeCatalog(baseUnits) {
     console.error(error);
   }
 
-  if(!recoveryError && data.supportStationsVersion<1){
+  if(!recoveryError && data.supportStationsVersion<2){
     const existing=new Set(data.equipment.map(item=>item.id));
-    data=normalizeCatalog({...data,supportStationsVersion:1,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>!existing.has(item.id))]});
+    data=normalizeCatalog({...data,supportStationsVersion:2,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>(data.supportStationsVersion<1||['preparation-area','runway','catapult'].includes(item.supportEffect))&&!existing.has(item.id))]});
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
   }
 
@@ -445,9 +451,12 @@ export function initializeCatalog(baseUnits) {
       data.equipment.map(item => [item.id, item])
     );
 
+    const snapshotFor=unit=>({...copy(unit),equipmentSnapshots:[...new Set(aircraftMounts(unit).map(m=>m.equipmentId))].map(id=>copy(equipmentMap.get(id)))});
+    const aircraftMap=new Map(data.units.filter(u=>u.branch==='air').map(u=>[u.id,u]));
     const next = data.units.map(unit => ({
       ...copy(unit),
 
+      aircraftSnapshots: [...new Set(unit.aviationComplement.map(e=>e.unitId))].map(id=>snapshotFor(aircraftMap.get(id))),
       // 参战快照携带当时的装备性能，不只保存装备 ID。
       equipmentSnapshots: [
         ...new Set(aircraftMounts(unit).map(mount => mount.equipmentId))
@@ -555,6 +564,7 @@ export function initializeCatalog(baseUnits) {
 
     deleteUnit(id) {
       const existing = data.units.find(unit => unit.id === id);
+      if(data.units.some(u=>u.aviationComplement.some(e=>e.unitId===id)))throw new Error("搭載航空機として参照されています。");
 
       if (existing?.protected) {
         requireEditingAuthorization();

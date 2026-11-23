@@ -1,4 +1,5 @@
-import { TRAINING_TRAIT_OPTIONS } from "../js/catalog-seed.js?v=aircraft-template-2";
+import {activeAircraftMounts} from '../js/aircraft-template.js?v=aviation-operations-1';
+import { TRAINING_TRAIT_OPTIONS } from "../js/catalog-seed.js?v=aviation-operations-1";
 
 // ===== 推演装备与词条运行状态 =====
 // 不修改图鉴快照，不消耗弹药，不执行攻击。
@@ -81,7 +82,7 @@ function readEquipmentLayout(unit) {
     throw new Error("図鑑スナップショットがありません。");
   }
 
-  const mounts = unit.snapshot.mounts ?? [];
+  const mounts = activeAircraftMounts(unit);
   const equipment = unit.snapshot.equipmentSnapshots ?? [];
 
   if (!Array.isArray(mounts) || !Array.isArray(equipment)) {
@@ -503,7 +504,7 @@ export function prepareSimulationAmmoSource(
       equipment.set(item.id, item);
     }
 
-    const mounts = unit.snapshot.mounts ?? [];
+    const mounts = activeAircraftMounts(unit);
 
     if (!Array.isArray(mounts)) {
       throw new Error("装備配置の書式が不正です。");

@@ -1,6 +1,7 @@
-import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=aircraft-template-1';
-import { hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
-import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=aircraft-template-2";
+import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=aviation-operations-1';
+import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=aviation-operations-1';
+import { hasSupportEquipment } from "./support-equipment.js?v=aviation-operations-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=aviation-operations-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -14,31 +15,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=aircraft-template-2";
+} from "./ship-runtime.js?v=aviation-operations-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=aircraft-template-2";
+} from "./equipment-runtime.js?v=aviation-operations-1";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=aircraft-template-2";
+} from "./simulation-special-runtime.js?v=aviation-operations-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=aircraft-template-2";
+} from "./simulation-rescue-runtime.js?v=aviation-operations-1";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=aircraft-template-2";
+} from "./equipment-item-runtime.js?v=aviation-operations-1";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=aircraft-template-2";
+} from "./simulation-rescue.js?v=aviation-operations-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -472,9 +473,12 @@ export function finishSpecialPhase(scene) {
 
   working.turn.phaseId = "end";
 
+  reconcileAviation(working);
   validateScene(working);
 
   scene.instances = working.instances;
+  scene.groups = working.groups;
+  scene.aviationRuntime = working.aviationRuntime;
   scene.supportRuntime = working.supportRuntime;
   scene.rescueTasks = working.rescueTasks;
   scene.specialRuntime = working.specialRuntime;
@@ -561,10 +565,14 @@ export function finishTurn(scene) {
     phaseId: "start",
     elapsedMinutes: nextElapsed
   };
+  advanceAviationStart(working);
 
+  reconcileAviation(working);
   validateScene(working);
 
   scene.instances = working.instances;
+  scene.groups = working.groups;
+  scene.aviationRuntime = working.aviationRuntime;
   scene.supportRuntime = working.supportRuntime;
   scene.rescueTasks = working.rescueTasks;
   scene.rescueRuntime = working.rescueRuntime;

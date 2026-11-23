@@ -1,20 +1,20 @@
 import {
   readWeaponProfile,
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=aircraft-template-2";
+} from "./weapon-profile-runtime.js?v=aviation-operations-1";
 
 import {
   replaceAttackCommands
-} from "./simulation-attack-runtime.js?v=aircraft-template-2";
+} from "./simulation-attack-runtime.js?v=aviation-operations-1";
 
 import {
   filterUnreachableAttackCommands
-} from "./simulation-settlement.js?v=aircraft-template-2";
+} from "./simulation-settlement.js?v=aviation-operations-1";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=aircraft-template-2";
+} from "./simulation-features.js?v=aviation-operations-1";
 
 // ===== 分旗舰攻击追随 =====
 // 只在store的候选事务内调用。

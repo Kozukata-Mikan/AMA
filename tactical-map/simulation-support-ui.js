@@ -1,5 +1,5 @@
-import {supportCapacity,inSupportRange,SUPPORT_NAMES} from './support-equipment.js?v=support-stations-1';
-import {needsSupport,supportLimit} from './simulation-support.js?v=aircraft-template-2';
+import {supportCapacity,inSupportRange,SUPPORT_NAMES} from './support-equipment.js?v=aviation-operations-1';
+import {needsSupport,supportLimit} from './simulation-support.js?v=aviation-operations-1';
 export function mountSupportUI(store){
  const el=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;return n;};
  const panel=el('details');panel.dataset.workflowPanel='support';panel.dataset.toolCategory='progress';panel.open=true;panel.append(el('summary','外部支援・救助・補給'));
@@ -11,7 +11,7 @@ export function mountSupportUI(store){
  function sync(){
   const scene=store.getSceneSnapshot(),old=provider.value,oldTarget=target.value;
   provider.replaceChildren(new Option('支援側を選択してください',''));
-  for(const unit of scene.instances.filter(u=>u.observationOwn&&u.x!=null&&u.y!=null&&u.currentHp>=0&&(u.branch==='navy'||['repair-station','damage-control-station','supply-station'].some(role=>supportCapacity(u,role)>0))))provider.append(new Option(unit.name,unit.instanceId));
+  for(const unit of scene.instances.filter(u=>!u.aviationStored&&u.observationOwn&&u.x!=null&&u.y!=null&&u.currentHp>=0&&(u.branch==='navy'||['repair-station','damage-control-station','supply-station'].some(role=>supportCapacity(u,role)>0))))provider.append(new Option(unit.name,unit.instanceId));
   if([...provider.options].some(o=>o.value===old))provider.value=old;
   const p=scene.instances.find(u=>u.instanceId===provider.value);target.replaceChildren(new Option('対象艦を選択してください',''));
   if(p)for(const unit of scene.instances.filter(u=>u.observationOwn&&u.instanceId!==p.instanceId&&inSupportRange(p,u)&&needsSupport(u,kind.value)))target.append(new Option(unit.name,unit.instanceId));

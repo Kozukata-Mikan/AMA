@@ -1,4 +1,4 @@
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=aircraft-template-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=aviation-operations-1';
 import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 export function mountSimulationFeatures(store, context) {
@@ -340,7 +340,7 @@ if (!confirm(
       unit.shipState?.rescueTaskId === null)
     );
 
-    fleetPicker.sync(scene, ships.map(u=>hasAircraftTemplate(u)?{...u,groupId:null}:u));
+    fleetPicker.sync(scene, ships);
 
     const movement = scene.turn.phaseId === "movement";
 
@@ -432,7 +432,7 @@ if (!movement) {
     ) return;
 
     try {
-      const movementRef = { kind: "unit", id: unit.instanceId };
+      const movementRef = hasAircraftTemplate(unit)&&scene.groups.find(g=>g.id===unit.groupId)?.aviationCluster ? {kind:'group',id:unit.groupId} : { kind: "unit", id: unit.instanceId };
       const info = store.getMovementInfo(movementRef);
       const point = screenPoint(event);
 

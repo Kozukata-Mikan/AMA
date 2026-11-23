@@ -1,5 +1,5 @@
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=aircraft-template-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=aviation-operations-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 
@@ -1019,7 +1019,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
 
 
     fleetPicker.sync(scene, scene.instances.filter(unit =>
-      unit.observationOwn === true && unit.observationLevel === "identified"));
+      !unit.aviationStored && unit.observationOwn === true && unit.observationLevel === "identified"));
 
     if (selectedActorId !== actor.value) {
       // 组ID只在单位内唯一，不跨单位沿用。
