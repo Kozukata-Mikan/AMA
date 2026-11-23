@@ -1,4 +1,4 @@
-import {mountAviationUI} from './aviation-ui.js?v=aviation-operations-1';
+import {mountAviationUI} from './aviation-ui.js?v=aviation-ui-2';
 import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=aviation-operations-1';
 import { buildingDetailLines } from "./building-runtime.js?v=support-stations-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
