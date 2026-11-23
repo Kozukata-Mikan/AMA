@@ -28,6 +28,7 @@ export function mountSimulationFeatures(store, context) {
 
   const panel = element("details");
   panel.open = true;
+  panel.dataset.workflowPanel="movement";
   panel.append(element("summary", "ユニット移動・編隊行動"));
 
   const side = element("select");

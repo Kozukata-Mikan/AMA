@@ -174,7 +174,7 @@ export const BUILDING_FIELDS = [
   {key:'building.portType',label:'港湾区分',type:'port-type',definition:'貿易港（$）・貨物港（積み荷）・補給港（フック）。施設区分とは独立しています。'}
 ];
 export const AIRCRAFT_FIELDS = [
-  ...UNIT_FIELDS.filter(field=>['name','branch','faction','sizeLevel','protected','naval.armor','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='naval.detection'?{...field,label:'探測難度'}:field),
+  ...UNIT_FIELDS.filter(field=>['name','branch','faction','sizeLevel','protected','naval.armor','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='naval.detection'?{...field,label:'探測難度'}:field.key==='naval.armor'?{...field,definition:'艦船と同じ装甲等級を使用します。航空機の正式な被攻撃・空戦処理は後続規則で接続します。'}:field),
   {key:'aircraft.type',label:'種別',type:'aircraft-type',definition:'艦載機・陸上機・水上機・無人機・陸上無人機。起降可能な母艦・施設の区分です。'},
   {key:'aircraft.engines',label:'発動機数 / 最大耐性',type:'number',definition:'発動機数が最大耐性です。耐性0は大破、その後の被攻撃で撃墜。小破・中破はありません。'},
   {key:'aircraft.crew',label:'乗員数',type:'number',definition:'搭乗する乗員の人数。無人機の初期値は0。現時点では性能補正はありません。'},

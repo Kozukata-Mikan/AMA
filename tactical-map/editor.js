@@ -2,15 +2,15 @@ import { buildingDetailLines } from "./building-runtime.js?v=support-stations-1"
 import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=fleet-cohesion-6";
 import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
-import { getBranchName } from "../js/data-store.js?v=aircraft-template-1";
+import { getBranchName } from "../js/data-store.js?v=aircraft-template-2";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=aircraft-template-1";
+import { createSimulation } from "./simulation-store.js?v=aircraft-template-2";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js?v=building-symbols-3";
-import { mountCatalogEditor } from "./catalog-editor.js?v=aircraft-template-1";
+import { mountCatalogEditor } from "./catalog-editor.js?v=aircraft-template-2";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
-import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=aircraft-template-1";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=aircraft-template-2";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 

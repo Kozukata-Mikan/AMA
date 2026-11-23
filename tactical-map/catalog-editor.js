@@ -2,10 +2,10 @@ import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} f
 import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=aircraft-template-1';
 import { SUPPORT_EFFECTS } from "./support-equipment.js?v=support-stations-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=support-stations-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=aircraft-template-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=aircraft-template-2";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=aircraft-template-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=aircraft-template-2";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -16,7 +16,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=aircraft-template-1";
+} from "../js/catalog-seed.js?v=aircraft-template-2";
 
 // ===== 图鉴界面 =====
 
@@ -820,7 +820,7 @@ export function mountCatalogEditor({
       }
     } else {
       detail.append(
-        node("h4", item.branch === "building" ? "施設名" : "艦名"),
+        node("h4", item.branch === "building" ? "施設名" : item.branch === "air" ? "機体名" : "艦名"),
         node(
           "p",
           item.hullNames.join(" / ") || "未登録"
@@ -1143,9 +1143,9 @@ export function mountCatalogEditor({
 
       labeled(
         form,
-        draft.branch === "building" ? "施設名候補（1 行 1 件）" : "艦名 / 名称候補（1 行 1 件）",
+        draft.branch === "building" ? "施設名候補（1 行 1 件）" : draft.branch === "air" ? "機体名候補（1 行 1 件）" : "艦名 / 名称候補（1 行 1 件）",
         hullNames,
-        draft.branch === "building" ? "同じ施設資料から追加する個体の名称候補。名称による性能補正はありません。" : EXTRA_DEFINITIONS[0][1]
+        draft.branch === "building" ? "同じ施設資料から追加する個体の名称候補。名称による性能補正はありません。" : draft.branch === "air" ? "同じ航空機資料から追加する機体の名称候補。名称による性能補正はありません。" : EXTRA_DEFINITIONS[0][1]
       );
 
       description = node("textarea");

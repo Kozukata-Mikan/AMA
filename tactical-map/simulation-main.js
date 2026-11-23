@@ -11,7 +11,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=aircraft-template-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=aircraft-template-2";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -30,19 +30,19 @@ import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=aircraft-template-1";
+} from "./ship-runtime.js?v=aircraft-template-2";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=aircraft-template-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=aircraft-template-1";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=aircraft-template-2";
+import { mountSupportUI } from "./simulation-support-ui.js?v=aircraft-template-2";
 import { drawSupportOverlay } from "./support-map-display.js?v=support-stations-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=aircraft-template-1";
+} from "../js/catalog-seed.js?v=aircraft-template-2";
 import { mountAttackUI } from "./simulation-attack-ui.js?v=aircraft-template-1";
 import {
   mountSimulationWorkflow
-} from "./simulation-workflow-ui.js?v=support-stations-1";
+} from "./simulation-workflow-ui.js?v=aircraft-template-2";
 
 import { mountBattleReportUI } from "./simulation-battle-report.js?v=workspace-ui-3";
 
@@ -57,7 +57,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=aircraft-template-1";
+} from "./simulation-store.js?v=aircraft-template-2";
 
 import {
   gridPosition,

@@ -65,8 +65,9 @@ export function mountSimulationWorkflow(store) {
   const units = findPanel("参戦ユニット");
   const groups = findPanel("集群・編隊");
   const drafts = findPanel("行動・記録");
-  const movement = findPanel("艦船移動・編隊行動");
-  const rescue = findPanel("艦船救助");
+  const movement = originalDetails.find(node=>node.dataset.workflowPanel==='movement') ?? findPanel("ユニット移動・編隊行動", "艦船移動・編隊行動");
+  const support = originalDetails.find(node=>node.dataset.workflowPanel==='support') ?? findPanel("外部支援・救助・補給");
+  const rescue = support ?? findPanel("艦船救助");
   const formation = findPanel("編隊陣形");
   const formationAttack = findPanel("編隊一括攻撃");
   const attack = findPanel(
@@ -269,7 +270,8 @@ export function mountSimulationWorkflow(store) {
   // 全部检查通过后，才开始移动原面板。
   startSection.body.append(environment);
   movementSection.body.insertBefore(movement, repairNote);
-  movementSection.body.insertBefore(rescue, repairNote);
+  if(support)specialSection.body.append(support);
+  else movementSection.body.insertBefore(rescue, repairNote);
   if(formation)movementSection.body.insertBefore(formation,repairNote);
   attackSection.body.prepend(attack);
   if(formationAttack)attackSection.body.insertBefore(formationAttack,attack);

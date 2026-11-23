@@ -1,8 +1,8 @@
 import {supportCapacity,inSupportRange,SUPPORT_NAMES} from './support-equipment.js?v=support-stations-1';
-import {needsSupport,supportLimit} from './simulation-support.js?v=aircraft-template-1';
+import {needsSupport,supportLimit} from './simulation-support.js?v=aircraft-template-2';
 export function mountSupportUI(store){
  const el=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;return n;};
- const panel=el('details');panel.dataset.toolCategory='progress';panel.open=true;panel.append(el('summary','外部支援・救助・補給'));
+ const panel=el('details');panel.dataset.workflowPanel='support';panel.dataset.toolCategory='progress';panel.open=true;panel.append(el('summary','外部支援・救助・補給'));
  const provider=el('select'),kind=el('select'),target=el('select');for(const [id,name]of Object.entries(SUPPORT_NAMES))kind.append(new Option(name,id));
  for(const [name,control]of [['支援するユニット',provider],['支援内容',kind],['支援を受ける艦船',target]]){const label=el('label');label.append(el('span',name),control);panel.append(label);}
  const note=el('p','特殊段階で支援円内の味方艦を指定します。艦船の支援円は直径25マス、施設は直径50マスです。支援中の双方は移動できません。救助中は従来どおり攻撃もできません。移動を確定すると支援を中止します。救助は第2ラウンドに判定。外部損管は通常と同じ失敗の影響があります。補給は毎ラウンド最大25%です。');note.className='note';

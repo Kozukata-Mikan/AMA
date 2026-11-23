@@ -1,6 +1,6 @@
 import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=support-stations-1';
-import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=aircraft-template-1';
-import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=aircraft-template-1';
+import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=aircraft-template-2';
+import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=aircraft-template-2';
 const fail=message=>{throw new Error(message);};
 const find=(scene,id)=>scene.instances.find(u=>u.instanceId===id);
 const alive=unit=>unit&&Number.isFinite(unit.x)&&Number.isFinite(unit.y)&&(unit.branch==='navy'?!['sinking','sunk'].includes(unit.shipState?.status):unit.currentHp>0);

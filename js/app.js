@@ -3,7 +3,7 @@ import {
   findUnit,
   getUnitsByBranch,
   getBranchName
-} from "./data-store.js?v=aircraft-template-1";
+} from "./data-store.js?v=aircraft-template-2";
 
 import {
   createBattleStore
@@ -11,7 +11,7 @@ import {
 
 import {
   previewAction
-} from "./combat-engine.js?v=aircraft-template-1";
+} from "./combat-engine.js?v=aircraft-template-2";
 
 const views = {
   "navy-calculator": {

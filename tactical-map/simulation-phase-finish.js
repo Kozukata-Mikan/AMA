@@ -1,6 +1,6 @@
 import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=aircraft-template-1';
 import { hasSupportEquipment } from "./support-equipment.js?v=support-stations-1";
-import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=aircraft-template-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=aircraft-template-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -14,31 +14,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=aircraft-template-1";
+} from "./ship-runtime.js?v=aircraft-template-2";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=aircraft-template-1";
+} from "./equipment-runtime.js?v=aircraft-template-2";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=aircraft-template-1";
+} from "./simulation-special-runtime.js?v=aircraft-template-2";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=aircraft-template-1";
+} from "./simulation-rescue-runtime.js?v=aircraft-template-2";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=aircraft-template-1";
+} from "./equipment-item-runtime.js?v=aircraft-template-2";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=aircraft-template-1";
+} from "./simulation-rescue.js?v=aircraft-template-2";
 
 import {
   initializeRoundTraitRuntime,

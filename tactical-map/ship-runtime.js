@@ -6,7 +6,7 @@ import {
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=aircraft-template-1";
+} from "./equipment-item-runtime.js?v=aircraft-template-2";
 
 
 import {
@@ -25,12 +25,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=aircraft-template-1";
+} from "./equipment-runtime.js?v=aircraft-template-2";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=aircraft-template-1";
+} from "./equipment-item-runtime.js?v=aircraft-template-2";
 
 
 // ===== 舰船数据与推演状态接入 =====

@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=aircraft-template-1";
+} from "./formation-target-runtime.js?v=aircraft-template-2";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=aircraft-template-1";
+} from "./simulation-features.js?v=aircraft-template-2";
 
 import {
   resolveHitCoins

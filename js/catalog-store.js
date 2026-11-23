@@ -3,7 +3,7 @@ import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equip
 import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=support-stations-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=aircraft-template-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=aircraft-template-2";
 import { normalizeFaction } from "./faction-data.js";
 
 
