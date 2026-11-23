@@ -1,6 +1,6 @@
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { resolveAttackExecutionPhase } from "./attack-order-runtime.js";
-import { readWeaponProfile } from "./weapon-profile-runtime.js?v=building-foundations-1";
+import { readWeaponProfile } from "./weapon-profile-runtime.js?v=building-foundations-2";
 
 
 // 攻击计划的持久化与结构校验。

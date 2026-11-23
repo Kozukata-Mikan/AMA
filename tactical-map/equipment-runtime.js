@@ -1,4 +1,4 @@
-import { TRAINING_TRAIT_OPTIONS } from "../js/catalog-seed.js?v=building-foundations-1";
+import { TRAINING_TRAIT_OPTIONS } from "../js/catalog-seed.js?v=building-foundations-2";
 
 // ===== 推演装备与词条运行状态 =====
 // 不修改图鉴快照，不消耗弹药，不执行攻击。
@@ -524,6 +524,8 @@ export function prepareSimulationAmmoSource(
       if (readAmmo(item.ammo) !== null) continue;
 
       if (!registeredAmmo.has(item.id)) {
+        // 建筑暂不执行攻击，保留未登记备弹，不伪造0或阻断部署。
+        if (unit.branch === "building") continue;
         throw new Error(
           "図鑑の予備弾数が未登録のため、" +
           "推演を開始できません。"

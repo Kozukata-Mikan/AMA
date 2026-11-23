@@ -36,7 +36,7 @@ export function buildingDetailLines(unit) {
     `施設種別：${label(BUILDING_KINDS,b.kind)}`,
     ...(b.kind==='airport'?[`飛行場区分：${label(AIRPORT_DURABILITY,b.permanence)}`,`形式：${label(AIRPORT_TYPES,b.airportType)}`,...(b.airportType==='runway'?[`滑走路数：${b.runways}`]:[])]:[`港湾区分：${label(PORT_TYPES,b.portType)}`]),
     '直径：50マス / 高度：地形に追随',
-    ...[['装甲','armor'],['強度','strength'],['探測強度','detection'],['対海偵察','seaRecon'],['対空偵察','airRecon'],['対潜偵察','aswRecon']].map(([name,key])=>`${name}：${stats[key]??'未設定'}`)
+    ...[['装甲','armor'],['強度','strength'],['探測強度','detection'],['対海偵察','seaRecon'],['対空偵察','airRecon'],['対潜偵察','aswRecon']].map(([name,key])=>`${name}：${stats[key] === '' || stats[key] == null ? '未設定' : stats[key]}`)
   ];
 }
 const polygon=points=>points.map(([x,y],i)=>`${i?'L':'M'} ${x.toFixed(4)} ${y.toFixed(4)}`).join(' ')+' Z';

@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=building-foundations-1";
+} from "./formation-target-runtime.js?v=building-foundations-2";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=building-foundations-1";
+} from "./simulation-features.js?v=building-foundations-2";
 
 import {
   resolveHitCoins

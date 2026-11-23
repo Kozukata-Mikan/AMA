@@ -1,8 +1,8 @@
-import { BUILDING_KINDS, AIRPORT_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, buildingSymbolParts } from "./building-runtime.js?v=building-foundations-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=building-foundations-1";
+import { BUILDING_KINDS, AIRPORT_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, buildingSymbolParts } from "./building-runtime.js?v=building-foundations-2";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=building-foundations-2";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=building-foundations-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=building-foundations-2";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -13,7 +13,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=building-foundations-1";
+} from "../js/catalog-seed.js?v=building-foundations-2";
 
 // ===== 图鉴界面 =====
 
@@ -206,7 +206,7 @@ function catalogFieldSections(fields, category) {
     ["power", "威力・投射・弾薬", ["powerRule","penetration","barrelCount","projectionCoefficient","projectionSuffix","ammo"]],
     ["notes", "補足", ["note"]]
   ];
-  const result=sections.map(([id,title,keys])=>({id,title,fields:keys.map(key=>fields.find(field=>field.key===key)).filter(Boolean)})).filter(section=>section.fields.length);
+  const result=sections.map(([id,title,keys])=>({id,title: id==="hull" && fields.some(field=>field.key==="building.kind") ? "構造・防御" : title,fields:keys.map(key=>fields.find(field=>field.key===key)).filter(Boolean)})).filter(section=>section.fields.length);
   const assigned=new Set(result.flatMap(section=>section.fields.map(field=>field.key)));
   const remaining=fields.filter(field=>!assigned.has(field.key));
   if(remaining.length)result.push({id:"other",title:"その他",fields:remaining});
@@ -219,7 +219,7 @@ function ensureStyles() {
   const link = node("link");
   link.id = "catalog-styles";
   link.rel = "stylesheet";
-  link.href = new URL("./catalog.css?v=building-foundations-1", import.meta.url).href;
+  link.href = new URL("./catalog.css?v=building-foundations-2", import.meta.url).href;
 
   document.head.append(link);
 }
@@ -1132,7 +1132,7 @@ export function mountCatalogEditor({
         form,
         draft.branch === "building" ? "施設名候補（1 行 1 件）" : "艦名 / 名称候補（1 行 1 件）",
         hullNames,
-        EXTRA_DEFINITIONS[0][1]
+        draft.branch === "building" ? "同じ施設資料から追加する個体の名称候補。名称による性能補正はありません。" : EXTRA_DEFINITIONS[0][1]
       );
 
       description = node("textarea");

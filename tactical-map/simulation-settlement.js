@@ -1,5 +1,5 @@
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=building-foundations-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=building-foundations-2";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -11,7 +11,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=building-foundations-1";
+} from "./simulation-attack-batch.js?v=building-foundations-2";
 
 
 
@@ -21,16 +21,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=building-foundations-1";
+} from "./ship-runtime.js?v=building-foundations-2";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=building-foundations-1";
+} from "./equipment-runtime.js?v=building-foundations-2";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=building-foundations-1";
+} from "./simulation-features.js?v=building-foundations-2";
 
 import {
   getEquipmentDamagePlan,
@@ -40,7 +40,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=building-foundations-1";
+} from "./equipment-item-runtime.js?v=building-foundations-2";
 
 
 import {
@@ -73,32 +73,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=building-foundations-1";
+} from "./simulation-rescue.js?v=building-foundations-2";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=building-foundations-1";
+} from "./simulation-phase-finish.js?v=building-foundations-2";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=building-foundations-1";
+} from "./weapon-profile-runtime.js?v=building-foundations-2";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=building-foundations-1";
+} from "./simulation-attack-runtime.js?v=building-foundations-2";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=building-foundations-1";
+} from "./weapon-profile-runtime.js?v=building-foundations-2";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=building-foundations-1";
+} from "./simulation-features.js?v=building-foundations-2";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=building-foundations-1";
+} from "./formation-target-runtime.js?v=building-foundations-2";
 
 import {
   readRangeCommandTarget
@@ -111,7 +111,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=building-foundations-1";
+} from "./range-projection-runtime.js?v=building-foundations-2";
 
 import {
   initializeRoundTraitRuntime,

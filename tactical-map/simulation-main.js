@@ -1,4 +1,4 @@
-import { buildingDetailLines } from "./building-runtime.js?v=building-foundations-1";
+import { buildingDetailLines } from "./building-runtime.js?v=building-foundations-2";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
@@ -10,7 +10,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=building-foundations-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=building-foundations-2";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -22,22 +22,22 @@ import {
   showCampaignIntro
 } from "./campaign-intro.js";
 
-import { drawUnitIcon } from "./unit-icon-renderer.js?v=building-foundations-1";
+import { drawUnitIcon } from "./unit-icon-renderer.js?v=building-foundations-2";
 
-import { getDisplayUnits } from "./cluster-engine.js?v=building-foundations-1";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=building-foundations-1";
+import { getDisplayUnits } from "./cluster-engine.js?v=building-foundations-2";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=building-foundations-2";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=building-foundations-1";
+} from "./ship-runtime.js?v=building-foundations-2";
 
 import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=catalog-layout-2";
 import { mountRescueUI } from "./simulation-rescue-ui.js?v=fleet-cohesion-6";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=building-foundations-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=building-foundations-1";
+} from "../js/catalog-seed.js?v=building-foundations-2";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=building-foundations-2";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=fleet-cohesion-6";
@@ -55,7 +55,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=building-foundations-1";
+} from "./simulation-store.js?v=building-foundations-2";
 
 import {
   gridPosition,

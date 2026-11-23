@@ -8,6 +8,7 @@ import {createSimulation,openSimulation} from '../tactical-map/simulation-store.
 import {getObserverVisibility} from '../tactical-map/simulation-features.js';
 import {source,ship} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
+import {prepareSimulationAmmoSource} from '../tactical-map/equipment-runtime.js';
 import {readSave} from '../js/save-database.js';
 const memory=()=>globalThis.localStorage={getItem:()=>null,setItem(){}};
 const facility=(id='facility',side='ally')=>{const unit=ship(id,side);unit.branch=unit.snapshot.branch='building';unit.faction='blue';unit.snapshot.building={kind:'airport',permanence:'permanent',airportType:'runway',runways:3};Object.assign(unit.snapshot.naval,{aswRecon:'B',seaRecon:'B',airRecon:'B',detection:'F',strength:2,armor:'C',endurance:'100'});return unit;};
@@ -60,4 +61,11 @@ test('building reconnaissance uses normal sea/ASW grades, and an enemy facility 
  target.snapshot.naval.kind='submarine';target.depth=2;target.underwater=true;assert.equal(getObserverVisibility(raw,observer,target),'shadow');observer.snapshot.naval.aswRecon='';assert.equal(getObserverVisibility(raw,observer,target),null);
  await store.setEnemyAutonomy(true);await store.beginMovement();await assert.rejects(store.planMovement({kind:'unit',id:'base'},160,0),/操作|陣営|艦船/);await store.resolveMovement();await store.settleAttackPhase(store.getSceneSnapshot().revision);raw=JSON.parse(await readSave('junqi-simulation-v1:'+id));assert.equal(raw.instances.find(u=>u.instanceId==='base').x,150);assert.equal(raw.turn.phaseId,'order-4');
  for(let i=0;i<5;i++)await store.settleAttackPhase(store.getSceneSnapshot().revision);await store.finishSpecialPhase(store.getSceneSnapshot().revision);await store.finishTurn(store.getSceneSnapshot().revision);raw=JSON.parse(await readSave('junqi-simulation-v1:'+id));assert.equal(raw.turn.number,2);assert.equal(raw.instances.find(u=>u.instanceId==='base').snapshot.mounts.length,1);
+});
+
+
+test('non-firing facilities preserve unregistered ammo without weakening ship start checks',()=>{
+ const building=facility();building.snapshot.equipmentSnapshots=[{id:'empty-gun',kind:'weapon',name:'未登録弾薬',ammo:null}];building.snapshot.mounts=[{equipmentId:'empty-gun',position:'中央',count:1}];
+ const input={instances:[building]};const result=prepareSimulationAmmoSource(input,[]);assert.equal(result.instances[0].snapshot.equipmentSnapshots[0].ammo,null);assert.equal(input.instances[0].snapshot.equipmentSnapshots[0].ammo,null);
+ const navy=structuredClone(building);navy.branch=navy.snapshot.branch='navy';assert.throws(()=>prepareSimulationAmmoSource({instances:[navy]},[]),/予備弾数/);
 });

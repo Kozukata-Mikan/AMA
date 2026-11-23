@@ -1,20 +1,20 @@
-import { normalizeBuildingUnit } from "./building-runtime.js?v=building-foundations-1";
+import { normalizeBuildingUnit } from "./building-runtime.js?v=building-foundations-2";
 import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=building-foundations-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=building-foundations-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=building-foundations-1";
+} from "./ship-runtime.js?v=building-foundations-2";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=building-foundations-1";
+} from "./simulation-rescue.js?v=building-foundations-2";
 
 import {
   createShipEffectsState,
@@ -25,11 +25,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=building-foundations-1";
+} from "./equipment-item-runtime.js?v=building-foundations-2";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=building-foundations-1";
+} from "./simulation-autonomous-rescue.js?v=building-foundations-2";
 
 import {
   routeLength,

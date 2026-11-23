@@ -1,15 +1,15 @@
-import { readShipProfile } from "./ship-runtime.js?v=building-foundations-1";
+import { readShipProfile } from "./ship-runtime.js?v=building-foundations-2";
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=building-foundations-1";
+} from "./simulation-features.js?v=building-foundations-2";
 
 import {
   getEquipmentControlCandidates,
   applyExternalEquipmentRepairResult
-} from "./equipment-item-runtime.js?v=building-foundations-1";
+} from "./equipment-item-runtime.js?v=building-foundations-2";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

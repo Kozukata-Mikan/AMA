@@ -107,7 +107,7 @@ test('new underwater guidance retains algorithms for half-width parentheses and 
 
 test('real background worker settles vertical orders with the selected surface speed',async()=>{
  const {Worker}=await import('node:worker_threads');
- const {shutdownBackground}=await import('../tactical-map/background-client.js?v=building-foundations-1');
+ const {shutdownBackground}=await import('../tactical-map/background-client.js?v=building-foundations-2');
  const scene=source();submarine(scene.instances[0]);const {id,store}=await simulation(scene);
  globalThis.Worker=class{
   constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error));}

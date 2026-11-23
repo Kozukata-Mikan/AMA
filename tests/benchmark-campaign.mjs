@@ -33,4 +33,4 @@ try{for(let round=1;round<=rounds;round++){
  row.totalMs=performance.now()-start;row.snapshotMs=snapshotMs;row.lagMs=lag;lag=0;const saved=await readSave('junqi-simulation-v1:'+id);row.saveBytes=Buffer.byteLength(saved);rows.push(row);console.log(JSON.stringify(row));
  await fs.writeFile(resolve(tmpdir(),'ama-opt-'+label+'.json'),JSON.stringify({label,autonomy,node:process.version,cpu:cpus()[0]?.model,sceneSha256:createHash('sha256').update(sceneRaw).digest('hex'),catalogSha256:createHash('sha256').update(catalogRaw).digest('hex'),rows,jobs},null,2));
  }console.log(JSON.stringify({label,rounds,autonomy,results:resolve(tmpdir(),'ama-opt-'+label+'.json')}));
-}finally{clearInterval(timer);(await load('tactical-map/background-client.js?v=building-foundations-1')).shutdownBackground()}
+}finally{clearInterval(timer);(await load('tactical-map/background-client.js?v=building-foundations-2')).shutdownBackground()}
