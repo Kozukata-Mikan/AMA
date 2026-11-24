@@ -1,3 +1,4 @@
+import {AIR_TRAITS,hasAirTrait} from '../js/aircraft-training.js?v=air-training-1';
 import {drawFlightMissions} from './flight-mission-display.js';
 import {mountAirCombatUI} from './air-combat-ui.js?v=air-training-1';
 import {drawWeaponCoverage} from './weapon-coverage-display.js?v=air-training-1';
@@ -291,7 +292,10 @@ function getOwnCombatDetailLines(unit, turnNumber) {
 
   const training = unit.trainingState;
 
-  if (training) {
+  if (hasAircraftTemplate(unit)) {
+    const traits = AIR_TRAITS.filter(([id]) => hasAirTrait(unit, id));
+    lines.push("【機隊特性】", traits.length ? traits.map(([, label]) => label).join(" / ") : "なし");
+  } else if (training) {
     const traits = [
       ...new Set([
         ...training.baseTraits,
