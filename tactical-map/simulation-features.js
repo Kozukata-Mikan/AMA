@@ -1,18 +1,18 @@
 import {observedAviationLosses} from './aviation-losses.js?v=air-losses-1';
 import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=air-losses-1';
+import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=recon-los-1';
 import {airborneUnit} from './air-ground-rules.js';
-import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=air-losses-1';
+import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=recon-los-1';
 import {observedAirCombat} from './air-combat-report.js?v=air-defense-1';
 import {aircraftMayFly} from './aviation-time.js?v=air-losses-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
 import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=air-losses-1';
-import {reconcileAviation} from './aviation-operations.js?v=air-losses-1';
+import {reconcileAviation} from './aviation-operations.js?v=recon-los-1';
 import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-losses-1';
 import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
 import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=air-losses-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
-import { normalizeNavalPosition, navalKind, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
+import { normalizeNavalPosition, navalKind, navalHeight, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
 import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=air-training-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
@@ -27,7 +27,7 @@ import { sampleTerrain } from "./terrain-data.js";
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-losses-1";
+} from "./simulation-rescue.js?v=recon-los-1";
 
 import {
   createShipEffectsState,
@@ -42,7 +42,7 @@ import {
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=air-losses-1";
+} from "./simulation-autonomous-rescue.js?v=recon-los-1";
 
 import {
   routeLength,
@@ -233,41 +233,35 @@ function terrainBreaks(terrain, from, to) {
   return values.sort((a, b) => a - b);
 }
 
+// Rule coordinates only: no icon/label offsets or display exaggeration.
+function reconnaissanceHeight(unit, sample) {
+  if (unit.branch === "air") return unit.altitude ?? 1;
+  if (unit.branch === "navy") return navalHeight(unit, sample);
+  if (unit.branch === "building") return sample.surface;
+  return Number.isFinite(unit.altitude) ? unit.altitude : sample.surface;
+}
+
 export function isTerrainBlocked(terrain, from, to) {
   if (!positioned(from) || !positioned(to)) return true;
+  const fromSample = sampleTerrain(terrain, from.x, from.y);
+  const toSample = sampleTerrain(terrain, to.x, to.y);
+  if (!fromSample.inside || !toSample.inside) return true;
 
-  if (
-    !sampleTerrain(terrain, from.x, from.y).inside ||
-    !sampleTerrain(terrain, to.x, to.y).inside
-  ) {
-    return true;
-  }
+  const fromHeight = reconnaissanceHeight(from, fromSample);
+  const toHeight = reconnaissanceHeight(to, toSample);
+  if (!Number.isFinite(fromHeight) || !Number.isFinite(toHeight)) return true;
 
-  if (Math.hypot(to.x - from.x, to.y - from.y) < EPSILON) {
-    return false;
-  }
-
+  // Ground and sight-line height are linear within each real terrain triangle.
+  // The extrema of their difference therefore occur at these exact cuts.
+  // Compare against the seabed, not sea level, so ASW sight lines may enter water.
+  // Surface contact is allowed; only entering terrain blocks the line. This also
+  // permits ground-level buildings/ships without inventing a mast-height bonus.
   for (const t of terrainBreaks(terrain, from, to)) {
-    // 本规则检查两点之间的地形，不把单位自身所在端点算作障碍。
-    if (t <= 0 || t >= 1) continue;
-
-    const sample = sampleTerrain(
-      terrain,
-      from.x + (to.x - from.x) * t,
-      from.y + (to.y - from.y) * t
-    );
-
-    if (sample.height >= 30) return true;
+    const height = t === 0 ? fromSample.height : t === 1 ? toSample.height :
+      sampleTerrain(terrain, from.x+(to.x-from.x)*t, from.y+(to.y-from.y)*t).height;
+    const sightHeight = fromHeight+(toHeight-fromHeight)*t;
+    if (height > sightHeight + EPSILON) return true;
   }
-
-  // 若端点高度超过30，其邻近的开放区间也超过30。
-  // 若端点恰好为30且立即下降，则端点自身不阻挡。
-  for (const point of [from, to]) {
-    if (sampleTerrain(terrain, point.x, point.y).height > 30) {
-      return true;
-    }
-  }
-
   return false;
 }
 

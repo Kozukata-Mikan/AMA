@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=air-losses-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=recon-los-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';

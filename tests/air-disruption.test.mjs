@@ -5,9 +5,9 @@ import {normalizeAircraft} from '../js/aircraft-template.js';
 import {ensureAircraftRuntime} from '../tactical-map/aircraft-runtime.js?v=air-losses-1';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js';
 import {applyAirDisruption,airDisruptionPenalty} from '../tactical-map/air-disruption.js?v=air-defense-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-losses-1';
-import {captureAttackPhaseStart} from '../tactical-map/simulation-attack-batch.js?v=air-losses-1';
-import {settleAttackPhase} from '../tactical-map/simulation-settlement.js?v=air-losses-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=recon-los-1';
+import {captureAttackPhaseStart} from '../tactical-map/simulation-attack-batch.js?v=recon-los-1';
+import {settleAttackPhase} from '../tactical-map/simulation-settlement.js?v=recon-los-1';
 import {readSave,writeSave} from '../js/save-database.js';
 import {resetDatabase} from './save-test-environment.mjs';
 const gun=(id,n=1,order=5)=>({id,name:id,kind:'weapon',barrelCount:n,projectionCoefficient:1,projectionSuffix:'R',ammo:1000,powerRule:'1',penetration:'A',guidance:'平射',range:300,ceilingU:100,maxOrder:String(order),targetScope:'単体'});
@@ -22,7 +22,7 @@ test('real order attacks can miss completely but still penalize aircraft in the 
 test('invalid hit RNG aborts without saving ammo, penalties or phase progress',async()=>{const {store,id}=await planned();const before=await readSave('junqi-simulation-v1:'+id);const raw=JSON.parse(before);assert.throws(()=>settleAttackPhase(raw,()=>42));assert.equal(await readSave('junqi-simulation-v1:'+id),before);assert.equal(store.getSceneSnapshot().turn.phaseId,'order-5');});
 
 test('air combat also receives the current-round disruption penalty without modifying maneuver dice',async()=>{
- const {saveAirCombat,resolveAirCombat}=await import('../tactical-map/air-combat.js?v=air-losses-1');
+ const {saveAirCombat,resolveAirCombat}=await import('../tactical-map/air-combat.js?v=recon-los-1');
  const s=scene(),a=s.instances[2],b=plane('enemy-plane');b.side='enemy';b.groupId=null;b.x=50;s.instances.push(b);s.controls={observationSide:'ally',enemyAutonomy:false};
  a.aircraftState.disruption={turnNumber:1,penalties:2};
  saveAirCombat(s,{actorIds:[a.instanceId],targetIds:[b.instanceId]});
@@ -33,7 +33,7 @@ test('air combat also receives the current-round disruption penalty without modi
 test('air combat prevalidated at phase start does not abort when AA destroys its target in the same phase',async()=>{
  const {raw}=await planned();
  const {ensureShipRuntime}=await import('../tactical-map/ship-runtime.js');
- const {saveAirCombat}=await import('../tactical-map/air-combat.js?v=air-losses-1');
+ const {saveAirCombat}=await import('../tactical-map/air-combat.js?v=recon-los-1');
  const {initializeAirTraining}=await import('../tactical-map/air-training-runtime.js');
  // The AA target is already heavy at phase start; the next hit shoots it down.
  const target=raw.instances.find(u=>u.instanceId==='p0');target.currentHp=0;target.aircraftState.status='heavy';

@@ -1,4 +1,4 @@
-import {executeBackgroundTask} from './background-tasks.js?v=air-losses-1';
+import {executeBackgroundTask} from './background-tasks.js?v=recon-los-1';
 self.onmessage=async event=>{
  const {id,task,payload}=event.data;
  try{self.postMessage({id,result:await executeBackgroundTask(task,payload)})}

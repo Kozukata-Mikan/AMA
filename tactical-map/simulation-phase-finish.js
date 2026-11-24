@@ -1,9 +1,9 @@
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
 import {resolveAirNavigationLosses} from './aviation-losses.js?v=air-losses-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=air-losses-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=recon-los-1';
 import {enforceRemoteControl} from './aviation-services.js?v=air-losses-1';
 import {ensureBuildingState} from './building-state.js?v=facility-rules-1';
-import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=air-losses-1';
+import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=recon-los-1';
 import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=air-losses-1';
 import { hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
 import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=air-losses-1";
@@ -29,13 +29,13 @@ import {
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=air-losses-1";
+} from "./simulation-special-runtime.js?v=recon-los-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=air-losses-1";
+} from "./simulation-rescue-runtime.js?v=recon-los-1";
 
 import {
   getEquipmentControlCandidates
@@ -44,7 +44,7 @@ import {
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=air-losses-1";
+} from "./simulation-rescue.js?v=recon-los-1";
 
 import {
   initializeRoundTraitRuntime,

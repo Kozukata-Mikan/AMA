@@ -10,12 +10,12 @@ import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=air-tr
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-training-1";
 import { ensureShipRuntime } from "./ship-runtime.js?v=air-training-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-losses-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=recon-los-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-losses-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=recon-los-1";
 import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-training-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-losses-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=recon-los-1";
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-defense-1";
 
 

@@ -4,8 +4,8 @@ import {normalizeBuilding,normalizeBuildingUnit,buildingPlacement,buildingSymbol
 import {BUILDING_FIELDS} from '../js/catalog-seed.js';
 import {initializeCatalog} from '../js/catalog-store.js';
 import {createBattleStore} from '../js/battle-state.js?v=air-losses-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-losses-1';
-import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=air-losses-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=recon-los-1';
+import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=recon-los-1';
 import {source,ship} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
 import {prepareSimulationAmmoSource} from '../tactical-map/equipment-runtime.js';

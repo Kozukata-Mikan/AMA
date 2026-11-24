@@ -2,7 +2,7 @@ import {AIR_TRAITS,hasAirTrait} from '../js/aircraft-training.js?v=air-training-
 import {drawFlightMissions} from './flight-mission-display.js';
 import {mountAirCombatUI} from './air-combat-ui.js?v=air-losses-1';
 import {drawWeaponCoverage} from './weapon-coverage-display.js?v=air-defense-1';
-import {mountAviationUI} from './aviation-ui.js?v=air-losses-1';
+import {mountAviationUI} from './aviation-ui.js?v=recon-los-1';
 import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=air-losses-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
@@ -16,7 +16,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=air-losses-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=recon-los-1";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -31,7 +31,7 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js?v=facility-rules-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=aviation-operations-1";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=air-losses-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=recon-los-1";
 import {
   getShipDetailLines,
   getReconConditions
@@ -44,7 +44,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel
 } from "../js/catalog-seed.js?v=air-training-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=air-losses-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=recon-los-1";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=air-training-1";
@@ -62,7 +62,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=air-losses-1";
+} from "./simulation-store.js?v=recon-los-1";
 
 import {
   gridPosition,

@@ -9,7 +9,7 @@ import {parseDamageRule} from './weapon-damage-rule.js';
 import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-losses-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=recon-los-1';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}

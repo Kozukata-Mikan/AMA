@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import {Worker as NodeWorker} from 'node:worker_threads';
 import {flatTerrain,source} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-losses-1';
-import {executeBackgroundTask} from '../tactical-map/background-tasks.js?v=air-losses-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=recon-los-1';
+import {executeBackgroundTask} from '../tactical-map/background-tasks.js?v=recon-los-1';
 import {readSave} from '../js/save-database.js';
 import {applyBrush,readTerrainVertex,resizeTerrain} from '../tactical-map/terrain-data.js';
-import {createTerrainStrokeSession} from '../tactical-map/terrain-stroke-session.js?v=air-losses-1';
-import {runBackgroundTask,shutdownBackground,subscribeBackgroundStatus} from '../tactical-map/background-client.js?v=air-losses-1';
+import {createTerrainStrokeSession} from '../tactical-map/terrain-stroke-session.js?v=recon-los-1';
+import {runBackgroundTask,shutdownBackground,subscribeBackgroundStatus} from '../tactical-map/background-client.js?v=recon-los-1';
 class BrowserWorker{
  constructor(){this.worker=new NodeWorker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error))}
  postMessage(data){this.worker.postMessage(data)}terminate(){this.worker.terminate()}

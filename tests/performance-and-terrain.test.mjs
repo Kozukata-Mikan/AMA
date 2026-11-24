@@ -7,11 +7,11 @@ import assert from 'node:assert/strict';
 import { createDemoTerrain, resizeTerrain, sampleTerrain, gridPosition, applyBrush, validateTerrain, readTerrainVertex } from '../tactical-map/terrain-data.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from '../tactical-map/terrain-render-grid.js';
 import { createBattleStore } from '../js/battle-state.js?v=air-losses-1';
-import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=air-losses-1';
-import { isTerrainBlocked } from '../tactical-map/simulation-features.js?v=air-losses-1';
+import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=recon-los-1';
+import { isTerrainBlocked } from '../tactical-map/simulation-features.js?v=recon-los-1';
 import { traceAttackTerrainLine } from '../tactical-map/attack-terrain-runtime.js';
-import { runEquipmentRegressionTests } from '../tactical-map/simulation-equipment-regression.js?v=air-losses-1';
-import { runRangeRegression } from '../tactical-map/simulation-range-regression.js?v=air-losses-1';
+import { runEquipmentRegressionTests } from '../tactical-map/simulation-equipment-regression.js?v=recon-los-1';
+import { runRangeRegression } from '../tactical-map/simulation-range-regression.js?v=recon-los-1';
 
 const copy = v => JSON.parse(JSON.stringify(v));
 const data = new Map();
@@ -143,8 +143,8 @@ test('viewport completely outside the map renders no cells',()=>{
 
 import { ensureShipRuntime } from '../tactical-map/ship-runtime.js';
 import { ensureUnitCombatRuntime } from '../tactical-map/equipment-runtime.js';
-import { finishSpecialPhase, finishTurn, recordSinkingStarts } from '../tactical-map/simulation-phase-finish.js?v=air-losses-1';
-import { startPlannedRescues } from '../tactical-map/simulation-rescue.js?v=air-losses-1';
+import { finishSpecialPhase, finishTurn, recordSinkingStarts } from '../tactical-map/simulation-phase-finish.js?v=recon-los-1';
+import { startPlannedRescues } from '../tactical-map/simulation-rescue.js?v=recon-los-1';
 import { ship } from './fixtures.mjs';
 function rescueScene(){
  const s={turn:{number:1,phaseId:'special',elapsedMinutes:0},instances:[ship('rescuer'),ship('target','ally',1)],groups:[],rescuePlans:[],rescueTasks:[]};
