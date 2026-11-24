@@ -1,3 +1,4 @@
+import {airborneUnit} from './air-ground-rules.js';
 const EPSILON = 1e-7;
 const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -110,6 +111,9 @@ export function readFiringArc(actor, group, target) {
   const dx = target.x - actor.x;
   const dy = target.y - actor.y;
 
+  if (Math.hypot(dx, dy) <= EPSILON && airborneUnit(actor) && (actor.altitude??0)>(target.altitude??0)+EPSILON) {
+    return {positionKind:positionKind(group.position,actor.branch),relativeDegrees:0,side:"right"};
+  }
   if (Math.hypot(dx, dy) <= EPSILON) {
     fail(
       "同一座標の目標は射界方向を確定できません。",

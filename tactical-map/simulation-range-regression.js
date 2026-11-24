@@ -1,7 +1,7 @@
 import {
   selectRangeOccurrences,
   validateRangeSelection
-} from "./range-projection-runtime.js?v=air-combat-2";
+} from "./range-projection-runtime.js?v=flight-missions-1";
 
 import {
   withRangeCommandTarget,
@@ -11,7 +11,7 @@ import {
 import {
   expandFormationMemberIds,
   validateFormationTopology
-} from "./formation-target-runtime.js?v=air-combat-2";
+} from "./formation-target-runtime.js?v=flight-missions-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

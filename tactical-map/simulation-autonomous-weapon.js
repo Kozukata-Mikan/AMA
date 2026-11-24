@@ -1,4 +1,4 @@
-import {readWeaponProfile, readWeaponTargetScope} from "./weapon-profile-runtime.js?v=air-combat-2";
+import {readWeaponProfile, readWeaponTargetScope} from "./weapon-profile-runtime.js?v=flight-missions-1";
 import {getMaximumCannonHitCredits} from "./cannon-damage-runtime.js?v=aviation-operations-1";
 import {resolveNumericDamage} from "./numeric-damage-runtime.js";
 import {parseDamageRule} from "./weapon-damage-rule.js";

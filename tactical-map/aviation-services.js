@@ -1,6 +1,6 @@
-import {supportCapacity} from './support-equipment.js?v=air-combat-2';
+import {supportCapacity} from './support-equipment.js?v=flight-missions-1';
 import {buildingAlive,buildingMountAvailable,recoverBuildingAtStart} from './building-state.js?v=facility-rules-1';
-import {hasAircraftTemplate,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-combat-2';
+import {hasAircraftTemplate,ensureAircraftRuntime} from './aircraft-runtime.js?v=flight-missions-1';
 import {navalKind} from './naval-kind.js';
 export const serviceProviderAlive=u=>u&&Number.isFinite(u.x)&&Number.isFinite(u.y)&&(u.branch==='building'?buildingAlive(u):u.branch==='navy'?!['sinking','sunk'].includes(u.shipState?.status):hasAircraftTemplate(u)?u.aircraftState?.mission==='airborne'&&u.aircraftState.status==='operational':u.currentHp>0);
 export function remoteStations(scene){

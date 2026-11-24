@@ -1,13 +1,14 @@
+import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js';
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
-import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-combat-2';
-import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=facility-rules-1';
-import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-combat-2';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=air-combat-2";
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=flight-missions-1';
+import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=flight-missions-1';
+import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=flight-missions-1';
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=flight-missions-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=air-combat-2";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=flight-missions-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=air-combat-2";
+import { getCatalogStore } from "../js/catalog-store.js?v=flight-missions-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -18,7 +19,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=air-combat-2";
+} from "../js/catalog-seed.js?v=flight-missions-1";
 
 // ===== 图鉴界面 =====
 
@@ -767,6 +768,7 @@ export function mountCatalogEditor({
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.type === "air-attack-modes" ? (value??[]).map(id=>AIR_ATTACK_MODES.find(m=>m[0]===id)?.[1]??id).join(" / ")
             : field.type === "aircraft-type" ? AIRCRAFT_TYPES.find(([id])=>id===value)?.[1]
             : field.type === "air-training" ? ({novice:'見習い（反応力0）',regular:'普通（反応力1）',elite:'精鋭（反応力2）',ace:'エース（反応力3）'}[value] ?? value ?? '普通（反応力1）')
             : field.type === "support-effect" ? SUPPORT_EFFECTS.find(([id])=>id===(value??""))?.[1]
@@ -1001,6 +1003,10 @@ export function mountCatalogEditor({
      if (field.type === "checkbox") {
         control = input("", "checkbox");
         control.checked = value === true;
+      } else if (field.type === "air-attack-modes") {
+        control=node("div");const boxes=AIR_ATTACK_MODES.map(([id,name])=>{const box=input("","checkbox");box.checked=(value??[]).includes(id);labeled(control,name,box);return[id,box];});control.read=()=>boxes.filter(([,b])=>b.checked).map(([id])=>id);
+      } else if (["armor-grade","penetration-grade"].includes(field.type)) {
+        const values=field.type==="penetration-grade"?["-",...ARMOR_OPTIONS]:ARMOR_OPTIONS;const old=value===0||value==="0"?"-":String(value??"").trim().toUpperCase().replace(/[−–—－]/g,"-");control=select([["","未設定"],...values.map(v=>[v,v==="-"?"0（穿深なし）":v]),...(old&&!values.includes(old)?[[old,old+"（旧資料・要確認）"]]:[])],old);
       } else if (field.type === "faction") {
 
         control = select(FACTION_OPTIONS, value ?? "");
@@ -1058,6 +1064,7 @@ export function mountCatalogEditor({
       }
 
       controls.set(field.key, control);
+      if(field.type==="air-attack-modes"){const box=node("fieldset");box.dataset.field=field.key;box.append(node("legend",field.label),control,node("small",field.definition));sectionHosts.get(field.key).append(box);continue;}
 
       labeled(
         sectionHosts.get(field.key),
@@ -1401,7 +1408,7 @@ export function mountCatalogEditor({
         for (const field of fields) {
           const control = controls.get(field.key);
 
-          if (field.type === "training-traits") {
+          if (typeof control.read === "function") {
             setPath(next, field.key, control.read());
             continue;
           }
@@ -1474,7 +1481,7 @@ export function mountCatalogEditor({
     controls.get("supportEffect")?.addEventListener("change",()=>{if(controls.get("supportEffect").value)controls.get("kind").value="support";});
     controls.get("branch")?.addEventListener("change",()=>{
       const next=copy(draft);
-      for(const field of fields){const control=controls.get(field.key);setPath(next,field.key,field.type==='training-traits'?control.read():field.type==='checkbox'?control.checked:['number','optional-number','size','building-size','runway-count'].includes(field.type)?(control.value.trim()?Number(control.value):null):control.value);}
+      for(const field of fields){const control=controls.get(field.key);setPath(next,field.key,typeof control.read==='function'?control.read():field.type==='checkbox'?control.checked:['number','optional-number','size','building-size','runway-count'].includes(field.type)?(control.value.trim()?Number(control.value):null):control.value);}
       next.hullNames=hullNames.value.split(/\r?\n/).filter(Boolean);next.description=description.value;
       next.mounts=mountReaders.filter(reader=>reader.active).map(reader=>reader.read());next.embarked=["building","air"].includes(draft.branch) ? (draft.embarked ?? []) : embarkedReaders.filter(reader=>reader.active).map(reader=>reader.read());
       if(readComplement)next.aviationComplement=readComplement();

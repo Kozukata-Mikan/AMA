@@ -1,10 +1,11 @@
+import {AIR_ATTACK_MODES,airAttackModes,airborneUnit} from './air-ground-rules.js';
 import {
   readRangeCommandTarget
 } from "./simulation-range-command.js";
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=air-combat-2";
+} from "./weapon-profile-runtime.js?v=flight-missions-1";
 
 
 function fail(message) {
@@ -324,7 +325,8 @@ export function createRangeAttackPanel({ store, unitId }) {
   const message = document.createElement("p");
   message.setAttribute("role", "status");
 
-  root.append(heading, body, message);
+  const method=document.createElement("select"),methodLabel=document.createElement("label"),methodTitle=document.createElement("span");methodTitle.textContent="対地・対艦攻撃方式";methodLabel.append(methodTitle,method);
+  root.append(heading,methodLabel,body,message);
 
   let disposed = false;
 
@@ -334,6 +336,7 @@ export function createRangeAttackPanel({ store, unitId }) {
     body.replaceChildren();
 
     try {
+      const unit=store.getSceneSnapshot().instances.find(u=>u.instanceId===unitId),oldMethod=method.value;methodLabel.hidden=!airborneUnit(unit);method.replaceChildren(new Option("攻撃方式を選択",""),...AIR_ATTACK_MODES.filter(m=>airAttackModes(unit).includes(m[0])).map(m=>new Option(m[1],m[0])));if([...method.options].some(o=>o.value===oldMethod))method.value=oldMethod;
       const report = store.getAttackGroupReport(unitId);
       const targets = store.getRangeAttackTargetOptions(unitId);
       const plans = store.getAttackCommands(unitId);
@@ -404,6 +407,7 @@ export function createRangeAttackPanel({ store, unitId }) {
 
             await store.saveAttackCommands({
               unitId,
+              attackMethod:method.value||null,
               assignments: [{
                 groupId: group.groupId,
                 ...selection

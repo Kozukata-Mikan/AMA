@@ -1,4 +1,5 @@
-import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=facility-rules-1';
+import {validateFlightPlan} from './flight-plan-data.js';
+import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=flight-missions-1';
 import {TURN_DURATION_MINUTES} from './rules-engine.js';
 export const hasAircraftTemplate=unit=>unit?.branch==='air'&&unit.snapshot?.aircraft?.version===1;
 const fail=message=>{throw new Error(message);};
@@ -26,6 +27,7 @@ export function ensureAircraftRuntime(unit){
  normalizeAircraftPosition(unit);const profile=readAircraftProfile(unit);
  unit.aircraftState??={version:1,status:unit.currentHp===0?'heavy':'operational',mission:'airborne',remainingAirTime:profile.maximumAirTime,remainingEndurance:profile.enduranceBudget,lastElapsedTurn:0,activeLoadoutId:null,destroyedReason:null};
  const s=unit.aircraftState;
+ validateFlightPlan(s.flightPlan);
  s.normalHitRemainder??=0;s.underwaterStrengthUses??=0;
  if(s.normalHitRemainder!==undefined&&(!Number.isSafeInteger(s.normalHitRemainder)||s.normalHitRemainder<0||s.normalHitRemainder>2))fail('航空機の通常命中蓄積が不正です。');
  if(s.version!==1||!['operational','heavy','destroyed'].includes(s.status)||!['airborne','parked','ready','launching','landing'].includes(s.mission)||!Number.isSafeInteger(s.remainingAirTime)||s.remainingAirTime<0||s.remainingAirTime>profile.maximumAirTime||!Number.isFinite(s.remainingEndurance)||s.remainingEndurance<0||s.remainingEndurance>profile.enduranceBudget||!Number.isSafeInteger(s.lastElapsedTurn)||s.lastElapsedTurn<0)fail('航空機の保存状態が不正です。');
@@ -74,6 +76,6 @@ export function aircraftDetailLines(unit){
  if(!hasAircraftTemplate(unit))return[];
  const data=unit.snapshot.aircraft;
  const lines=[`発動機数 / 最大耐性：${data.engines} / 必要駐機枠：${data.engines}`,`乗員数：${data.crew}`,`機動性：${data.maneuverability||'未設定'} / 上昇限度：${data.ceiling??'未設定'}`,`最高速度：${unit.snapshot.naval?.speedKnots??'未設定'}ノット`];
- if(unit.observationOwn&&unit.aircraftState){const s=unit.aircraftState;lines.push(`状態：${({operational:'行動可能',heavy:'大破（移動のみ）',destroyed:'撃墜・墜落'})[s.status]}`,`残り滞空時間：${s.remainingAirTime}ラウンド / 残り航続距離：${s.remainingEndurance.toFixed(1)}マス`);}
+ if(unit.observationOwn&&unit.aircraftState){const s=unit.aircraftState;if(s.flightPlan)lines.push(`航空任務：${s.flightPlan.kind} / ${({outbound:'往路',attack:'攻撃待機',returning:'帰投中',complete:'完了'})[s.flightPlan.stage]}${s.flightPlan.notice?' / '+s.flightPlan.notice:''}`);lines.push(`状態：${({operational:'行動可能',heavy:'大破（移動のみ）',destroyed:'撃墜・墜落'})[s.status]}`,`残り滞空時間：${s.remainingAirTime}ラウンド / 残り航続距離：${s.remainingEndurance.toFixed(1)}マス`);}
  return lines;
 }

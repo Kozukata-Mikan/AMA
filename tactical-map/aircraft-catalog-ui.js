@@ -1,5 +1,5 @@
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
-import {aircraftAirTime,aircraftParkingSlots,AIRCRAFT_TYPES,isDroneType} from '../js/aircraft-template.js?v=facility-rules-1';
+import {aircraftAirTime,aircraftParkingSlots,AIRCRAFT_TYPES,isDroneType} from '../js/aircraft-template.js?v=flight-missions-1';
 const node=(tag,text='',className='')=>{const n=document.createElement(tag);n.textContent=text;if(className)n.className=className;return n;};
 const button=(text,fn)=>{const b=node('button',text);b.type='button';b.addEventListener('click',fn);return b;};
 function field(parent,title,control){const label=node('label');label.append(node('span',title),control);parent.append(label);return control;}

@@ -39,6 +39,8 @@ export function normalizeAircraft(value={}) {
   const remoteRange=value.remoteRange??null;
   if(remoteRange!==null&&(!Number.isFinite(remoteRange)||remoteRange<0))throw new Error('遠隔操作範囲の値が不正です。');
   const training=String(value.training??'').trim();
+  const attackModes=value.attackModes??[];
+  if(!Array.isArray(attackModes)||new Set(attackModes).size!==attackModes.length||attackModes.some(m=>!['glide','dive','torpedo','level','high','bvr'].includes(m)))throw new Error('攻撃方式の一覧が不正です。');
   const loadouts=value.loadouts??[];
   if(!Array.isArray(loadouts)||loadouts.length>100)throw new Error('搭載構成は100件以内の一覧で指定してください。');
   const ids=new Set();
@@ -52,7 +54,7 @@ export function normalizeAircraft(value={}) {
       return{equipmentId:m.equipmentId,count:integer(m.count??1,'搭載装備数',1)};
     })};
   });
-  return {...value,version:1,type,engines,crew,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,remoteRange,loadouts:normalized,
+  return {...value,version:1,type,engines,crew,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,remoteRange,attackModes:[...attackModes],loadouts:normalized,
     operations:{takeoff:'runway-or-catapult',preparation:'preparation-area'}};
 }
 export const aircraftParkingSlots = aircraft => normalizeAircraft(aircraft).engines;

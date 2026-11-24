@@ -1,11 +1,11 @@
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=air-combat-2";
+} from "./ship-runtime.js?v=flight-missions-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=air-combat-2";
+} from "./equipment-runtime.js?v=flight-missions-1";
 
 import {
   ensureEquipmentItemRuntime,
@@ -15,17 +15,17 @@ import {
   getEquipmentControlCandidates,
   readEquipmentItemState,
   getRetainedEquipmentDiscovery
-} from "./equipment-item-runtime.js?v=air-combat-2";
+} from "./equipment-item-runtime.js?v=flight-missions-1";
 
 import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=air-combat-2";
+} from "./simulation-rescue.js?v=flight-missions-1";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=air-combat-2";
+} from "./simulation-rescue-runtime.js?v=flight-missions-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

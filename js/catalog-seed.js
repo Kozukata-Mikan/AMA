@@ -1,4 +1,4 @@
-import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=air-combat-2";
+import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=flight-missions-1";
 // ===== 图鉴初始资料与字段定义 =====
 // 界面文案使用日文，注释使用中文。
 // 未确定的规则只保存参数，不执行计算。
@@ -138,8 +138,8 @@ export const UNIT_FIELDS = [
   {
     key: "naval.armor",
     label: "装甲",
-    type: "text",
-    definition: "防護等級。将来、装備の穿深との比較に使用します。比較表は未設定です。"
+    type: "armor-grade",
+    definition: "防護等級。F--からS++、Uまで選択できます。穿深との比較に使用します。"
   },
   {
     key: "naval.speedKnots",
@@ -179,6 +179,7 @@ export const AIRCRAFT_FIELDS = [
   {key:'aircraft.engines',label:'発動機数 / 最大耐性',type:'number',definition:'発動機数が最大耐性です。耐性0は大破、その後の被攻撃で撃墜。小破・中破はありません。'},
   {key:'aircraft.crew',label:'乗員数',type:'number',definition:'搭乗する乗員の人数。無人機の初期値は0。現時点では性能補正はありません。'},
   {key:'naval.speedKnots',label:'最高速度（ノット）',type:'optional-number',definition:'艦船と同じ速度換算を使用します。滞空時間は航続距離 ÷（最高速度 ÷ 2）の小数切捨てです。'},
+  {key:'aircraft.attackModes',label:'使用可能な対地・対艦攻撃方式',type:'air-attack-modes',definition:'複数選択できます。高度差は目標との実高度差で判定し、方式の不利判定を通常命中修正に加算します。'},
   {key:'aircraft.maneuverability',label:'機動性',type:'text',definition:'1R・2Rなど。空戦では小隊ごとに指定枚数の硬貨を投げ、表の数で機動対決を行います。'},
   {key:'aircraft.ceiling',label:'上昇限度（高度単位）',type:'optional-number',definition:'移動できる最大高度。地図の高度1単位は100mです。'},
   {key:'naval.endurance',label:'航続力',type:'text',definition:'艦船と同じ距離表記。1kは1000。入力すると滞空時間を自動計算します。'},
@@ -244,7 +245,7 @@ export const EQUIPMENT_FIELDS = [
   {
     key: "penetration",
     label: "穿深",
-    type: "text",
+    type: "penetration-grade",
     definition: "装甲貫通能力の等級。「-」は穿深0を表します。" +
       "図鑑の編集・保存だけでは傷害計算を実行しません。"
   },
@@ -252,7 +253,7 @@ export const EQUIPMENT_FIELDS = [
     key: "ceilingU",
     label: "射高（u）",
     type: "optional-number",
-    definition: "射撃高度制限の値。高度の基準面と判定方法は未設定です。"
+    definition: "発射位置より上方への最大相対射高です。航空機・空中艦は下方にも射撃できます。"
   },
   {
     key: "range",

@@ -1,11 +1,11 @@
 import {chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {aviationRunways} from './aviation-operations.js?v=air-combat-2';
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=air-combat-2';
+import {aviationRunways} from './aviation-operations.js?v=flight-missions-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=flight-missions-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-combat-2';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=flight-missions-1';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
 import {resolveCannonImpact,summarizeCannonImpacts} from './cannon-damage-runtime.js?v=aviation-operations-1';
-import {readCombatTargetProfile,combatTargetState,resolveBuildingCannonImpact} from './combat-target-runtime.js?v=air-combat-2';
+import {readCombatTargetProfile,combatTargetState,resolveBuildingCannonImpact} from './combat-target-runtime.js?v=flight-missions-1';
 const area=value=>({'后部':'後部','中部1':'中部①','中部2':'中部②','两舷':'両舷','两舷部':'両舷'})[value]??value;
 export function explodeRunwayPayloads(scene,host,positions,coinSource,strengthOverride){
  const result={buildingHits:[],hpDamage:0,hasDamageEffect:false,effects:[],cannonImpacts:[],numericReports:[],aircraftIds:[],runwayIds:[],normalHitRemainder:combatTargetState(host)?.normalHitRemainder??0};

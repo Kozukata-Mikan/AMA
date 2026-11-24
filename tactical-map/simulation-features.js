@@ -1,28 +1,29 @@
-import {observedAirCombat} from './air-combat-report.js?v=air-combat-2';
-import {aircraftMayFly} from './aviation-time.js?v=air-combat-2';
+import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js';
+import {observedAirCombat} from './air-combat-report.js?v=flight-missions-1';
+import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=air-combat-2';
-import {reconcileAviation} from './aviation-operations.js?v=air-combat-2';
-import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-combat-2';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=air-combat-2";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=air-combat-2";
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=flight-missions-1';
+import {reconcileAviation} from './aviation-operations.js?v=flight-missions-1';
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=flight-missions-1';
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=flight-missions-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=flight-missions-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, navalKind, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=air-combat-2";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=flight-missions-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=air-combat-2";
+} from "./ship-runtime.js?v=flight-missions-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-combat-2";
+} from "./simulation-rescue.js?v=flight-missions-1";
 
 import {
   createShipEffectsState,
@@ -33,11 +34,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=air-combat-2";
+} from "./equipment-item-runtime.js?v=flight-missions-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=air-combat-2";
+} from "./simulation-autonomous-rescue.js?v=flight-missions-1";
 
 import {
   routeLength,
@@ -475,6 +476,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         delete observed.equipmentState;
         delete observed.trainingState;
         delete observed.aircraftState;
+        delete observed.flightPlan;
         delete observed.snapshot.aircraftSnapshots;
         delete observed.snapshot.aviationComplement;
         delete observed.supportLocked;
@@ -1663,6 +1665,8 @@ validationScene.controls.enemyAutonomy = false;
           }))
         );
 
+        const missionRoutes=flightMissionRoutes(scene,new Set(routes.map(r=>r.instanceId)));
+        routes.push(...missionRoutes);
         const movement = resolveMovementRoutes(
           scene,
           routes,
@@ -1702,6 +1706,7 @@ validationScene.controls.enemyAutonomy = false;
           movingState.remainingEndurance=Math.max(0,movingState.remainingEndurance-destination.distance);
         }
 
+        finishMissionMovement(scene,movement.destinations,missionRoutes);
         for (const plan of checked.filter(item=>item.formation && ["formation-layout","formation-follow"].includes(item.mode))) {
           const complete = plan.destinations.every(target=>{
             const unit = scene.instances.find(item=>item.instanceId===target.instanceId);

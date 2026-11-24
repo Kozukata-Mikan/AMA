@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=air-combat-2';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=flight-missions-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';

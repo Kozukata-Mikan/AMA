@@ -1,5 +1,6 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-2";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=air-combat-2";
+import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js';
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=flight-missions-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=flight-missions-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 
@@ -58,6 +59,8 @@ export function mountAttackUI(store) {
   const actor = element("select");
   const fleetPicker = createFleetUnitSelector(actor, {label:"攻撃する編隊"});
   const target = element("select");
+  const attackMethod=element("select"),attackMethodControl=labeled("対地・対艦攻撃方式",attackMethod);
+  function syncAttackMethod(scene){const unit=scene.instances.find(u=>u.instanceId===actor.value),old=attackMethod.value;attackMethodControl.hidden=!airborneUnit(unit);attackMethod.replaceChildren(new Option("攻撃方式を選択",""),...AIR_ATTACK_MODES.filter(m=>airAttackModes(unit).includes(m[0])).map(m=>new Option(m[1]+(m[2]?`（不利${m[2]}）`:""),m[0])));restoreOption(attackMethod,old);}
 
     const followFormationAttack = element("input");
   followFormationAttack.type = "checkbox";
@@ -649,7 +652,8 @@ function selectableGroups() {
       const receipt = await store.saveAttackCommands({
         unitId: submittedActorId,
         assignments,
-        followFormationAttack: followFormationAttack.checked
+        followFormationAttack: followFormationAttack.checked,
+        attackMethod:attackMethod.value||null
       }, submittedRevision);
 
 
@@ -900,6 +904,7 @@ toolbar.append(selectAll, clearAll);
 panel.append(
   fleetPicker.field,
   labeled("行動する単艦", actor),
+  attackMethodControl,
   element("p", "使用する装備組"),
   toolbar,
   selectionInfo,
@@ -1029,6 +1034,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
       selectedActorId = actor.value;
     }
 
+   syncAttackMethod(scene);
    syncFollowControl(scene);
    refillTargets(scene);
    refreshReport();
@@ -1045,6 +1051,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
 
   const scene = store.getSceneSnapshot();
 
+  syncAttackMethod(scene);
   syncFollowControl(scene, true);
   refillTargets(scene);
   refreshReport();

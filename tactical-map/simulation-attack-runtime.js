@@ -1,6 +1,6 @@
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { resolveAttackExecutionPhase } from "./attack-order-runtime.js";
-import { readWeaponProfile } from "./weapon-profile-runtime.js?v=air-combat-2";
+import { readWeaponProfile } from "./weapon-profile-runtime.js?v=flight-missions-1";
 
 
 // 攻击计划的持久化与结构校验。
@@ -402,6 +402,7 @@ export function replaceAttackCommands(
     unitId,
     groupId: request.groupId,
     ...targetFields(request),
+    attackMethod:request.attackMethod??null,
     createdAt,
     boundaries: [...request.boundaries]
   }));

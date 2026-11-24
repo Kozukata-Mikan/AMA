@@ -1,15 +1,17 @@
-import {aircraftMayFly} from './aviation-time.js?v=air-combat-2';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-combat-2';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=air-combat-2';
+import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js';
+import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
+import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=flight-missions-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=flight-missions-1';
 import {buildingAlive,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-combat-2';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-combat-2';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-combat-2';
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=flight-missions-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=flight-missions-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=flight-missions-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=aviation-operations-1';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-combat-2';
-import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-combat-2";
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=flight-missions-1';
+import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=flight-missions-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-combat-2";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=flight-missions-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -21,7 +23,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=air-combat-2";
+} from "./simulation-attack-batch.js?v=flight-missions-1";
 
 
 
@@ -31,16 +33,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=air-combat-2";
+} from "./ship-runtime.js?v=flight-missions-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=air-combat-2";
+} from "./equipment-runtime.js?v=flight-missions-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=air-combat-2";
+} from "./simulation-features.js?v=flight-missions-1";
 
 import {
   getEquipmentDamagePlan,
@@ -50,7 +52,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=air-combat-2";
+} from "./equipment-item-runtime.js?v=flight-missions-1";
 
 
 import {
@@ -83,32 +85,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-combat-2";
+} from "./simulation-rescue.js?v=flight-missions-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=air-combat-2";
+} from "./simulation-phase-finish.js?v=flight-missions-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=air-combat-2";
+} from "./weapon-profile-runtime.js?v=flight-missions-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=air-combat-2";
+} from "./simulation-attack-runtime.js?v=flight-missions-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=air-combat-2";
+} from "./weapon-profile-runtime.js?v=flight-missions-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=air-combat-2";
+} from "./simulation-features.js?v=flight-missions-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=air-combat-2";
+} from "./formation-target-runtime.js?v=flight-missions-1";
 
 import {
   readRangeCommandTarget
@@ -117,11 +119,11 @@ import {
 import {
   readFiringArc,
   assertBroadsideQuotas
-} from "./weapon-firing-arc.js?v=air-combat-2";
+} from "./weapon-firing-arc.js?v=flight-missions-1";
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=air-combat-2";
+} from "./range-projection-runtime.js?v=flight-missions-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -857,12 +859,14 @@ try {
     }
   } else if (
     target.underwater === true ||
-    relativeHeight < -EPSILON
+    relativeHeight < -EPSILON && !airborneUnit(actor)
   ) {
     ineligible(
       "通常武器は水中・下方の目標を攻撃できません。"
     );
   }
+
+  const airAttack = profile.pasOnly ? {penalty:0} : checkAirAttackMode(actor,target,entry.attackMethod,from.z,to.z);
 
   const rangeExceeded =
     trace.distance3D > profile.range + EPSILON;
@@ -1027,7 +1031,7 @@ try {
     electronicBonuses: 0,
     electronicPenalties: 0,
     globalBonuses: 0,
-    globalPenalties: longRangePenalty
+    globalPenalties: longRangePenalty + airAttack.penalty
   });
 
 
@@ -1066,7 +1070,7 @@ function assertStartStateUnchanged(scene, start) {
       JSON.stringify(current.shipState) !==
         JSON.stringify(oldUnit.shipState) ||
       JSON.stringify(current.buildingState)!==JSON.stringify(oldUnit.buildingState) ||
-      JSON.stringify(current.aircraftState)!==JSON.stringify(oldUnit.aircraftState) ||
+      JSON.stringify(current.aircraftState?{...current.aircraftState,flightPlan:undefined}:undefined)!==JSON.stringify(oldUnit.aircraftState?{...oldUnit.aircraftState,flightPlan:undefined}:undefined) ||
       current.currentHp !== oldUnit.currentHp ||
       equipmentDamageSignature(current) !==
       equipmentDamageSignature(oldUnit) ||
@@ -2138,6 +2142,7 @@ export function filterUnreachableAttackCommands(
 
 export function prepareSettlementAttackPlan(scene) {
   const working = copySceneWithSpecialHistory(scene);
+  appendMissionAttacks(working);
   preflightAirCombat(working);
 
   initializeSettlementRuntime(working);
@@ -2149,6 +2154,7 @@ export function prepareSettlementAttackPlan(scene) {
 
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
+  appendMissionAttacks(working);
   const currentCommands = working.attackRuntime.commands.filter(
     command =>
       command.turnNumber === working.turn.number &&
@@ -2271,7 +2277,8 @@ export function settleAttackPhase(scene, coinSource) {
   initializeRescueState(working);
   initializeRayTargetRuntime(working);
 
-   const currentCommands = working.attackRuntime.commands.filter(
+   appendMissionAttacks(working);
+  const currentCommands = working.attackRuntime.commands.filter(
     command =>
       command.turnNumber === context.turnNumber &&
       command.phaseId === context.phaseId
@@ -2433,6 +2440,7 @@ for (const report of resourceReports) {
 
   initializeRescueState(working);
 
+  finishMissionAttacks(working,hitStep.reports);
   const report = {
     version: 1,
     step: "attack-batch",

@@ -1,20 +1,20 @@
-import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-combat-2';
-import {aircraftMayFly} from './aviation-time.js?v=air-combat-2';
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=flight-missions-1';
+import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
 import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=air-combat-2";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=air-combat-2";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-combat-2";
-import { ensureShipRuntime } from "./ship-runtime.js?v=air-combat-2";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=flight-missions-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=flight-missions-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=flight-missions-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=flight-missions-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-combat-2";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=flight-missions-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-combat-2";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-combat-2";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=flight-missions-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=flight-missions-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-combat-2";
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-combat-2";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=flight-missions-1";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=flight-missions-1";
 
 
 
@@ -353,13 +353,13 @@ function prepareCommand(startScene, command, visibilityBySide) {
 );
 
 
-  if (!["navy","building"].includes(actor.branch)&&!(hasAircraftTemplate(actor)&&profile.pasOnly)) {
+  if (!["navy","building"].includes(actor.branch)&&!(hasAircraftTemplate(actor))) {
     fail("この軍種の正式な攻撃批次処理は未接続です。");
   }
 
     // 同时供正式阶段检查和当前状态预览使用，
   // 因此不把所有错误都描述成“阶段开始时”。
-  if(hasAircraftTemplate(actor)&&(!aircraftCanAct(actor,'attack')||!aircraftMayFly(startScene,actor)))fail('行動不能の航空機はPAS射撃できません。');
+  if(hasAircraftTemplate(actor)&&(!aircraftCanAct(actor,'attack')||!aircraftMayFly(startScene,actor)))fail('行動不能の航空機は射撃できません。');
   if(actor.branch==='building'&&(!buildingAlive(actor)||!buildingMountAvailable(actor,group.mountIndex)))fail('中心または武器配置の耐性が0のため攻撃できません。');
   if(actor.airshipBaseState&&actor.airshipBaseState.mission!=='airborne')fail('基地作業中の空中艦は攻撃できません。');
   if (["sinking", "sunk"].includes(actor.shipState?.status)) {
@@ -558,6 +558,7 @@ let memberIds;
     unitId: actor.instanceId,
     groupId: group.id,
     side: actor.side,
+    attackMethod:command.attackMethod??null,
     profile: copy(profile),
     targetRef: copy(target.targetRef),
     specifiedTargetIds: [...target.specifiedTargetIds],

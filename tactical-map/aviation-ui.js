@@ -1,8 +1,9 @@
-import {isAirshipBase,isAirship} from './aviation-services.js?v=air-combat-2';
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=air-combat-2';
-import {aviationRunways,aviationHostAlive} from './aviation-operations.js?v=air-combat-2';
-import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=facility-rules-1';
-import {supportCapacity} from './support-equipment.js?v=air-combat-2';
+import {createFlightMissionEditor} from './flight-mission-ui.js';
+import {isAirshipBase,isAirship} from './aviation-services.js?v=flight-missions-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=flight-missions-1';
+import {aviationRunways,aviationHostAlive} from './aviation-operations.js?v=flight-missions-1';
+import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=flight-missions-1';
+import {supportCapacity} from './support-equipment.js?v=flight-missions-1';
 const node=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAviationUI(store){
  const panel=node('details');panel.open=true;panel.dataset.toolCategory='progress';panel.dataset.workflowPanel='aviation';panel.append(node('summary','航空運用｜整備・離陸・着陸'));
@@ -18,6 +19,8 @@ export function mountAviationUI(store){
  else planes=planes.filter(p=>p.aircraftState.hostId===host.value&&p.aircraftState.status==='operational'&&p.currentHp===p.snapshot.maxHp&&(operation.value==='prepare'?['parked','ready'].includes(p.aircraftState.mission)&&p.aircraftState.preparedTurn!==scene.turn.number:p.aircraftState.mission==='ready'&&p.aircraftState.runwayId===runway.value));
  return planes;
  }
+ const selectedMissionPlanes=()=>{const scene=store.getSceneSnapshot(),n=Number(count.value);if(!Number.isSafeInteger(n)||n<1)return [];const chosen=selection(scene).filter(p=>p.unitId===type.value&&(p.aircraftState.formationId??(p.aircraftState.clusterId?null:p.groupId)??'')===formation.value);if(n>chosen.length)return [];return chosen.slice(0,n);};
+ const missionEditor=createFlightMissionEditor(store,selectedMissionPlanes);panel.insertBefore(missionEditor.panel,note);
  function sync(){
   const scene=store.getSceneSnapshot(),hosts=scene.instances.filter(h=>h.observationOwn&&['navy','building'].includes(h.branch)&&(h.branch==='building'&&h.snapshot.building?.kind==='airport'||aviationRunways(h).length||supportCapacity(h,'parking-stand')));
   reset(host,[['','母艦・飛行場を選択'],...hosts.map(h=>[h.instanceId,h.name])]);const h=hosts.find(h=>h.instanceId===host.value);
@@ -34,9 +37,10 @@ export function mountAviationUI(store){
   const ships=base?scene.instances.filter(u=>u.observationOwn&&isAirship(u)&&!['sinking','sunk'].includes(u.shipState?.status)&&(operation.value==='landing'?(!u.airshipBaseState||u.airshipBaseState.mission==='airborne')&&Math.hypot(u.x-h.x,u.y-h.y)<=25:u.airshipBaseState?.hostId===h.instanceId&&['parked','ready'].includes(u.airshipBaseState.mission))):[];
   reset(airship,ships.map(u=>[u.instanceId,`${u.name}（${({airborne:'飛行中',parked:'入港・未整備',ready:'整備済み'})[u.airshipBaseState?.mission??'airborne']??'起降待ち'}）`]));
   if(base){action.disabled=scene.turn.phaseId!=='start'||!aviationHostAlive(h)||!r||!ships.length;info.textContent=info.textContent.replace(/対象 \d+機/,`対象 ${ships.length}隻`);info.textContent+= ' / 空中艦は地図上に留まり、基地作業中は移動・攻撃を停止します。';}
+  missionEditor.panel.hidden=base||operation.value!=='takeoff';missionEditor.sync();
   const stored=scene.instances.filter(p=>p.observationOwn&&hasAircraftTemplate(p)&&p.aircraftState?.hostId===h?.instanceId&&p.aircraftState.status!=='destroyed');const counts=new Map();for(const p of stored){const key=({airborne:'飛行中',parked:'未整備',ready:'整備済み・滑走路待機',launching:'離陸待ち（次R）',landing:'着陸待ち（次R）'})[p.aircraftState.mission]??p.aircraftState.mission;counts.set(key,(counts.get(key)??0)+1);}queue.replaceChildren(...[...counts].map(([name,n])=>node('p',`${name}：${n}機`)));
  }
- for(const control of [host,operation,runway,type,formation])control.addEventListener('change',sync);
- action.addEventListener('click',async()=>{try{const scene=store.getSceneSnapshot();if(isAirshipBase(scene.instances.find(h=>h.instanceId===host.value))){await store.operateAirshipBase({hostId:host.value,runwayId:runway.value,unitId:airship.value,operation:operation.value});status.textContent='空中艦の基地操作を保存しました。';return;}const n=Number(count.value);if(!Number.isSafeInteger(n)||n<1)throw Error('処理機数は1以上の整数で指定してください。');const candidates=selection(scene).filter(p=>p.unitId===type.value&&(p.aircraftState.formationId??(p.aircraftState.clusterId?null:p.groupId)??'')===formation.value);if(n>candidates.length)throw Error('処理機数が対象機数を超えています。');await store[({prepare:'prepareAircraft',takeoff:'launchAircraft',landing:'landAircraft'})[operation.value]]({hostId:host.value,runwayId:runway.value,aircraftIds:candidates.slice(0,n).map(p=>p.instanceId),loadoutId:loadout.value||null});status.textContent='航空運用を保存しました。';}catch(e){status.textContent=e.message;}});
+ for(const control of [host,operation,runway,type,formation,count])control.addEventListener('change',sync);
+ action.addEventListener('click',async()=>{try{const scene=store.getSceneSnapshot();if(isAirshipBase(scene.instances.find(h=>h.instanceId===host.value))){await store.operateAirshipBase({hostId:host.value,runwayId:runway.value,unitId:airship.value,operation:operation.value});status.textContent='空中艦の基地操作を保存しました。';return;}const n=Number(count.value);if(!Number.isSafeInteger(n)||n<1)throw Error('処理機数は1以上の整数で指定してください。');const candidates=selection(scene).filter(p=>p.unitId===type.value&&(p.aircraftState.formationId??(p.aircraftState.clusterId?null:p.groupId)??'')===formation.value);if(n>candidates.length)throw Error('処理機数が対象機数を超えています。');if(operation.value==='takeoff'&&missionEditor.request())await store.assignFlightMission({aircraftIds:candidates.slice(0,n).map(p=>p.instanceId),plan:missionEditor.request()});await store[({prepare:'prepareAircraft',takeoff:'launchAircraft',landing:'landAircraft'})[operation.value]]({hostId:host.value,runwayId:runway.value,aircraftIds:candidates.slice(0,n).map(p=>p.instanceId),loadoutId:loadout.value||null});status.textContent='航空運用を保存しました。';}catch(e){status.textContent=e.message;}});
  const unsubscribe=store.subscribe(sync);sync();return()=>{unsubscribe();panel.remove();};
 }

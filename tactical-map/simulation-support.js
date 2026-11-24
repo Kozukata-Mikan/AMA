@@ -1,9 +1,9 @@
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {isAirshipBase,isAirship} from './aviation-services.js?v=air-combat-2';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-combat-2';
-import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=air-combat-2';
-import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=air-combat-2';
-import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=air-combat-2';
+import {isAirshipBase,isAirship} from './aviation-services.js?v=flight-missions-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=flight-missions-1';
+import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=flight-missions-1';
+import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=flight-missions-1';
+import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=flight-missions-1';
 const fail=message=>{throw new Error(message);};
 const find=(scene,id)=>scene.instances.find(u=>u.instanceId===id);
 const alive=unit=>unit&&(unit.branch!=='building'||buildingAlive(unit))&&(!hasAircraftTemplate(unit)||aircraftCanAct(unit,'support'))&&Number.isFinite(unit.x)&&Number.isFinite(unit.y)&&(unit.branch==='navy'?!['sinking','sunk'].includes(unit.shipState?.status):unit.currentHp>0);

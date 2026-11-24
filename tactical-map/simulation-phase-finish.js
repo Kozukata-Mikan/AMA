@@ -1,10 +1,10 @@
-import {crashAircraftAfterDusk} from './aviation-time.js?v=air-combat-2';
-import {enforceRemoteControl} from './aviation-services.js?v=air-combat-2';
+import {crashAircraftAfterDusk} from './aviation-time.js?v=flight-missions-1';
+import {enforceRemoteControl} from './aviation-services.js?v=flight-missions-1';
 import {ensureBuildingState} from './building-state.js?v=facility-rules-1';
-import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=air-combat-2';
-import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=air-combat-2';
-import { hasSupportEquipment } from "./support-equipment.js?v=air-combat-2";
-import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=air-combat-2";
+import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=flight-missions-1';
+import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=flight-missions-1';
+import { hasSupportEquipment } from "./support-equipment.js?v=flight-missions-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=flight-missions-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -18,31 +18,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=air-combat-2";
+} from "./ship-runtime.js?v=flight-missions-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=air-combat-2";
+} from "./equipment-runtime.js?v=flight-missions-1";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=air-combat-2";
+} from "./simulation-special-runtime.js?v=flight-missions-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=air-combat-2";
+} from "./simulation-rescue-runtime.js?v=flight-missions-1";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=air-combat-2";
+} from "./equipment-item-runtime.js?v=flight-missions-1";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=air-combat-2";
+} from "./simulation-rescue.js?v=flight-missions-1";
 
 import {
   initializeRoundTraitRuntime,
