@@ -1,4 +1,4 @@
-import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=aviation-operations-1';
+import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=facility-rules-1';
 import {TURN_DURATION_MINUTES} from './rules-engine.js';
 export const hasAircraftTemplate=unit=>unit?.branch==='air'&&unit.snapshot?.aircraft?.version===1;
 const fail=message=>{throw new Error(message);};

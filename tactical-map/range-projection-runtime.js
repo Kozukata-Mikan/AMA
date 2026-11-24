@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=aviation-operations-1";
+} from "./formation-target-runtime.js?v=facility-rules-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=aviation-operations-1";
+} from "./simulation-features.js?v=facility-rules-1";
 
 import {
   resolveHitCoins

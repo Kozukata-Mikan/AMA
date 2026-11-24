@@ -1,6 +1,6 @@
-import {mountAviationUI} from './aviation-ui.js?v=aviation-ui-2';
-import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=aviation-operations-1';
-import { buildingDetailLines } from "./building-runtime.js?v=support-stations-1";
+import {mountAviationUI} from './aviation-ui.js?v=facility-rules-1';
+import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=facility-rules-1';
+import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
 import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
@@ -12,7 +12,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=aviation-operations-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=facility-rules-1";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -24,23 +24,23 @@ import {
   showCampaignIntro
 } from "./campaign-intro.js";
 
-import { drawUnitIcon } from "./unit-icon-renderer.js?v=support-stations-1";
+import { drawUnitIcon } from "./unit-icon-renderer.js?v=facility-rules-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=aviation-operations-1";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=aviation-operations-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=facility-rules-1";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=aviation-operations-1";
+} from "./ship-runtime.js?v=facility-rules-1";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=aviation-operations-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=aviation-operations-1";
-import { drawSupportOverlay } from "./support-map-display.js?v=aviation-operations-1";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=facility-rules-1";
+import { mountSupportUI } from "./simulation-support-ui.js?v=facility-rules-1";
+import { drawSupportOverlay } from "./support-map-display.js?v=facility-rules-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=aviation-operations-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=aviation-operations-1";
+} from "../js/catalog-seed.js?v=facility-rules-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=facility-rules-1";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=aviation-operations-1";
@@ -58,7 +58,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=aviation-operations-1";
+} from "./simulation-store.js?v=facility-rules-1";
 
 import {
   gridPosition,

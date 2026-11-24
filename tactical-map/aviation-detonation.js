@@ -1,15 +1,16 @@
-import {aviationRunways} from './aviation-operations.js?v=aviation-operations-1';
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=aviation-operations-1';
+import {chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
+import {aviationRunways} from './aviation-operations.js?v=facility-rules-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=facility-rules-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=aviation-operations-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=facility-rules-1';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
 import {resolveCannonImpact,summarizeCannonImpacts} from './cannon-damage-runtime.js?v=aviation-operations-1';
-import {readCombatTargetProfile,combatTargetState,resolveBuildingCannonImpact} from './combat-target-runtime.js?v=aviation-operations-1';
+import {readCombatTargetProfile,combatTargetState,resolveBuildingCannonImpact} from './combat-target-runtime.js?v=facility-rules-1';
 const area=value=>({'后部':'後部','中部1':'中部①','中部2':'中部②','两舷':'両舷','两舷部':'両舷'})[value]??value;
 export function explodeRunwayPayloads(scene,host,positions,coinSource,strengthOverride){
- const result={hpDamage:0,hasDamageEffect:false,effects:[],cannonImpacts:[],numericReports:[],aircraftIds:[],runwayIds:[],normalHitRemainder:combatTargetState(host)?.normalHitRemainder??0};
+ const result={buildingHits:[],hpDamage:0,hasDamageEffect:false,effects:[],cannonImpacts:[],numericReports:[],aircraftIds:[],runwayIds:[],normalHitRemainder:combatTargetState(host)?.normalHitRemainder??0};
  if(!positions.length)return result;
- const hits=new Set(positions.map(area)),runways=aviationRunways(host).filter(r=>hits.has(area(r.position)));
+ const hits=new Set(positions.map(area)),runways=aviationRunways(host).filter(r=>hits.has(area(r.position))||hits.has(`mount-${r.mountIndex}`));
  if(!runways.length)return result;
  const ids=new Set(runways.map(r=>r.id)),profile=readCombatTargetProfile(host),initialStrength=strengthOverride??profile.strength-(combatTargetState(host).underwaterStrengthUses??0);
  let strengthRemaining=initialStrength;
@@ -24,8 +25,11 @@ export function explodeRunwayPayloads(scene,host,positions,coinSource,strengthOv
  payloads.sort((a,b)=>Number(b.rule.underwater)-Number(a.rule.underwater)||(a.rule.underwater?b.rule.power-a.rule.power:0)||a.plane.instanceId.localeCompare(b.plane.instanceId)||a.e.id.localeCompare(b.e.id));
  for(const{plane,e,rule,count,inertial}of payloads){
   if(rule.kind==='cannon')for(let n=0;n<count;n++){
-   const armor=inertial?profile.strengthArmor:profile.armor,impact=host.branch==='building'?resolveBuildingCannonImpact({penetration:e.penetration,armor},coinSource):resolveCannonImpact({penetration:e.penetration,armor},coinSource);
+   const armor=inertial?profile.strengthArmor:profile.armor,impact=host.branch==='building'?resolveBuildingCannonImpact({penetration:e.penetration,armor},coinSource,host):resolveCannonImpact({penetration:e.penetration,armor},coinSource);
+   if(host.branch==='building')result.buildingHits.push({mountId:impact.position.mountId,normalCredits:impact.normalCredits,fireEligible:impact.fireEligible});
    result.cannonImpacts.push(impact);if(impact.fireEligible&&host.branch==='navy')result.effects.push({targetId:host.instanceId,attackId:`runway:${plane.instanceId}:${e.id}:${n}`,type:'fire'});
+  }else if(host.branch==='building'){
+   for(let n=0;n<count;n++){const slot=chooseBuildingSlot(host,coinSource),damage=resolveNumericDamage({powerRule:e.powerRule,hitCount:1,penetration:e.penetration,armor:profile.armor,inertial,strength:profile.strength,strengthRemaining});result.buildingHits.push({mountId:slot.id,damage:damage.hpDamage});result.hpDamage+=damage.hpDamage;result.hasDamageEffect||=damage.hasDamageEffect;if(rule.underwater)strengthRemaining=damage.strengthRemainingAfter;}
   }else{
    const damage=resolveNumericDamage({powerRule:e.powerRule,hitCount:count,penetration:e.penetration,armor:profile.armor,inertial,strength:profile.strength,strengthRemaining});result.numericReports.push({aircraftId:plane.instanceId,equipmentId:e.id,damage});result.hpDamage+=damage.hpDamage;result.hasDamageEffect||=damage.hasDamageEffect;
    if(rule.underwater){strengthRemaining=damage.strengthRemainingAfter;if(host.branch==='navy')for(let n=0;n<count;n++)result.effects.push({targetId:host.instanceId,attackId:`runway:${plane.instanceId}:${e.id}:${n}`,type:'flooding'});}

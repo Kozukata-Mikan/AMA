@@ -1,17 +1,18 @@
+import {resolveBuildingFire} from './building-state.js?v=facility-rules-1';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=aviation-operations-1";
+} from "./ship-runtime.js?v=facility-rules-1";
 
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=aviation-operations-1";
+} from "./simulation-rescue.js?v=facility-rules-1";
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=aviation-operations-1";
+} from "./equipment-runtime.js?v=facility-rules-1";
 
 import {
   validateEquipmentItemControlReport
@@ -382,9 +383,10 @@ export function applyFireFloodingSpecialStep(
   // 先检查原任务有效，不能靠本次处理掩盖损坏的保存数据。
   initializeRescueState(working);
 
-  const shipReports = [];
+  const shipReports = [],buildingReports=[];
 
   for (const unit of working.instances) {
+    if(unit.branch==='building'){buildingReports.push({targetId:unit.instanceId,buildingFire:resolveBuildingFire(unit,working.turn.number,coinSource)});continue;}
     if (unit.branch !== "navy") continue;
 
     shipReports.push(
@@ -417,6 +419,7 @@ export function applyFireFloodingSpecialStep(
     turnNumber: working.turn.number,
     phaseId: working.turn.phaseId,
     shipReports,
+    buildingReports,
     rescueInterruptions
   };
 

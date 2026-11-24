@@ -1,24 +1,26 @@
-import {reconcileAviation} from './aviation-operations.js?v=aviation-operations-1';
-import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=aviation-operations-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=aviation-operations-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=aviation-operations-1";
-import { normalizeBuildingUnit } from "./building-runtime.js?v=support-stations-1";
+import {buildingAlive} from './building-state.js?v=facility-rules-1';
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=facility-rules-1';
+import {reconcileAviation} from './aviation-operations.js?v=facility-rules-1';
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=facility-rules-1';
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=facility-rules-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=facility-rules-1";
+import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=aviation-operations-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=facility-rules-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=aviation-operations-1";
+} from "./ship-runtime.js?v=facility-rules-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=aviation-operations-1";
+} from "./simulation-rescue.js?v=facility-rules-1";
 
 import {
   createShipEffectsState,
@@ -29,11 +31,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=aviation-operations-1";
+} from "./equipment-item-runtime.js?v=facility-rules-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=aviation-operations-1";
+} from "./simulation-autonomous-rescue.js?v=facility-rules-1";
 
 import {
   routeLength,
@@ -67,6 +69,8 @@ function setUnitVertical(unit,value){
 function operational(unit) {
   if (!positioned(unit)) return false;
 
+  if(unit.airshipBaseState&&unit.airshipBaseState.mission!=='airborne')return false;
+  if(unit.branch==='building')return buildingAlive(unit);
   if (unit.branch === "navy") {
     return !unit.rescueSupportLocked && !["sinking", "sunk"].includes(unit.shipState?.status) &&
       unit.shipState?.rescueTaskId === null;
@@ -453,8 +457,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
             // 从完整运行状态生成白名单式公开词条。
       // 外方只能看到是否起火，不能看到进水或损管历史。
       observed.observedEffects = {
-        fire: unit.branch === "navy" &&
-          unit.shipState?.effects?.fire != null
+        fire: (unit.branch === "navy" && unit.shipState?.effects?.fire != null)||unit.branch==='building'&&Boolean(unit.buildingState?.slots?.some(s=>s.effects.fire))
       };
 
             // 此标记只提供给已识别单位，不公开内部救助任务。
@@ -473,6 +476,9 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         delete observed.snapshot.aircraftSnapshots;
         delete observed.snapshot.aviationComplement;
         delete observed.supportLocked;
+        delete observed.buildingState;
+        delete observed.airshipBaseState;
+        delete observed.groundCrewLastTurn;
         delete observed.rescueSupportLocked;
 
         if (observed.shipState) {
@@ -512,8 +518,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
       observationLevel: "shadow",
       // 被发现的影也可见火焰，但不公开真实军种或内部状态。
       observedEffects: {
-        fire: unit.branch === "navy" &&
-          unit.shipState?.effects?.fire != null
+        fire: (unit.branch === "navy" && unit.shipState?.effects?.fire != null)||unit.branch==='building'&&Boolean(unit.buildingState?.slots?.some(s=>s.effects.fire))
       }
     });
   }
@@ -745,7 +750,7 @@ function entityMembers(scene, ref) {
 }
 
 function movementGroupMembers(scene,id){
-  return scene.groups.find(g=>g.id===id)?.aviationCluster ? scene.instances.filter(u=>u.groupId===id&&hasAircraftTemplate(u)) : formationMovementMembers(scene,id);
+  return scene.groups.find(g=>g.id===id)?.aviationCluster ? scene.instances.filter(u=>u.groupId===id&&hasAircraftTemplate(u)&&u.aircraftState?.mission==='airborne'&&u.aircraftState.status!=='destroyed') : formationMovementMembers(scene,id);
 }
 function movementMembers(scene, ref, supportPreview=false) {
   const members = ref.kind === "group" ? movementGroupMembers(scene,ref.id) : entityMembers(scene,ref);
@@ -1675,11 +1680,13 @@ validationScene.controls.enemyAutonomy = false;
             for (const id of plan.memberIds) formationHeadings.set(id, plan.heading);
         }
         // 到这里全场路线、陆地截停与接触事件均已确定。
+        const controlStations=remoteStations(scene);
         for (const destination of movement.destinations) {
           const unit = scene.instances.find(
             item => item.instanceId === destination.instanceId
           );
 
+          checkDroneRoute(scene,unit,destination.route,controlStations);
           unit.x = destination.x;
           unit.y = destination.y;
           if (destination.distance > EPSILON) {

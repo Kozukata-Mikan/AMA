@@ -1,4 +1,4 @@
-import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=aviation-operations-1";
+import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=facility-rules-1";
 // ===== 图鉴初始资料与字段定义 =====
 // 界面文案使用日文，注释使用中文。
 // 未确定的规则只保存参数，不执行计算。
@@ -170,7 +170,7 @@ export const BUILDING_FIELDS = [
   {key:'building.kind',label:'施設種別',type:'building-kind',definition:'飛行場または港湾を選択します。地形による配置制限はありません。'},
   {key:'building.permanence',label:'施設区分',type:'airport-durability',definition:'飛行場・港湾ともに臨時／恒久を選択します。恒久施設は二重の円で表示します。'},
   {key:'building.airportType',label:'飛行場形式',type:'airport-type',definition:'滑走路・空中艦・泊地から選択します。'},
-  {key:'building.runways',label:'滑走路数',type:'runway-count',definition:'1～3本。泊地は2本の滑走路と波の記号で表示します。'},
+  {key:'building.runways',label:'滑走路数（アイコン専用）',type:'runway-count',definition:'1～3本。表示のみ。実際の起降には装備配置の滑走路・カタパルトが必要です。'},
   {key:'building.portType',label:'港湾区分',type:'port-type',definition:'貿易港（$）・貨物港（積み荷）・補給港（フック）。施設区分とは独立しています。'}
 ];
 export const AIRCRAFT_FIELDS = [
@@ -183,7 +183,6 @@ export const AIRCRAFT_FIELDS = [
   {key:'aircraft.ceiling',label:'上昇限度（高度単位）',type:'optional-number',definition:'移動できる最大高度。地図の高度1単位は100mです。'},
   {key:'naval.endurance',label:'航続力',type:'text',definition:'艦船と同じ距離表記。1kは1000。入力すると滞空時間を自動計算します。'},
   {key:'aircraft.training',label:'練度（空戦規則未接続）',type:'text',definition:'航空機用の練度を原表記で保存します。艦船の練度補正は適用しません。'},
-  {key:'aircraft.remoteRange',label:'遠隔操作範囲（マス・未接続）',type:'optional-number',definition:'無人機用の予約項目。操作元・起降・整備規則は今後接続します。'}
 ];
 export const getUnitFields = unit => unit.branch==='building'?BUILDING_FIELDS:unit.branch==='air'?AIRCRAFT_FIELDS:UNIT_FIELDS;
 
@@ -293,7 +292,7 @@ export const EQUIPMENT_FIELDS = [
 
 EQUIPMENT_FIELDS.splice(3,0,
  {key:'supportEffect',label:'支援機能',type:'support-effect',definition:'装備名とは別に支援機能を選択します。艦船・建築などで共通です。組数が同時支援数／駐機枠数です。'},
- {key:'runwayControlLimit',label:'起降管制数（未接続）',type:'optional-number',definition:'管制塔用。今後の航空規則に接続するため、現在は空欄で保持します。'}
+ {key:'remoteRange',label:'遠隔操作範囲（マス）',type:'optional-number',definition:'遠隔操作所の有効半径。水平距離で判定し、正常な同陣営の操作所のどれかが届く必要があります。'}
 );
 
 export const EXTRA_DEFINITIONS = [

@@ -1,10 +1,10 @@
 import {normalizeAviationComplement} from './equipment-options.js?v=aviation-operations-1';
-import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=aviation-operations-1';
-import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=aviation-operations-1";
-import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=support-stations-1";
+import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=facility-rules-1';
+import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=facility-rules-1";
+import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=aviation-operations-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=facility-rules-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -106,15 +106,15 @@ function normalizeEquipment(value) {
     throw new Error("装備種別が不正です。");
   }
 
-  if(value.supportEffect && (value.kind!=="support" || !STATION_IDS.includes(value.supportEffect)))throw new Error("支援装備の機能を確認してください。");
+  if(value.supportEffect && value.supportEffect!=='control-tower' && (value.kind!=="support" || !STATION_IDS.includes(value.supportEffect)))throw new Error("支援装備の機能を確認してください。");
   return {
     id: text(value.id, "装備 ID", true),
     name: text(value.name, "装備名", true),
     faction: normalizeFaction(value.faction ?? ""),
     protected: normalizeProtected(value.protected ?? false),
     kind: value.kind,
-    supportEffect: text(value.supportEffect ?? "", "支援機能"),
-    runwayControlLimit: number(value.runwayControlLimit ?? null,"起降管制数",{nullable:true,min:0,integer:true}),
+    supportEffect: text(value.supportEffect === 'control-tower' ? '' : value.supportEffect ?? "", "支援機能"),
+    remoteRange: number(value.remoteRange ?? null,"遠隔操作範囲",{nullable:true,min:0}),
 
     barrelCount: number(
       value.barrelCount ?? null,
@@ -291,7 +291,7 @@ function normalizeUnit(value) {
       }
 
       return {
-        position: aircraft ? AIRCRAFT_WEAPON_ROLES.find(([id,label])=>id===item.role||label===item.position)?.[1] ?? text(item.position,"航空機の装備区分",true) : value.branch === "building" ? (item.position === "地下" ? "地下" : "露天") : text(item.position, "装備位置", true),
+        position: aircraft ? AIRCRAFT_WEAPON_ROLES.find(([id,label])=>id===item.role||label===item.position)?.[1] ?? text(item.position,"航空機の装備区分",true) : value.branch === "building" ? (["地下","中心"].includes(item.position) ? item.position : "露天") : text(item.position, "装備位置", true),
         equipmentId: text(item.equipmentId, "装備 ID", true),
 
         count: number(
@@ -347,8 +347,9 @@ function normalizeCatalog(value) {
     throw new Error("図鑑資料は各 10000 件以内にしてください。");
   }
 
-  const units = value.units.map(normalizeUnit);
-  const equipment = value.equipment.map(normalizeEquipment);
+  const retired=new Set(value.equipment.filter(e=>e.supportEffect==='control-tower'||e.id==='eq-support-control-tower').map(e=>e.id));
+  const units = value.units.map(u=>normalizeUnit({...u,mounts:(u.mounts??[]).filter(m=>!retired.has(m.equipmentId))}));
+  const equipment = value.equipment.filter(e=>!retired.has(e.id)).map(normalizeEquipment);
 
   const unitIds = new Set();
   const equipmentIds = new Set();
@@ -362,6 +363,7 @@ function normalizeCatalog(value) {
   }
 
   const equipmentById=new Map(equipment.map(e=>[e.id,e]));
+  for(const u of units)if(u.branch==='building'&&u.mounts.filter(m=>m.position==='中心').length>1)throw Error('建築の中心配置は1か所にしてください。');
   const aircraftById=new Map(units.filter(u=>u.branch==='air'&&u.aircraft).map(u=>[u.id,u]));
   for (const unit of units) {
     if (unitIds.has(unit.id)) {
@@ -427,9 +429,9 @@ export function initializeCatalog(baseUnits) {
     console.error(error);
   }
 
-  if(!recoveryError && data.supportStationsVersion<2){
+  if(!recoveryError && data.supportStationsVersion<3){
     const existing=new Set(data.equipment.map(item=>item.id));
-    data=normalizeCatalog({...data,supportStationsVersion:2,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>(data.supportStationsVersion<1||['preparation-area','runway','catapult'].includes(item.supportEffect))&&!existing.has(item.id))]});
+    data=normalizeCatalog({...data,supportStationsVersion:3,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>(data.supportStationsVersion<1||(data.supportStationsVersion<2?['preparation-area','runway','catapult','remote-station','ground-crew']:['remote-station','ground-crew']).includes(item.supportEffect))&&!existing.has(item.id))]});
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
   }
 

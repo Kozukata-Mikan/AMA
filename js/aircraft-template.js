@@ -65,7 +65,7 @@ export function aircraftFacilityCompatible(type,host) {
   const water=type==='seaplane',land=['land','land-drone'].includes(type);
   if(branch==='navy')return !land;
   if(branch!=='building'||b?.kind!=='airport')return false;
-  return water?b.airportType==='anchorage':b.airportType!=='anchorage';
+  return water?b.airportType==='anchorage':b.airportType==='runway';
 }
 
 export function activeAircraftMounts(unit){

@@ -1,5 +1,5 @@
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=aviation-operations-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=facility-rules-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 

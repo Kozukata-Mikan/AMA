@@ -1,13 +1,13 @@
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
 import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=aviation-operations-1';
-import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=aviation-operations-1';
-import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=aviation-operations-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=aviation-operations-1";
-import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=support-stations-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=aviation-operations-1";
+import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=facility-rules-1';
+import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=facility-rules-1';
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=facility-rules-1";
+import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=facility-rules-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=aviation-operations-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=facility-rules-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -18,7 +18,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=aviation-operations-1";
+} from "../js/catalog-seed.js?v=facility-rules-1";
 
 // ===== 图鉴界面 =====
 
@@ -206,7 +206,7 @@ function catalogFieldSections(fields, category) {
     ["facility", "施設設定", ["building.kind","building.permanence","building.airportType","building.runways","building.portType"]],
     ["traits", "練度・特殊能力", ["trainingTraits","aircraft.training"]]
   ] : [
-    ["basic", "基本情報", ["name","kind","faction","slot","supportEffect","runwayControlLimit"]],
+    ["basic", "基本情報", ["name","kind","faction","slot","supportEffect","remoteRange"]],
     ["weapon", "射撃・誘導", ["guidance","range","ceilingU","maxOrder","targetScope"]],
     ["power", "威力・投射・弾薬", ["powerRule","penetration","barrelCount","projectionCoefficient","projectionSuffix","ammo"]],
     ["notes", "補足", ["note"]]
@@ -1169,6 +1169,12 @@ export function mountCatalogEditor({
       }
 
       const mountHost = node("div", "", "catalog-repeat-list");
+      const allocation=node('p','','catalog-muted');
+      function updateAllocation(){
+        if(draft.branch!=='building')return;const rows=mountReaders.filter(r=>r.active).map(r=>r.read()),centers=rows.filter(r=>r.position==='中心').length,n=rows.length+(centers?0:1),hp=Number(controls.get('maxHp')?.value??draft.maxHp),base=Math.floor(hp/n),extra=hp%n;
+        allocation.textContent=centers>1?'中心配置は1か所にしてください。':`配置耐性：${n}か所（中心1か所を含む）。通常配置 ${base}、中心 ${base+extra}。装備組数ではなく配置行数で均等配分します。中心未配置の場合は独立中心を自動追加します。`;
+      }
+      if(draft.branch==='building'){form.append(allocation);controls.get('maxHp')?.addEventListener('input',updateAllocation);}
       const equipment = store.getData().equipment;
 
       function addMount(value = {
@@ -1181,7 +1187,7 @@ export function mountCatalogEditor({
         const position = labeled(
           row,
           "位置",
-          draft.branch === "building" ? select([["露天","露天"],["地下","地下"]], value.position === "地下" ? "地下" : "露天") : draft.branch === "air" ? select(AIRCRAFT_WEAPON_ROLES.map(([,label])=>[label,label]),value.position||"主動武器") : input(value.position)
+          draft.branch === "building" ? select([["露天","露天"],["地下","地下"],["中心","中心"]], ["地下","中心"].includes(value.position) ? value.position : "露天") : draft.branch === "air" ? select(AIRCRAFT_WEAPON_ROLES.map(([,label])=>[label,label]),value.position||"主動武器") : input(value.position)
         );
 
         const equipmentSelect = labeled(
@@ -1260,15 +1266,19 @@ export function mountCatalogEditor({
           button("この配置を削除", () => {
             reader.active = false;
             row.remove();
+            updateAllocation();
           })
         );
 
         mountHost.append(row);
+        position.addEventListener("change",updateAllocation);
+        updateAllocation();
       }
 
       for (const mount of draft.mounts ?? []) {
         addMount(mount);
       }
+      updateAllocation();
 
       form.append(
         mountHost,

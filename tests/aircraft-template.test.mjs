@@ -34,7 +34,7 @@ test('airtime uses the requested half-maximum-speed formula, in whole rounds',()
 test('facility compatibility records all five types without treating ports as airfields',()=>{
  const ship={branch:'navy'},runway={branch:'building',building:{kind:'airport',airportType:'runway'}},airship={branch:'building',building:{kind:'airport',airportType:'airship'}},anchorage={branch:'building',building:{kind:'airport',airportType:'anchorage'}},port={branch:'building',building:{kind:'port'}};
  for(const type of ['carrier','drone']){assert.ok(aircraftFacilityCompatible(type,ship));assert.ok(aircraftFacilityCompatible(type,runway));assert.ok(!aircraftFacilityCompatible(type,anchorage));}
- for(const type of ['land','land-drone']){assert.ok(!aircraftFacilityCompatible(type,ship));assert.ok(aircraftFacilityCompatible(type,runway));assert.ok(aircraftFacilityCompatible(type,airship));assert.ok(!aircraftFacilityCompatible(type,anchorage));}
+ for(const type of ['land','land-drone']){assert.ok(!aircraftFacilityCompatible(type,ship));assert.ok(aircraftFacilityCompatible(type,runway));assert.ok(!aircraftFacilityCompatible(type,airship));assert.ok(!aircraftFacilityCompatible(type,anchorage));}
  assert.ok(aircraftFacilityCompatible('seaplane',ship));assert.ok(aircraftFacilityCompatible('seaplane',anchorage));assert.ok(!aircraftFacilityCompatible('seaplane',runway));assert.ok(!aircraftFacilityCompatible('carrier',port));
 });
 test('catalog validates support-only pods and preserves distinct loadouts, references and snapshots',()=>{
@@ -63,7 +63,7 @@ test('expiry is committed at round end and removed from map; enemy autonomy does
 });
 
 test('isolated worker saves aircraft clocks and expiry through complete simulation phases',async()=>{
- const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=aviation-operations-1');
+ const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=facility-rules-1');
  globalThis.Worker=class{constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}};
  try{const{id,store}=await setup('100');await round(store);const scene=await raw(id);assert.equal(scene.instances[0].aircraftState.remainingAirTime,0);assert.equal(scene.instances[0].aircraftState.status,'destroyed');assert.equal(scene.phaseFinishRuntime.records.at(-1).aircraftReports[0].destroyed,true);assert.ok(!store.getSceneSnapshot().instances.length);}finally{shutdownBackground();delete globalThis.Worker;}
 });

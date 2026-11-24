@@ -1,7 +1,7 @@
 // 建筑只接入资料、部署、侦察与显示；不套用舰船的航行和损管规则。
 export const BUILDING_KINDS = [['airport','飛行場'],['port','港湾']];
 export const AIRPORT_DURABILITY = [['temporary','臨時飛行場'],['permanent','恒久飛行場']];
-export const AIRPORT_TYPES = [['runway','滑走路飛行場'],['airship','空中艦飛行場'],['anchorage','泊地']];
+export const AIRPORT_TYPES = [['runway','滑走路飛行場'],['airship','空中艦基地'],['anchorage','泊地']];
 export const PORT_TYPES = [['trade','貿易港'],['cargo','貨物港'],['supply','補給港']];
 export const FACILITY_DURABILITY = [['temporary','臨時'],['permanent','恒久']];
 export const BUILDING_LOGO_SCALE = 0.4;
@@ -40,6 +40,7 @@ export function buildingDetailLines(unit) {
     `施設区分：${label(FACILITY_DURABILITY,b.permanence)}`,
     ...(b.kind==='airport'?[`形式：${label(AIRPORT_TYPES,b.airportType)}`,...(b.airportType==='runway'?[`滑走路数：${b.runways}`]:[])]:[`港湾区分：${label(PORT_TYPES,b.portType)}`]),
     '直径：50マス / 高度：地形に追随',
+    ...(unit.observationOwn&&unit.buildingState?.slots?[`施設状態：${({intact:'稼働',rebuilding:'中心再建中',destroyed:'破壊'})[unit.buildingState.status]}`,...unit.buildingState.slots.map(s=>`${s.position} / ${s.mountIndex===null?'中心':s.mountIndex+1}：耐性 ${s.hp}／${s.maxHp}${s.effects.fire?' / 火災':''}`)]:[]),
     ...[['装甲','armor'],['強度','strength'],['探測強度','detection'],['対海偵察','seaRecon'],['対空偵察','airRecon'],['対潜偵察','aswRecon']].map(([name,key])=>`${name}：${stats[key] === '' || stats[key] == null ? '未設定' : stats[key]}`)
   ];
 }

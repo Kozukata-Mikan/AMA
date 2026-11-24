@@ -25,7 +25,8 @@ function groupFor(unit, id) {
   return group;
 }
 
-function positionKind(value) {
+function positionKind(value,branch) {
+  if(branch==='building'&&['露天','地下','中心'].includes(value))return 'middle';
   const key = String(value ?? "")
     // ① → 1、② → 2、全角数字 → 半角数字。
     // 只规范解析用字符串，不改装备保存的位置名称。
@@ -126,7 +127,7 @@ export function readFiringArc(actor, group, target) {
   const relativeDegrees =
     Math.atan2(right, forward) * 180 / Math.PI;
 
-  const kind = positionKind(group.position);
+  const kind = positionKind(group.position,actor.branch);
   const bowAngle = Math.abs(relativeDegrees);
   const sternAngle = 180 - bowAngle;
 
@@ -177,7 +178,7 @@ export function assertBroadsideQuotas(
   const usedGroups = new Set();
 
   function add(actor, group, sides) {
-    if (positionKind(group.position) !== "sides") {
+    if (positionKind(group.position,actor.branch) !== "sides") {
       if (sides.length) {
         fail("両舷以外の装備に側別使用記録があります。");
       }
@@ -222,7 +223,7 @@ export function assertBroadsideQuotas(
       if (
         !mounted.length ||
         mounted.some(item =>
-          positionKind(item.position) !== "sides"
+          positionKind(item.position,actor.branch) !== "sides"
         )
       ) {
         fail("両舷装備の配置構成が不正です。");
@@ -250,7 +251,7 @@ export function assertBroadsideQuotas(
       const actor = unitFor(start, report.unitId);
       const group = groupFor(actor, report.groupId);
 
-      if (positionKind(group.position) !== "sides") continue;
+      if (positionKind(group.position,actor.branch) !== "sides") continue;
 
       if (report.firingSides === undefined) {
         fail(

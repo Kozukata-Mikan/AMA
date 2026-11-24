@@ -1,17 +1,18 @@
+import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=aviation-operations-1";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=aviation-operations-1";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=aviation-operations-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=aviation-operations-1";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=facility-rules-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=facility-rules-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=facility-rules-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=facility-rules-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=aviation-operations-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=facility-rules-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=aviation-operations-1";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=aviation-operations-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=facility-rules-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=facility-rules-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=aviation-operations-1";
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=facility-rules-1";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=facility-rules-1";
 
 
 
@@ -258,6 +259,7 @@ export function getAttackPhaseStartScene(scene) {
 // 仅在独立规则场景副本上应用明确登记的缺失资料补完。
 // 不把当前损伤、位置、编队或其他资源覆盖进历史场景。
 for (const startUnit of start.instances) {
+  ensureBuildingState(startUnit);
   const currentUnit = scene.instances.find(
     unit => unit.instanceId === startUnit.instanceId
   );
@@ -349,12 +351,14 @@ function prepareCommand(startScene, command, visibilityBySide) {
 );
 
 
-  if (actor.branch !== "navy") {
+  if (!["navy","building"].includes(actor.branch)) {
     fail("この軍種の正式な攻撃批次処理は未接続です。");
   }
 
     // 同时供正式阶段检查和当前状态预览使用，
   // 因此不把所有错误都描述成“阶段开始时”。
+  if(actor.branch==='building'&&(!buildingAlive(actor)||!buildingMountAvailable(actor,group.mountIndex)))fail('中心または武器配置の耐性が0のため攻撃できません。');
+  if(actor.airshipBaseState&&actor.airshipBaseState.mission!=='airborne')fail('基地作業中の空中艦は攻撃できません。');
   if (["sinking", "sunk"].includes(actor.shipState?.status)) {
     const error = new Error([
       "攻撃艦が沈没寸前または沈没のため、この計画は実行できません。",
@@ -368,7 +372,7 @@ function prepareCommand(startScene, command, visibilityBySide) {
     throw error;
   }
 
-  if (actor.rescueSupportLocked || actor.shipState?.rescueTaskId !== null) {
+  if (actor.rescueSupportLocked || actor.shipState?.rescueTaskId != null) {
     // 救助任务是否已正确结束，不能由攻击模块自行判断。
     // 不清除引用、不把任务异常当作普通失效计划跳过。
     const error = new Error([

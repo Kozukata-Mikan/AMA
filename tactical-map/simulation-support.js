@@ -1,10 +1,12 @@
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=aviation-operations-1';
-import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=aviation-operations-1';
-import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=aviation-operations-1';
-import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=aviation-operations-1';
+import {buildingAlive} from './building-state.js?v=facility-rules-1';
+import {isAirshipBase,isAirship} from './aviation-services.js?v=facility-rules-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=facility-rules-1';
+import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=facility-rules-1';
+import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=facility-rules-1';
+import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=facility-rules-1';
 const fail=message=>{throw new Error(message);};
 const find=(scene,id)=>scene.instances.find(u=>u.instanceId===id);
-const alive=unit=>unit&&(!hasAircraftTemplate(unit)||aircraftCanAct(unit,'support'))&&Number.isFinite(unit.x)&&Number.isFinite(unit.y)&&(unit.branch==='navy'?!['sinking','sunk'].includes(unit.shipState?.status):unit.currentHp>0);
+const alive=unit=>unit&&(unit.branch!=='building'||buildingAlive(unit))&&(!hasAircraftTemplate(unit)||aircraftCanAct(unit,'support'))&&Number.isFinite(unit.x)&&Number.isFinite(unit.y)&&(unit.branch==='navy'?!['sinking','sunk'].includes(unit.shipState?.status):unit.currentHp>0);
 const station={rescue:'repair-station','damage-control':'damage-control-station',supply:'supply-station'};
 export function supportLimit(unit,kind){return kind==='rescue'&&unit.branch==='navy'?Math.max(1,supportCapacity(unit,station[kind])):supportCapacity(unit,station[kind]);}
 export function needsSupport(unit,kind){
@@ -38,7 +40,7 @@ export function reconcileSupports(scene){
  for(const task of supportActive(scene)){
   const provider=find(scene,task.providerId),target=find(scene,task.targetId),key=task.providerId+':'+task.kind;
   const count=(used.get(key)??0)+1;used.set(key,count);
-  if(!alive(provider)||!inSupportRange(provider,target)||provider.side!==target.side||count>supportLimit(provider,task.kind)||provider.shipState?.rescueTaskId||target.shipState?.rescueTaskId)endSupport(scene,task,'継続条件を失いました。');
+  if(!alive(provider)||(!inSupportRange(provider,target)||isAirshipBase(provider)&&!isAirship(target)||provider.branch==='building'&&provider.snapshot.building?.airportType==='anchorage')||provider.side!==target.side||count>supportLimit(provider,task.kind)||provider.shipState?.rescueTaskId||target.shipState?.rescueTaskId)endSupport(scene,task,'継続条件を失いました。');
   else if(!needsSupport(target,task.kind))endSupport(scene,task,'支援が不要になりました。','complete');
  }
  synchronizeSupportLocks(scene);
@@ -47,6 +49,8 @@ export function startSupport(scene,{providerId,targetId,kind},autonomous=false){
  initializeSupportRuntime(scene);if(scene.turn.phaseId!=='special')fail('支援は特殊段階で開始してください。');
  const provider=find(scene,providerId),target=find(scene,targetId),side=autonomous&&scene.controls.enemyAutonomy&&['enemy','neutral'].includes(provider?.side)?provider.side:scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;
  if(!SUPPORT_NAMES[kind]||!alive(provider)||provider.side!==side||target?.side!==side||providerId===targetId||!needsSupport(target,kind))fail('支援側・対象・任務を確認してください。');
+ if(isAirshipBase(provider)&&!isAirship(target))fail('空中艦基地は空中艦だけを支援できます。');
+ if(provider.branch==='building'&&provider.snapshot.building?.airportType==='anchorage')fail('泊地は水上機の航空運用施設です。');
  if(!inSupportRange(provider,target))fail('対象艦が支援円の外です。');
  const active=supportActive(scene);
  if(active.some(t=>t.targetId===targetId||t.targetId===providerId||t.providerId===targetId)||provider.shipState?.rescueTaskId||target.shipState?.rescueTaskId)fail('別の支援・救助任務に参加しています。');
