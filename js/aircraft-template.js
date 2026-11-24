@@ -1,3 +1,4 @@
+import {normalizeAirTraits} from './aircraft-training.js?v=air-training-1';
 // 航空机资料使用独立模板；不把小破／中破或舰船训练效果套入航空机。
 export const AIRCRAFT_TYPES = [
   ['carrier','艦載機'], ['land','陸上機'], ['seaplane','水上機'],
@@ -39,6 +40,8 @@ export function normalizeAircraft(value={}) {
   const remoteRange=value.remoteRange??null;
   if(remoteRange!==null&&(!Number.isFinite(remoteRange)||remoteRange<0))throw new Error('遠隔操作範囲の値が不正です。');
   const training=String(value.training??'').trim();
+  const traits=normalizeAirTraits({...value,training});
+  const acePilotName=String(value.acePilotName??'').trim();if(acePilotName.length>100)throw Error('エース操縦士名は100文字以内で指定してください。');
   const attackModes=value.attackModes??[];
   if(!Array.isArray(attackModes)||new Set(attackModes).size!==attackModes.length||attackModes.some(m=>!['glide','dive','torpedo','level','high','bvr'].includes(m)))throw new Error('攻撃方式の一覧が不正です。');
   const loadouts=value.loadouts??[];
@@ -54,7 +57,7 @@ export function normalizeAircraft(value={}) {
       return{equipmentId:m.equipmentId,count:integer(m.count??1,'搭載装備数',1)};
     })};
   });
-  return {...value,version:1,type,engines,crew,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,remoteRange,attackModes:[...attackModes],loadouts:normalized,
+  return {...value,version:1,type,engines,crew,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,traits,acePilotName,remoteRange,attackModes:[...attackModes],loadouts:normalized,
     operations:{takeoff:'runway-or-catapult',preparation:'preparation-area'}};
 }
 export const aircraftParkingSlots = aircraft => normalizeAircraft(aircraft).engines;

@@ -1,6 +1,6 @@
 import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js';
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=flight-missions-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=flight-missions-1";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=air-training-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 

@@ -1,17 +1,19 @@
+import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=air-training-1';
+import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
 import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
-import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=flight-missions-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=flight-missions-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-training-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=air-training-1';
 import {buildingAlive,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=flight-missions-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=flight-missions-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=flight-missions-1';
-import {choosePosition} from './cannon-damage-runtime.js?v=aviation-operations-1';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=flight-missions-1';
-import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=flight-missions-1";
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-training-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-training-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-training-1';
+import {choosePosition} from './cannon-damage-runtime.js?v=air-training-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-training-1';
+import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=flight-missions-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-training-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -23,7 +25,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=flight-missions-1";
+} from "./simulation-attack-batch.js?v=air-training-1";
 
 
 
@@ -33,16 +35,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=flight-missions-1";
+} from "./ship-runtime.js?v=air-training-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=flight-missions-1";
+} from "./equipment-runtime.js?v=air-training-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=flight-missions-1";
+} from "./simulation-features.js?v=air-training-1";
 
 import {
   getEquipmentDamagePlan,
@@ -52,7 +54,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=flight-missions-1";
+} from "./equipment-item-runtime.js?v=air-training-1";
 
 
 import {
@@ -70,7 +72,7 @@ import {
   getCannonDamagePreview,
   resolveCannonImpact,
   summarizeCannonImpacts
-} from "./cannon-damage-runtime.js?v=aviation-operations-1";
+} from "./cannon-damage-runtime.js?v=air-training-1";
 
 import {
   resolveNumericDamage
@@ -85,32 +87,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=flight-missions-1";
+} from "./simulation-rescue.js?v=air-training-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=flight-missions-1";
+} from "./simulation-phase-finish.js?v=air-training-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=flight-missions-1";
+} from "./weapon-profile-runtime.js?v=air-training-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=flight-missions-1";
+} from "./simulation-attack-runtime.js?v=air-training-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=flight-missions-1";
+} from "./weapon-profile-runtime.js?v=air-training-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=flight-missions-1";
+} from "./simulation-features.js?v=air-training-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=flight-missions-1";
+} from "./formation-target-runtime.js?v=air-training-1";
 
 import {
   readRangeCommandTarget
@@ -119,11 +121,11 @@ import {
 import {
   readFiringArc,
   assertBroadsideQuotas
-} from "./weapon-firing-arc.js?v=flight-missions-1";
+} from "./weapon-firing-arc.js?v=air-training-1";
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=flight-missions-1";
+} from "./range-projection-runtime.js?v=air-training-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -1350,14 +1352,15 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         : naval.armor;
 
       for (let index = 0; index < attack.hitCount; index++) {
+        const firingActor=unitFor(start,attack.entry.unitId),firingGroup=firingActor.equipmentState.groups.find(g=>g.id===attack.entry.groupId),aimedPosition=aimedAircraftPosition(firingActor,target,firingGroup,attack.entry.profile);
         const impact = hasAircraftTemplate(target)?resolveAircraftCannonImpact({penetration:attack.entry.profile.penetration,armor},coinSource):target.branch==='building' ? resolveBuildingCannonImpact({penetration:attack.entry.profile.penetration,armor},coinSource) : coinSource === undefined
           ? resolveCannonImpact({
               penetration: attack.entry.profile.penetration,
-              armor
+              armor,aimedPosition
             })
           : resolveCannonImpact({
               penetration: attack.entry.profile.penetration,
-              armor
+              armor,aimedPosition
             }, coinSource);
 
         cannonImpacts.push({
@@ -1431,7 +1434,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         }
       }
 
-      if(targetRunways.length)for(let n=0;n<attack.hitCount;n++)runwayPositions.push(target.branch==='building'?buildingHitPosition(coinSource):choosePosition(coinSource).label);
+      if(targetRunways.length)for(let n=0;n<attack.hitCount;n++)runwayPositions.push(target.branch==='building'?buildingHitPosition(coinSource):(aimedAircraftPosition(unitFor(start,attack.entry.unitId),target,unitFor(start,attack.entry.unitId).equipmentState.groups.find(g=>g.id===attack.entry.groupId),attack.entry.profile)??choosePosition(coinSource)).label);
       numericReports.push({
         commandId: attack.entry.commandId,
         occurrenceIndex: attack.entry.occurrenceIndex,
@@ -1572,7 +1575,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
 
   const actors = start.instances
     .filter(unit =>
-      (!hasAircraftTemplate(unit)||automaticPas&&aircraftCanAct(unit,'attack')&&aircraftMayFly(start,unit)) && (!automaticPas||(unit.snapshot.equipmentSnapshots??[]).some(e=>e.kind==='weapon'&&String(e.maxOrder).toUpperCase()==='PAS')) && (["navy","building"].includes(unit.branch) || automaticPas&&hasAircraftTemplate(unit) || !hasSupportEquipment(unit)) && (automaticPas || unit.side === "enemy" || unit.side === "neutral")
+      (!hasAircraftTemplate(unit)||automaticPas&&aircraftCanAct(unit,'defend')&&aircraftMayFly(start,unit)) && (!automaticPas||(unit.snapshot.equipmentSnapshots??[]).some(e=>e.kind==='weapon'&&String(e.maxOrder).toUpperCase()==='PAS')) && (["navy","building"].includes(unit.branch) || automaticPas&&hasAircraftTemplate(unit) || !hasSupportEquipment(unit)) && (automaticPas || unit.side === "enemy" || unit.side === "neutral")
     )
     .sort((a, b) =>
       compareText(a.instanceId, b.instanceId)
@@ -1688,6 +1691,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
 
 
 if (profile.kind !== "weapon") continue;
+if(hasAircraftTemplate(actor)&&!aircraftCanAct(actor,profile.pasOnly&&group.position==='自衛武器'?'defend':'attack'))continue;
 
 const order = /^order-([1-5])$/.exec(start.turn.phaseId);
 
@@ -2392,12 +2396,14 @@ for (const report of resourceReports) {
     coinSource
   );
 
+  const preAirAceLosses=resolveAceLosses(working,coinSource);
   const airCombatReports=resolveAirCombat(working,coinSource);
+  const ramReports=resolveMartyrRams(working,coinSource),aceLosses=preAirAceLosses.concat(resolveAceLosses(working,coinSource));
   if(airCombatReports.length||damage.targetReports.some(r=>r.applied?.aircraftHit&&r.applied.aircraftHit.before.status!==r.applied.aircraftHit.after.status))rebuildAircraftClusters(working);
   reconcileAviation(working);
   recordSinkingStarts(
     working,
-    damage.targetReports.map(report => report.applied)
+    damage.targetReports.map(report => report.applied).concat(ramReports.map(r=>r.applied))
   );
   const rayReports = [];
 
@@ -2456,13 +2462,14 @@ for (const report of resourceReports) {
     rangeSelections: copy(hitStep.rangeSelections),
     targetReports: damage.targetReports,
     airCombatIds:airCombatReports.map(r=>r.id),
+    ramReports,aceLosses,
     effectReports,
     rayReports,
     rescueInterruptions
   };
 
-  if (!working.controls.enemyAutonomy && report.hitReports.length) {
-    const pairs = report.hitReports.map(hit => [hit.unitId, hit.targetId]);
+  if (!working.controls.enemyAutonomy && (report.hitReports.length||ramReports.length)) {
+    const pairs = report.hitReports.map(hit => [hit.unitId, hit.targetId]).concat(ramReports.map(r=>[r.aircraftId,r.targetId]));
     report.roundWitnesses = captureRoundWitnesses(start, pairs);
   }
   working.settlementRuntime.attackRecords.push(copy(report));

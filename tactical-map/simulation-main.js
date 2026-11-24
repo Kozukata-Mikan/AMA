@@ -1,12 +1,12 @@
 import {drawFlightMissions} from './flight-mission-display.js';
-import {mountAirCombatUI} from './air-combat-ui.js?v=flight-missions-1';
-import {drawWeaponCoverage} from './weapon-coverage-display.js?v=flight-missions-1';
-import {mountAviationUI} from './aviation-ui.js?v=flight-missions-1';
-import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=flight-missions-1';
+import {mountAirCombatUI} from './air-combat-ui.js?v=air-training-1';
+import {drawWeaponCoverage} from './weapon-coverage-display.js?v=air-training-1';
+import {mountAviationUI} from './aviation-ui.js?v=air-training-1';
+import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=air-training-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=flight-missions-1";
-import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=flight-missions-1";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
+import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=air-training-1";
 import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-6";
 import {mountFormationAttackUI} from "./formation-attack-ui.js?v=fleet-cohesion-6";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
@@ -15,7 +15,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=flight-missions-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=air-training-1";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -30,23 +30,23 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js?v=facility-rules-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=aviation-operations-1";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=flight-missions-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=air-training-1";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=flight-missions-1";
+} from "./ship-runtime.js?v=air-training-1";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=flight-missions-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=flight-missions-1";
-import { drawSupportOverlay } from "./support-map-display.js?v=flight-missions-1";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=air-training-1";
+import { mountSupportUI } from "./simulation-support-ui.js?v=air-training-1";
+import { drawSupportOverlay } from "./support-map-display.js?v=air-training-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=flight-missions-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=flight-missions-1";
+} from "../js/catalog-seed.js?v=air-training-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=air-training-1";
 import {
   mountSimulationWorkflow
-} from "./simulation-workflow-ui.js?v=flight-missions-1";
+} from "./simulation-workflow-ui.js?v=air-training-1";
 
 import { mountBattleReportUI } from "./simulation-battle-report.js?v=workspace-ui-3";
 
@@ -61,7 +61,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=flight-missions-1";
+} from "./simulation-store.js?v=air-training-1";
 
 import {
   gridPosition,
@@ -731,6 +731,7 @@ function drawMap() {
     }, group);
 
   label.textContent = getFlagshipDisplayName(unit);
+    const ace=(unit.clusterMembers??[unit]).find(p=>p.aircraftState?.acePilot&&p.aircraftState.status!=='destroyed'||p.acePilotMarker);if(ace){const mark=svgNode('tspan',{fill:'#ffd674','font-weight':'900',dx:8},label);mark.textContent='ACE';const title=svgNode('title',{},mark);title.textContent=ace.aircraftState?.acePilotName??ace.acePilotMarker;}
     const aircraftTimer=aircraftTimerDisplay(unit);
     if(aircraftTimer){const timer=svgNode('tspan',{fill:aircraftTimer.color,'font-weight':'800',dx:8},label);timer.textContent=aircraftTimer.text;}
     // 集群代理只汇总观察副本中允许显示的己方状态。

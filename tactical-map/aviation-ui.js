@@ -1,9 +1,9 @@
 import {createFlightMissionEditor} from './flight-mission-ui.js';
-import {isAirshipBase,isAirship} from './aviation-services.js?v=flight-missions-1';
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=flight-missions-1';
-import {aviationRunways,aviationHostAlive} from './aviation-operations.js?v=flight-missions-1';
-import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=flight-missions-1';
-import {supportCapacity} from './support-equipment.js?v=flight-missions-1';
+import {isAirshipBase,isAirship} from './aviation-services.js?v=air-training-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=air-training-1';
+import {aviationRunways,aviationHostAlive} from './aviation-operations.js?v=air-training-1';
+import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=air-training-1';
+import {supportCapacity} from './support-equipment.js?v=air-training-1';
 const node=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAviationUI(store){
  const panel=node('details');panel.open=true;panel.dataset.toolCategory='progress';panel.dataset.workflowPanel='aviation';panel.append(node('summary','航空運用｜整備・離陸・着陸'));

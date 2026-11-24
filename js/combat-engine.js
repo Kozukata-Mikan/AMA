@@ -1,7 +1,7 @@
 import {
   findUnit,
   getBranchName
-} from "./data-store.js?v=flight-missions-1";
+} from "./data-store.js?v=air-training-1";
 
 export function previewAction({
   units,

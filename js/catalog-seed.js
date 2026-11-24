@@ -1,4 +1,4 @@
-import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=flight-missions-1";
+import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=air-training-1";
 // ===== 图鉴初始资料与字段定义 =====
 // 界面文案使用日文，注释使用中文。
 // 未确定的规则只保存参数，不执行计算。
@@ -183,7 +183,9 @@ export const AIRCRAFT_FIELDS = [
   {key:'aircraft.maneuverability',label:'機動性',type:'text',definition:'1R・2Rなど。空戦では小隊ごとに指定枚数の硬貨を投げ、表の数で機動対決を行います。'},
   {key:'aircraft.ceiling',label:'上昇限度（高度単位）',type:'optional-number',definition:'移動できる最大高度。地図の高度1単位は100mです。'},
   {key:'naval.endurance',label:'航続力',type:'text',definition:'艦船と同じ距離表記。1kは1000。入力すると滞空時間を自動計算します。'},
-  {key:'aircraft.training',label:'練度 / 反応力',type:'air-training',definition:'見習い0・普通1・精鋭2・エース3。追加の敵小隊1隊につき反応力を1回分使い、硬貨1枚を判定します。'},
+  {key:'aircraft.traits',label:'精鋭機隊の特性（最大3件）',type:'air-traits',definition:'精鋭・エース専用。希孚はエースだけに指定できます。曲技の士気機能は陸軍規則を待っています。'},
+  {key:'aircraft.acePilotName',label:'エース操縦士名',type:'text',definition:'エース機隊に1名。撃墜されると機隊は精鋭へ降格します。'},
+  {key:'aircraft.training',label:'練度 / 反応力',type:'air-training',definition:'反応力は見習い0・普通1・精鋭2・エース3。機動判定は見習いが裏1枚、精鋭が表1枚、エースが表2枚を固定（R上限）。恐慌閾値は順に1・2・3・4です。'},
 ];
 export const getUnitFields = unit => unit.branch==='building'?BUILDING_FIELDS:unit.branch==='air'?AIRCRAFT_FIELDS:UNIT_FIELDS;
 

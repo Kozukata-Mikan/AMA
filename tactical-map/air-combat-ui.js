@@ -1,5 +1,5 @@
-import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=flight-missions-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-training-1';
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAirCombatUI(store){
  const panel=el('details');panel.open=true;panel.dataset.toolCategory='attack';panel.dataset.workflowPanel='air-combat';panel.append(el('summary','空対空戦闘｜小隊・機動・反応力'));
@@ -16,7 +16,10 @@ export function mountAirCombatUI(store){
     details.append(el('p',`${d.left.join('・')} ↔ ${d.right.join('・')}：${outcome}`));
     if(d.dice)details.append(el('p',d.dice.some(list=>list.length)?d.dice.map((list,i)=>`${i===0?'左':'右'}機動硬貨：${list.map(head=>head?'表':'裏').join('・')}`).join(' / '):'機動判定は反応力判定による優劣のため省略しました。'));
     if(d.readiness)details.append(el('p',d.readiness.map((r,i)=>`${i===0?'左':'右'}反応：${({first:'初回',exhausted:'反応力を使い切り',unable:'行動不能','reaction-success':'表・通常対決','reaction-failed':'裏・機動敗北'})[r.reason]}`).join(' / ')));
-    for(const shot of d.shots)details.append(el('p',`${shot.actor} → ${shot.target} / ${shot.role} / ${shot.weaponName}：${shot.hitCount}命中`));
+    if(d.maneuver)details.append(el('p',d.maneuver.map((r,i)=>`${i===0?'左':'右'}練度固定：表${r.fixedHeads}・裏${r.fixedTails}`).join(' / ')));
+    for(const panic of d.panic??[])details.append(el('p',`${panic.aircraftName}：恐慌${panic.count} / 閾値${panic.threshold} / ${({normal:'通常',confused:'混乱',retreating:'撤退'})[panic.state]}${panic.immune?'（無畏）':''}`));
+    for(const loss of d.aceLosses??[])details.append(el('p',`ACE ${loss.pilotName}戦死：${loss.success?'後継 '+loss.heirName+'・エース維持':'精鋭へ降格'}`));
+    for(const shot of d.shots??[])details.append(el('p',`${shot.ambush?'【伏撃】 ':''}${shot.actor} → ${shot.target} / ${shot.role} / ${shot.weaponName}：${shot.hitCount}命中`));
    }history.append(details);
   }
  }

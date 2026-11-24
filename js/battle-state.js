@@ -1,7 +1,7 @@
 import {normalizeAviationComplement} from './equipment-options.js';
-import {aircraftFacilityCompatible} from './aircraft-template.js?v=flight-missions-1';
-import {supportCapacity} from '../tactical-map/support-equipment.js?v=flight-missions-1';
-import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=flight-missions-1';
+import {aircraftFacilityCompatible} from './aircraft-template.js?v=air-training-1';
+import {supportCapacity} from '../tactical-map/support-equipment.js?v=air-training-1';
+import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=air-training-1';
 import { normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";

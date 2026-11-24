@@ -1,6 +1,6 @@
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=flight-missions-1";
+} from "./equipment-runtime.js?v=air-training-1";
 
 export function createAmmoRegistrationFeatures(getState, commit) {
   function registerMissingAmmo(request, expectedRevision) {

@@ -1,13 +1,16 @@
+import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=air-training-1';
+import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=air-training-1';
 import {validateFlightPlan} from './flight-plan-data.js';
-import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=flight-missions-1';
-import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
-import {getVisibility} from './simulation-features.js?v=flight-missions-1';
-import {aviationRunways,aviationHostAlive,landAircraft} from './aviation-operations.js?v=flight-missions-1';
+import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=air-training-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
+import {getVisibility} from './simulation-features.js?v=air-training-1';
+import {aviationRunways,aviationHostAlive,landAircraft} from './aviation-operations.js?v=air-training-1';
 import {sampleTerrain} from './terrain-data.js';
-import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=flight-missions-1';
-import {readFiringArc} from './weapon-firing-arc.js?v=flight-missions-1';
+import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=air-training-1';
+import {readFiringArc} from './weapon-firing-arc.js?v=air-training-1';
 import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js';
-import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=flight-missions-1';
+import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=air-training-1';
 const fail=m=>{throw Error(m);},distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),live=p=>hasAircraftTemplate(p)&&p.aircraftState?.status!=='destroyed';
 function own(scene,planes){const side=scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;if(planes.some(p=>p.side!==side))fail('操作中の陣営の機体だけ指定してください。');}
 function visibility(scene,side,ids,cache){const key='view:'+side+':'+ids.join('|');if(cache?.has(key))return cache.get(key);const result=getVisibility({...scene,controls:{...scene.controls,observationSide:side,enemyAutonomy:false}},new Set(ids));cache?.set(key,result);return result;}
@@ -24,6 +27,7 @@ export function assignFlightMission(scene,{aircraftIds,plan}){
   if(result.kind==='CAP'&&[[-1,0],[0,-1],[0,1]].some(([x,y])=>!sampleTerrain(scene.terrain,result.origin.x+x*result.radius,result.origin.y+y*result.radius).inside))fail('巡航円を地図内に収めてください。');
   if(result.kind==='CAR'&&!result.waypoints.length)fail('CARの航点を1つ以上指定してください。');
   if(result.kind==='CAS'){
+   if(result.kind==='CAS'&&result.behavior!=='escort'&&result.targetId?.startsWith('group:')){result.targetGroupId=result.targetId.slice(6);const memberIds=expandFormationMemberIds(scene,{kind:'group',id:result.targetGroupId}),seen=visibility(scene,p.side,memberIds,cache);result.targetIds=memberIds.filter(id=>{const t=map.get(id);return t.side!==p.side&&!airborneUnit(t)&&seen.get(id)==='identified';});if(!result.targetIds.length)fail('編隊内に識別済みの攻撃目標がありません。');result.targetId=result.targetIds[0];}
    const target=map.get(result.behavior==='escort'?result.escortId:result.targetId);
    if(result.behavior==='escort'){if(!live(target)||target.side!==p.side||target.aircraftState.mission!=='airborne'||target.aircraftState.flightPlan?.kind!=='CAS'||target.aircraftState.flightPlan.behavior==='escort'||ids.has(target.instanceId))fail('飛行中の自陣営CAS攻撃隊を護衛対象にしてください。');result.escortGroupId=target.groupId;}
    else{if(!target||airborneUnit(target)||target.side===p.side||visibility(scene,p.side,[target.instanceId],cache).get(target.instanceId)!=='identified')fail('識別済みの地上・水上・水中の敵目標を選択してください。');const z=target.branch==='building'?sampleTerrain(scene.terrain,target.x,target.y).surface:target.underwater?-(target.depth??0):sampleTerrain(scene.terrain,target.x,target.y).surface;checkAirAttackMode(p,target,result.attackMethod,result.altitude,z);result.targetPoint={x:target.x,y:target.y};}
@@ -78,7 +82,8 @@ export function autoLandMissions(scene){
 export function appendMissionAttacks(scene){
  if(!/^order-[1-5]$/.test(scene.turn.phaseId))return;
  const participants=scene.instances.filter(p=>live(p)&&p.aircraftState?.flightPlan&&aircraftCanAct(p,'attack')&&aircraftMayFly(scene,p));if(!participants.length)return;
- const cache=new Map(),map=new Map(scene.instances.map(u=>[u.instanceId,u]));
+ const cache=new Map(),map=new Map(scene.instances.map(u=>[u.instanceId,u])),reservations=new Map(),damageEstimates=new Map();
+ for(const c of scene.attackRuntime.commands){if(c.turnNumber!==scene.turn.number||c.phaseId!==scene.turn.phaseId||!c.targetId)continue;const actor=map.get(c.unitId),g=actor?.equipmentState?.groups.find(g=>g.id===c.groupId),e=actor?.snapshot.equipmentSnapshots.find(e=>e.id===g?.equipmentId);if(!e)continue;let damage=1;try{damage=maximumHullDamage(readWeaponProfile(e,g));}catch{}const old=reservations.get(c.targetId)??{count:0,damage:0};reservations.set(c.targetId,{count:old.count+1,damage:old.damage+damage});}
  for(const p of participants){const f=p.aircraftState.flightPlan;if(f.stage==='returning'||f.stage==='complete')continue;
   if(f.kind==='CAP'&&f.behavior==='engage'||f.kind==='CAS'&&f.behavior==='escort'){
    const protectedPlane=f.behavior==='escort'?map.get(f.escortId):null,center=protectedPlane??f.origin,radius=protectedPlane?100:f.radius;
@@ -86,15 +91,20 @@ export function appendMissionAttacks(scene){
    const own=participants.filter(q=>q.side===p.side&&q.groupId===p.groupId&&q.aircraftState.flightPlan.kind===f.kind&&q.aircraftState.flightPlan.behavior===f.behavior&&distance(q,p)<=10).slice(0,27);const actorIds=(p.groupId?own:[p]).map(u=>u.instanceId),enemy=targets[0],targetIds=targets.filter(t=>t.unitId===enemy.unitId&&t.groupId===enemy.groupId&&distance(t,enemy)<=10).slice(0,27).map(t=>t.instanceId);const controls=scene.controls;try{scene.controls={...controls,enemyAutonomy:false,observationSide:p.side};saveAirCombat(scene,{actorIds,targetIds});}catch(e){f.notice=e.message;}finally{scene.controls=controls;}continue;
   }
   if(f.kind!=='CAS'||f.stage!=='attack')continue;
-  const target=map.get(f.targetId);if(!target||visibility(scene,p.side,[f.targetId],cache).get(f.targetId)!=='identified'){f.notice='攻撃目標を識別できません。';f.stage='returning';continue;}
+  const ids=f.targetGroupId?expandFormationMemberIds(scene,{kind:'group',id:f.targetGroupId}):[f.targetId],seen=visibility(scene,p.side,ids,cache);let candidates=ids.map(id=>map.get(id)).filter(t=>t&&t.side!==p.side&&!airborneUnit(t)&&seen.get(t.instanceId)==='identified'&&t.shipState?.status!=='sunk'&&(t.branch!=='building'||t.currentHp>0));
+  if(hasAirTrait(p,'economy')&&f.targetGroupId)candidates.sort((a,b)=>(reservations.get(a.instanceId)?.count??0)-(reservations.get(b.instanceId)?.count??0));
+  const target=candidates[0];if(!target){f.notice='攻撃目標を識別できません。';f.stage='returning';continue;}
   const z=target.branch==='building'?sampleTerrain(scene.terrain,target.x,target.y).surface:target.underwater?-(target.depth??0):sampleTerrain(scene.terrain,target.x,target.y).surface;
   try{checkAirAttackMode(p,target,f.attackMethod,p.altitude,z);}catch(e){f.notice=e.message;continue;}
   let pending=0;
   for(const g of p.equipmentState.groups){if(!['主動武器','掛載'].includes(g.position)||g.damaged||g.destroyed||g.lastUsedTurn===scene.turn.number)continue;const e=p.snapshot.equipmentSnapshots.find(e=>e.id===g.equipmentId);if(e?.kind!=='weapon')continue;const profile=readWeaponProfile(e,g);if(profile.pasOnly||g.remainingAmmo<profile.fullAmmoCost)continue;pending++;if(profile.issues.length||Number(scene.turn.phaseId.slice(-1))>profile.maxOrder)continue;
-   const d=Math.hypot(p.x-target.x,p.y-target.y,p.altitude-z);if(d>profile.range||z-p.altitude>profile.ceilingU)continue;try{readFiringArc(p,g,target);}catch{continue;}
+   let chosen=target;if(hasAirTrait(p,'economy')&&f.targetGroupId){chosen=candidates.filter(t=>(reservations.get(t.instanceId)?.damage??0)<Math.max(1,t.currentHp)).sort((a,b)=>(reservations.get(a.instanceId)?.count??0)-(reservations.get(b.instanceId)?.count??0))[0];if(!chosen)continue;}
+   const chosenZ=chosen.branch==='building'?sampleTerrain(scene.terrain,chosen.x,chosen.y).surface:chosen.underwater?-(chosen.depth??0):sampleTerrain(scene.terrain,chosen.x,chosen.y).surface;try{checkAirAttackMode(p,chosen,f.attackMethod,p.altitude,chosenZ);}catch{continue;}
+   const d=Math.hypot(p.x-chosen.x,p.y-chosen.y,p.altitude-chosenZ);if(d>profile.range||chosenZ-p.altitude>profile.ceilingU)continue;try{readFiringArc(p,g,chosen);}catch{continue;}
    const scope=readWeaponTargetScope(profile.targetScope);if(scope.kind!=='single'&&profile.targetScope.trim()!=='集群'){f.notice='範囲武器は手動で編隊目標を指定してください。';continue;}
    if(scene.attackRuntime.commands.some(c=>c.unitId===p.instanceId&&c.groupId===g.id))continue;
-   scene.attackRuntime.commands.push({id:`mission-cas:${p.instanceId}:${scene.turn.number}:${scene.turn.phaseId}:${g.id}`,status:'planned',turnNumber:scene.turn.number,phaseId:scene.turn.phaseId,unitId:p.instanceId,groupId:g.id,targetRef:{kind:'unit',id:target.instanceId},specifiedTargetIds:[],targetId:target.instanceId,attackMethod:f.attackMethod,createdAt:new Date().toISOString(),boundaries:[]});
+   if(hasAirTrait(p,'economy')){const key=profile.equipmentId+':'+profile.fullAmmoCost;if(!damageEstimates.has(key)){try{damageEstimates.set(key,maximumHullDamage(profile));}catch{damageEstimates.set(key,1);}}const old=reservations.get(chosen.instanceId)??{count:0,damage:0};reservations.set(chosen.instanceId,{count:old.count+1,damage:old.damage+damageEstimates.get(key)});}
+   scene.attackRuntime.commands.push({id:`mission-cas:${p.instanceId}:${scene.turn.number}:${scene.turn.phaseId}:${g.id}`,status:'planned',turnNumber:scene.turn.number,phaseId:scene.turn.phaseId,unitId:p.instanceId,groupId:g.id,targetRef:{kind:'unit',id:chosen.instanceId},specifiedTargetIds:[],targetId:chosen.instanceId,attackMethod:f.attackMethod,createdAt:new Date().toISOString(),boundaries:[]});
   }
   if(!pending){f.stage='returning';f.notice='使用可能な攻撃武器がないため帰投します。';}
  }

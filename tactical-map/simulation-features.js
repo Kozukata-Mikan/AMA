@@ -1,29 +1,32 @@
+import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
+import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=air-training-1';
+import {airborneUnit} from './air-ground-rules.js';
 import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js';
-import {observedAirCombat} from './air-combat-report.js?v=flight-missions-1';
-import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
+import {observedAirCombat} from './air-combat-report.js?v=air-training-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=flight-missions-1';
-import {reconcileAviation} from './aviation-operations.js?v=flight-missions-1';
-import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=flight-missions-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=flight-missions-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=flight-missions-1";
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=air-training-1';
+import {reconcileAviation} from './aviation-operations.js?v=air-training-1';
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-training-1';
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=air-training-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, navalKind, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=flight-missions-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=air-training-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=flight-missions-1";
+} from "./ship-runtime.js?v=air-training-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=flight-missions-1";
+} from "./simulation-rescue.js?v=air-training-1";
 
 import {
   createShipEffectsState,
@@ -34,11 +37,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=flight-missions-1";
+} from "./equipment-item-runtime.js?v=air-training-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=flight-missions-1";
+} from "./simulation-autonomous-rescue.js?v=air-training-1";
 
 import {
   routeLength,
@@ -302,6 +305,7 @@ function getNormalObserverVisibility(scene, observer, target) {
 
   if (isSubmerged(target) && (!["navy","building","air"].includes(observer.branch) || navalGrade(observer,"aswRecon") === null)) return null;
   if (distance <= 100) return "identified";
+  if(airborneUnit(target)&&(target.altitude??1)-sampleTerrain(scene.terrain,target.x,target.y).surface<=10)return null;
 
   if (
     !["navy","building","air"].includes(observer.branch) ||
@@ -475,6 +479,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         // 外方识别只开放可识别资料，不开放内部运行状态。
         delete observed.equipmentState;
         delete observed.trainingState;
+        observed.acePilotMarker=unit.aircraftState?.acePilot&&unit.aircraftState.status!=='destroyed'?unit.aircraftState.acePilotName:null;
         delete observed.aircraftState;
         delete observed.flightPlan;
         delete observed.snapshot.aircraftSnapshots;
@@ -1419,6 +1424,8 @@ export function createSimulationFeatures(getState, commit, commitBackground = nu
       await commit(scene => {
         const moving = ref.kind === 'unit' && options.followFormationMovement!==true ? scene.instances.filter(u=>u.instanceId===ref.id) : movementGroupMembers(scene,ref.kind==='group'?ref.id:scene.instances.find(u=>u.instanceId===ref.id)?.groupId);
         assertManualControl(scene,moving);
+        if(moving.some(airRetreating))fail("恐慌で撤退中の機体は自動帰投します。");
+        if(moving.some(p=>p.aircraftState?.status==='heavy'&&hasAirTrait(p,'martyr')))fail("殉道の大破機は自動体当たりを実行します。");
         interruptSupportForMovement(scene,moving.map(u=>u.instanceId),options.confirmSupportInterruption);
         const follow = options.followFormationMovement === true;
         const changingVertical = options.depth !== undefined || options.altitude !== undefined;
@@ -1665,6 +1672,8 @@ validationScene.controls.enemyAutonomy = false;
           }))
         );
 
+        ensureRetreatMissions(scene);
+        const ramRoutes=martyrRoutes(scene,new Set(routes.map(r=>r.instanceId)));routes.push(...ramRoutes);
         const missionRoutes=flightMissionRoutes(scene,new Set(routes.map(r=>r.instanceId)));
         routes.push(...missionRoutes);
         const movement = resolveMovementRoutes(
@@ -1707,6 +1716,7 @@ validationScene.controls.enemyAutonomy = false;
         }
 
         finishMissionMovement(scene,movement.destinations,missionRoutes);
+        const movedIds=new Set(movement.destinations.map(d=>d.instanceId));applyLowCloud(scene,scene.instances.filter(p=>p.branch==='air'&&movedIds.has(p.instanceId)));
         for (const plan of checked.filter(item=>item.formation && ["formation-layout","formation-follow"].includes(item.mode))) {
           const complete = plan.destinations.every(target=>{
             const unit = scene.instances.find(item=>item.instanceId===target.instanceId);

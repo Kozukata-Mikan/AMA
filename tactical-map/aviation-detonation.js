@@ -1,20 +1,23 @@
 import {chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {aviationRunways} from './aviation-operations.js?v=flight-missions-1';
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=flight-missions-1';
+import {aviationRunways} from './aviation-operations.js?v=air-training-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=air-training-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=flight-missions-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-training-1';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
-import {resolveCannonImpact,summarizeCannonImpacts} from './cannon-damage-runtime.js?v=aviation-operations-1';
-import {readCombatTargetProfile,combatTargetState,resolveBuildingCannonImpact} from './combat-target-runtime.js?v=flight-missions-1';
+import {resolveCannonImpact,summarizeCannonImpacts} from './cannon-damage-runtime.js?v=air-training-1';
+import {readCombatTargetProfile,combatTargetState,resolveBuildingCannonImpact,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-training-1';
 const area=value=>({'后部':'後部','中部1':'中部①','中部2':'中部②','两舷':'両舷','两舷部':'両舷'})[value]??value;
 export function explodeRunwayPayloads(scene,host,positions,coinSource,strengthOverride){
  const result={buildingHits:[],hpDamage:0,hasDamageEffect:false,effects:[],cannonImpacts:[],numericReports:[],aircraftIds:[],runwayIds:[],normalHitRemainder:combatTargetState(host)?.normalHitRemainder??0};
  if(!positions.length)return result;
  const hits=new Set(positions.map(area)),runways=aviationRunways(host).filter(r=>hits.has(area(r.position))||hits.has(`mount-${r.mountIndex}`));
  if(!runways.length)return result;
- const ids=new Set(runways.map(r=>r.id)),profile=readCombatTargetProfile(host),initialStrength=strengthOverride??profile.strength-(combatTargetState(host).underwaterStrengthUses??0);
- let strengthRemaining=initialStrength;
+ const ids=new Set(runways.map(r=>r.id));
  const planes=scene.instances.filter(plane=>hasAircraftTemplate(plane)&&plane.aircraftState?.hostId===host.instanceId&&ids.has(plane.aircraftState.runwayId)&&['ready','launching'].includes(plane.aircraftState.mission)&&plane.aircraftState.status!=='destroyed').sort((a,b)=>a.instanceId.localeCompare(b.instanceId));
+ return detonateAircraftPayloads(scene,host,planes,coinSource,strengthOverride,[...ids]);
+}
+export function detonateAircraftPayloads(scene,host,planes,coinSource,strengthOverride,runwayIds=[]){
+ const result={buildingHits:[],hpDamage:0,hasDamageEffect:false,effects:[],cannonImpacts:[],numericReports:[],aircraftIds:[],runwayIds,normalHitRemainder:combatTargetState(host)?.normalHitRemainder??0},profile=readCombatTargetProfile(host),initialStrength=strengthOverride??profile.strength-(combatTargetState(host).underwaterStrengthUses??0);let strengthRemaining=initialStrength;
  const payloads=[];
  // Only the selected external loadout detonates. Fixed weapons and pods stay out.
  for(const plane of planes){
@@ -25,7 +28,7 @@ export function explodeRunwayPayloads(scene,host,positions,coinSource,strengthOv
  payloads.sort((a,b)=>Number(b.rule.underwater)-Number(a.rule.underwater)||(a.rule.underwater?b.rule.power-a.rule.power:0)||a.plane.instanceId.localeCompare(b.plane.instanceId)||a.e.id.localeCompare(b.e.id));
  for(const{plane,e,rule,count,inertial}of payloads){
   if(rule.kind==='cannon')for(let n=0;n<count;n++){
-   const armor=inertial?profile.strengthArmor:profile.armor,impact=host.branch==='building'?resolveBuildingCannonImpact({penetration:e.penetration,armor},coinSource,host):resolveCannonImpact({penetration:e.penetration,armor},coinSource);
+   const armor=inertial?profile.strengthArmor:profile.armor,impact=host.branch==='air'?resolveAircraftCannonImpact({penetration:e.penetration,armor},coinSource):host.branch==='building'?resolveBuildingCannonImpact({penetration:e.penetration,armor},coinSource,host):resolveCannonImpact({penetration:e.penetration,armor},coinSource);
    if(host.branch==='building')result.buildingHits.push({mountId:impact.position.mountId,normalCredits:impact.normalCredits,fireEligible:impact.fireEligible});
    result.cannonImpacts.push(impact);if(impact.fireEligible&&host.branch==='navy')result.effects.push({targetId:host.instanceId,attackId:`runway:${plane.instanceId}:${e.id}:${n}`,type:'fire'});
   }else if(host.branch==='building'){
@@ -35,8 +38,8 @@ export function explodeRunwayPayloads(scene,host,positions,coinSource,strengthOv
    if(rule.underwater){strengthRemaining=damage.strengthRemainingAfter;if(host.branch==='navy')for(let n=0;n<count;n++)result.effects.push({targetId:host.instanceId,attackId:`runway:${plane.instanceId}:${e.id}:${n}`,type:'flooding'});}
   }
  }
- const cannon=summarizeCannonImpacts(result.cannonImpacts,result.normalHitRemainder);result.hpDamage+=cannon.hpDamage;result.normalHitRemainder=cannon.normalHitRemainder;result.hasDamageEffect||=cannon.damagingImpactCount>0;result.strengthConsumed=initialStrength-strengthRemaining;result.runwayIds=[...ids];
- for(const plane of planes){result.aircraftIds.push(plane.instanceId);plane.aircraftState.status='destroyed';plane.aircraftState.destroyedReason='runway-payload-detonation';plane.aircraftState.prepared=false;plane.currentHp=0;}
- if(result.aircraftIds.length){scene.aviationRuntime??={version:1,inventoryInitialized:true,records:[],runwayUse:[],preparationUse:[]};scene.aviationRuntime.records.push({kind:'runway-detonation',hostId:host.instanceId,turnNumber:scene.turn.number,phaseId:scene.turn.phaseId,...structuredClone(result)});}
+ const cannon=summarizeCannonImpacts(result.cannonImpacts,result.normalHitRemainder);result.hpDamage+=cannon.hpDamage;result.normalHitRemainder=cannon.normalHitRemainder;result.hasDamageEffect||=cannon.damagingImpactCount>0;result.strengthConsumed=initialStrength-strengthRemaining;result.runwayIds=[...runwayIds];
+ for(const plane of planes){result.aircraftIds.push(plane.instanceId);plane.aircraftState.status='destroyed';plane.aircraftState.destroyedReason=runwayIds.length?'runway-payload-detonation':'martyr-ram';plane.aircraftState.prepared=false;plane.currentHp=0;}
+ if(result.aircraftIds.length){scene.aviationRuntime??={version:1,inventoryInitialized:true,records:[],runwayUse:[],preparationUse:[]};scene.aviationRuntime.records.push({kind:runwayIds.length?'runway-detonation':'martyr-ram',hostId:host.instanceId,turnNumber:scene.turn.number,phaseId:scene.turn.phaseId,...structuredClone(result)});}
  return result;
 }

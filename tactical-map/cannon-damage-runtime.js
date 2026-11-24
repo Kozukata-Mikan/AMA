@@ -142,7 +142,8 @@ export function getMaximumCannonHitCredits(penetration, minimumArmor) {
  */
 export function resolveCannonImpact({
   penetration,
-  armor
+  armor,
+  aimedPosition = null
 }, coinSource = randomCoin) {
   if (typeof coinSource !== "function") {
     throw new Error("艦砲判定のコイン関数がありません。");
@@ -181,7 +182,8 @@ export function resolveCannonImpact({
     }
   }
 
-  const position = choosePosition(coinSource);
+  const position = aimedPosition ? {...HIT_POSITIONS.find(p=>p.id===aimedPosition.id),aimed:true,attempts:[]} : choosePosition(coinSource);
+  if(!position.id)throw Error("照準部位が不正です。");
 
   if (position.overpenetration) {
     // 水中命中在这些部位退回原来的穿／常。

@@ -1,14 +1,15 @@
+import {AIR_TRAITS} from '../js/aircraft-training.js?v=air-training-1';
 import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js';
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
-import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=flight-missions-1';
-import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=flight-missions-1';
-import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=flight-missions-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=flight-missions-1";
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-training-1';
+import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=air-training-1';
+import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-training-1';
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=air-training-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=flight-missions-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=air-training-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=flight-missions-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=air-training-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -19,7 +20,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=flight-missions-1";
+} from "../js/catalog-seed.js?v=air-training-1";
 
 // ===== 图鉴界面 =====
 
@@ -205,7 +206,7 @@ function catalogFieldSections(fields, category) {
     ["recon", "偵察・探測", ["naval.detection","naval.seaRecon","naval.airRecon","naval.aswRecon"]],
     ["mobility", "航速・航続", ["naval.speedKnots","naval.submergedSpeedKnots","naval.endurance","aircraft.ceiling","aircraft.maneuverability","aircraft.remoteRange"]],
     ["facility", "施設設定", ["building.kind","building.permanence","building.airportType","building.runways","building.portType"]],
-    ["traits", "練度・特殊能力", ["trainingTraits","aircraft.training"]]
+    ["traits", "練度・特殊能力", ["trainingTraits","aircraft.training","aircraft.acePilotName","aircraft.traits"]]
   ] : [
     ["basic", "基本情報", ["name","kind","faction","slot","supportEffect","remoteRange"]],
     ["weapon", "射撃・誘導", ["guidance","range","ceilingU","maxOrder","targetScope"]],
@@ -768,6 +769,7 @@ export function mountCatalogEditor({
           field.label,
           field.key === "branch"
             ? branchName(value)
+            : field.type === "air-traits" ? (value??[]).map(id=>AIR_TRAITS.find(t=>t[0]===id)?.[1]??id).join(" / ")
             : field.type === "air-attack-modes" ? (value??[]).map(id=>AIR_ATTACK_MODES.find(m=>m[0]===id)?.[1]??id).join(" / ")
             : field.type === "aircraft-type" ? AIRCRAFT_TYPES.find(([id])=>id===value)?.[1]
             : field.type === "air-training" ? ({novice:'見習い（反応力0）',regular:'普通（反応力1）',elite:'精鋭（反応力2）',ace:'エース（反応力3）'}[value] ?? value ?? '普通（反応力1）')
@@ -1003,6 +1005,8 @@ export function mountCatalogEditor({
      if (field.type === "checkbox") {
         control = input("", "checkbox");
         control.checked = value === true;
+      } else if (field.type === "air-traits") {
+        control=node("div");const boxes=AIR_TRAITS.map(([id,name,note])=>{const box=input("","checkbox");box.checked=(value??[]).includes(id);labeled(control,name,box,note);return[id,box];});control.read=()=>boxes.filter(([,b])=>b.checked).map(([id])=>id);
       } else if (field.type === "air-attack-modes") {
         control=node("div");const boxes=AIR_ATTACK_MODES.map(([id,name])=>{const box=input("","checkbox");box.checked=(value??[]).includes(id);labeled(control,name,box);return[id,box];});control.read=()=>boxes.filter(([,b])=>b.checked).map(([id])=>id);
       } else if (["armor-grade","penetration-grade"].includes(field.type)) {
@@ -1064,7 +1068,7 @@ export function mountCatalogEditor({
       }
 
       controls.set(field.key, control);
-      if(field.type==="air-attack-modes"){const box=node("fieldset");box.dataset.field=field.key;box.append(node("legend",field.label),control,node("small",field.definition));sectionHosts.get(field.key).append(box);continue;}
+      if(["air-attack-modes","air-traits"].includes(field.type)){const box=node("fieldset");box.dataset.field=field.key;box.append(node("legend",field.label),control,node("small",field.definition));sectionHosts.get(field.key).append(box);continue;}
 
       labeled(
         sectionHosts.get(field.key),
@@ -1073,6 +1077,12 @@ export function mountCatalogEditor({
         field.definition
       );
       control.closest("label").dataset.field = field.key;
+    }
+
+    if(controls.has('aircraft.traits')){
+      const traits=controls.get('aircraft.traits'),training=controls.get('aircraft.training'),name=controls.get('aircraft.acePilotName'),boxes=[...traits.querySelectorAll('input[type="checkbox"]')];
+      const sync=()=>{const eligible=['elite','ace'].includes(training.value);for(const [i,b]of boxes.entries())if(!eligible||AIR_TRAITS[i][0]==='sifu'&&training.value!=='ace')b.checked=false;const count=boxes.filter(b=>b.checked).length;for(const [i,b]of boxes.entries()){const permitted=eligible&&(AIR_TRAITS[i][0]!=='sifu'||training.value==='ace');b.disabled=!permitted||!b.checked&&count>=3;}name.closest('label').hidden=training.value!=='ace';};
+      training.addEventListener('change',sync);traits.addEventListener('change',sync);sync();
     }
 
     if (category === "units" && controls.has("naval.iconType")) {

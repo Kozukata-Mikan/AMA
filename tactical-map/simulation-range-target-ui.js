@@ -5,7 +5,7 @@ import {
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=flight-missions-1";
+} from "./weapon-profile-runtime.js?v=air-training-1";
 
 
 function fail(message) {

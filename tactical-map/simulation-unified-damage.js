@@ -4,11 +4,11 @@ import {
   readShipProfile,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=flight-missions-1";
+} from "./ship-runtime.js?v=air-training-1";
 
 import {
   summarizeCannonImpacts
-} from "./cannon-damage-runtime.js?v=aviation-operations-1";
+} from "./cannon-damage-runtime.js?v=air-training-1";
 
 import {
   readNumericPower,
@@ -18,7 +18,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=flight-missions-1";
+} from "./simulation-rescue.js?v=air-training-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ATTACK_PHASE = /^(order-[1-5]|pas)$/;

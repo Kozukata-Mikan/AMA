@@ -1,13 +1,14 @@
+import {initializeAirTraining,resolveAceLosses,airTrainingRule,rollManeuver,applySquadPanic,airConfused,airRetreating,canAmbush,markAmbush} from './air-training-runtime.js?v=air-training-1';
 import {checkRayTarget,registerRayTarget,initializeRayTargetRuntime} from './ray-target-runtime.js';
 import {traceAttackTerrainLine,entersTerrainInterior} from './attack-terrain-runtime.js';
-import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=flight-missions-1';
-import {aircraftMayFly} from './aviation-time.js?v=flight-missions-1';
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=flight-missions-1';
+import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-training-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-training-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
 import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=flight-missions-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-training-1';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}
@@ -25,7 +26,7 @@ function validateBattle(scene,c,{manual=false}={}){
  const actors=planesFor(scene,c.actorIds),targets=planesFor(scene,c.targetIds),side=actors[0].side;
  if(actors.some(p=>p.side!==side||!aircraftCanAct(p,'attack')||!aircraftMayFly(scene,p))||targets.some(p=>p.side===side||p.aircraftState.mission!=='airborne'||p.aircraftState.status==='destroyed'))fail('空戦には行動可能な自陣営の航空機と飛行中の敵航空機が必要です。');
  const visibility=getVisibility({...scene,controls:{...scene.controls,observationSide:side,enemyAutonomy:false}},new Set(c.targetIds));if(targets.some(p=>visibility.get(p.instanceId)!=='identified'))fail('空戦目標は自陣営で識別済みの機体だけを選択してください。');
- for(const p of [...actors,...targets]){maneuverDice(p.snapshot.aircraft);airReaction(p.snapshot.aircraft.training);readArmorGrade(p.snapshot.naval.armor);for(const role of ['主動武器','自衛武器'])for(const w of weaponGroups(p,role,scene.turn.phaseId)){if(w.p.issues.length)fail(`${p.name} / ${w.p.label}：${w.p.issues.join(' / ')}`);const rule=parseDamageRule(w.e);if(w.p.guidance==='inertial')fail('航空機の固有強度による慣性防御は未定義です。航空機への慣性武器は後続規則が必要です。');if(w.p.large||rule.kind==='equipment'||rule.underwater)fail('この武器の航空機への専用被害規則は未接続です。通常数字威力・艦砲威力を使用してください。');if(rule.kind==='cannon')compareArmorGrades(w.p.penetration,p.snapshot.naval.armor);}}
+ for(const p of [...actors,...targets]){maneuverDice(p.snapshot.aircraft);airTrainingRule(p).reaction;readArmorGrade(p.snapshot.naval.armor);for(const role of ['主動武器','自衛武器'])for(const w of weaponGroups(p,role,scene.turn.phaseId)){if(w.p.issues.length)fail(`${p.name} / ${w.p.label}：${w.p.issues.join(' / ')}`);const rule=parseDamageRule(w.e);if(w.p.guidance==='inertial')fail('航空機の固有強度による慣性防御は未定義です。航空機への慣性武器は後続規則が必要です。');if(w.p.large||rule.kind==='equipment'||rule.underwater)fail('この武器の航空機への専用被害規則は未接続です。通常数字威力・艦砲威力を使用してください。');if(rule.kind==='cannon')compareArmorGrades(w.p.penetration,p.snapshot.naval.armor);}}
  if(manual&&side!==(scene.controls.enemyAutonomy?'ally':scene.controls.observationSide))fail('操作中の陣営の航空機を指定してください。');
  const reachable=actors.some(a=>weaponGroups(a,'主動武器',scene.turn.phaseId).some(w=>w.g.remainingAmmo>=w.p.fullAmmoCost&&targets.some(b=>distance(a,b)<=w.p.range+1e-7&&(b.altitude-a.altitude)<=w.p.ceilingU+1e-7)));
  if(!reachable)fail('現在の次序で射距・射高・弾薬を満たす主動武器がありません。');return{actors,targets};
@@ -35,7 +36,7 @@ export function saveAirCombat(scene,request){
  if(!/^order-[1-5]$/.test(scene.turn.phaseId))fail('空戦計画は次序1～5で指定してください。');const r=initializeAirCombat(scene),c={id:crypto.randomUUID(),turnNumber:scene.turn.number,phaseId:scene.turn.phaseId,actorIds:[...request.actorIds],targetIds:[...request.targetIds]};validateBattle(scene,c,{manual:true});if(r.commands.some(o=>o.turnNumber===c.turnNumber&&o.phaseId===c.phaseId&&o.actorIds.some(id=>c.actorIds.includes(id))))fail('この機体の空戦計画は登録済みです。先に取り消してください。');r.commands.push(c);
 }
 export function preflightAirCombat(scene){const r=initializeAirCombat(scene);for(const c of r.commands.filter(c=>c.turnNumber===scene.turn.number&&c.phaseId===scene.turn.phaseId))validateBattle(scene,c);}
-function readiness(squad,encounter,coin){const members=squad.filter(p=>p.aircraftState.status==='operational');if(!members.length)return{normal:false,reason:'unable',roll:null};if(encounter===0)return{normal:true,reason:'first',roll:null};const reaction=airReaction(members[0].snapshot.aircraft.training);if(encounter>reaction)return{normal:false,reason:'exhausted',reaction,roll:null};const roll=toss(coin);return{normal:roll,reason:roll?'reaction-success':'reaction-failed',reaction,roll};}
+function readiness(squad,encounter,coin){const members=squad.filter(p=>p.aircraftState.status==='operational'&&!airRetreating(p));if(!members.length)return{normal:false,reason:'unable',roll:null};if(encounter===0)return{normal:true,reason:'first',roll:null};const reaction=airTrainingRule(members[0]).reaction;if(encounter>reaction)return{normal:false,reason:'exhausted',reaction,roll:null};const roll=toss(coin);return{normal:roll,reason:roll?'reaction-success':'reaction-failed',reaction,roll};}
 function canFireAt(scene,a,b,profile,traces){
  if(distance(a,b)>profile.range+1e-7||b.altitude-a.altitude>profile.ceilingU+1e-7)return false;
  if(profile.guidance==='radar'&&getObserverVisibility(scene,a,b)===null)return false;
@@ -47,24 +48,45 @@ function canFireAt(scene,a,b,profile,traces){
 }
 function fireWeapons(scene,shooters,opponents,role,coin){
  const shots=[],applications=[],traces=new Map();for(const a of shooters){if(a.aircraftState.status!=='operational')continue;const choices=opponents.filter(p=>p.aircraftState.status!=='destroyed');if(!choices.length)break;
-  for(const w of weaponGroups(a,role,scene.turn.phaseId)){if(w.g.remainingAmmo<w.p.fullAmmoCost)continue;const eligible=choices.filter(b=>canFireAt(scene,a,b,w.p,traces));if(!eligible.length)continue;const b=eligible[indexOfRandom(eligible.length,coin)],modifiers=getHitModifiers({guidance:w.p.guidance,environment:scene.environment,globalPenalties:distance(a,b)>w.p.range/2+1e-7?1:0});
+  const actualRole=airConfused(a)||airRetreating(a)?'自衛武器':role;
+  for(const w of weaponGroups(a,actualRole,scene.turn.phaseId)){if(w.g.remainingAmmo<w.p.fullAmmoCost)continue;const eligible=choices.filter(b=>canFireAt(scene,a,b,w.p,traces));if(!eligible.length)continue;const b=eligible[indexOfRandom(eligible.length,coin)],modifiers=getHitModifiers({guidance:w.p.guidance,environment:scene.environment,globalPenalties:distance(a,b)>w.p.range/2+1e-7?1:0});
    const hit=resolveHitCoins({...w.p.projection,guidance:w.p.guidance,bonuses:modifiers.bonuses,penalties:modifiers.penalties},coin);w.g.remainingAmmo-=w.p.fullAmmoCost;w.g.lastUsedTurn=scene.turn.number;if(w.p.guidance==='ray')registerRayTarget(scene,{unitId:a.instanceId,targetId:b.instanceId},{turnNumber:scene.turn.number,phaseId:scene.turn.phaseId});
    const rule=parseDamageRule(w.e);let damage=0,normalCredits=0;if(rule.kind==='cannon'){for(let n=0;n<hit.hitCount;n++){const comparison=compareArmorGrades(w.p.penetration,b.snapshot.naval.armor),category=toss(coin)?comparison.category:'normal';normalCredits+=({major:9,penetration:3,normal:1,shatter:0})[category];}}else damage=resolveNumericDamage({powerRule:w.e.powerRule,hitCount:hit.hitCount,penetration:w.p.penetration,armor:b.snapshot.naval.armor,strength:0,strengthRemaining:0,inertial:w.p.guidance==='inertial'}).hpDamage;
-   applications.push({targetId:b.instanceId,hit:hit.hitCount>0,damage,normalCredits});shots.push({actorId:a.instanceId,targetId:b.instanceId,groupId:w.g.id,role,weaponName:w.e.name,hitCount:hit.hitCount,ammoCost:w.p.fullAmmoCost,hit});
+   applications.push({targetId:b.instanceId,hit:hit.hitCount>0,damage,normalCredits});shots.push({actorId:a.instanceId,targetId:b.instanceId,groupId:w.g.id,role:actualRole,weaponName:w.e.name,hitCount:hit.hitCount,ammoCost:w.p.fullAmmoCost,hit});
   }
  }return{shots,applications};
 }
+function applyFire(scene,fire){
+ const applications=[];for(const hit of fire.applications){const p=scene.instances.find(p=>p.instanceId===hit.targetId),s=ensureAircraftRuntime(p),credits=(s.normalHitRemainder??0)+hit.normalCredits;const result=applyAircraftHit(p,{hit:hit.hit,durabilityDamage:hit.damage+Math.floor(credits/3)});s.normalHitRemainder=credits%3;applications.push(result);}return applications;
+}
+function hiddenFrom(scene,squad,opponents,views){if(!squad.length||!opponents.length)return false;const view=views.get(opponents[0].side);return squad.every(p=>!view.get(p.instanceId));}
 export function resolveAirCombat(scene,coin=randomCoin){
- preflightAirCombat(scene);initializeRayTargetRuntime(scene);const r=scene.airCombatRuntime,current=r.commands.filter(c=>c.turnNumber===scene.turn.number&&c.phaseId===scene.turn.phaseId),reports=[],seen=new Set();
- for(const c of current){const key=[c.actorIds.slice().sort().join('|'),c.targetIds.slice().sort().join('|')].sort().join('::');if(seen.has(key))continue;seen.add(key);const actors=planesFor(scene,c.actorIds),targets=planesFor(scene,c.targetIds),witnesses={};for(const side of new Set([...actors,...targets].map(p=>p.side))){const view=getVisibility({...scene,controls:{...scene.controls,observationSide:side,enemyAutonomy:false}},new Set([...c.actorIds,...c.targetIds]));witnesses[side]=[...actors,...targets].filter(p=>p.side===side||view.get(p.instanceId)==='identified').map(p=>p.instanceId);}
+ initializeAirTraining(scene);preflightAirCombat(scene);initializeRayTargetRuntime(scene);const r=initializeAirCombat(scene),current=r.commands.filter(c=>c.turnNumber===scene.turn.number&&c.phaseId===scene.turn.phaseId),reports=[],seen=new Set();
+ for(const c of current){
+  const key=[c.actorIds.slice().sort().join('|'),c.targetIds.slice().sort().join('|')].sort().join('::');if(seen.has(key))continue;seen.add(key);
+  const actors=planesFor(scene,c.actorIds),targets=planesFor(scene,c.targetIds),witnesses={},views=new Map();
+  for(const side of new Set([...actors,...targets].map(p=>p.side))){const view=getVisibility({...scene,controls:{...scene.controls,observationSide:side,enemyAutonomy:false}},new Set([...c.actorIds,...c.targetIds]));views.set(side,view);witnesses[side]=[...actors,...targets].filter(p=>p.side===side||view.get(p.instanceId)==='identified').map(p=>p.instanceId);}
   const plan=buildAirEngagements(actors,targets,coin),encounters=[plan.squads[0].map(()=>0),plan.squads[1].map(()=>0)],duels=[];
-  for(const edge of plan.edges){const left=plan.squads[0][edge.left].filter(p=>p.aircraftState.status!=='destroyed'),right=plan.squads[1][edge.right].filter(p=>p.aircraftState.status!=='destroyed');if(!left.length||!right.length)continue;const a=readiness(left,encounters[0][edge.left]++,coin),b=readiness(right,encounters[1][edge.right]++,coin),duel={left:left.map(p=>p.instanceId),right:right.map(p=>p.instanceId),readiness:[a,b]};
-   if(!a.normal&&!b.normal){duels.push({...duel,skipped:true,reason:'both-unable-to-engage'});continue;}
-   const dice=[[],[]];if(a.normal&&b.normal)for(const [side,squad]of [[0,left],[1,right]])for(let i=0;i<maneuverDice(squad[0].snapshot.aircraft);i++)dice[side].push(toss(coin));const heads=dice.map(list=>list.filter(Boolean).length),outcome=!a.normal?'right':!b.normal?'left':heads[0]===heads[1]?'tie':heads[0]>heads[1]?'left':'right';
-   const leftRole=outcome==='right'?'自衛武器':'主動武器',rightRole=outcome==='left'?'自衛武器':'主動武器';const fireA=fireWeapons(scene,left,right,leftRole,coin),fireB=fireWeapons(scene,right,left,rightRole,coin),applications=[];
-   // Both sides fire from the same duel-start state, even if incoming damage will destroy them.
-   for(const hit of [...fireA.applications,...fireB.applications]){const p=scene.instances.find(p=>p.instanceId===hit.targetId),s=ensureAircraftRuntime(p);const credits=(s.normalHitRemainder??0)+hit.normalCredits;const result=applyAircraftHit(p,{hit:hit.hit,durabilityDamage:hit.damage+Math.floor(credits/3)});s.normalHitRemainder=credits%3;applications.push(result);}
-   duels.push({...duel,dice,heads,outcome,shots:[...fireA.shots,...fireB.shots],applications});
+  for(const edge of plan.edges){
+   const original=[plan.squads[0][edge.left],plan.squads[1][edge.right]],before=original.map(team=>new Set(team.filter(p=>p.aircraftState.status==='destroyed').map(p=>p.instanceId)));
+   let left=original[0].filter(p=>p.aircraftState.status!=='destroyed'),right=original[1].filter(p=>p.aircraftState.status!=='destroyed');if(!left.length||!right.length)continue;
+   const duel={left:left.map(p=>p.instanceId),right:right.map(p=>p.instanceId),ambush:[],shots:[],applications:[]};
+   const ambushers=[canAmbush(scene,left)&&hiddenFrom(scene,left,right,views),canAmbush(scene,right)&&hiddenFrom(scene,right,left,views)];
+   for(const [index,shooters,opponents]of [[0,left,right],[1,right,left]])if(ambushers[index]){const fire=fireWeapons(scene,shooters,opponents,'主動武器',coin);if(fire.shots.length){markAmbush(scene,shooters);duel.ambush.push({side:index,shots:fire.shots});duel.shots.push(...fire.shots.map(s=>({...s,ambush:true})));duel.applications.push(...applyFire(scene,fire));}}
+   left=left.filter(p=>p.aircraftState.status!=='destroyed');right=right.filter(p=>p.aircraftState.status!=='destroyed');
+   const a=readiness(left,encounters[0][edge.left]++,coin),b=readiness(right,encounters[1][edge.right]++,coin);duel.readiness=[a,b];
+   if(!left.length||!right.length||!a.normal&&!b.normal){duel.skipped=true;duel.reason=!left.length||!right.length?'ambush-eliminated-opponent':'both-unable-to-engage';}
+   else{
+    const rolls=[{dice:[],fixedHeads:0,fixedTails:0},{dice:[],fixedHeads:0,fixedTails:0}];
+    if(a.normal&&b.normal)for(const [side,squad]of [[0,left],[1,right]])rolls[side]=rollManeuver(squad[0],maneuverDice(squad[0].snapshot.aircraft),coin);
+    const dice=rolls.map(r=>r.dice),heads=dice.map(list=>list.filter(Boolean).length),outcome=!a.normal?'right':!b.normal?'left':heads[0]===heads[1]?'tie':heads[0]>heads[1]?'left':'right';
+    const fireA=fireWeapons(scene,left,right,outcome==='right'?'自衛武器':'主動武器',coin),fireB=fireWeapons(scene,right,left,outcome==='left'?'自衛武器':'主動武器',coin);
+    duel.applications.push(...applyFire(scene,{applications:[...fireA.applications,...fireB.applications]}));duel.shots.push(...fireA.shots,...fireB.shots);Object.assign(duel,{dice,heads,outcome,maneuver:rolls});
+   }
+   duel.aceLosses=resolveAceLosses(scene,coin);
+   duel.panic=original.flatMap((team,i)=>applySquadPanic(team,{lost:team.filter(p=>p.aircraftState.status==='destroyed'&&!before[i].has(p.instanceId)).length,defeated:duel.outcome===(i===0?'right':'left')},coin));
+   if(duel.skipped&&!duel.shots.length)delete duel.shots;
+   duels.push(duel);
   }
   reports.push({id:c.id,turnNumber:c.turnNumber,phaseId:c.phaseId,actorIds:c.actorIds,targetIds:c.targetIds,witnesses,squads:plan.squads.map(side=>side.map(team=>team.map(p=>p.instanceId))),duels});
  }
