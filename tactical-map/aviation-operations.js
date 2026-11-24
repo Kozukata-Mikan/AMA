@@ -1,10 +1,11 @@
+import {resolveForcedLanding,recordAviationAceLosses} from './aviation-losses.js?v=air-losses-1';
 import {initializeAirTraining,clearLandedPanic} from './air-training-runtime.js?v=air-training-1';
-import {autoLandMissions} from './flight-missions.js?v=air-defense-1';
-import {assertAircraftPreparationTime,assertAircraftLaunchTime,assertAircraftLandingTime} from './aviation-time.js?v=air-training-1';
+import {autoLandMissions} from './flight-missions.js?v=air-losses-1';
+import {assertAircraftPreparationTime,assertAircraftLaunchTime,assertAircraftLandingTime} from './aviation-time.js?v=air-losses-1';
 import {buildingAlive,buildingMountAvailable} from './building-state.js?v=facility-rules-1';
-import {advanceFacilityServices,enforceRemoteControl,isAirshipBase,isAirship} from './aviation-services.js?v=air-defense-1';
+import {advanceFacilityServices,enforceRemoteControl,isAirshipBase,isAirship} from './aviation-services.js?v=air-losses-1';
 import {readShipProfile} from './ship-runtime.js?v=air-training-1';
-import {hasAircraftTemplate,ensureAircraftRuntime,readAircraftProfile} from './aircraft-runtime.js?v=air-defense-1';
+import {hasAircraftTemplate,ensureAircraftRuntime,readAircraftProfile} from './aircraft-runtime.js?v=air-losses-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=air-training-1';
 import {supportCapacity} from './support-equipment.js?v=air-training-1';
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from './equipment-runtime.js?v=air-training-1';
@@ -68,7 +69,7 @@ export function prepareAircraft(scene,{hostId,runwayId,aircraftIds,loadoutId=nul
  for(const p of planes){const s=p.aircraftState,profile=readAircraftProfile(p);equipLoadout(p,loadoutId);Object.assign(s,{mission:'ready',prepared:true,preparedTurn:scene.turn.number,runwayId:runway.id,remainingEndurance:profile.enduranceBudget,remainingAirTime:profile.maximumAirTime});}
  scene.aviationRuntime.records.push({kind:'prepare',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],loadoutId});
 }
-function depart(scene,plane,host){const ground=host.branch==='navy'&&navalKind(host)==='air'?host.altitude:sampleTerrain(scene.terrain,host.x,host.y).surface;const altitude=Math.max(1,ground+1);if(altitude>plane.snapshot.aircraft.ceiling)fail('母艦・施設の地表高度が機体の上昇限度以上です。');Object.assign(plane,{x:host.x,y:host.y,altitude,heading:host.heading??0});if(plane.aircraftState.flightPlan)plane.aircraftState.flightPlan.origin={x:host.x,y:host.y};Object.assign(plane.aircraftState,{sortieHomeId:host.instanceId,sortieLaunched:true,mission:'airborne',hostId:null,runwayId:null,prepared:false,dueTurn:null});}
+function depart(scene,plane,host){delete plane.aircraftState.emergencyLanding;const ground=host.branch==='navy'&&navalKind(host)==='air'?host.altitude:sampleTerrain(scene.terrain,host.x,host.y).surface;const altitude=Math.max(1,ground+1);if(altitude>plane.snapshot.aircraft.ceiling)fail('母艦・施設の地表高度が機体の上昇限度以上です。');Object.assign(plane,{x:host.x,y:host.y,altitude,heading:host.heading??0});if(plane.aircraftState.flightPlan)plane.aircraftState.flightPlan.origin={x:host.x,y:host.y};Object.assign(plane.aircraftState,{sortieHomeId:host.instanceId,sortieLaunched:true,mission:'airborne',hostId:null,runwayId:null,prepared:false,dueTurn:null});}
 export function launchAircraft(scene,{hostId,runwayId,aircraftIds}){
  roundStart(scene);const{host,runway}=runwayFor(scene,hostId,runwayId);own(scene,host);const planes=chosen(scene,aircraftIds);
  for(const p of planes){own(scene,p);assertAircraftLaunchTime(scene,p);const s=ensureAircraftRuntime(p);if(s.hostId!==hostId||s.runwayId!==runwayId||s.mission!=='ready'||!s.prepared||s.status!=='operational'||p.currentHp<p.snapshot.maxHp)fail('指定滑走路の整備済み機を選択してください。');if(Math.max(1,(host.branch==='navy'&&navalKind(host)==='air'?host.altitude:sampleTerrain(scene.terrain,host.x,host.y).surface)+1)>p.snapshot.aircraft.ceiling)fail('施設高度が上昇限度以上です。');}
@@ -77,21 +78,23 @@ export function launchAircraft(scene,{hostId,runwayId,aircraftIds}){
  enforceRemoteControl(scene);rebuildAircraftClusters(scene);
  scene.aviationRuntime.records.push({kind:'takeoff',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],immediate:runway.kind==='catapult'});
 }
-export function landAircraft(scene,{hostId,runwayId,aircraftIds}){
+export function landAircraft(scene,{hostId,runwayId,aircraftIds},coin){
  roundStart(scene);const{host,runway}=runwayFor(scene,hostId,runwayId);own(scene,host);const planes=chosen(scene,aircraftIds);
  let occupied=scene.instances.filter(p=>hasAircraftTemplate(p)&&p.aircraftState?.hostId===hostId&&p.aircraftState.status!=='destroyed').reduce((n,p)=>n+p.snapshot.aircraft.engines,0);
  for(const p of planes){own(scene,p);assertAircraftLandingTime(scene,p);const s=ensureAircraftRuntime(p);if(s.mission!=='airborne'||s.status==='destroyed'||!aircraftFacilityCompatible(p.snapshot.aircraft.type,host))fail('着陸可能な飛行中の機体を選択してください。');if(Math.hypot(p.x-host.x,p.y-host.y)>(host.branch==='building'?25:12.5)+1e-7)fail('機体が母艦・施設の着陸範囲外です。');occupied+=p.snapshot.aircraft.engines;}
  if(occupied>supportCapacity(host,'parking-stand'))fail('着陸先の駐機枠が不足しています。');reserveRunway(scene,host,runway,'landing',planes.length);
- for(const p of planes){const s=p.aircraftState;if(!s.clusterId)s.formationId=p.groupId??s.formationId??null;p.groupId=s.formationId??null;Object.assign(s,{mission:runway.kind==='catapult'?'parked':'landing',hostId,runwayId:runway.kind==='catapult'?null:runwayId,prepared:false,dueTurn:runway.kind==='catapult'?null:scene.turn.number+1,clusterId:null});}
+ for(const p of planes){const landing=resolveForcedLanding(scene,p,{hostId,runwayId,stage:'registration'},coin);if(landing&&!landing.success)continue;const s=p.aircraftState;if(!s.clusterId)s.formationId=p.groupId??s.formationId??null;p.groupId=s.formationId??null;Object.assign(s,{mission:runway.kind==='catapult'?'parked':'landing',hostId,runwayId:runway.kind==='catapult'?null:runwayId,prepared:false,dueTurn:runway.kind==='catapult'?null:scene.turn.number+1,clusterId:null});}
+ recordAviationAceLosses(scene,coin);
  scene.aviationRuntime.records.push({kind:'landing',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],immediate:runway.kind==='catapult'});clearLandedPanic(scene);rebuildAircraftClusters(scene);
 }
-export function advanceAviationStart(scene){
+export function advanceAviationStart(scene,coin){
  initializeAviationRuntime(scene);
  advanceFacilityServices(scene);
  advanceAirshipBaseServices(scene);
  scene.aviationRuntime.runwayUse=scene.aviationRuntime.runwayUse.filter(u=>u.turnNumber>=scene.turn.number);
  scene.aviationRuntime.preparationUse=scene.aviationRuntime.preparationUse.filter(u=>u.turnNumber>=scene.turn.number);
- for(const p of scene.instances){if(!hasAircraftTemplate(p))continue;const s=p.aircraftState;if(!s||s.status==='destroyed'||!['launching','landing'].includes(s.mission)||s.dueTurn>scene.turn.number)continue;const host=scene.instances.find(u=>u.instanceId===s.hostId);if(!aviationHostAlive(host)){s.mission='parked';s.prepared=false;s.runwayId=null;s.dueTurn=null;continue;}if(s.mission==='launching'){try{assertAircraftLaunchTime(scene,p);depart(scene,p,host);}catch(e){Object.assign(s,{mission:'ready',dueTurn:null});}}else Object.assign(s,{mission:'parked',runwayId:null,dueTurn:null,prepared:false});}
+ for(const p of scene.instances){if(!hasAircraftTemplate(p))continue;const s=p.aircraftState;if(!s||s.status==='destroyed'||!['launching','landing'].includes(s.mission)||s.dueTurn>scene.turn.number)continue;const host=scene.instances.find(u=>u.instanceId===s.hostId);if(!aviationHostAlive(host)){s.mission='parked';s.prepared=false;s.runwayId=null;s.dueTurn=null;continue;}if(s.mission==='launching'){try{assertAircraftLaunchTime(scene,p);depart(scene,p,host);}catch(e){Object.assign(s,{mission:'ready',dueTurn:null});}}else{const landing=s.status==='heavy'&&!s.emergencyLanding?resolveForcedLanding(scene,p,{hostId:host.instanceId,runwayId:s.runwayId,stage:'completion'},coin):null;if(!landing||landing.success)Object.assign(s,{mission:'parked',runwayId:null,dueTurn:null,prepared:false});}}
+ recordAviationAceLosses(scene,coin);
  clearLandedPanic(scene);
  autoLandMissions(scene);
  clearLandedPanic(scene);

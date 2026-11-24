@@ -752,6 +752,9 @@ function renderObservedRound(report, nodes) {
   section('攻撃・被弾', ['段階', '攻撃側', '目標', '自陣営の兵装', '命中'],
     report.attacks.map(row => [phaseLabel(row.phase), row.actor, row.target, row.weapon ?? '—', row.hits]),
     '実行した攻撃や確認した被弾はありません。');
+  section('航空機の迷航・不時着', ['機体', '判定', '硬貨', '結果'],
+    (report.aircraftLosses ?? []).map(r => [r.aircraftName, r.kind==='navigation-loss'?'迷航':'不時着',r.rolls.map(h=>h?'表':'裏').join('・'),(r.kind==='navigation-loss'?r.crashed:!r.success)?'墜落':'生還']),
+    'このラウンドの航空機損失判定はありません。');
   section('自陣営の対空妨害', ['段階', '機隊', '機数', '総投射', '追加不利'],
     (report.disruption ?? []).map(row => [phaseLabel(row.phase), row.aircraft.join('・'), row.aircraftCount, row.projection, row.addedPenalties]),
     '記録された対空妨害はありません。');

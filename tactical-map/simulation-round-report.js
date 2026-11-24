@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=air-defense-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=air-losses-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';
@@ -124,6 +124,7 @@ export function buildObservedRoundReports(scene, roundNumber) {
       }
     }
     reports[side] = {
+      aircraftLosses:(scene.aviationRuntime?.records??[]).filter(r=>['navigation-loss','forced-landing'].includes(r.kind)&&r.turnNumber===roundNumber&&units.get(r.aircraftId)?.side===side).map(r=>({...r,aircraftName:units.get(r.aircraftId).name})),
       disruption, attacks:[...attackRows.values()], damage:[...damageRows.values()],
       collisions:[...collisions.values()], ownUnits, contacts, shadows
     };

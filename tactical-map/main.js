@@ -1,4 +1,4 @@
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=air-defense-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=air-losses-1';
 import { drawBuildingIcon, buildingPlacement } from "./building-runtime.js?v=facility-rules-1";
 import { navalPlacement, navalHeight } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
@@ -10,10 +10,10 @@ import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js
 import { pickProjectedTerrainPoint } from "./terrain-picking.js";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=air-defense-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=air-losses-1";
 import { loadUnitData } from "../js/data-store.js?v=air-training-1";
-import { createBattleStore } from "../js/battle-state.js?v=air-defense-1";
-import { mountEditor } from "./editor.js?v=air-defense-1";
+import { createBattleStore } from "../js/battle-state.js?v=air-losses-1";
+import { mountEditor } from "./editor.js?v=air-losses-1";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
@@ -34,7 +34,7 @@ import {
 } from "./cluster-engine.js?v=aviation-operations-1";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=air-defense-1";
+import { mountTerrainEditor } from "./terrain-editor.js?v=air-losses-1";
 
 let terrain = createDemoTerrain();
 let terrainController = null;

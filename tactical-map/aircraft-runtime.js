@@ -32,6 +32,8 @@ export function ensureAircraftRuntime(unit){
  validateFlightPlan(s.flightPlan);
  if(s.disruption&&(!Number.isSafeInteger(s.disruption.turnNumber)||s.disruption.turnNumber<1||!Number.isSafeInteger(s.disruption.penalties)||s.disruption.penalties<0))fail('航空機の対空妨害状態が不正です。');
  if(s.panic&&(!Number.isSafeInteger(s.panic.count)||s.panic.count<0||!['normal','confused','retreating'].includes(s.panic.state)))fail('航空機の恐慌状態が不正です。');
+ if(s.navigationLossTurn!==undefined&&(!Number.isSafeInteger(s.navigationLossTurn)||s.navigationLossTurn<1))fail('迷航判定の保存状態が不正です。');
+ if(s.emergencyLanding&&(typeof s.emergencyLanding.success!=='boolean'||!Number.isSafeInteger(s.emergencyLanding.turnNumber)||s.emergencyLanding.turnNumber<1||typeof s.emergencyLanding.hostId!=='string'||typeof s.emergencyLanding.runwayId!=='string'))fail('不時着判定の保存状態が不正です。');
  s.normalHitRemainder??=0;s.underwaterStrengthUses??=0;
  if(s.normalHitRemainder!==undefined&&(!Number.isSafeInteger(s.normalHitRemainder)||s.normalHitRemainder<0||s.normalHitRemainder>2))fail('航空機の通常命中蓄積が不正です。');
  if(s.version!==1||!['operational','heavy','destroyed'].includes(s.status)||!['airborne','parked','ready','launching','landing'].includes(s.mission)||!Number.isSafeInteger(s.remainingAirTime)||s.remainingAirTime<0||s.remainingAirTime>profile.maximumAirTime||!Number.isFinite(s.remainingEndurance)||s.remainingEndurance<0||s.remainingEndurance>profile.enduranceBudget||!Number.isSafeInteger(s.lastElapsedTurn)||s.lastElapsedTurn<0)fail('航空機の保存状態が不正です。');

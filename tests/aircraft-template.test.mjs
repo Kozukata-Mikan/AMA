@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {normalizeAircraft,aircraftAirTime,aircraftParkingSlots,aircraftFacilityCompatible} from '../js/aircraft-template.js';
 import {AIRCRAFT_FIELDS} from '../js/catalog-seed.js';
 import {initializeCatalog} from '../js/catalog-store.js';
-import {createBattleStore} from '../js/battle-state.js?v=air-defense-1';
-import {ensureAircraftRuntime,applyAircraftHit,aircraftCanAct,aircraftTimerDisplay,finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=air-defense-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-defense-1';
-import {getObservedScene} from '../tactical-map/simulation-features.js?v=air-defense-1';
+import {createBattleStore} from '../js/battle-state.js?v=air-losses-1';
+import {ensureAircraftRuntime,applyAircraftHit,aircraftCanAct,aircraftTimerDisplay,finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=air-losses-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-losses-1';
+import {getObservedScene} from '../tactical-map/simulation-features.js?v=air-losses-1';
 import {ensureShipRuntime} from '../tactical-map/ship-runtime.js';
 import {readSave} from '../js/save-database.js';
 import {resetDatabase} from './save-test-environment.mjs';
@@ -63,7 +63,7 @@ test('expiry is committed at round end and removed from map; enemy autonomy does
 });
 
 test('isolated worker saves aircraft clocks and expiry through complete simulation phases',async()=>{
- const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=air-defense-1');
+ const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=air-losses-1');
  globalThis.Worker=class{constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}};
  try{const{id,store}=await setup('100');await round(store);const scene=await raw(id);assert.equal(scene.instances[0].aircraftState.remainingAirTime,0);assert.equal(scene.instances[0].aircraftState.status,'destroyed');assert.equal(scene.phaseFinishRuntime.records.at(-1).aircraftReports[0].destroyed,true);assert.ok(!store.getSceneSnapshot().instances.length);}finally{shutdownBackground();delete globalThis.Worker;}
 });

@@ -1,11 +1,12 @@
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {crashAircraftAfterDusk} from './aviation-time.js?v=air-training-1';
-import {enforceRemoteControl} from './aviation-services.js?v=air-defense-1';
+import {resolveAirNavigationLosses} from './aviation-losses.js?v=air-losses-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=air-losses-1';
+import {enforceRemoteControl} from './aviation-services.js?v=air-losses-1';
 import {ensureBuildingState} from './building-state.js?v=facility-rules-1';
-import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=air-defense-1';
-import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=air-defense-1';
+import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=air-losses-1';
+import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=air-losses-1';
 import { hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
-import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=air-defense-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=air-losses-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -28,13 +29,13 @@ import {
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=air-defense-1";
+} from "./simulation-special-runtime.js?v=air-losses-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=air-defense-1";
+} from "./simulation-rescue-runtime.js?v=air-losses-1";
 
 import {
   getEquipmentControlCandidates
@@ -43,7 +44,7 @@ import {
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=air-defense-1";
+} from "./simulation-rescue.js?v=air-losses-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -443,7 +444,7 @@ function nextEnvironment(environment) {
   };
 }
 
-export function finishSpecialPhase(scene) {
+export function finishSpecialPhase(scene, coinSource) {
   if (scene.turn?.phaseId !== "special") {
     fail("特殊詞条判定段階ではありません。");
   }
@@ -466,6 +467,8 @@ export function finishSpecialPhase(scene) {
   const externalSupport = resolveSupportsAtSpecial(working);
   recordSinkingStarts(working, externalSupport.filter(item=>item.report).map(item=>item.report));
   const rescue = applyRescueSpecialStep(working);
+  const airNavigationReports=resolveAirNavigationLosses(working,coinSource);
+  if(airNavigationReports.some(r=>r.crashed))rebuildAircraftClusters(working);
 
   working.phaseFinishRuntime.records.push({
     version: 1,
@@ -473,7 +476,8 @@ export function finishSpecialPhase(scene) {
     turnNumber: working.turn.number,
     elapsedMinutes: working.turn.elapsedMinutes,
     fireFloodingTurn: fireFlooding.turnNumber,
-    rescueTurn: rescue.turnNumber
+    rescueTurn: rescue.turnNumber,
+    airNavigationReports
   });
 
   working.turn.phaseId = "end";
@@ -495,7 +499,7 @@ export function finishSpecialPhase(scene) {
   return {
     nextPhaseId: "end",
     message:
-      "火災・浸水・装備損管・救助判定をまとめて保存しました。" +
+      "火災・浸水・装備損管・救助・航空機迷航判定をまとめて保存しました。" +
       "回合終了段階へ移りました。時刻は進めていません。"
   };
 }
@@ -550,7 +554,6 @@ export function finishTurn(scene) {
   const sinking = applySinkingEndStep(working);
   enforceRemoteControl(working);
   const aircraftReports=finishAircraftTurn(working);
-  const nightCrashReports=crashAircraftAfterDusk(working,afterEnvironment);
   const aceLosses=resolveAceLosses(working);
 
   working.phaseFinishRuntime.records.push({
@@ -562,7 +565,7 @@ export function finishTurn(scene) {
     beforeTime: beforeEnvironment.time,
     afterTime: afterEnvironment.time,
     aircraftReports,
-    nightCrashReports,aceLosses,
+    aceLosses,
     sinkingTurn: sinking.turnNumber
   });
 

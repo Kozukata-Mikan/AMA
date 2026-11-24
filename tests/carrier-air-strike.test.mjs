@@ -5,7 +5,9 @@ import {runCarrierAirStrike} from '../scripts/run-carrier-air-strike.mjs';
 test('seeded airport A/B/C strike versus carrier fleet and D CAP completes combat, AA disruption, return and landing',async()=>{
  const r=await runCarrierAirStrike();
  assert.equal(r.summary.ships.find(s=>s.name==='敵空母').hp,67);
- assert.deepEqual(r.summary.squadrons.map(s=>[s.name,s.destroyed,s.parked]),[['A隊',1,5],['B隊',1,11],['C隊',0,6],['D隊',0,6]]);
+ assert.deepEqual(r.summary.squadrons.map(s=>[s.name,s.destroyed,s.parked]),[['A隊',1,5],['B隊',1,11],['C隊',0,6],['D隊',3,3]]);
+ assert.equal(r.final.aviationRuntime.records.filter(r=>r.kind==='navigation-loss'&&r.crashed).length,3);
+ assert.ok(r.final.aviationRuntime.records.some(r=>r.kind==='forced-landing'&&r.success&&r.rolls[0]===false&&r.rolls[1]===true));
  assert.equal(r.summary.rounds,4);assert.equal(r.summary.airCombats,5);assert.equal(r.summary.duels,22);
  const flak=r.summary.disruption.filter(d=>d.turnNumber===2&&d.phaseId==='order-4');
  assert.deepEqual(flak.map(d=>[d.projection,d.aircraftCount,d.addedPenalties]),[[120,12,1],[60,6,1]]);

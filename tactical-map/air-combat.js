@@ -2,14 +2,14 @@ import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
 import {initializeAirTraining,resolveAceLosses,airTrainingRule,rollManeuver,applySquadPanic,airConfused,airRetreating,canAmbush,markAmbush} from './air-training-runtime.js?v=air-training-1';
 import {checkRayTarget,registerRayTarget,initializeRayTargetRuntime} from './ray-target-runtime.js';
 import {traceAttackTerrainLine,entersTerrainInterior} from './attack-terrain-runtime.js';
-import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-defense-1';
-import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
+import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-losses-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-losses-1';
 import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-training-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
 import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-defense-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-losses-1';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}

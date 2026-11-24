@@ -4,7 +4,7 @@ import {mountReliefControls,RELIEF_PREFERENCE_KEY} from '../tactical-map/relief-
 import {projectMap} from '../tactical-map/map-display.js';import {pickProjectedTerrainPoint} from '../tactical-map/terrain-picking.js';
 import {terrainRenderWindow,makeTerrainRenderGrid} from '../tactical-map/terrain-render-grid.js';
 import {flatTerrain} from './fixtures.mjs';import {sampleTerrain,createDemoTerrain} from '../tactical-map/terrain-data.js';
-import {isTerrainBlocked} from '../tactical-map/simulation-features.js?v=air-defense-1';import {traceAttackTerrainLine} from '../tactical-map/attack-terrain-runtime.js';
+import {isTerrainBlocked} from '../tactical-map/simulation-features.js?v=air-losses-1';import {traceAttackTerrainLine} from '../tactical-map/attack-terrain-runtime.js';
 import {drawSimulationCartography} from '../tactical-map/simulation-cartography.js';
 for(const factor of [1,2,3,5,10,20])test(`projection, fixed altitude inverse and terrain picking agree at ${factor}x`,()=>{
  try{setVerticalExaggeration(factor);const terrain=flatTerrain();for(let r=0;r<terrain.rows;r++)for(let c=0;c<terrain.cols;c++)terrain.heights[r*terrain.cols+c]=20+(-terrain.width/2+c*terrain.width/(terrain.cols-1))*.01;
