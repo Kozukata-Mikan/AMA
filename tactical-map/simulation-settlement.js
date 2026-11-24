@@ -1,19 +1,20 @@
-import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=air-training-1';
+import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
+import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=air-defense-1';
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js';
+import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=air-defense-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
 import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-training-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=air-training-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-defense-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=air-defense-1';
 import {buildingAlive,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-training-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-training-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-training-1';
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-defense-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-defense-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-defense-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=air-training-1';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-training-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-defense-1';
 import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-training-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-defense-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -25,7 +26,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=air-training-1";
+} from "./simulation-attack-batch.js?v=air-defense-1";
 
 
 
@@ -44,7 +45,7 @@ import {
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=air-training-1";
+} from "./simulation-features.js?v=air-defense-1";
 
 import {
   getEquipmentDamagePlan,
@@ -87,11 +88,11 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-training-1";
+} from "./simulation-rescue.js?v=air-defense-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=air-training-1";
+} from "./simulation-phase-finish.js?v=air-defense-1";
 
 
 import {
@@ -108,11 +109,11 @@ import {
 
 import {
   getVisibility
-} from "./simulation-features.js?v=air-training-1";
+} from "./simulation-features.js?v=air-defense-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=air-training-1";
+} from "./formation-target-runtime.js?v=air-defense-1";
 
 import {
   readRangeCommandTarget
@@ -121,11 +122,11 @@ import {
 import {
   readFiringArc,
   assertBroadsideQuotas
-} from "./weapon-firing-arc.js?v=air-training-1";
+} from "./weapon-firing-arc.js?v=air-defense-1";
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=air-training-1";
+} from "./range-projection-runtime.js?v=air-defense-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -970,7 +971,9 @@ try {
     }
   }
 
-  if(hasAircraftTemplate(target)&&(!profile.pasOnly||damageRule.kind==='equipment'||profile.large||profile.guidance==='inertial'))ineligible('航空機への通常自動射撃はPASの数字威力・艦砲威力に対応しています。専用威力・慣性防御は後続規則が必要です。');
+  if(hasAircraftTemplate(target)&&!['airborne','landing'].includes(target.aircraftState?.mission))ineligible('駐機中・離陸待機中の機体は対空射撃の対象外です。');
+  if(hasAircraftTemplate(actor)&&hasAircraftTemplate(target)&&!profile.pasOnly)ineligible('航空機同士の攻撃は空戦計画から指定してください。');
+  if(hasAircraftTemplate(target)&&(damageRule.kind==='equipment'||damageRule.underwater||profile.large||profile.guidance==='inertial'))ineligible('航空機への射撃は通常の数字威力・艦砲威力に対応しています。専用威力・慣性防御は後続規則が必要です。');
   // 正式随机之前验证真实伤害算法。
   // 算法不支持或资料错误必须整批拒绝。
   if (damageRule.kind === "cannon") {
@@ -1033,7 +1036,7 @@ try {
     electronicBonuses: 0,
     electronicPenalties: 0,
     globalBonuses: 0,
-    globalPenalties: longRangePenalty + airAttack.penalty
+    globalPenalties: longRangePenalty + airAttack.penalty + airDisruptionPenalty(start, actor)
   });
 
 
@@ -1625,7 +1628,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
     const visibility = visibilityBySide.get(actor.side);
 
     const targets = start.instances.filter(target =>
-      (!hasAircraftTemplate(target)||automaticPas&&['airborne','landing'].includes(target.aircraftState.mission)&&target.aircraftState.status!=='destroyed') &&
+      (!hasAircraftTemplate(target)||['airborne','landing'].includes(target.aircraftState.mission)&&target.aircraftState.status!=='destroyed') &&
       target.instanceId !== actor.instanceId &&
       target.side !== actor.side &&
       visibility.get(target.instanceId) === "identified" &&
@@ -2397,7 +2400,7 @@ for (const report of resourceReports) {
   );
 
   const preAirAceLosses=resolveAceLosses(working,coinSource);
-  const airCombatReports=resolveAirCombat(working,coinSource);
+  const airCombatReports=resolveAirCombat(working,coinSource,{prevalidated:true});
   const ramReports=resolveMartyrRams(working,coinSource),aceLosses=preAirAceLosses.concat(resolveAceLosses(working,coinSource));
   if(airCombatReports.length||damage.targetReports.some(r=>r.applied?.aircraftHit&&r.applied.aircraftHit.before.status!==r.applied.aircraftHit.after.status))rebuildAircraftClusters(working);
   reconcileAviation(working);
@@ -2459,6 +2462,7 @@ for (const report of resourceReports) {
     ]),
     resourceReports,
     hitReports: hitStep.reports,
+    airDisruptionReports: hitStep.airDisruptionReports,
     rangeSelections: copy(hitStep.rangeSelections),
     targetReports: damage.targetReports,
     airCombatIds:airCombatReports.map(r=>r.id),

@@ -1,16 +1,16 @@
 import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {expandFormationMemberIds} from './formation-target-runtime.js?v=air-training-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=air-defense-1';
 import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=air-training-1';
 import {validateFlightPlan} from './flight-plan-data.js';
-import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=air-training-1';
+import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=air-defense-1';
 import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
-import {getVisibility} from './simulation-features.js?v=air-training-1';
-import {aviationRunways,aviationHostAlive,landAircraft} from './aviation-operations.js?v=air-training-1';
+import {getVisibility} from './simulation-features.js?v=air-defense-1';
+import {aviationRunways,aviationHostAlive,landAircraft} from './aviation-operations.js?v=air-defense-1';
 import {sampleTerrain} from './terrain-data.js';
 import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=air-training-1';
-import {readFiringArc} from './weapon-firing-arc.js?v=air-training-1';
+import {readFiringArc} from './weapon-firing-arc.js?v=air-defense-1';
 import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js';
-import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=air-training-1';
+import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=air-defense-1';
 const fail=m=>{throw Error(m);},distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),live=p=>hasAircraftTemplate(p)&&p.aircraftState?.status!=='destroyed';
 function own(scene,planes){const side=scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;if(planes.some(p=>p.side!==side))fail('操作中の陣営の機体だけ指定してください。');}
 function visibility(scene,side,ids,cache){const key='view:'+side+':'+ids.join('|');if(cache?.has(key))return cache.get(key);const result=getVisibility({...scene,controls:{...scene.controls,observationSide:side,enemyAutonomy:false}},new Set(ids));cache?.set(key,result);return result;}

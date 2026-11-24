@@ -1,31 +1,31 @@
-import {assignFlightMission} from './flight-missions.js';
+import {assignFlightMission} from './flight-missions.js?v=air-defense-1';
 import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
-import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=air-training-1';
-import {enforceRemoteControl} from './aviation-services.js?v=air-training-1';
+import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=air-defense-1';
+import {enforceRemoteControl} from './aviation-services.js?v=air-defense-1';
 import {buildingAlive,buildingMountAvailable} from './building-state.js?v=facility-rules-1';
-import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=air-training-1';
-import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=air-training-1';
-import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-training-1';
-import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=air-training-1";
+import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=air-defense-1';
+import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=air-defense-1';
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-defense-1';
+import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=air-defense-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=air-training-1";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=air-defense-1";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=air-training-1";
+import { runBackgroundTask } from "./background-client.js?v=air-defense-1";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js";
 import { ensureShipRuntime } from "./ship-runtime.js?v=air-training-1";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=air-training-1";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=air-defense-1";
 
-import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=air-training-1";
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=air-defense-1";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=air-training-1";
 import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=air-training-1";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=air-training-1";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=air-defense-1";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -35,19 +35,19 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js?v=air-trainin
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=air-training-1";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=air-defense-1";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=air-training-1";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=air-defense-1";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
 import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-training-1";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=air-training-1";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=air-defense-1";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=air-training-1";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=air-training-1";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=air-defense-1";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=air-defense-1";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=air-training-1";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=air-defense-1";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
 import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=air-training-1";
@@ -58,14 +58,14 @@ import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-ru
 
 import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
 
-import { readFiringArc } from "./weapon-firing-arc.js?v=air-training-1";
+import { readFiringArc } from "./weapon-firing-arc.js?v=air-defense-1";
 import { normalizeCampaignIntro } from "./campaign-intro-data.js";
 
-import { buildBattleReport } from "./simulation-battle-report.js";
+import { buildBattleReport } from "./simulation-battle-report.js?v=air-defense-1";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=air-training-1";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=air-defense-1";
 
 
 
@@ -1470,7 +1470,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
         boundaries.push("同一陣営への攻撃ルールは未接続です。");
       }
 
-      if ((!["navy","building"].includes(actor.branch)&&!hasAircraftTemplate(actor)) || !["navy","building"].includes(target.branch)) {
+      if ((!["navy","building"].includes(actor.branch)&&!hasAircraftTemplate(actor)) || (!["navy","building"].includes(target.branch)&&!hasAircraftTemplate(target))) {
         return {
           revision: state.revision,
           distance3D: null,
@@ -1479,7 +1479,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           issues,
           boundaries: [
             ...boundaries,
-            "この確認は海軍から海軍への攻撃に限ります。"
+            "この軍種の攻撃確認は未対応です。"
           ],
           settlementConnected: true
         };

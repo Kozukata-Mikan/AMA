@@ -1,14 +1,15 @@
+import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
 import {initializeAirTraining,resolveAceLosses,airTrainingRule,rollManeuver,applySquadPanic,airConfused,airRetreating,canAmbush,markAmbush} from './air-training-runtime.js?v=air-training-1';
 import {checkRayTarget,registerRayTarget,initializeRayTargetRuntime} from './ray-target-runtime.js';
 import {traceAttackTerrainLine,entersTerrainInterior} from './attack-terrain-runtime.js';
-import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-training-1';
+import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-defense-1';
 import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
 import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-training-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
 import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-training-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-defense-1';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}
@@ -49,10 +50,10 @@ function canFireAt(scene,a,b,profile,traces){
 function fireWeapons(scene,shooters,opponents,role,coin){
  const shots=[],applications=[],traces=new Map();for(const a of shooters){if(a.aircraftState.status!=='operational')continue;const choices=opponents.filter(p=>p.aircraftState.status!=='destroyed');if(!choices.length)break;
   const actualRole=airConfused(a)||airRetreating(a)?'自衛武器':role;
-  for(const w of weaponGroups(a,actualRole,scene.turn.phaseId)){if(w.g.remainingAmmo<w.p.fullAmmoCost)continue;const eligible=choices.filter(b=>canFireAt(scene,a,b,w.p,traces));if(!eligible.length)continue;const b=eligible[indexOfRandom(eligible.length,coin)],modifiers=getHitModifiers({guidance:w.p.guidance,environment:scene.environment,globalPenalties:distance(a,b)>w.p.range/2+1e-7?1:0});
+  for(const w of weaponGroups(a,actualRole,scene.turn.phaseId)){if(w.g.remainingAmmo<w.p.fullAmmoCost)continue;const eligible=choices.filter(b=>canFireAt(scene,a,b,w.p,traces));if(!eligible.length)continue;const b=eligible[indexOfRandom(eligible.length,coin)],modifiers=getHitModifiers({guidance:w.p.guidance,environment:scene.environment,globalPenalties:(distance(a,b)>w.p.range/2+1e-7?1:0)+airDisruptionPenalty(scene,a)});
    const hit=resolveHitCoins({...w.p.projection,guidance:w.p.guidance,bonuses:modifiers.bonuses,penalties:modifiers.penalties},coin);w.g.remainingAmmo-=w.p.fullAmmoCost;w.g.lastUsedTurn=scene.turn.number;if(w.p.guidance==='ray')registerRayTarget(scene,{unitId:a.instanceId,targetId:b.instanceId},{turnNumber:scene.turn.number,phaseId:scene.turn.phaseId});
    const rule=parseDamageRule(w.e);let damage=0,normalCredits=0;if(rule.kind==='cannon'){for(let n=0;n<hit.hitCount;n++){const comparison=compareArmorGrades(w.p.penetration,b.snapshot.naval.armor),category=toss(coin)?comparison.category:'normal';normalCredits+=({major:9,penetration:3,normal:1,shatter:0})[category];}}else damage=resolveNumericDamage({powerRule:w.e.powerRule,hitCount:hit.hitCount,penetration:w.p.penetration,armor:b.snapshot.naval.armor,strength:0,strengthRemaining:0,inertial:w.p.guidance==='inertial'}).hpDamage;
-   applications.push({targetId:b.instanceId,hit:hit.hitCount>0,damage,normalCredits});shots.push({actorId:a.instanceId,targetId:b.instanceId,groupId:w.g.id,role:actualRole,weaponName:w.e.name,hitCount:hit.hitCount,ammoCost:w.p.fullAmmoCost,hit});
+   applications.push({targetId:b.instanceId,hit:hit.hitCount>0,damage,normalCredits});shots.push({actorId:a.instanceId,targetId:b.instanceId,groupId:w.g.id,role:actualRole,weaponName:w.e.name,disruptionPenalty:airDisruptionPenalty(scene,a),hitCount:hit.hitCount,ammoCost:w.p.fullAmmoCost,hit});
   }
  }return{shots,applications};
 }
@@ -60,8 +61,8 @@ function applyFire(scene,fire){
  const applications=[];for(const hit of fire.applications){const p=scene.instances.find(p=>p.instanceId===hit.targetId),s=ensureAircraftRuntime(p),credits=(s.normalHitRemainder??0)+hit.normalCredits;const result=applyAircraftHit(p,{hit:hit.hit,durabilityDamage:hit.damage+Math.floor(credits/3)});s.normalHitRemainder=credits%3;applications.push(result);}return applications;
 }
 function hiddenFrom(scene,squad,opponents,views){if(!squad.length||!opponents.length)return false;const view=views.get(opponents[0].side);return squad.every(p=>!view.get(p.instanceId));}
-export function resolveAirCombat(scene,coin=randomCoin){
- initializeAirTraining(scene);preflightAirCombat(scene);initializeRayTargetRuntime(scene);const r=initializeAirCombat(scene),current=r.commands.filter(c=>c.turnNumber===scene.turn.number&&c.phaseId===scene.turn.phaseId),reports=[],seen=new Set();
+export function resolveAirCombat(scene,coin=randomCoin,{prevalidated=false}={}){
+ initializeAirTraining(scene);if(!prevalidated)preflightAirCombat(scene);initializeRayTargetRuntime(scene);const r=initializeAirCombat(scene),current=r.commands.filter(c=>c.turnNumber===scene.turn.number&&c.phaseId===scene.turn.phaseId),reports=[],seen=new Set();
  for(const c of current){
   const key=[c.actorIds.slice().sort().join('|'),c.targetIds.slice().sort().join('|')].sort().join('::');if(seen.has(key))continue;seen.add(key);
   const actors=planesFor(scene,c.actorIds),targets=planesFor(scene,c.targetIds),witnesses={},views=new Map();

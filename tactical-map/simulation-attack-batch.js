@@ -1,5 +1,6 @@
+import {applyAirDisruption,airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
 import {initializeAirTraining} from './air-training-runtime.js?v=air-training-1';
-import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-training-1';
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-defense-1';
 import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
 import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
@@ -9,13 +10,13 @@ import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=air-tr
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-training-1";
 import { ensureShipRuntime } from "./ship-runtime.js?v=air-training-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-training-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-defense-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-training-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-defense-1";
 import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-training-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-training-1";
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-training-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-defense-1";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-defense-1";
 
 
 
@@ -447,7 +448,7 @@ let memberIds;
   const members = memberIds.map(id => findUnit(startScene, id));
 
   // 未接入军种不能当作“不合格成员”静默跳过。
-  if (members.some(unit => !["navy","building"].includes(unit.branch)&&!(profile.pasOnly&&hasAircraftTemplate(unit)))) {
+  if (members.some(unit => !["navy","building"].includes(unit.branch)&&!hasAircraftTemplate(unit))) {
     fail("範囲に未対応の軍種が含まれているため、結算できません。");
   }
 
@@ -1062,6 +1063,15 @@ const firingReports = assertBroadsideQuotas(
   scene.settlementRuntime?.attackRecords ?? []
 );
 
+  const disruption = applyAirDisruption(scene, checked.prepared.entries, firingAssignments);
+  // Existing-round penalties are already in finalPreflight. Add this phase's
+  // barrage to every aircraft attack now, independent of command ordering.
+  for (let index = 0; index < checked.prepared.entries.length; index++) {
+    const added = disruption.increments.get(checked.prepared.entries[index].unitId) ?? 0;
+    const check = checked.checks[index];
+    if (check.kind === "single") check.penalties += added;
+    else for (const member of check.range.checks) if (member.allowed) member.penalties += added;
+  }
   const reports = [];
   const rangeSelections = [];
 
@@ -1107,7 +1117,8 @@ const firingReports = assertBroadsideQuotas(
           modifiers: {
             commandId: entry.commandId,
             bonuses: modifiers.bonuses,
-            penalties: modifiers.penalties
+            penalties: modifiers.penalties,
+            airDisruption: airDisruptionPenalty(scene, findUnit(scene, entry.unitId))
           },
           hit: copy(occurrence.hit)
         });
@@ -1136,7 +1147,8 @@ const firingReports = assertBroadsideQuotas(
       modifiers: {
         commandId: entry.commandId,
         bonuses: check.bonuses,
-        penalties: check.penalties
+        penalties: check.penalties,
+        airDisruption: airDisruptionPenalty(scene, findUnit(scene, entry.unitId))
       },
       hit: copy(
         coinSource === undefined
@@ -1152,6 +1164,7 @@ const firingReports = assertBroadsideQuotas(
     turnNumber: checked.prepared.turnNumber,
     phaseId: checked.prepared.phaseId,
     firingReports,
+    airDisruptionReports: disruption.reports,
     rangeSelections,
     reports
   };

@@ -1,15 +1,15 @@
 import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=air-training-1';
+import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=air-defense-1';
 import {airborneUnit} from './air-ground-rules.js';
-import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js';
-import {observedAirCombat} from './air-combat-report.js?v=air-training-1';
+import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=air-defense-1';
+import {observedAirCombat} from './air-combat-report.js?v=air-defense-1';
 import {aircraftMayFly} from './aviation-time.js?v=air-training-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=air-training-1';
-import {reconcileAviation} from './aviation-operations.js?v=air-training-1';
-import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-training-1';
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=air-defense-1';
+import {reconcileAviation} from './aviation-operations.js?v=air-defense-1';
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-defense-1';
 import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=air-training-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=air-defense-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, navalKind, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
@@ -26,7 +26,7 @@ import { sampleTerrain } from "./terrain-data.js";
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-training-1";
+} from "./simulation-rescue.js?v=air-defense-1";
 
 import {
   createShipEffectsState,
@@ -41,7 +41,7 @@ import {
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=air-training-1";
+} from "./simulation-autonomous-rescue.js?v=air-defense-1";
 
 import {
   routeLength,

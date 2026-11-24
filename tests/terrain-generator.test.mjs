@@ -3,7 +3,7 @@ import {parseTerrainDescription,normalizeGenerationOptions,generateDescribedTerr
 import {decodeCoastline,elevationTilePlan,terrariumMeters,searchGeographicPlaces} from '../tactical-map/terrain-geography.js';
 import {sampleTerrain,readTerrainVertex,freezeTerrainSnapshot,validateTerrain,applyBrush} from '../tactical-map/terrain-data.js';
 import {beginTerrainEdit,applyTerrainFrame} from '../tactical-map/terrain-edit-history.js';
-import {generationPreviewImage} from '../tactical-map/terrain-generator-panel.js';
+import {generationPreviewImage} from '../tactical-map/terrain-generator-panel.js?v=air-defense-1';
 for(const [description,kind,length]of [['我想要生成一片连绵10km左右的山脉','mountains',10],['20kmの群島','archipelago',20],['a 10km mountain range','mountains',10],['南北延伸30公里的丘陵','hills',30],['长10km的山谷','valley',10]])test(`description parsing: ${description}`,()=>{const p=parseTerrainDescription(description);assert.equal(p.kind,kind);assert.equal(p.lengthKm,length)});
 test('description parameters and invalid input are explicit',()=>{
  assert.equal(parseTerrainDescription('东西10km山脉，高度1500m').heightMeters,1500);assert.equal(parseTerrainDescription('南北10km山脉').angle,90);

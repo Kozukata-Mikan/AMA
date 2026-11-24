@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {source,ship} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-defense-1';
 import {readSave} from '../js/save-database.js';
 import {navalKind,isSubmerged,normalizeNavalPosition,navalCanTraverse} from '../tactical-map/naval-kind.js';
 import {readShipProfile} from '../tactical-map/ship-runtime.js';
-import {getObserverVisibility} from '../tactical-map/simulation-features.js';
+import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=air-defense-1';
 import {readWeaponProfile} from '../tactical-map/weapon-profile-runtime.js';
 import {initializeCatalog} from '../js/catalog-store.js';
 
@@ -107,7 +107,7 @@ test('new underwater guidance retains algorithms for half-width parentheses and 
 
 test('real background worker settles vertical orders with the selected surface speed',async()=>{
  const {Worker}=await import('node:worker_threads');
- const {shutdownBackground}=await import('../tactical-map/background-client.js?v=air-training-1');
+ const {shutdownBackground}=await import('../tactical-map/background-client.js?v=air-defense-1');
  const scene=source();submarine(scene.instances[0]);const {id,store}=await simulation(scene);
  globalThis.Worker=class{
   constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error));}

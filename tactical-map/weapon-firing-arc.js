@@ -111,7 +111,7 @@ export function readFiringArc(actor, group, target) {
   const dx = target.x - actor.x;
   const dy = target.y - actor.y;
 
-  if (Math.hypot(dx, dy) <= EPSILON && airborneUnit(actor) && (actor.altitude??0)>(target.altitude??0)+EPSILON) {
+  if (Math.hypot(dx, dy) <= EPSILON && (airborneUnit(actor)||airborneUnit(target)) && Math.abs((actor.altitude??0)-(target.altitude??0))>EPSILON) {
     return {positionKind:positionKind(group.position,actor.branch),relativeDegrees:0,side:"right"};
   }
   if (Math.hypot(dx, dy) <= EPSILON) {

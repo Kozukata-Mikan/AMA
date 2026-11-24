@@ -8,7 +8,7 @@ import {
   reconcileActiveRescues,
   resolveRescuesAtSpecial,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=air-training-1";
+} from "./simulation-rescue.js?v=air-defense-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

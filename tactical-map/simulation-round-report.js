@@ -1,4 +1,4 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=air-training-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=air-defense-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';
@@ -77,9 +77,14 @@ export function buildObservedRoundReports(scene, roundNumber) {
       else if (visibility.get(unit.instanceId) === 'shadow') shadows++;
     }
 
+    const disruption = [];
     const attackRows = new Map();
     const damageRows = new Map();
     for (const record of attacks) {
+      for (const event of record.airDisruptionReports ?? []) {
+        const own = event.aircraftIds.map(id => units.get(id)).filter(u => u?.side === side);
+        if (own.length) disruption.push({phase:record.phaseId, aircraft:own.map(u=>u.name), aircraftCount:event.aircraftCount, projection:event.projection, addedPenalties:event.addedPenalties});
+      }
       const identified = new Set(record.roundWitnesses?.[side]);
       for (const hit of record.hitReports) {
         const actor = units.get(hit.unitId);
@@ -119,7 +124,7 @@ export function buildObservedRoundReports(scene, roundNumber) {
       }
     }
     reports[side] = {
-      attacks:[...attackRows.values()], damage:[...damageRows.values()],
+      disruption, attacks:[...attackRows.values()], damage:[...damageRows.values()],
       collisions:[...collisions.values()], ownUnits, contacts, shadows
     };
   }

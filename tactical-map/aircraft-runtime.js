@@ -1,3 +1,4 @@
+import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
 import {airConfused,airRetreating,airTrainingRule,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
 import {validateFlightPlan} from './flight-plan-data.js';
 import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=air-training-1';
@@ -29,6 +30,7 @@ export function ensureAircraftRuntime(unit){
  unit.aircraftState??={version:1,status:unit.currentHp===0?'heavy':'operational',mission:'airborne',remainingAirTime:profile.maximumAirTime,remainingEndurance:profile.enduranceBudget,lastElapsedTurn:0,activeLoadoutId:null,destroyedReason:null};
  const s=unit.aircraftState;
  validateFlightPlan(s.flightPlan);
+ if(s.disruption&&(!Number.isSafeInteger(s.disruption.turnNumber)||s.disruption.turnNumber<1||!Number.isSafeInteger(s.disruption.penalties)||s.disruption.penalties<0))fail('航空機の対空妨害状態が不正です。');
  if(s.panic&&(!Number.isSafeInteger(s.panic.count)||s.panic.count<0||!['normal','confused','retreating'].includes(s.panic.state)))fail('航空機の恐慌状態が不正です。');
  s.normalHitRemainder??=0;s.underwaterStrengthUses??=0;
  if(s.normalHitRemainder!==undefined&&(!Number.isSafeInteger(s.normalHitRemainder)||s.normalHitRemainder<0||s.normalHitRemainder>2))fail('航空機の通常命中蓄積が不正です。');
@@ -74,10 +76,10 @@ export function aircraftTimerDisplay(unit){
  const times=members.map(u=>u.aircraftState.remainingAirTime),minimum=Math.min(...times),maximum=Math.max(...times);
  return{text:`滞空 ${minimum===maximum?minimum:minimum+'～'+maximum}R`,color:members.some(u=>u.aircraftState.remainingAirTime<readAircraftProfile(u).maximumAirTime/2)?'#ff4e68':'#d684ff'};
 }
-export function aircraftDetailLines(unit){
+export function aircraftDetailLines(unit, turnNumber){
  if(!hasAircraftTemplate(unit))return[];
  const data=unit.snapshot.aircraft;
  const lines=[`発動機数 / 最大耐性：${data.engines} / 必要駐機枠：${data.engines}`,`乗員数：${data.crew}`,`機動性：${data.maneuverability||'未設定'} / 上昇限度：${data.ceiling??'未設定'}`,`最高速度：${unit.snapshot.naval?.speedKnots??'未設定'}ノット`];
- if(unit.observationOwn&&unit.aircraftState){const s=unit.aircraftState;const rule=airTrainingRule(unit);lines.push(`練度：${rule.label} / 反応力${rule.reaction} / 機動修正${rule.maneuver>=0?'+':''}${rule.maneuver}`,`恐慌：${s.panic?.count??0} / 閾値${rule.panic} / ${({normal:'通常',confused:'混乱（自衛のみ）',retreating:'撤退'})[s.panic?.state??'normal']}`);if(s.acePilot)lines.push(`ACE：${s.acePilotName}${s.status==='destroyed'?'（戦死）':''}`);if(s.flightPlan)lines.push(`航空任務：${s.flightPlan.kind} / ${({outbound:'往路',attack:'攻撃待機',returning:'帰投中',complete:'完了'})[s.flightPlan.stage]}${s.flightPlan.notice?' / '+s.flightPlan.notice:''}`);lines.push(`状態：${({operational:'行動可能',heavy:'大破（移動のみ）',destroyed:'撃墜・墜落'})[s.status]}`,`残り滞空時間：${s.remainingAirTime}ラウンド / 残り航続距離：${s.remainingEndurance.toFixed(1)}マス`);}
+ if(unit.observationOwn&&unit.aircraftState){const s=unit.aircraftState;const rule=airTrainingRule(unit);lines.push(`対空妨害：不利${airDisruptionPenalty({turn:{number:turnNumber}},unit)}（ラウンド終了まで）`,`練度：${rule.label} / 反応力${rule.reaction} / 機動修正${rule.maneuver>=0?'+':''}${rule.maneuver}`,`恐慌：${s.panic?.count??0} / 閾値${rule.panic} / ${({normal:'通常',confused:'混乱（自衛のみ）',retreating:'撤退'})[s.panic?.state??'normal']}`);if(s.acePilot)lines.push(`ACE：${s.acePilotName}${s.status==='destroyed'?'（戦死）':''}`);if(s.flightPlan)lines.push(`航空任務：${s.flightPlan.kind} / ${({outbound:'往路',attack:'攻撃待機',returning:'帰投中',complete:'完了'})[s.flightPlan.stage]}${s.flightPlan.notice?' / '+s.flightPlan.notice:''}`);lines.push(`状態：${({operational:'行動可能',heavy:'大破（移動のみ）',destroyed:'撃墜・墜落'})[s.status]}`,`残り滞空時間：${s.remainingAirTime}ラウンド / 残り航続距離：${s.remainingEndurance.toFixed(1)}マス`);}
  return lines;
 }
