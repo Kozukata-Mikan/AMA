@@ -1,12 +1,12 @@
-import { supportRadius } from "./support-equipment.js?v=air-combat-1";
+import { supportRadius } from "./support-equipment.js?v=air-combat-2";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile
-} from "./ship-runtime.js?v=air-combat-1";
+} from "./ship-runtime.js?v=air-combat-2";
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=air-combat-1";
+} from "./simulation-rescue.js?v=air-combat-2";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

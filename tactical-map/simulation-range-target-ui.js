@@ -4,7 +4,7 @@ import {
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=air-combat-1";
+} from "./weapon-profile-runtime.js?v=air-combat-2";
 
 
 function fail(message) {

@@ -8,7 +8,7 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=air-combat-1";
+} from "./equipment-runtime.js?v=air-combat-2";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ITEM_IDS = EQUIPMENT_HIT_ITEMS.map(item => item.id);

@@ -1,13 +1,13 @@
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
-import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-combat-1';
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-combat-2';
 import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=facility-rules-1';
-import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-combat-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=air-combat-1";
+import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-combat-2';
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=air-combat-2";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=air-combat-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=air-combat-2";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=air-combat-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=air-combat-2";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -18,7 +18,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=air-combat-1";
+} from "../js/catalog-seed.js?v=air-combat-2";
 
 // ===== 图鉴界面 =====
 
@@ -768,6 +768,7 @@ export function mountCatalogEditor({
           field.key === "branch"
             ? branchName(value)
             : field.type === "aircraft-type" ? AIRCRAFT_TYPES.find(([id])=>id===value)?.[1]
+            : field.type === "air-training" ? ({novice:'見習い（反応力0）',regular:'普通（反応力1）',elite:'精鋭（反応力2）',ace:'エース（反応力3）'}[value] ?? value ?? '普通（反応力1）')
             : field.type === "support-effect" ? SUPPORT_EFFECTS.find(([id])=>id===(value??""))?.[1]
             : ["building-kind","airport-durability","airport-type","port-type"].includes(field.type)
             ? ({"building-kind":BUILDING_KINDS,"airport-durability":FACILITY_DURABILITY,"airport-type":AIRPORT_TYPES,"port-type":PORT_TYPES}[field.type].find(([id])=>id===value)?.[1] ?? value)

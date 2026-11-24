@@ -1,4 +1,4 @@
-import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=air-combat-1";
+import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=air-combat-2";
 // ===== 图鉴初始资料与字段定义 =====
 // 界面文案使用日文，注释使用中文。
 // 未确定的规则只保存参数，不执行计算。
@@ -174,12 +174,12 @@ export const BUILDING_FIELDS = [
   {key:'building.portType',label:'港湾区分',type:'port-type',definition:'貿易港（$）・貨物港（積み荷）・補給港（フック）。施設区分とは独立しています。'}
 ];
 export const AIRCRAFT_FIELDS = [
-  ...UNIT_FIELDS.filter(field=>['name','branch','faction','sizeLevel','protected','naval.armor','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='naval.detection'?{...field,label:'探測難度'}:field.key==='naval.armor'?{...field,definition:'艦船と同じ装甲等級を使用します。航空機の正式な被攻撃・空戦処理は後続規則で接続します。'}:field),
+  ...UNIT_FIELDS.filter(field=>['name','branch','faction','sizeLevel','protected','naval.armor','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='naval.detection'?{...field,label:'探測難度'}:field.key==='naval.armor'?{...field,definition:'艦船と同じ装甲等級を使用します。空戦とPAS対空攻撃では、命中後に装甲・耐性の規則で被害を処理します。'}:field),
   {key:'aircraft.type',label:'種別',type:'aircraft-type',definition:'艦載機・陸上機・水上機・無人機・陸上無人機。起降可能な母艦・施設の区分です。'},
   {key:'aircraft.engines',label:'発動機数 / 最大耐性',type:'number',definition:'発動機数が最大耐性です。耐性0は大破、その後の被攻撃で撃墜。小破・中破はありません。'},
   {key:'aircraft.crew',label:'乗員数',type:'number',definition:'搭乗する乗員の人数。無人機の初期値は0。現時点では性能補正はありません。'},
   {key:'naval.speedKnots',label:'最高速度（ノット）',type:'optional-number',definition:'艦船と同じ速度換算を使用します。滞空時間は航続距離 ÷（最高速度 ÷ 2）の小数切捨てです。'},
-  {key:'aircraft.maneuverability',label:'機動性',type:'text',definition:'1R・2Rなど。空戦規則への接続は後続更新で行います。'},
+  {key:'aircraft.maneuverability',label:'機動性',type:'text',definition:'1R・2Rなど。空戦では小隊ごとに指定枚数の硬貨を投げ、表の数で機動対決を行います。'},
   {key:'aircraft.ceiling',label:'上昇限度（高度単位）',type:'optional-number',definition:'移動できる最大高度。地図の高度1単位は100mです。'},
   {key:'naval.endurance',label:'航続力',type:'text',definition:'艦船と同じ距離表記。1kは1000。入力すると滞空時間を自動計算します。'},
   {key:'aircraft.training',label:'練度 / 反応力',type:'air-training',definition:'見習い0・普通1・精鋭2・エース3。追加の敵小隊1隊につき反応力を1回分使い、硬貨1枚を判定します。'},

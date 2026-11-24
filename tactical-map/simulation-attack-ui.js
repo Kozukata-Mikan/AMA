@@ -1,5 +1,5 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=air-combat-1";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-2";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=air-combat-2";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 

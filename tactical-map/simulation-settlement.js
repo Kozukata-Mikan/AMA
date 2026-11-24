@@ -1,15 +1,15 @@
-import {aircraftMayFly} from './aviation-time.js?v=air-combat-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-combat-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=air-combat-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-combat-2';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-combat-2';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=air-combat-2';
 import {buildingAlive,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-combat-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-combat-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-combat-1';
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-combat-2';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-combat-2';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-combat-2';
 import {choosePosition} from './cannon-damage-runtime.js?v=aviation-operations-1';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-combat-1';
-import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-combat-1";
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-combat-2';
+import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-combat-2";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-combat-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-combat-2";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -21,7 +21,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=air-combat-1";
+} from "./simulation-attack-batch.js?v=air-combat-2";
 
 
 
@@ -31,16 +31,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=air-combat-1";
+} from "./ship-runtime.js?v=air-combat-2";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=air-combat-1";
+} from "./equipment-runtime.js?v=air-combat-2";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=air-combat-1";
+} from "./simulation-features.js?v=air-combat-2";
 
 import {
   getEquipmentDamagePlan,
@@ -50,7 +50,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=air-combat-1";
+} from "./equipment-item-runtime.js?v=air-combat-2";
 
 
 import {
@@ -83,32 +83,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-combat-1";
+} from "./simulation-rescue.js?v=air-combat-2";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=air-combat-1";
+} from "./simulation-phase-finish.js?v=air-combat-2";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=air-combat-1";
+} from "./weapon-profile-runtime.js?v=air-combat-2";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=air-combat-1";
+} from "./simulation-attack-runtime.js?v=air-combat-2";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=air-combat-1";
+} from "./weapon-profile-runtime.js?v=air-combat-2";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=air-combat-1";
+} from "./simulation-features.js?v=air-combat-2";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=air-combat-1";
+} from "./formation-target-runtime.js?v=air-combat-2";
 
 import {
   readRangeCommandTarget
@@ -117,11 +117,11 @@ import {
 import {
   readFiringArc,
   assertBroadsideQuotas
-} from "./weapon-firing-arc.js?v=air-combat-1";
+} from "./weapon-firing-arc.js?v=air-combat-2";
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=air-combat-1";
+} from "./range-projection-runtime.js?v=air-combat-2";
 
 import {
   initializeRoundTraitRuntime,

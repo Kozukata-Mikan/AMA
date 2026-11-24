@@ -1,4 +1,4 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-1";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-2";
 import {
   EQUIPMENT_HIT_ITEMS
 } from "./equipment-damage-runtime.js";

@@ -1,14 +1,14 @@
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
  
-import { ensureShipRuntime } from "./ship-runtime.js?v=air-combat-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=air-combat-2";
 
 import {
   initializeRescueState,
   reconcileActiveRescues,
   resolveRescuesAtSpecial,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=air-combat-1";
+} from "./simulation-rescue.js?v=air-combat-2";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

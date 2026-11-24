@@ -1,13 +1,13 @@
 import {checkRayTarget,registerRayTarget,initializeRayTargetRuntime} from './ray-target-runtime.js';
 import {traceAttackTerrainLine,entersTerrainInterior} from './attack-terrain-runtime.js';
-import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-combat-1';
-import {aircraftMayFly} from './aviation-time.js?v=air-combat-1';
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-combat-1';
+import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-combat-2';
+import {aircraftMayFly} from './aviation-time.js?v=air-combat-2';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-combat-2';
 import {parseDamageRule} from './weapon-damage-rule.js';
 import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js';
 import {resolveNumericDamage} from './numeric-damage-runtime.js';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-combat-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=air-combat-2';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}

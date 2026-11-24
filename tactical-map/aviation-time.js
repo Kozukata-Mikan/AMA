@@ -1,5 +1,5 @@
 import {getTimePeriod,normalizeEnvironment} from './environment-data.js';
-import {supportCapacity} from './support-equipment.js?v=air-combat-1';
+import {supportCapacity} from './support-equipment.js?v=air-combat-2';
 export const nightObservation=u=>supportCapacity(u,'night-observation')>0;
 export const aviationPeriod=scene=>getTimePeriod(normalizeEnvironment(scene.environment).time).id;
 export const aircraftMayFly=(scene,plane)=>nightObservation(plane)||['day','dusk'].includes(aviationPeriod(scene));

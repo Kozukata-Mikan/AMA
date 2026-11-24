@@ -1,20 +1,20 @@
-import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-combat-1';
-import {aircraftMayFly} from './aviation-time.js?v=air-combat-1';
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-combat-2';
+import {aircraftMayFly} from './aviation-time.js?v=air-combat-2';
 import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=air-combat-1";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=air-combat-1";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-combat-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=air-combat-1";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=air-combat-2";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=air-combat-2";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-combat-2";
+import { ensureShipRuntime } from "./ship-runtime.js?v=air-combat-2";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-combat-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-combat-2";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-combat-1";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-combat-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-combat-2";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-combat-2";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-combat-1";
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-combat-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-combat-2";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-combat-2";
 
 
 

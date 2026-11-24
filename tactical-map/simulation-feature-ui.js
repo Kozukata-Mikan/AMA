@@ -1,6 +1,6 @@
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-combat-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-combat-2';
 import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-1";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-2";
 export function mountSimulationFeatures(store, context) {
   const {
     svg, viewport, view, project, screenPoint

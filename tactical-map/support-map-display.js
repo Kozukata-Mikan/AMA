@@ -1,4 +1,4 @@
-import {supportCapacity,supportRadius} from './support-equipment.js?v=air-combat-1';
+import {supportCapacity,supportRadius} from './support-equipment.js?v=air-combat-2';
 import {sampleTerrain} from './terrain-data.js';
 export function drawSupportOverlay(parent,scene,project,highlightId=''){
  const ns='http://www.w3.org/2000/svg',layer=document.createElementNS(ns,'g');layer.setAttribute('class','support-overlay');layer.setAttribute('pointer-events','none');parent.append(layer);

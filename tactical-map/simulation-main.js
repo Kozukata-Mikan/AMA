@@ -1,11 +1,11 @@
-import {mountAirCombatUI} from './air-combat-ui.js?v=air-combat-1';
-import {drawWeaponCoverage} from './weapon-coverage-display.js?v=air-combat-1';
-import {mountAviationUI} from './aviation-ui.js?v=air-combat-1';
-import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=air-combat-1';
+import {mountAirCombatUI} from './air-combat-ui.js?v=air-combat-2';
+import {drawWeaponCoverage} from './weapon-coverage-display.js?v=air-combat-2';
+import {mountAviationUI} from './aviation-ui.js?v=air-combat-2';
+import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=air-combat-2';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-1";
-import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=air-combat-1";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-2";
+import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=air-combat-2";
 import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-6";
 import {mountFormationAttackUI} from "./formation-attack-ui.js?v=fleet-cohesion-6";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
@@ -14,7 +14,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=air-combat-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=air-combat-2";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -29,23 +29,23 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js?v=facility-rules-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=aviation-operations-1";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=air-combat-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=air-combat-2";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=air-combat-1";
+} from "./ship-runtime.js?v=air-combat-2";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=air-combat-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=air-combat-1";
-import { drawSupportOverlay } from "./support-map-display.js?v=air-combat-1";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=air-combat-2";
+import { mountSupportUI } from "./simulation-support-ui.js?v=air-combat-2";
+import { drawSupportOverlay } from "./support-map-display.js?v=air-combat-2";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=air-combat-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=air-combat-1";
+} from "../js/catalog-seed.js?v=air-combat-2";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=air-combat-2";
 import {
   mountSimulationWorkflow
-} from "./simulation-workflow-ui.js?v=air-combat-1";
+} from "./simulation-workflow-ui.js?v=air-combat-2";
 
 import { mountBattleReportUI } from "./simulation-battle-report.js?v=workspace-ui-3";
 
@@ -60,7 +60,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=air-combat-1";
+} from "./simulation-store.js?v=air-combat-2";
 
 import {
   gridPosition,

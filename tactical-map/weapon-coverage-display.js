@@ -1,5 +1,5 @@
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-combat-1';
-import {firingArcDefinition} from './weapon-firing-arc.js?v=air-combat-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=air-combat-2';
+import {firingArcDefinition} from './weapon-firing-arc.js?v=air-combat-2';
 import {buildingMountAvailable} from './building-state.js?v=facility-rules-1';
 import {activeAircraftMounts} from '../js/aircraft-template.js?v=facility-rules-1';
 import {sampleTerrain} from './terrain-data.js';import {navalHeight} from './naval-kind.js';

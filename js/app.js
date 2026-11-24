@@ -3,15 +3,15 @@ import {
   findUnit,
   getUnitsByBranch,
   getBranchName
-} from "./data-store.js?v=air-combat-1";
+} from "./data-store.js?v=air-combat-2";
 
 import {
   createBattleStore
-} from "./battle-state.js?v=air-combat-1";
+} from "./battle-state.js?v=air-combat-2";
 
 import {
   previewAction
-} from "./combat-engine.js?v=air-combat-1";
+} from "./combat-engine.js?v=air-combat-2";
 
 const views = {
   "navy-calculator": {
