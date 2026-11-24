@@ -1,19 +1,19 @@
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-defense-1";
 import { formationMembers } from "./formation-layout.js?v=fleet-cohesion-6";
-import { assertManualControl, getVisibility } from "./simulation-features.js?v=recon-los-1";
+import { assertManualControl, getVisibility } from "./simulation-features.js?v=day-catalog-pas-1";
 import {
   readWeaponProfile,
   readWeaponTargetScope,
-} from "./weapon-profile-runtime.js?v=air-training-1";
+} from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
 import {
   getAttackExecutionPhase,
   initializeAttackRuntime,
-} from "./simulation-attack-runtime.js?v=air-training-1";
+} from "./simulation-attack-runtime.js?v=day-catalog-pas-1";
 import {
   createDeferredAttackValidator,
   filterUnreachableAttackCommands,
   prepareSettlementAttackPlan,
-} from "./simulation-settlement.js?v=recon-los-1";
+} from "./simulation-settlement.js?v=day-catalog-pas-1";
 
 function shuffle(values) {
   const result = [...values];

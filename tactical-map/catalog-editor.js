@@ -6,7 +6,7 @@ import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} f
 import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-training-1';
 import { SUPPORT_EFFECTS } from "./support-equipment.js?v=air-training-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=air-training-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import { getCatalogStore } from "../js/catalog-store.js?v=air-training-1";
@@ -220,13 +220,33 @@ function catalogFieldSections(fields, category) {
   return result;
 }
 
+function catalogVisual(item) {
+  const box=node('span','','catalog-visual');box.setAttribute('aria-hidden','true');
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','-40 -40 80 80');
+  if(item.branch==='building')drawBuildingIcon({snapshot:{building:normalizeBuilding(item.building)}},svg,path=>transformBuildingPath(path,(x,y)=>({x,y})));
+  else {const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',item.branch==='navy'?navalSymbolPath(item.naval?.iconType??'combat'):item.branch==='air'?'M0 -30 L7 -5 L30 10 L30 16 L6 9 L5 24 L14 30 L14 34 L0 29 L-14 34 L-14 30 L-5 24 L-6 9 L-30 16 L-30 10 L-7 -5 Z':item.kind==='weapon'?'M-28 20 L-22 8 L18 -24 L25 -16 L-12 14 L-8 25 L-28 25 Z':item.kind==='support'?'M-12 -27 L12 -27 L12 -12 L27 -12 L27 12 L12 12 L12 27 L-12 27 L-12 12 L-27 12 L-27 -12 L-12 -12 Z':'M0 -28 L25 0 L0 28 L-25 0 Z');path.setAttribute('fill','currentColor');path.setAttribute('stroke','currentColor');svg.append(path);}
+  box.append(svg);return box;
+}
+function catalogOverview(item,category) {
+  const hero=node('div','','catalog-overview'),identity=node('div','','catalog-identity'),title=node('div');
+  title.append(node('h3',category==='units'?item.name:getEquipmentLabel(item)),node('p',`${category==='units'?branchName(item.branch):item.kind==='support'?'支援装備':'武器'} · ${getFactionName(item.faction)}${item.protected?' · 保護あり':''}`,'catalog-muted'));
+  identity.append(catalogVisual(item),title);hero.append(identity);
+  const stats=category==='units'?[['耐性',item.maxHp],['装甲',item.naval?.armor],['速度',item.naval?.speedKnots],['対海',item.naval?.seaRecon],['対空',item.naval?.airRecon],['対潜',item.naval?.aswRecon]]:item.kind==='support'?[['支援効果',SUPPORT_EFFECTS.find(([id])=>id===item.supportEffect)?.[1]],['遠隔範囲',item.remoteRange]]:[['投射',getProjectionLabel(item)],['威力',item.powerRule],['穿深',item.penetration],['射距',item.range],['射高',item.ceilingU],['次序',item.maxOrder]];
+  const cards=node('dl','','catalog-stat-cards');for(const [label,value]of stats){const card=node('div');card.append(node('dt',label),node('dd',displayValue(value)));cards.append(card);}hero.append(cards);return hero;
+}
+function catalogSectionNavigation(host,sections) {
+  const nav=node('nav','','catalog-section-nav');nav.setAttribute('aria-label','資料内の項目');
+  for(const section of sections){const title=section.querySelector('legend')?.textContent??section.textContent;nav.append(button(title,()=>section.scrollIntoView({block:'start'})));}
+  host.prepend(nav);return nav;
+}
+
 function ensureStyles() {
   if (document.querySelector("#catalog-styles")) return;
 
   const link = node("link");
   link.id = "catalog-styles";
   link.rel = "stylesheet";
-  link.href = new URL("./catalog.css?v=aircraft-template-1", import.meta.url).href;
+  link.href = new URL("./catalog.css?v=day-catalog-pas-1", import.meta.url).href;
 
   document.head.append(link);
 }
@@ -247,6 +267,7 @@ export function mountCatalogEditor({
   let equipmentFilter="weapon";
   let selectedId = "navy-yamato-class-1941";
   let editing = false;
+  let listLimit=80;
 
   const openButton = button("図鑑を開く / 編集", () => {
     renderList();
@@ -306,6 +327,9 @@ export function mountCatalogEditor({
     ["equipment-support", "支援装備"]
   ], "navy");
 
+  categorySelect.className='catalog-category-select';categorySelect.setAttribute('aria-label','資料の分類');
+  const categories=node('nav','','catalog-categories');categories.setAttribute('aria-label','図鑑の分類');
+  for(const option of categorySelect.options){const tab=button(option.textContent,()=>{categorySelect.value=option.value;categorySelect.dispatchEvent(new Event('change'));});tab.dataset.category=option.value;categories.append(tab);}
   const factionFilter = select(FACTION_OPTIONS);
   factionFilter.options[0].textContent = "すべての色陣営";
   factionFilter.setAttribute("aria-label", "色陣営で絞り込み");
@@ -330,6 +354,7 @@ export function mountCatalogEditor({
 
   const detail = node("section", "", "catalog-detail");
 
+  list.id="catalog-items";
   body.append(list, detail);
 
   function message(text, error = false) {
@@ -479,6 +504,11 @@ export function mountCatalogEditor({
     }))
   );
 
+  const dataMenu=node('details','','catalog-data-menu');dataMenu.append(node('summary','データ管理'));
+  const dataActions=node('div','','catalog-data-actions');
+  for(const action of [...toolbar.querySelectorAll('button')])if(action.textContent!=='新規追加')dataActions.append(action);
+  dataMenu.append(dataActions);toolbar.append(dataMenu);
+
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -524,6 +554,7 @@ export function mountCatalogEditor({
     }
 
     const value = categorySelect.value;
+    listLimit=80;
 
     category = value.startsWith("equipment-") ? "equipment" : "units";
     if(category==="equipment")equipmentFilter=value.slice(10);
@@ -536,11 +567,14 @@ export function mountCatalogEditor({
     renderDetail();
   });
 
-  factionFilter.addEventListener("change", renderList);
-  search.addEventListener("input", renderList);
+  const refilter=()=>{listLimit=80;renderList();if(!editing)renderDetail();};
+  factionFilter.addEventListener("change",refilter);
+  search.addEventListener("input",refilter);
 
   function renderList() {
+    const oldScroll=list.scrollTop;
     list.replaceChildren();
+    for(const tab of categories.children)tab.setAttribute("aria-pressed",String(tab.dataset.category===categorySelect.value));
 
     const data = store.getData();
     const term = search.value.trim().toLowerCase();
@@ -561,7 +595,9 @@ export function mountCatalogEditor({
 
     if(sortOrder.value==='updated')items.sort((a,b)=>String(b.updatedAt??'').localeCompare(String(a.updatedAt??''))||a.name.localeCompare(b.name,'ja'));
     if(sortOrder.value==='name')items.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
-    for (const item of items) {
+    list.append(node('p',`${items.length}件 / ${category==='units'?branchName(branchFilter):equipmentFilter==='weapon'?'武器':'支援装備'}`,'catalog-list-count'));
+    if(!editing&&!items.some(item=>item.id===selectedId))selectedId=items[0]?.id??'';
+    for (const item of items.slice(0,listLimit)) {
       const text = category === "units"
         ? `${item.name} · ${branchName(item.branch)}`
         : getEquipmentLabel(item);
@@ -576,6 +612,10 @@ export function mountCatalogEditor({
         renderDetail();
       });
 
+      entry.setAttribute('aria-label',text);
+      entry.classList.add('catalog-entry');
+      const caption=node('span','','catalog-entry-caption');caption.append(node('strong',item.name),node('small',category==='units'?`${branchName(item.branch)} · 耐性 ${item.maxHp} · ${getFactionName(item.faction)}`:item.kind==='support'?(SUPPORT_EFFECTS.find(([id])=>id===item.supportEffect)?.[1]??'支援装備'):`射距 ${displayValue(item.range)} · 次序 ${displayValue(item.maxOrder)}`));
+      entry.replaceChildren(catalogVisual(item),caption);
       entry.classList.toggle(
         "active",
         item.id === selectedId
@@ -587,6 +627,8 @@ export function mountCatalogEditor({
       }else list.append(entry);
     }
 
+    if(items.length>listLimit)list.append(button(`次の80件を表示（残り${items.length-listLimit}件）`,()=>{listLimit+=80;renderList();}));
+    list.scrollTop=oldScroll;
     if (!items.length) {
       list.append(node("p", "該当する資料はありません。"));
     }
@@ -637,11 +679,10 @@ export function mountCatalogEditor({
       : getEquipmentLabel(item);
 
     detail.append(
-      node("h3", title),
-      node("p", `ID：${item.id}`, "catalog-muted"),
+      catalogOverview(item,category),
       node(
         "p",
-        "資料編集段階です。戦闘計算・等級換算はまだ実行しません。",
+        "① 分類と資料を選択 → ② 性能・装備を確認／編集 → ③ 地図へ追加。図鑑の変更は新しく配置する個体に適用します。",
         "catalog-notice"
       )
     );
@@ -914,6 +955,7 @@ export function mountCatalogEditor({
     }
 
     detail.append(showDefinitions(fields));
+    catalogSectionNavigation(detail,[...detail.querySelectorAll(':scope > h4')]);
   }
 
     function renderForm(source) {
@@ -934,8 +976,8 @@ export function mountCatalogEditor({
     if(draft.branch==="air")draft.aircraft=normalizeAircraft(draft.aircraft);
 
     detail.append(
-      node("h3", "資料を編集"),
-      node("p", `ID：${draft.id}`, "catalog-muted")
+      node("h3", draft.name?`${draft.name}を編集`:"新規資料を作成"),
+      node("p", "入力後は保存してください。分類・資料を切り替える前に未保存の変更を確認します。", "catalog-muted")
     );
 
     const form = node("form", "", "catalog-edit-form");
@@ -1500,10 +1542,13 @@ export function mountCatalogEditor({
       if(next.branch==='building'){next.sizeLevel=1;next.building=normalizeBuilding(next.building);}
       renderForm(next);
     });
-    detail.append(form);
+    const guide=node('div','','catalog-edit-guide');guide.append(node('strong','編集の手順'),node('p','基本情報 → 性能・偵察 → 装備配置・掛載 → 保存。項目を選ぶと、その入力欄へ移動できます。'));
+    const help=input('', 'checkbox');help.checked=false;const helpLabel=node('label');helpLabel.append(help,node('span','項目の説明を表示'));guide.append(helpLabel);help.addEventListener('change',()=>form.classList.toggle('catalog-show-help',help.checked));
+    guide.append(button('保存',()=>form.requestSubmit()));detail.append(guide,form);
+    catalogSectionNavigation(guide,[...form.querySelectorAll(':scope > .catalog-form-grid > fieldset, :scope > h4, :scope > fieldset')]);
   }
 
-  shell.append(header, toolbar, status, body, fileInput);
+  shell.append(header,categories,toolbar,status,body,fileInput);
   dialog.append(shell);
   document.body.append(dialog);
 

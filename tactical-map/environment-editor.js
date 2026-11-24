@@ -1,9 +1,9 @@
 import {
-  WEATHER_GROUPS,
+  WEATHER_GROUPS, environmentTimeLabel,
   normalizeEnvironment,
   getTimePeriod,
   getWeatherInfo
-} from "./environment-data.js";
+} from "./environment-data.js?v=day-catalog-pas-1";
 
 function node(tag, text = "", className = "") {
   const result = document.createElement(tag);
@@ -42,6 +42,8 @@ export function mountEnvironmentEditor({
   timeInput.step = "60";
   timeInput.required = true;
 
+  const dayInput=node("input");dayInput.type="number";dayInput.min="1";dayInput.step="1";dayInput.required=true;dayInput.value="1";
+  field(section,"開始日（DAY）",dayInput);
   field(section, "沙盤時刻", timeInput);
 
   const periodNote = node("p", "", "editor-note");
@@ -65,7 +67,7 @@ export function mountEnvironmentEditor({
   section.append(node(
     "p",
     "時刻と天候は地図全体に適用されます。" +
-    "時刻は自動で進みません。現在は環境表示のみで、能力補正は行いません。",
+    "自定義では開始日時を設定します。推演では1ラウンド30分進み、0時を越えるとDAYが増えます。時刻と天候は偵察などの規則にも適用されます。",
     "editor-note"
   ));
 
@@ -183,7 +185,7 @@ export function mountEnvironmentEditor({
     const weather = getWeatherInfo(environment.weather);
 
     timeLine.textContent =
-      `時刻 ${environment.time} · ${period.label}`;
+      `${environmentTimeLabel(environment)} · ${period.label}`;
 
     weatherText.textContent =
       `${weather.levelLabel} · ${weather.label}`;
@@ -209,6 +211,7 @@ export function mountEnvironmentEditor({
 
     known = serialized;
 
+    dayInput.value = environment.day;
     timeInput.value = environment.time;
     weatherSelect.value = environment.weather;
 
@@ -229,9 +232,10 @@ export function mountEnvironmentEditor({
         );
       }
 
-      if (!timeInput.reportValidity()) return;
+      if (!timeInput.reportValidity()||!dayInput.reportValidity()) return;
 
       await store.setEnvironment({
+        day: Number(dayInput.value),
         time: timeInput.value,
         weather: weatherSelect.value
       });

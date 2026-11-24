@@ -1,4 +1,4 @@
-import {aircraftMayFly} from './aviation-time.js?v=air-losses-1';
+import {aircraftMayFly} from './aviation-time.js?v=day-catalog-pas-1';
 import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAirCombatUI(store){

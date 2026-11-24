@@ -1,14 +1,14 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=recon-los-1";
+} from "./formation-target-runtime.js?v=day-catalog-pas-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=recon-los-1";
+} from "./simulation-features.js?v=day-catalog-pas-1";
 
 import {
   resolveHitCoins
-} from "./weapon-hit-runtime.js";
+} from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

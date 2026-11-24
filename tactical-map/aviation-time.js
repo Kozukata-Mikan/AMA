@@ -1,5 +1,5 @@
 import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {getTimePeriod,normalizeEnvironment,getWeatherInfo} from './environment-data.js';
+import {getTimePeriod,normalizeEnvironment,getWeatherInfo} from './environment-data.js?v=day-catalog-pas-1';
 import {supportCapacity} from './support-equipment.js?v=air-training-1';
 export const nightObservation=u=>supportCapacity(u,'night-observation')>0;
 export const aviationPeriod=scene=>getTimePeriod(normalizeEnvironment(scene.environment).time).id;

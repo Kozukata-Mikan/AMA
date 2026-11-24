@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {flatTerrain} from './fixtures.mjs';
 import {applyBrush,readTerrainVertex,resizeTerrain,freezeTerrainSnapshot,validateTerrain,writeTerrainOverride} from '../tactical-map/terrain-data.js';
 import {beginTerrainEdit,applyTerrainFrame} from '../tactical-map/terrain-edit-history.js';
-import {sceneLighting,applySceneLighting,drawDistanceGrid,distanceGridSettings} from '../tactical-map/simulation-scene-display.js';
-import {projectMap} from '../tactical-map/map-display.js';
+import {sceneLighting,applySceneLighting,drawDistanceGrid,distanceGridSettings} from '../tactical-map/simulation-scene-display.js?v=day-catalog-pas-1';
+import {projectMap} from '../tactical-map/map-display.js?v=day-catalog-pas-1';
 const brush={radius:20,strength:10,target:30};
 for(const mode of ['raise','lower','smooth','level','land','sea','river','eraseRiver','shallow','eraseShallow'])test(`chunk editing and undo preserve exact vertices: ${mode}`,()=>{
  const original=flatTerrain();original.heights[100]=15;original.rivers.fill(1);original.shallows.fill(1);

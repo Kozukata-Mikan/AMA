@@ -333,3 +333,30 @@
 .catalog-field[hidden] { display:none; }
 
 .catalog-aircraft-calculation {display:block; padding:10px 12px; border:1px solid #896ab5; border-radius:8px; color:#dec1ff; background:rgba(90,53,128,.12); font-weight:650; line-height:1.6;}
+/* Readable catalog workspace: categories, identity and quick performance cards. */
+.catalog-dialog{width:min(1320px,calc(100vw - 28px));border-radius:16px;box-shadow:0 24px 90px #0008}
+.catalog-header{background:linear-gradient(120deg,#142b40,#0b1725);padding:16px 22px}
+.catalog-categories{display:flex;gap:6px;padding:10px 20px;background:#0d1b2a;overflow:auto;flex-shrink:0}
+.catalog-categories button{white-space:nowrap;border-radius:20px;padding:7px 17px;background:transparent;color:#a7bfd1;border:1px solid #294358}
+.catalog-categories button[aria-pressed=true]{color:#e5f7ff;background:#204861;border-color:#80cff5}
+.catalog-category-select{display:none}
+.catalog-toolbar{gap:8px;padding:10px 20px}.catalog-toolbar button{font-size:12px}.catalog-toolbar input{min-width:150px}
+.catalog-body{grid-template-columns:280px minmax(0,1fr)}
+.catalog-list-count{position:sticky;top:-14px;z-index:1;margin:0;padding:8px 0;background:#09121e;color:#91b1c9;font-size:12px}
+.catalog-entry{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;border:1px solid #233c51;background:#0c1b29;color:#dbeaf6}
+.catalog-entry.active{box-shadow:inset 3px 0 #8dddff}.catalog-entry:hover{background:#172d40}
+.catalog-entry-caption{display:grid;gap:6px;min-width:0}.catalog-entry-caption strong{font-size:13px;line-height:1.45}.catalog-entry-caption small{font-size:11px;color:#8faec5}
+.catalog-visual{display:inline-flex;align-items:center;justify-content:center;width:38px;height:42px;flex-shrink:0;color:#91d9fa;background:#142e42;border-radius:9px}
+.catalog-visual svg{width:30px;height:34px;overflow:visible}.catalog-visual path{vector-effect:non-scaling-stroke}
+.catalog-identity{display:flex;align-items:center;gap:18px;margin-bottom:18px}.catalog-identity .catalog-visual{width:70px;height:78px}.catalog-identity .catalog-visual svg{width:54px;height:60px}.catalog-identity p{margin:6px 0 0}
+.catalog-overview{padding:20px;border:1px solid #2a4962;border-radius:12px;background:linear-gradient(130deg,#122a3d,#0e1b29);margin-bottom:14px}
+.catalog-stat-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}.catalog-stat-cards>div{padding:10px 12px;background:#091622;border-radius:7px;min-width:0}.catalog-stat-cards dt{font-size:11px;color:#8faec5}.catalog-stat-cards dd{font-size:18px;margin:5px 0 0;overflow-wrap:anywhere;color:#d5f0ff}
+.catalog-section-nav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.catalog-section-nav button{padding:6px 10px;font-size:11px;border-radius:6px;background:#102739;border:1px solid #2a4b64;color:#b9ddf4}
+.catalog-detail>h4{padding:12px 0 8px;border-bottom:1px solid #294358;scroll-margin-top:12px}
+.catalog-edit-guide{position:sticky;top:-20px;z-index:2;background:#102235f5;border:1px solid #385b75;padding:12px;border-radius:10px;margin-bottom:16px;backdrop-filter:blur(8px)}
+.catalog-edit-guide p{font-size:12px;color:#9fbdd1;margin:6px 0 10px}.catalog-edit-guide label{display:inline-flex;gap:6px;align-items:center;font-size:12px;margin-right:15px}.catalog-edit-guide input{width:auto}
+.catalog-edit-form .catalog-field small{display:none}.catalog-edit-form.catalog-show-help .catalog-field small{display:block}
+.catalog-edit-form .catalog-section,.catalog-edit-form>h4{scroll-margin-top:180px}.catalog-edit-form .catalog-section legend{color:#a8dfff}
+.catalog-notice{border-radius:7px;line-height:1.8}.catalog-save-actions{z-index:3}
+@media(max-width:720px){.catalog-body{grid-template-columns:1fr;grid-template-rows:150px minmax(0,1fr)}.catalog-categories{padding:8px 12px}.catalog-categories button{padding:6px 12px}.catalog-overview{padding:14px}.catalog-stat-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.catalog-edit-guide{top:-14px}.catalog-identity{gap:12px}.catalog-identity h3{font-size:18px}}
+.catalog-data-menu{position:relative;font-size:12px}.catalog-data-menu summary{padding:8px 12px;border:1px solid #36536b;border-radius:6px;cursor:pointer;color:#b4ccde}.catalog-data-actions{position:absolute;right:0;top:calc(100% + 6px);z-index:8;display:grid;gap:6px;padding:10px;min-width:190px;background:#102235;border:1px solid #3e617a;border-radius:9px;box-shadow:0 12px 24px #0008}

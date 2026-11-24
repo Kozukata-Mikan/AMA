@@ -1,7 +1,7 @@
 import {
   normalizeEnvironment,
   getWeatherInfo
-} from "./environment-data.js";
+} from "./environment-data.js?v=day-catalog-pas-1";
 
 // ===== 舰船规则辅助 =====
 // 不写入存档，不移动单位，不推进回合。

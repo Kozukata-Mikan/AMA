@@ -1,3 +1,4 @@
+import {environmentTimeLabel} from './environment-data.js?v=day-catalog-pas-1';
 import {projectDisplayPoint} from './relief-display.js';
 import { makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import {
@@ -10,7 +11,7 @@ import {
   normalizeEnvironment,
   getTimePeriod,
   getWeatherInfo
-} from "./environment-data.js";
+} from "./environment-data.js?v=day-catalog-pas-1";
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -221,7 +222,7 @@ export function renderEnvironmentBadge(element, value) {
 
   const time = document.createElement("p");
   time.className = "environment-time";
-  time.textContent = `${environment.time} · ${period.label}`;
+  time.textContent = `${environmentTimeLabel(environment)} · ${period.label}`;
 
   const weatherRow = document.createElement("div");
   weatherRow.className = "environment-weather";

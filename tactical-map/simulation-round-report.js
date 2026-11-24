@@ -1,4 +1,5 @@
-import {getObservationSide, getVisibility} from './simulation-features.js?v=recon-los-1';
+import {advanceEnvironment} from './environment-data.js?v=day-catalog-pas-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=day-catalog-pas-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';
@@ -129,7 +130,7 @@ export function buildObservedRoundReports(scene, roundNumber) {
       collisions:[...collisions.values()], ownUnits, contacts, shadows
     };
   }
-  return {roundNumber, time:scene.environment.time, reports};
+  return {roundNumber, day:scene.environment.day??1, time:scene.environment.time, reports};
 }
 
 export function visibleRoundNumbers(scene) {
@@ -143,5 +144,5 @@ export function readObservedRoundReport(scene, roundNumber) {
     throw new Error('このラウンドの観察戦闘記録はありません。');
   }
   const report = scene.observedRoundReports.find(report => report.roundNumber === roundNumber);
-  return structuredClone({roundNumber, time:report.time, side, ...report.reports[side]});
+  return structuredClone({roundNumber, day:report.day??advanceEnvironment(scene.initialScene?.environment,roundNumber*30).day, time:report.time, side, ...report.reports[side]});
 }

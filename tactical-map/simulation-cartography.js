@@ -1,4 +1,4 @@
-import { projectMap } from './map-display.js';
+import { projectMap } from './map-display.js?v=day-catalog-pas-1';
 
 const NS = 'http://www.w3.org/2000/svg';
 const LAND = ['#52705e', '#607a60', '#718366', '#8b8f72', '#a4a187', '#c1bba3'];

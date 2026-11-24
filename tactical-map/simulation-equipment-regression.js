@@ -1,7 +1,7 @@
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=air-training-1";
+} from "./ship-runtime.js?v=day-catalog-pas-1";
 
 import {
   ensureUnitCombatRuntime
@@ -21,11 +21,11 @@ import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=recon-los-1";
+} from "./simulation-rescue.js?v=day-catalog-pas-1";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=recon-los-1";
+} from "./simulation-rescue-runtime.js?v=day-catalog-pas-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

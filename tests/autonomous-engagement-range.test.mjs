@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resetDatabase} from './save-test-environment.mjs';
 import {source} from './fixtures.mjs';
-import {createSimulation, openSimulation} from '../tactical-map/simulation-store.js?v=recon-los-1';
-import {getAutonomousEngagementRange} from '../tactical-map/simulation-autonomous-weapon.js';
+import {createSimulation, openSimulation} from '../tactical-map/simulation-store.js?v=day-catalog-pas-1';
+import {getAutonomousEngagementRange} from '../tactical-map/simulation-autonomous-weapon.js?v=day-catalog-pas-1';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js';
 import {readSave} from '../js/save-database.js';
 

@@ -1,5 +1,5 @@
-import {getTimePeriod} from './environment-data.js';
-import {projectMap} from './map-display.js';
+import {getTimePeriod} from './environment-data.js?v=day-catalog-pas-1';
+import {projectMap} from './map-display.js?v=day-catalog-pas-1';
 import {terrainMaximumHeight} from './terrain-data.js';
 import {terrainRenderWindow} from './terrain-render-grid.js';
 const NS='http://www.w3.org/2000/svg';

@@ -70,6 +70,7 @@ for (const group of WEATHER_GROUPS) {
 
 export function createDefaultEnvironment() {
   return {
+    day: 1,
     time: "12:00",
     weather: "clear"
   };
@@ -106,7 +107,9 @@ export function normalizeEnvironment(value) {
     throw new Error("対応していない天候です。");
   }
 
-  return { time, weather };
+  const day=value.day??1;
+  if(!Number.isSafeInteger(day)||day<1)throw Error("日数は1以上の整数で指定してください。");
+  return { day, time, weather };
 }
 
 export function getTimePeriod(time) {
@@ -140,3 +143,14 @@ export function getWeatherInfo(weatherId) {
 
   return { ...result };
 }
+
+export function advanceEnvironment(environment,minutes){
+  const value=normalizeEnvironment(environment);
+  if(!Number.isSafeInteger(minutes)||minutes<0)throw Error('経過時間が不正です。');
+  const [h,m]=value.time.split(':').map(Number),total=h*60+m+minutes;
+  const day=value.day+Math.floor(total/1440);
+  if(!Number.isSafeInteger(total)||!Number.isSafeInteger(day))throw Error('日数の上限を超えています。');
+  const clock=total%1440;
+  return {...value,day,time:String(Math.floor(clock/60)).padStart(2,'0')+':'+String(clock%60).padStart(2,'0')};
+}
+export const environmentTimeLabel=environment=>{const value=normalizeEnvironment(environment);return `DAY${value.day} ${value.time}`;};

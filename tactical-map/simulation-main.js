@@ -1,8 +1,9 @@
+import {environmentTimeLabel} from './environment-data.js?v=day-catalog-pas-1';
 import {AIR_TRAITS,hasAirTrait} from '../js/aircraft-training.js?v=air-training-1';
 import {drawFlightMissions} from './flight-mission-display.js';
-import {mountAirCombatUI} from './air-combat-ui.js?v=air-losses-1';
-import {drawWeaponCoverage} from './weapon-coverage-display.js?v=air-defense-1';
-import {mountAviationUI} from './aviation-ui.js?v=recon-los-1';
+import {mountAirCombatUI} from './air-combat-ui.js?v=day-catalog-pas-1';
+import {drawWeaponCoverage} from './weapon-coverage-display.js?v=day-catalog-pas-1';
+import {mountAviationUI} from './aviation-ui.js?v=day-catalog-pas-1';
 import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=air-losses-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
@@ -15,54 +16,54 @@ import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
-import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=recon-los-1";
-import { drawSimulationCartography } from "./simulation-cartography.js";
+import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js?v=day-catalog-pas-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=day-catalog-pas-1";
+import { drawSimulationCartography } from "./simulation-cartography.js?v=day-catalog-pas-1";
 import {
   projectMap,
   drawMapAxes,
   renderEnvironmentBadge
-} from "./map-display.js";
+} from "./map-display.js?v=day-catalog-pas-1";
 
 import {
   showCampaignIntro
 } from "./campaign-intro.js";
 
-import { drawUnitIcon } from "./unit-icon-renderer.js?v=facility-rules-1";
+import { drawUnitIcon } from "./unit-icon-renderer.js?v=day-catalog-pas-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=aviation-operations-1";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=recon-los-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=day-catalog-pas-1";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=air-training-1";
+} from "./ship-runtime.js?v=day-catalog-pas-1";
 
 import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=air-losses-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=air-losses-1";
+import { mountSupportUI } from "./simulation-support-ui.js?v=day-catalog-pas-1";
 import { drawSupportOverlay } from "./support-map-display.js?v=air-training-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
 } from "../js/catalog-seed.js?v=air-training-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=recon-los-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=day-catalog-pas-1";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=air-training-1";
 
-import { mountBattleReportUI } from "./simulation-battle-report.js?v=air-losses-1";
+import { mountBattleReportUI } from "./simulation-battle-report.js?v=day-catalog-pas-1";
 
 
 import {
   normalizeEnvironment,
   getTimePeriod,
   getWeatherInfo
-} from "./environment-data.js";
+} from "./environment-data.js?v=day-catalog-pas-1";
 
 
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=recon-los-1";
+} from "./simulation-store.js?v=day-catalog-pas-1";
 
 import {
   gridPosition,
@@ -1081,7 +1082,7 @@ function renderEnvironment(scene) {
   );
 
   $("environmentInfo").textContent = [
-    `シナリオ時刻：${environment.time} / ${recon.period.label}`,
+    `シナリオ時刻：${environmentTimeLabel(environment)} / ${recon.period.label}`,
     `天候：${recon.weather.label} / ${recon.weather.levelLabel}`,
     "時刻と天候は自定義シナリオから継承しています。",
     "",

@@ -3,12 +3,12 @@ import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=air-training-1";
+} from "./ship-runtime.js?v=day-catalog-pas-1";
 
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=recon-los-1";
+} from "./simulation-rescue.js?v=day-catalog-pas-1";
 
 import {
   ensureEquipmentRuntime

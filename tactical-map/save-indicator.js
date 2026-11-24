@@ -1,4 +1,4 @@
-import {subscribeBackgroundStatus} from './background-client.js?v=recon-los-1';
+import {subscribeBackgroundStatus} from './background-client.js?v=day-catalog-pas-1';
 // Saving/computing is visible; selection and panning remain usable.
 export function mountSaveIndicator(store) {
   const indicator = document.createElement('p');

@@ -7,7 +7,7 @@ import {
 
 import {
   createBattleStore
-} from "./battle-state.js?v=air-losses-1";
+} from "./battle-state.js?v=day-catalog-pas-1";
 
 import {
   previewAction

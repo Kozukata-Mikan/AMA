@@ -26,7 +26,7 @@ import {
 import {
   createDefaultEnvironment,
   normalizeEnvironment
-} from "../tactical-map/environment-data.js";
+} from "../tactical-map/environment-data.js?v=day-catalog-pas-1";
 
 import { normalizeFaction } from "./faction-data.js";
 

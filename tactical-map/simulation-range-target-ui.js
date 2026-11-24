@@ -1,3 +1,4 @@
+import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airAttackModes,airborneUnit} from './air-ground-rules.js';
 import {
   readRangeCommandTarget
@@ -5,7 +6,7 @@ import {
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=air-training-1";
+} from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
 
 
 function fail(message) {
@@ -336,7 +337,7 @@ export function createRangeAttackPanel({ store, unitId }) {
     body.replaceChildren();
 
     try {
-      const unit=store.getSceneSnapshot().instances.find(u=>u.instanceId===unitId),oldMethod=method.value;methodLabel.hidden=!airborneUnit(unit);method.replaceChildren(new Option("攻撃方式を選択",""),...AIR_ATTACK_MODES.filter(m=>airAttackModes(unit).includes(m[0])).map(m=>new Option(m[1],m[0])));if([...method.options].some(o=>o.value===oldMethod))method.value=oldMethod;
+      const currentScene=store.getSceneSnapshot(),unit=currentScene.instances.find(u=>u.instanceId===unitId),oldMethod=method.value;methodLabel.hidden=!airborneUnit(unit);method.replaceChildren(new Option("攻撃方式を選択",""),...AIR_ATTACK_MODES.filter(m=>airAttackModes(unit).includes(m[0])).map(m=>new Option(m[1],m[0])));if([...method.options].some(o=>o.value===oldMethod))method.value=oldMethod;
       const report = store.getAttackGroupReport(unitId);
       const targets = store.getRangeAttackTargetOptions(unitId);
       const plans = store.getAttackCommands(unitId);
@@ -351,7 +352,7 @@ export function createRangeAttackPanel({ store, unitId }) {
       let count = 0;
 
       for (const group of report.groups) {
-        if (group.profile?.kind !== "weapon") continue;
+        if (group.profile?.kind !== "weapon" || group.profile?.pasOnly&&!manualPasEnabled(currentScene,unit?.side)) continue;
 
         let scope;
 

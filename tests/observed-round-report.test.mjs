@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resetDatabase} from './save-test-environment.mjs';
 import {source, ship} from './fixtures.mjs';
-import {createSimulation, openSimulation} from '../tactical-map/simulation-store.js?v=recon-los-1';
-import {captureRoundWitnesses, buildObservedRoundReports, readObservedRoundReport} from '../tactical-map/simulation-round-report.js?v=recon-los-1';
-import {ensureShipRuntime} from '../tactical-map/ship-runtime.js';
+import {createSimulation, openSimulation} from '../tactical-map/simulation-store.js?v=day-catalog-pas-1';
+import {captureRoundWitnesses, buildObservedRoundReports, readObservedRoundReport} from '../tactical-map/simulation-round-report.js?v=day-catalog-pas-1';
+import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=day-catalog-pas-1';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js';
 import {readSave} from '../js/save-database.js';
 

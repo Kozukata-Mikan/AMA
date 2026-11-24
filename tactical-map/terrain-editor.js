@@ -1,12 +1,12 @@
 import {forkTerrainForEditing, MAX_TERRAIN_SAMPLES} from "./terrain-data.js";
 import {applyTerrainFrame} from "./terrain-edit-history.js";
-import {createTerrainStrokeSession} from "./terrain-stroke-session.js?v=recon-los-1";
-import {mountTerrainGenerator} from './terrain-generator-panel.js?v=recon-los-1';
-import {runBackgroundTask} from "./background-client.js?v=recon-los-1";
+import {createTerrainStrokeSession} from "./terrain-stroke-session.js?v=day-catalog-pas-1";
+import {mountTerrainGenerator} from './terrain-generator-panel.js?v=day-catalog-pas-1';
+import {runBackgroundTask} from "./background-client.js?v=day-catalog-pas-1";
 
 import {
   mountEnvironmentEditor
-} from "./environment-editor.js";
+} from "./environment-editor.js?v=day-catalog-pas-1";
 
 
 function node(tag, text = "", className = "") {

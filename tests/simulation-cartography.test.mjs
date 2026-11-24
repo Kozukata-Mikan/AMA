@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {drawSimulationCartography} from '../tactical-map/simulation-cartography.js';
+import {drawSimulationCartography} from '../tactical-map/simulation-cartography.js?v=day-catalog-pas-1';
 import {createDemoTerrain, resizeTerrain} from '../tactical-map/terrain-data.js';
 import {makeTerrainRenderGrid} from '../tactical-map/terrain-render-grid.js';
 class Element {
@@ -32,7 +32,7 @@ test('empty/offscreen and maximum grid maps remain bounded',()=>{
 });
 test('mode switch and stylesheet are wired to the simulation page',async()=>{
  const html=await readFile(new URL('../tactical-map/simulation.html',import.meta.url),'utf8');
- const js=await readFile(new URL('../tactical-map/simulation-main.js?v=recon-los-1',import.meta.url),'utf8');
+ const js=await readFile(new URL('../tactical-map/simulation-main.js?v=day-catalog-pas-1',import.meta.url),'utf8');
  const css=await readFile(new URL('../tactical-map/simulation-cartography.css',import.meta.url),'utf8');
  assert(html.includes('href="./simulation-cartography.css"'));assert(html.includes('id="mapStyleLabel"'));
  assert(js.includes('drawSimulationCartography(layer, terrain, makeTerrainRenderGrid(terrain, window), {colored})'));

@@ -13,7 +13,7 @@ import {
   normalizeEnvironment,
   getTimePeriod,
   getWeatherInfo
-} from "./environment-data.js";
+} from "./environment-data.js?v=day-catalog-pas-1";
 
 import {
   createShipEffectsState,

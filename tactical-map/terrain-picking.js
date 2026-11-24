@@ -1,6 +1,6 @@
 import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
 import { gridPosition, readTerrainVertex, terrainMaximumHeight } from './terrain-data.js';
-import { projectMap as project } from './map-display.js';
+import { projectMap as project } from './map-display.js?v=day-catalog-pas-1';
 
 // 精确拾取完整网格。只检查视线穿过的单元，不使用显示层LOD。
 export function pickProjectedTerrainPoint(terrain, point) {

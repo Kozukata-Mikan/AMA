@@ -6,12 +6,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDemoTerrain, resizeTerrain, sampleTerrain, gridPosition, applyBrush, validateTerrain, readTerrainVertex } from '../tactical-map/terrain-data.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from '../tactical-map/terrain-render-grid.js';
-import { createBattleStore } from '../js/battle-state.js?v=air-losses-1';
-import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=recon-los-1';
-import { isTerrainBlocked } from '../tactical-map/simulation-features.js?v=recon-los-1';
+import { createBattleStore } from '../js/battle-state.js?v=day-catalog-pas-1';
+import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=day-catalog-pas-1';
+import { isTerrainBlocked } from '../tactical-map/simulation-features.js?v=day-catalog-pas-1';
 import { traceAttackTerrainLine } from '../tactical-map/attack-terrain-runtime.js';
-import { runEquipmentRegressionTests } from '../tactical-map/simulation-equipment-regression.js?v=recon-los-1';
-import { runRangeRegression } from '../tactical-map/simulation-range-regression.js?v=recon-los-1';
+import { runEquipmentRegressionTests } from '../tactical-map/simulation-equipment-regression.js?v=day-catalog-pas-1';
+import { runRangeRegression } from '../tactical-map/simulation-range-regression.js?v=day-catalog-pas-1';
 
 const copy = v => JSON.parse(JSON.stringify(v));
 const data = new Map();
@@ -118,8 +118,8 @@ test('all existing equipment and range rule regressions pass',()=>{
  assert.equal(runEquipmentRegressionTests().failed,0);assert.equal(runRangeRegression().passed,true);
 });
 
-import { drawTerrainFaces, projectMap } from '../tactical-map/map-display.js';
-import { pickProjectedTerrainPoint } from '../tactical-map/terrain-picking.js';
+import { drawTerrainFaces, projectMap } from '../tactical-map/map-display.js?v=day-catalog-pas-1';
+import { pickProjectedTerrainPoint } from '../tactical-map/terrain-picking.js?v=day-catalog-pas-1';
 
 test('SVG batching keeps every full-resolution triangle and bounds DOM node count',()=>{
  const node=()=>({children:[],attributes:{},setAttribute(k,v){this.attributes[k]=v},append(v){if(v.fragment)this.children.push(...v.children);else this.children.push(v)}});
@@ -141,10 +141,10 @@ test('viewport completely outside the map renders no cells',()=>{
  assert.equal(makeTerrainRenderGrid(t,window).length,0);
 });
 
-import { ensureShipRuntime } from '../tactical-map/ship-runtime.js';
+import { ensureShipRuntime } from '../tactical-map/ship-runtime.js?v=day-catalog-pas-1';
 import { ensureUnitCombatRuntime } from '../tactical-map/equipment-runtime.js';
-import { finishSpecialPhase, finishTurn, recordSinkingStarts } from '../tactical-map/simulation-phase-finish.js?v=recon-los-1';
-import { startPlannedRescues } from '../tactical-map/simulation-rescue.js?v=recon-los-1';
+import { finishSpecialPhase, finishTurn, recordSinkingStarts } from '../tactical-map/simulation-phase-finish.js?v=day-catalog-pas-1';
+import { startPlannedRescues } from '../tactical-map/simulation-rescue.js?v=day-catalog-pas-1';
 import { ship } from './fixtures.mjs';
 function rescueScene(){
  const s={turn:{number:1,phaseId:'special',elapsedMinutes:0},instances:[ship('rescuer'),ship('target','ally',1)],groups:[],rescuePlans:[],rescueTasks:[]};

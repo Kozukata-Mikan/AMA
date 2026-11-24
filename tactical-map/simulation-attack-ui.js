@@ -1,7 +1,8 @@
+import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js';
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=recon-los-1";
-import { getHitModifiers } from "./weapon-hit-runtime.js";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=day-catalog-pas-1";
+import { getHitModifiers } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
 
 
 
@@ -56,6 +57,10 @@ export function mountAttackUI(store) {
 
 
 
+  const manualPas=element("input");manualPas.type="checkbox";manualPas.style.width="auto";
+  const manualPasControl=labeled("手動PAS（観察中の陣営）",manualPas);
+  const manualPasNote=element("p","自動ではPASを一覧から隠し、PAS段階に自動射撃します。手動では指定した計画だけをPAS段階に実行し、未指定の組は待機します。");manualPasNote.className="note";
+  manualPas.addEventListener("change",async()=>{manualPas.disabled=true;try{await store.setManualPas(manualPas.checked);}catch(e){saveFeedback.textContent=e.message;}finally{manualPas.disabled=false;}});
   const actor = element("select");
   const fleetPicker = createFleetUnitSelector(actor, {label:"攻撃する編隊"});
   const target = element("select");
@@ -170,7 +175,7 @@ function syncRangePanel(scene) {
     "装備組を選択し、目標を割り当ててください。" +
     "別の組には別の目標を割り当てられます。" +
     "「攻撃計画を保存」で計画を保存します。" +
-    "PAS装備は手動で選択しません。PAS段階の一括結算で射界内の識別済み敵を自動選択します。" +
+    "PASは上の手動PAS設定に従います。手動の計画もPAS段階に実行し、通常次序では発射しません。" +
     "現在より低い最高次序の武器は、その次序に自動分類します。" +
     "待機中の計画は実行前に変更・取消できます。" +
     "計画の保存は発射ではありません。" +
@@ -218,7 +223,7 @@ function selectableGroups() {
   // 不因范围名称、解析结果或攻击次序而静默隐藏装备组。
   // 支援装备仍不列入攻击组选装。
   return report.groups.filter(
-    group => group.profile?.kind !== "support"
+    group => group.profile?.kind !== "support" && (!group.profile?.pasOnly||manualPas.checked)
   );
 }
 
@@ -907,6 +912,8 @@ panel.append(
   attackMethodControl,
   element("p", "使用する装備組"),
   toolbar,
+  manualPasControl,
+  manualPasNote,
   selectionInfo,
   equipmentList,
   labeled("選択した装備組に割り当てる目標", target),
@@ -971,6 +978,7 @@ aside.append(panel);
   }
 
   function refreshReport() {
+    const current=store.getSceneSnapshot();manualPas.checked=manualPasEnabled(current,current.controls.enemyAutonomy?"ally":current.controls.observationSide);manualPas.disabled=["special","end"].includes(current.turn.phaseId);
     report = null;
 
     if (!actor.value) {

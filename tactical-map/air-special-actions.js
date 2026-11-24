@@ -1,13 +1,13 @@
 import {hasAirTrait,airRetreating,resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {getVisibility} from './simulation-features.js?v=recon-los-1';
+import {getVisibility} from './simulation-features.js?v=day-catalog-pas-1';
 import {readAircraftProfile} from './aircraft-runtime.js?v=air-losses-1';
-import {aviationHostAlive,aviationRunways} from './aviation-operations.js?v=recon-los-1';
+import {aviationHostAlive,aviationRunways} from './aviation-operations.js?v=day-catalog-pas-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=air-training-1';
 import {sampleTerrain} from './terrain-data.js';
 import {navalHeight} from './naval-kind.js';
-import {detonateAircraftPayloads} from './aviation-detonation.js?v=recon-los-1';
-import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=air-losses-1';
-import {applyShipEffectAcquisition} from './ship-runtime.js?v=air-training-1';
+import {detonateAircraftPayloads} from './aviation-detonation.js?v=day-catalog-pas-1';
+import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=day-catalog-pas-1';
+import {applyShipEffectAcquisition} from './ship-runtime.js?v=day-catalog-pas-1';
 import {compareArmorGrades} from './armor-runtime.js';
 export function ensureRetreatMissions(scene){
  const hosts=scene.instances.filter(aviationHostAlive),map=new Map(scene.instances.map(u=>[u.instanceId,u]));

@@ -2,7 +2,7 @@ import {
   normalizeEnvironment,
   getTimePeriod,
   getWeatherInfo
-} from "./environment-data.js";
+} from "./environment-data.js?v=day-catalog-pas-1";
 
 // 只处理命中硬币，不处理射程、目标资格、伤害或阶段推进。
 // 所有结果必须由调用方在保存事务内持久化。

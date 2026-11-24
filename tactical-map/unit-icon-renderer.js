@@ -1,6 +1,6 @@
 import { drawBuildingIcon } from "./building-runtime.js?v=facility-rules-1";
 import { NAVAL_ICON_SCALE, navalSymbolFor, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { projectMap as project } from "./map-display.js";
+import { projectMap as project } from "./map-display.js?v=day-catalog-pas-1";
 
 const NS = "http://www.w3.org/2000/svg";
 

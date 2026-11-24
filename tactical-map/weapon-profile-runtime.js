@@ -1,4 +1,4 @@
-import { parseHitExpression } from "./weapon-hit-runtime.js";
+import { parseHitExpression } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
 import { getEquipmentLabel } from "../js/catalog-seed.js?v=air-training-1";
 import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=air-training-1";
 

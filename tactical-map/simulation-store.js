@@ -1,31 +1,33 @@
-import {assignFlightMission} from './flight-missions.js?v=recon-los-1';
-import {aircraftMayFly} from './aviation-time.js?v=air-losses-1';
+import {manualPasEnabled,validateManualPasSides} from './pas-control.js?v=day-catalog-pas-1';
+import {advanceEnvironment} from './environment-data.js?v=day-catalog-pas-1';
+import {assignFlightMission} from './flight-missions.js?v=day-catalog-pas-1';
+import {aircraftMayFly} from './aviation-time.js?v=day-catalog-pas-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
-import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=recon-los-1';
+import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=day-catalog-pas-1';
 import {enforceRemoteControl} from './aviation-services.js?v=air-losses-1';
 import {buildingAlive,buildingMountAvailable} from './building-state.js?v=facility-rules-1';
-import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=air-losses-1';
-import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=recon-los-1';
+import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=day-catalog-pas-1';
+import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=day-catalog-pas-1';
 import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-losses-1';
-import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=air-losses-1";
+import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=day-catalog-pas-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=recon-los-1";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=day-catalog-pas-1";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=recon-los-1";
+import { runBackgroundTask } from "./background-client.js?v=day-catalog-pas-1";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
-import { normalizeEnvironment } from "./environment-data.js";
-import { ensureShipRuntime } from "./ship-runtime.js?v=air-training-1";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=recon-los-1";
+import { normalizeEnvironment } from "./environment-data.js?v=day-catalog-pas-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=day-catalog-pas-1";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=day-catalog-pas-1";
 
-import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=recon-los-1";
+import {initializeRescueState,createRescueFeatures} from "./simulation-rescue.js?v=day-catalog-pas-1";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=air-training-1";
-import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=air-training-1";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=recon-los-1";
+import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=day-catalog-pas-1";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -35,22 +37,22 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js?v=air-trainin
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=recon-los-1";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=day-catalog-pas-1";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=recon-los-1";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=day-catalog-pas-1";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-training-1";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=day-catalog-pas-1";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=recon-los-1";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=day-catalog-pas-1";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=recon-los-1";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=recon-los-1";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=day-catalog-pas-1";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=day-catalog-pas-1";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=recon-los-1";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=day-catalog-pas-1";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=air-training-1";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=day-catalog-pas-1";
 
 import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=air-training-1";
 
@@ -61,11 +63,11 @@ import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
 import { readFiringArc } from "./weapon-firing-arc.js?v=air-defense-1";
 import { normalizeCampaignIntro } from "./campaign-intro-data.js";
 
-import { buildBattleReport } from "./simulation-battle-report.js?v=air-losses-1";
+import { buildBattleReport } from "./simulation-battle-report.js?v=day-catalog-pas-1";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=recon-los-1";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=day-catalog-pas-1";
 
 
 
@@ -406,9 +408,12 @@ function readSaved(id, raw) {
   }
 
     // 兼容之前创建的框架推演。
+  const legacyDay=value.environment?.day===undefined;
   value.environment = normalizeEnvironment(value.environment);
+  if(legacyDay&&value.turn?.elapsedMinutes!==undefined)value.environment.day=advanceEnvironment(value.initialScene?.environment??value.environment,value.turn.elapsedMinutes).day;
     value.controls = {
     ...value.controls,
+    manualPasSides: validateManualPasSides(value.controls?.manualPasSides),
     enemyAutonomy: value.controls?.enemyAutonomy === true
   };
 
@@ -1161,6 +1166,18 @@ mountEquipmentRepairPanel(container, rescuerId) {
            
 
 
+    async setManualPas(enabled) {
+      if(typeof enabled!=='boolean')throw Error('手動PASは真偽値で指定してください。');
+      await commit(scene=>{
+        if(!['start','movement','order-5','order-4','order-3','order-2','order-1','pas'].includes(scene.turn.phaseId))throw Error('手動PASの切替はPAS段階までに行ってください。');
+        const side=scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;
+        const sides=new Set(validateManualPasSides(scene.controls.manualPasSides));
+        if(enabled)sides.add(side);else sides.delete(side);
+        scene.controls.manualPasSides=[...sides];
+        if(!enabled){const units=new Map(scene.instances.map(u=>[u.instanceId,u]));scene.attackRuntime.commands=scene.attackRuntime.commands.filter(c=>{const u=units.get(c.unitId);if(u?.side!==side)return true;const g=u.equipmentState.groups.find(g=>g.id===c.groupId),e=u.snapshot.equipmentSnapshots.find(e=>e.id===g?.equipmentId);return !e||!readWeaponProfile(e,g).pasOnly;});}
+      });
+    },
+
     getControlSettings() {
 
       return {
@@ -1304,7 +1321,7 @@ mountEquipmentRepairPanel(container, rescuerId) {
           unitIssues.push("救助中の艦船は他の行動を実行できません。");
         }
       } else if(hasAircraftTemplate(unit)){
-        if(!aircraftCanAct(unit,'attack')||!aircraftMayFly(state,unit))unitIssues.push('この航空機は現在攻撃できません。');
+        if(!(aircraftCanAct(unit,'attack')||manualPasEnabled(state,unit.side)&&aircraftCanAct(unit,'defend'))||!aircraftMayFly(state,unit))unitIssues.push('この航空機は現在攻撃できません。');
       } else if(unit.branch==='building'){
         if(!buildingAlive(unit))unitIssues.push('中心が停止している建築は攻撃できません。');
       } else {
@@ -1329,9 +1346,10 @@ mountEquipmentRepairPanel(container, rescuerId) {
           issues.push("この装備は武器ではありません。");
         } else {
           issues.push(...profile.issues);
+          if(hasAircraftTemplate(unit)&&!aircraftCanAct(unit,profile.pasOnly&&group.position==='自衛武器'?'defend':'attack'))issues.push('この航空機はこの武器で攻撃できません。');
 
         if (profile.pasOnly) {
-          issues.push('PAS装備は自動射撃専用です。PAS段階に射界内の識別済み敵を自動選択します。');
+          if(!manualPasEnabled(state,unit.side))issues.push('PAS装備は自動射撃専用です。手動で指定するには手動PASを有効にしてください。');
         if (!isAttackPhase(phaseId)) {
         issues.push(
         "PAS装備の計画は次序1～5またはPASで登録してください。"

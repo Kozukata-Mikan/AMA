@@ -7,15 +7,15 @@ import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-6";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
 import {mountReliefControls} from './relief-controls.js';
 import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js';
-import { pickProjectedTerrainPoint } from "./terrain-picking.js";
+import { pickProjectedTerrainPoint } from "./terrain-picking.js?v=day-catalog-pas-1";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=recon-los-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=day-catalog-pas-1";
 import { loadUnitData } from "../js/data-store.js?v=air-training-1";
-import { createBattleStore } from "../js/battle-state.js?v=air-losses-1";
-import { mountEditor } from "./editor.js?v=recon-los-1";
+import { createBattleStore } from "../js/battle-state.js?v=day-catalog-pas-1";
+import { mountEditor } from "./editor.js?v=day-catalog-pas-1";
 import { mountUnitDeployment } from "./unit-deployment.js";
-import { drawTerrainFaces, projectMap } from "./map-display.js";
+import { drawTerrainFaces, projectMap } from "./map-display.js?v=day-catalog-pas-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 
@@ -34,7 +34,7 @@ import {
 } from "./cluster-engine.js?v=aviation-operations-1";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=recon-los-1";
+import { mountTerrainEditor } from "./terrain-editor.js?v=day-catalog-pas-1";
 
 let terrain = createDemoTerrain();
 let terrainController = null;

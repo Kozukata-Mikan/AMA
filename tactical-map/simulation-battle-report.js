@@ -737,7 +737,7 @@ function renderBattleReport(report, nodes) {
 
 function renderObservedRound(report, nodes) {
   nodes.battleReportStatus.textContent =
-    `ラウンド${report.roundNumber} / ${SIDE_LABELS[report.side]}視点 / 終了時刻 ${report.time}\n` +
+    `ラウンド${report.roundNumber} / ${SIDE_LABELS[report.side]}視点 / 終了時刻 DAY${report.day??1} ${report.time}\n` +
     '自陣営が関わった結算と、回合終了時に確認できた艦船を表示します。';
   const content = nodes.roundBattleReportContent;
   content.replaceChildren();
