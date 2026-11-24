@@ -5,7 +5,7 @@ export const NO_FLEET = '__none__';
 export function fleetSelectionModel(scene, units) {
   const allowed = new Set(units.map(unit => unit.instanceId));
   const groups = scene.groups.map(group => {
-    const members = formationMembers(scene, group.id);
+    const members = formationMembers(scene, group.id).filter(u=>!group.aviationCluster||u.aircraftState?.mission==='airborne'&&u.aircraftState.status!=='destroyed');
     return {group, units: members.filter(unit => allowed.has(unit.instanceId)),
       whole: members.length > 0 && members.every(unit => allowed.has(unit.instanceId))};
   }).filter(item => item.units.length);
@@ -32,6 +32,8 @@ export function createFleetUnitSelector(actor, {label, encodeUnit = id => id,
       actor.append(new Option(getFlagshipDisplayName(unit), encodeUnit(unit.instanceId)));
     if ([...actor.options].some(option => option.value === previous)) actor.value = previous;
   }
+  const announce=()=>{const group=model.groups.find(item=>wholeGroups&&encodeGroup(item.group.id)===actor.value),unit=model.groups.flatMap(i=>i.units).concat(model.loose).find(u=>encodeUnit(u.instanceId)===actor.value);const ref=group?{kind:'group',id:group.group.id}:unit?{kind:'unit',id:unit.instanceId}:fleet.value!==NO_FLEET?{kind:'group',id:fleet.value}:null;if(ref)document.dispatchEvent(new CustomEvent('tactical-unit-selection',{detail:ref}));};
+  actor.addEventListener('change',announce);
   fleet.addEventListener('change', () => {
     refill(''); actor.dispatchEvent(new Event('change', {bubbles:true}));
   });

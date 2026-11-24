@@ -9,7 +9,7 @@ export function mountAircraftDerivedFields(controls,host){
  const update=()=>{try{const raw=controls.get('naval.speedKnots').value;const time=aircraftAirTime(controls.get('naval.endurance').value,raw.trim()?Number(raw):null);note.textContent=`必要駐機枠：${controls.get('aircraft.engines').value||'未設定'} / 滞空時間：${time??'未計算'}ラウンド${time===null?'':`（${time*.5}時間）`}（小数切捨て）`; }catch(e){note.textContent=e.message;}};
  for(const key of ['naval.speedKnots','naval.endurance','aircraft.engines'])controls.get(key).addEventListener('input',update);
  controls.get('aircraft.type').addEventListener('change',()=>{const drone=isDroneType(controls.get('aircraft.type').value);controls.get('aircraft.crew').value=drone?'0':controls.get('aircraft.crew').value==='0'?'1':controls.get('aircraft.crew').value;syncRemote();});
- function syncRemote(){controls.get('aircraft.remoteRange').closest('label').hidden=!isDroneType(controls.get('aircraft.type').value);}
+ function syncRemote(){const field=controls.get('aircraft.remoteRange');if(field)field.closest('label').hidden=!isDroneType(controls.get('aircraft.type').value);}
  syncRemote();update();return note;
 }
 export function mountAircraftLoadoutEditor(parent,equipment,value=[]){

@@ -1,16 +1,17 @@
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-combat-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=fleet-cohesion-6";
 import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
-import { getBranchName } from "../js/data-store.js?v=facility-rules-1";
+import { getBranchName } from "../js/data-store.js?v=air-combat-1";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=facility-rules-1";
+import { createSimulation } from "./simulation-store.js?v=air-combat-1";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
-import { mountCatalogEditor } from "./catalog-editor.js?v=facility-rules-1";
+import { mountCatalogEditor } from "./catalog-editor.js?v=air-combat-1";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
-import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=facility-rules-1";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=air-combat-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 
@@ -897,6 +898,10 @@ introSection.append(
       "editor-note"
     ));
 
+    const readAviation=['navy','building'].includes(unit.branch)?mountAviationComplementEditor(form,catalog,unit.snapshot.aviationComplement??[]):null;
+    const refreshAviation=readAviation?input('','checkbox'):null;
+    if(refreshAviation)field(form,'図鑑の最新航空支援設備を反映して保存',refreshAviation);
+    if(readAviation)form.append(node('p','図鑑で機位・整備区・滑走路などを追加した場合は、上の項目を選択すると配置済み個体にも反映できます。武器・最大耐性は変更しません。','editor-note'));
     const actions = node("div", "", "editor-actions");
     const save = node("button", "設定を保存");
     save.type = "submit";
@@ -965,6 +970,7 @@ introSection.append(
           }
         }
 
+        if(readAviation){patch.aviationComplement=readAviation();patch.refreshAviationEquipment=refreshAviation.checked;}
         await store.updateUnit(unit.instanceId, patch);
         message("ユニット設定を保存しました。");
       })();

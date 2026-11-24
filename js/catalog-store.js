@@ -1,10 +1,10 @@
 import {normalizeAviationComplement} from './equipment-options.js?v=aviation-operations-1';
 import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=facility-rules-1';
-import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=facility-rules-1";
+import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=air-combat-1";
 import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=facility-rules-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=air-combat-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -113,6 +113,7 @@ function normalizeEquipment(value) {
     faction: normalizeFaction(value.faction ?? ""),
     protected: normalizeProtected(value.protected ?? false),
     kind: value.kind,
+    updatedAt: typeof value.updatedAt==='string'?value.updatedAt:null,
     supportEffect: text(value.supportEffect === 'control-tower' ? '' : value.supportEffect ?? "", "支援機能"),
     remoteRange: number(value.remoteRange ?? null,"遠隔操作範囲",{nullable:true,min:0}),
 
@@ -429,9 +430,9 @@ export function initializeCatalog(baseUnits) {
     console.error(error);
   }
 
-  if(!recoveryError && data.supportStationsVersion<3){
+  if(!recoveryError && data.supportStationsVersion<4){
     const existing=new Set(data.equipment.map(item=>item.id));
-    data=normalizeCatalog({...data,supportStationsVersion:3,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>(data.supportStationsVersion<1||(data.supportStationsVersion<2?['preparation-area','runway','catapult','remote-station','ground-crew']:['remote-station','ground-crew']).includes(item.supportEffect))&&!existing.has(item.id))]});
+    data=normalizeCatalog({...data,supportStationsVersion:4,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>(data.supportStationsVersion<1||(data.supportStationsVersion<2?['preparation-area','runway','catapult','remote-station','ground-crew','night-observation']:data.supportStationsVersion<3?['remote-station','ground-crew','night-observation']:['night-observation']).includes(item.supportEffect))&&!existing.has(item.id))]});
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
   }
 
@@ -514,6 +515,8 @@ export function initializeCatalog(baseUnits) {
     }
 
     const candidate = copy(data);
+    const last=candidate[collection].reduce((n,i)=>Math.max(n,Number.isFinite(Date.parse(i.updatedAt))?Date.parse(i.updatedAt):0),0);
+    item={...copy(item),updatedAt:new Date(Math.max(Date.now(),last+1)).toISOString()};
 
     const list = candidate[collection];
     const index = list.findIndex(value => value.id === item.id);
@@ -548,6 +551,9 @@ export function initializeCatalog(baseUnits) {
       editingAuthorized = false;
     },
 
+    moveItem(collection,id,otherId){
+      if(!['units','equipment'].includes(collection))throw Error('並び順の分類が不正です。');const candidate=copy(data),list=candidate[collection],a=list.findIndex(i=>i.id===id),b=list.findIndex(i=>i.id===otherId);if(a<0||b<0)throw Error('並べ替える資料がありません。');[list[a],list[b]]=[list[b],list[a]];commit(candidate);
+    },
     getData() {
       return copy(data);
     },

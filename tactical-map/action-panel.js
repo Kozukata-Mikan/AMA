@@ -1,4 +1,4 @@
-import { getBranchName } from "../js/data-store.js?v=facility-rules-1";
+import { getBranchName } from "../js/data-store.js?v=air-combat-1";
 
 // ===== 行动草案面板 =====
 // 这里只记录意图，不执行战斗裁定或修改参战状态。

@@ -1,5 +1,5 @@
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=facility-rules-1";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=air-combat-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js";
 
 
@@ -167,7 +167,7 @@ function syncRangePanel(scene) {
     "装備組を選択し、目標を割り当ててください。" +
     "別の組には別の目標を割り当てられます。" +
     "「攻撃計画を保存」で計画を保存します。" +
-    "PAS装備は事前登録でき、PAS段階まで待機します。" +
+    "PAS装備は手動で選択しません。PAS段階の一括結算で射界内の識別済み敵を自動選択します。" +
     "現在より低い最高次序の武器は、その次序に自動分類します。" +
     "待機中の計画は実行前に変更・取消できます。" +
     "計画の保存は発射ではありません。" +

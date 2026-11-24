@@ -26,6 +26,7 @@ function groupFor(unit, id) {
 }
 
 function positionKind(value,branch) {
+  if(branch==='air'&&['主動武器','自衛武器','掛載'].includes(value))return 'middle';
   if(branch==='building'&&['露天','地下','中心'].includes(value))return 'middle';
   const key = String(value ?? "")
     // ① → 1、② → 2、全角数字 → 半角数字。
@@ -331,4 +332,9 @@ export function assertBroadsideQuotas(
   }
 
   return copy(result);
+}
+
+export function firingArcDefinition(actor,position){
+ const kind=actor.branch==='air'?'middle':positionKind(position,actor.branch);
+ return {kind,center:kind==='rear'||kind==='tail'?180:0,half:kind==='front'||kind==='rear'?120:kind==='tail'?90:180};
 }

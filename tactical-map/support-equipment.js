@@ -1,7 +1,7 @@
 import {buildingMountAvailable,buildingAlive} from './building-state.js?v=facility-rules-1';
 // 查询只读：不初始化运行状态、不按名称猜测支援能力。
-export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト']];
-export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','preparation-area','runway','catapult'];
+export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト']];
+export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult'];
 export const SUPPORT_NAMES={rescue:'救助','damage-control':'外部損管',supply:'補給'};
 export function supportCapacity(unit,effect){
  const snapshots=unit.snapshot?.equipmentSnapshots??[];
@@ -26,6 +26,7 @@ export function supportEquipmentSeed(){return [
  ['supply-station','補給所','毎ラウンド、初期総航続距離の最大25%を回復します。'],
  ['parking-stand','駐機枠','組数は駐機枠数です。航空機数とは異なります。搭載・着陸時に発動機数に応じて消費します。'],
  ['remote-station','遠隔操作所','同陣営の無人機は有効な遠隔操作範囲内で行動します。範囲外では滞空時間が直ちに0になります。'],
+ ['night-observation','夜間観測','機体に装備すると全時間帯の飛行・起降が可能です。母艦・施設に装備すると夜間整備が可能です。'],
  ['ground-crew','地上整備員','1組につき毎ラウンド1耐性を修復。損傷が少ない駐機中の航空機から集中して全快させます。'],
  ['preparation-area','整備区','1組につき毎ラウンド最大9機を整備します。機位数ではなく機数です。'],
  ['runway','滑走路','1本につき毎ラウンド最大27機。同一ラウンドに離陸・着陸を併用できません。'],

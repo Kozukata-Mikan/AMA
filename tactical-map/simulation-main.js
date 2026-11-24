@@ -1,9 +1,11 @@
-import {mountAviationUI} from './aviation-ui.js?v=facility-rules-1';
-import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=facility-rules-1';
+import {mountAirCombatUI} from './air-combat-ui.js?v=air-combat-1';
+import {drawWeaponCoverage} from './weapon-coverage-display.js?v=air-combat-1';
+import {mountAviationUI} from './aviation-ui.js?v=air-combat-1';
+import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=air-combat-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
-import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=fleet-cohesion-6";
-import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=workspace-ui-3";
+import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-combat-1";
+import {mountToolNavigation,mountViewSettings} from "./tool-navigation.js?v=air-combat-1";
 import {mountFormationEditor} from "./formation-editor.js?v=fleet-cohesion-6";
 import {mountFormationAttackUI} from "./formation-attack-ui.js?v=fleet-cohesion-6";
 import {drawFormationViews,compactFormationIcon,formationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
@@ -12,7 +14,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=facility-rules-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=air-combat-1";
 import { drawSimulationCartography } from "./simulation-cartography.js";
 import {
   projectMap,
@@ -27,23 +29,23 @@ import {
 import { drawUnitIcon } from "./unit-icon-renderer.js?v=facility-rules-1";
 
 import { getDisplayUnits } from "./cluster-engine.js?v=aviation-operations-1";
-import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=facility-rules-1";
+import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v=air-combat-1";
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=facility-rules-1";
+} from "./ship-runtime.js?v=air-combat-1";
 
-import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=facility-rules-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=facility-rules-1";
-import { drawSupportOverlay } from "./support-map-display.js?v=facility-rules-1";
+import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=air-combat-1";
+import { mountSupportUI } from "./simulation-support-ui.js?v=air-combat-1";
+import { drawSupportOverlay } from "./support-map-display.js?v=air-combat-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=facility-rules-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=facility-rules-1";
+} from "../js/catalog-seed.js?v=air-combat-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=air-combat-1";
 import {
   mountSimulationWorkflow
-} from "./simulation-workflow-ui.js?v=aviation-operations-1";
+} from "./simulation-workflow-ui.js?v=air-combat-1";
 
 import { mountBattleReportUI } from "./simulation-battle-report.js?v=workspace-ui-3";
 
@@ -58,7 +60,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=facility-rules-1";
+} from "./simulation-store.js?v=air-combat-1";
 
 import {
   gridPosition,
@@ -112,6 +114,7 @@ function getRenderScene() {
 }
 
 let selectedId = "";
+let coverageSelection=null;
 let selectedPanelKey = "";
 let selectedRangePanel = null;
 let selectedRepairPanel = null;
@@ -412,6 +415,9 @@ function getWeaponProfileDetailLines(unit) {
 
 function selectUnit(id) {
   selectedId = id;
+  const selected=getRenderScene().instances.find(u=>u.instanceId===id),g=getRenderScene().groups.find(g=>g.id===selected?.groupId);
+  coverageSelection=g?.kind==='cluster'?{kind:'group',id:g.id}:{kind:'unit',id};
+  renderWeaponCoverage();
 
   const unit =getRenderScene().instances.find(
     item => item.instanceId === id
@@ -515,6 +521,18 @@ if (unit.observationLevel === "shadow") {
 
 }
 
+const coverageLegend=document.createElement('details');coverageLegend.open=true;coverageLegend.className='weapon-coverage-legend';coverageLegend.dataset.toolCategory='units';const coverageTitle=document.createElement('summary');coverageTitle.textContent='選択ユニットの武器射界';const coverageList=document.createElement('p');coverageLegend.append(coverageTitle,coverageList);document.querySelector('aside').append(coverageLegend);
+function renderWeaponCoverage(){
+ if(!store)return;const {records,issues}=drawWeaponCoverage($('unitLayer'),getRenderScene(),project,coverageSelection);coverageLegend.hidden=!records.length&&!issues.length;coverageList.replaceChildren();
+ for(const r of records){const row=document.createElement('div');row.style.color=r.color;row.textContent=`● ${r.name} / ${r.position} / 射距${r.range}${r.pas?'（PAS自動）':''}${r.available?'':'（使用不可）'}`;coverageList.append(row);}
+ for(const issue of issues){const row=document.createElement('div');row.textContent='△ '+issue;coverageList.append(row);}
+ const note=document.createElement('small');note.textContent='同高度での射程・水平射界です。実射では高度差・地形・識別・弾薬を再判定します。';coverageList.append(note);
+}
+function selectCoverage(ref){
+ if(!ref?.id)return;const unit=ref.kind==='unit'?getRenderScene().instances.find(u=>u.instanceId===ref.id):getRenderScene().instances.find(u=>u.groupId===ref.id);if(unit)selectUnit(unit.instanceId);coverageSelection=ref;renderWeaponCoverage();
+}
+document.addEventListener('tactical-unit-selection',event=>selectCoverage(event.detail));
+document.addEventListener('formation-select',event=>selectCoverage({kind:'group',id:event.detail}));
 let supportHighlightId = "";
 document.addEventListener("support-provider-select",event=>{supportHighlightId=event.detail;drawMap();});
 function drawMap() {
@@ -539,6 +557,7 @@ function drawMap() {
 
   unitLayer.replaceChildren();
   drawSupportOverlay(unitLayer,scene,project,supportHighlightId);
+  renderWeaponCoverage();
   const compactIds=drawFormationViews(unitLayer,scene,project,id=>{
     document.dispatchEvent(new CustomEvent('formation-select',{detail:id}));
   });
@@ -1181,7 +1200,7 @@ function refresh() {
   drawMap();
 
   if (selectedId) {
-    selectUnit(selectedId);
+    const coverage=coverageSelection;selectUnit(selectedId);if(coverage?.kind==='group'){coverageSelection=coverage;renderWeaponCoverage();}
   }
 
 }
@@ -1389,6 +1408,7 @@ registerPageDisposer(mountFormationAttackUI(store,document.querySelector('aside'
 registerPageDisposer(mountSupportUI(store));
 registerPageDisposer(mountAviationUI(store));
 registerPageDisposer(mountAttackUI(store));
+registerPageDisposer(mountAirCombatUI(store));
 registerPageDisposer(mountSimulationWorkflow(store));
 registerPageDisposer(mountToolNavigation(store,document.querySelector("aside"),"simulation"));
 registerPageDisposer(mountViewSettings(document.querySelector(".toolbar"),[$("axesToggle"),$("gridToggle"),$("colorToggle"),document.querySelector(".relief-control")]));

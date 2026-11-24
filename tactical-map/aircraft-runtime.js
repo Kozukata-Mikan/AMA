@@ -26,6 +26,8 @@ export function ensureAircraftRuntime(unit){
  normalizeAircraftPosition(unit);const profile=readAircraftProfile(unit);
  unit.aircraftState??={version:1,status:unit.currentHp===0?'heavy':'operational',mission:'airborne',remainingAirTime:profile.maximumAirTime,remainingEndurance:profile.enduranceBudget,lastElapsedTurn:0,activeLoadoutId:null,destroyedReason:null};
  const s=unit.aircraftState;
+ s.normalHitRemainder??=0;s.underwaterStrengthUses??=0;
+ if(s.normalHitRemainder!==undefined&&(!Number.isSafeInteger(s.normalHitRemainder)||s.normalHitRemainder<0||s.normalHitRemainder>2))fail('航空機の通常命中蓄積が不正です。');
  if(s.version!==1||!['operational','heavy','destroyed'].includes(s.status)||!['airborne','parked','ready','launching','landing'].includes(s.mission)||!Number.isSafeInteger(s.remainingAirTime)||s.remainingAirTime<0||s.remainingAirTime>profile.maximumAirTime||!Number.isFinite(s.remainingEndurance)||s.remainingEndurance<0||s.remainingEndurance>profile.enduranceBudget||!Number.isSafeInteger(s.lastElapsedTurn)||s.lastElapsedTurn<0)fail('航空機の保存状態が不正です。');
  if((s.status==='operational'&&unit.currentHp===0)||(s.status!=='operational'&&unit.currentHp!==0))fail('航空機の損傷状態と耐性が一致しません。');
  if(s.status!=='destroyed'&&['parked','ready','launching','landing'].includes(s.mission)){if(typeof s.hostId!=='string'||!s.hostId)fail('駐機・起降中の母艦参照がありません。');if(['ready','launching'].includes(s.mission)&&(s.prepared!==true||typeof s.runwayId!=='string'))fail('滑走路待機機の整備記録が不正です。');if(['launching','landing'].includes(s.mission)&&(!Number.isSafeInteger(s.dueTurn)||s.dueTurn<1))fail('起降完了ラウンドが不正です。');}

@@ -1,6 +1,6 @@
 import { parseHitExpression } from "./weapon-hit-runtime.js";
-import { getEquipmentLabel } from "../js/catalog-seed.js?v=facility-rules-1";
-import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=facility-rules-1";
+import { getEquipmentLabel } from "../js/catalog-seed.js?v=air-combat-1";
+import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=air-combat-1";
 
 
 // 只适配已经确认的图鉴字段。

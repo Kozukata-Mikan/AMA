@@ -69,6 +69,7 @@ export function mountSimulationWorkflow(store) {
   const support = originalDetails.find(node=>node.dataset.workflowPanel==='support') ?? findPanel("外部支援・救助・補給");
   const rescue = support ?? findPanel("艦船救助");
   const aviation=originalDetails.find(node=>node.dataset.workflowPanel==='aviation');
+  const airCombat=originalDetails.find(node=>node.dataset.workflowPanel==='air-combat');
   const formation = findPanel("編隊陣形");
   const formationAttack = findPanel("編隊一括攻撃");
   const attack = findPanel(
@@ -279,13 +280,14 @@ export function mountSimulationWorkflow(store) {
   if(formationAttack)attackSection.body.insertBefore(formationAttack,attack);
 
 
+  if(airCombat)attackSection.body.insertBefore(airCombat,attackActions);
   attackActions.append(execute);
   feedbackBox.append(feedback);
 
 
   const knownPanels = new Set([
     environment, units, groups, drafts,
-    movement, rescue, attack, formation, formationAttack, aviation
+    movement, rescue, attack, formation, formationAttack, aviation, airCombat
   ]);
 
   // 保留其他模块创建的侧栏节点，不因布局重排而删除。

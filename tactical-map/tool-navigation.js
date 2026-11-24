@@ -42,6 +42,7 @@ export function mountToolNavigation(store, host, mode) {
     (node) =>
       node.classList.contains("workflow-overview") ||
       node.classList.contains("workflow-feedback") ||
+      node.classList.contains("weapon-coverage-legend") ||
       node.matches('p[role="status"]'),
   );
   const panels = nodes.filter((node) => !pinned.includes(node));

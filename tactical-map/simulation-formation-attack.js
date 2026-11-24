@@ -1,19 +1,19 @@
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=facility-rules-1";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-combat-1";
 import { formationMembers } from "./formation-layout.js?v=fleet-cohesion-6";
-import { assertManualControl, getVisibility } from "./simulation-features.js?v=facility-rules-1";
+import { assertManualControl, getVisibility } from "./simulation-features.js?v=air-combat-1";
 import {
   readWeaponProfile,
   readWeaponTargetScope,
-} from "./weapon-profile-runtime.js?v=facility-rules-1";
+} from "./weapon-profile-runtime.js?v=air-combat-1";
 import {
   getAttackExecutionPhase,
   initializeAttackRuntime,
-} from "./simulation-attack-runtime.js?v=facility-rules-1";
+} from "./simulation-attack-runtime.js?v=air-combat-1";
 import {
   createDeferredAttackValidator,
   filterUnreachableAttackCommands,
   prepareSettlementAttackPlan,
-} from "./simulation-settlement.js?v=facility-rules-1";
+} from "./simulation-settlement.js?v=air-combat-1";
 
 function shuffle(values) {
   const result = [...values];
@@ -93,7 +93,7 @@ export function planFormationAttack(scene, request) {
         skipped++;
         continue;
       }
-      if (!profile.pasOnly && scene.turn.phaseId === "pas") continue;
+      if (profile.pasOnly || scene.turn.phaseId === "pas") continue;
       const phaseId = getAttackExecutionPhase(
         scene,
         actor.instanceId,

@@ -1,26 +1,28 @@
+import {observedAirCombat} from './air-combat-report.js?v=air-combat-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-combat-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=facility-rules-1';
-import {reconcileAviation} from './aviation-operations.js?v=facility-rules-1';
-import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=facility-rules-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=facility-rules-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=facility-rules-1";
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=air-combat-1';
+import {reconcileAviation} from './aviation-operations.js?v=air-combat-1';
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-combat-1';
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=air-combat-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=air-combat-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
-import { normalizeNavalPosition, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
+import { normalizeNavalPosition, navalKind, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=facility-rules-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=air-combat-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=facility-rules-1";
+} from "./ship-runtime.js?v=air-combat-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=facility-rules-1";
+} from "./simulation-rescue.js?v=air-combat-1";
 
 import {
   createShipEffectsState,
@@ -31,11 +33,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=facility-rules-1";
+} from "./equipment-item-runtime.js?v=air-combat-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=facility-rules-1";
+} from "./simulation-autonomous-rescue.js?v=air-combat-1";
 
 import {
   routeLength,
@@ -297,19 +299,19 @@ function getNormalObserverVisibility(scene, observer, target) {
     return null;
   }
 
-  if (isSubmerged(target) && (!["navy","building"].includes(observer.branch) || navalGrade(observer,"aswRecon") === null)) return null;
+  if (isSubmerged(target) && (!["navy","building","air"].includes(observer.branch) || navalGrade(observer,"aswRecon") === null)) return null;
   if (distance <= 100) return "identified";
 
   if (
-    !["navy","building"].includes(observer.branch) ||
-    !["navy","building"].includes(target.branch) ||
+    !["navy","building","air"].includes(observer.branch) ||
+    !["navy","building","air"].includes(target.branch) ||
     distance > range
   ) {
     return null;
   }
 
   const detection = navalGrade(target, "detection");
-  const recon = navalGrade(observer, isSubmerged(target) ? "aswRecon" : "seaRecon");
+  const recon = navalGrade(observer, isSubmerged(target) ? "aswRecon" : target.branch==='air'||target.branch==='navy'&&navalKind(target)==='air'?"airRecon":"seaRecon");
 
   return (
     detection !== null &&
@@ -627,6 +629,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         : null
     })),
     actions,
+    airCombatRuntime:observedAirCombat(scene,side),
     aviationRuntime: {version:1,runwayUse:(scene.aviationRuntime?.runwayUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side)),preparationUse:(scene.aviationRuntime?.preparationUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side))},
     supportRuntime: {version:1, tasks:(scene.supportRuntime?.tasks??[]).filter(task=>visibility.get(task.providerId)==='identified'&&visibility.get(task.targetId)==='identified').map(task=>({id:task.id,kind:task.kind,providerId:task.providerId,targetId:task.targetId,status:task.status,startedTurn:task.startedTurn}))},
     rescuePlans: (scene.rescuePlans ?? []).filter(plan =>
@@ -756,6 +759,7 @@ function movementMembers(scene, ref, supportPreview=false) {
   const members = ref.kind === "group" ? movementGroupMembers(scene,ref.id) : entityMembers(scene,ref);
   if (!members.length) fail("編隊円内に移動する艦船がいません。");
   assertManualControl(scene, members);
+  if(members.some(u=>hasAircraftTemplate(u)&&!aircraftMayFly(scene,u)))fail('この時間帯は夜間観測のない航空機を移動できません。');
 
   if (scene.turn.phaseId !== "movement") {
     fail("移動計画は移動段階でのみ指定できます。");

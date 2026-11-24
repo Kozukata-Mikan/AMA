@@ -1,4 +1,7 @@
-import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=facility-rules-1';
+import {normalizeAviationComplement} from './equipment-options.js';
+import {aircraftFacilityCompatible} from './aircraft-template.js?v=facility-rules-1';
+import {supportCapacity} from '../tactical-map/support-equipment.js?v=air-combat-1';
+import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=air-combat-1';
 import { normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "../tactical-map/flagship-display.js?v=fleet-cohesion-6";
@@ -698,6 +701,8 @@ export async function createBattleStore(units) {
     }
 
     const editable = new Set([
+      "aviationComplement",
+      "refreshAviationEquipment",
       "name",
       "side",
       "faction",
@@ -774,6 +779,24 @@ export async function createBattleStore(units) {
           ...previous,
           ...update.patch
         };
+
+        if(update.patch.refreshAviationEquipment!==undefined){
+          requireBoolean(update.patch.refreshAviationEquipment,'航空支援設備の更新');delete next.refreshAviationEquipment;
+          if(update.patch.refreshAviationEquipment){
+            if(!['navy','building'].includes(previous.branch))throw Error('航空支援設備は母艦・施設で更新してください。');const template=catalog.get(previous.unitId);if(!template)throw Error('元の図鑑資料がありません。');
+            const effects=new Set(['parking-stand','preparation-area','runway','catapult','ground-crew','remote-station','night-observation']),oldEq=new Map((previous.snapshot.equipmentSnapshots??[]).map(e=>[e.id,e])),newEq=new Map((template.equipmentSnapshots??[]).map(e=>[e.id,e]));
+            const aviationMount=(m,map)=>map.get(m.equipmentId)?.kind==='support'&&(effects.has(map.get(m.equipmentId).supportEffect)||m.equipmentId==='eq-seaplane-catapult');
+            const mounts=[...previous.snapshot.mounts.filter(m=>!aviationMount(m,oldEq)),...template.mounts.filter(m=>aviationMount(m,newEq))];const equipment=new Map(oldEq);for(const m of template.mounts.filter(m=>aviationMount(m,newEq)))equipment.set(m.equipmentId,newEq.get(m.equipmentId));
+            next.snapshot={...copy(previous.snapshot),mounts:copy(mounts),equipmentSnapshots:copy([...equipment.values()])};
+          }
+        }
+        if(Object.prototype.hasOwnProperty.call(update.patch,'aviationComplement')){
+          if(!['navy','building'].includes(previous.branch))throw Error('搭載航空機は母艦・飛行場で設定してください。');
+          const complement=normalizeAviationComplement(update.patch.aviationComplement),unchanged=JSON.stringify(complement)===JSON.stringify(previous.snapshot.aviationComplement??[]),templates=new Map();let slots=0;
+          for(const entry of complement){const template=(unchanged?previous.snapshot.aircraftSnapshots?.find(a=>a.id===entry.unitId):null)??catalog.get(entry.unitId);if(!template?.aircraft||!aircraftFacilityCompatible(template.aircraft.type,previous))throw Error('この母艦・施設で運用できる航空機テンプレートを指定してください。');templates.set(template.id,copy(template));slots+=entry.count*template.aircraft.engines;}
+          const capacity=supportCapacity(next,'parking-stand');if(slots>capacity)throw Error(`必要駐機枠${slots}が登録駐機枠${capacity}を超えています。`);
+          if(!unchanged)next.snapshot={...copy(next.snapshot),aviationComplement:complement,aircraftSnapshots:[...templates.values()]};delete next.aviationComplement;
+        }
 
         // 编队变更默认取消分旗舰身份。
         // 若本次明确勾选，则视为在新编队重新指定。

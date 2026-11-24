@@ -1,8 +1,8 @@
-import {isAirshipBase,isAirship} from './aviation-services.js?v=facility-rules-1';
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=facility-rules-1';
-import {aviationRunways,aviationHostAlive} from './aviation-operations.js?v=facility-rules-1';
+import {isAirshipBase,isAirship} from './aviation-services.js?v=air-combat-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=air-combat-1';
+import {aviationRunways,aviationHostAlive} from './aviation-operations.js?v=air-combat-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=facility-rules-1';
-import {supportCapacity} from './support-equipment.js?v=facility-rules-1';
+import {supportCapacity} from './support-equipment.js?v=air-combat-1';
 const node=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAviationUI(store){
  const panel=node('details');panel.open=true;panel.dataset.toolCategory='progress';panel.dataset.workflowPanel='aviation';panel.append(node('summary','航空運用｜整備・離陸・着陸'));

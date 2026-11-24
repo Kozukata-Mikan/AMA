@@ -1,12 +1,15 @@
+import {aircraftMayFly} from './aviation-time.js?v=air-combat-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-combat-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=air-combat-1';
 import {buildingAlive,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition} from './combat-target-runtime.js?v=facility-rules-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=facility-rules-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=facility-rules-1';
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=air-combat-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-combat-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-combat-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=aviation-operations-1';
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=facility-rules-1';
-import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=facility-rules-1";
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-combat-1';
+import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-combat-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=facility-rules-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-combat-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -18,7 +21,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=facility-rules-1";
+} from "./simulation-attack-batch.js?v=air-combat-1";
 
 
 
@@ -28,16 +31,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=facility-rules-1";
+} from "./ship-runtime.js?v=air-combat-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=facility-rules-1";
+} from "./equipment-runtime.js?v=air-combat-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=facility-rules-1";
+} from "./simulation-features.js?v=air-combat-1";
 
 import {
   getEquipmentDamagePlan,
@@ -47,7 +50,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=facility-rules-1";
+} from "./equipment-item-runtime.js?v=air-combat-1";
 
 
 import {
@@ -80,32 +83,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=facility-rules-1";
+} from "./simulation-rescue.js?v=air-combat-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=facility-rules-1";
+} from "./simulation-phase-finish.js?v=air-combat-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=facility-rules-1";
+} from "./weapon-profile-runtime.js?v=air-combat-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=facility-rules-1";
+} from "./simulation-attack-runtime.js?v=air-combat-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=facility-rules-1";
+} from "./weapon-profile-runtime.js?v=air-combat-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=facility-rules-1";
+} from "./simulation-features.js?v=air-combat-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=facility-rules-1";
+} from "./formation-target-runtime.js?v=air-combat-1";
 
 import {
   readRangeCommandTarget
@@ -114,11 +117,11 @@ import {
 import {
   readFiringArc,
   assertBroadsideQuotas
-} from "./weapon-firing-arc.js?v=facility-rules-1";
+} from "./weapon-firing-arc.js?v=air-combat-1";
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=facility-rules-1";
+} from "./range-projection-runtime.js?v=air-combat-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -575,7 +578,7 @@ function navalPoint(scene, unit) {
     fail("攻撃位置が地図の範囲外です。");
   }
 
-  const z = unit.branch==='building'?sample.surface:navalHeight(unit,sample);
+  const z = unit.branch==='building'?sample.surface:hasAircraftTemplate(unit)?unit.altitude:navalHeight(unit,sample);
 
   if (!Number.isFinite(z)) {
     fail("攻撃位置の高さが不正です。");
@@ -587,6 +590,7 @@ function navalPoint(scene, unit) {
 
 
 function trainingModifiers(scene, actor, target, underwaterWeapon ,roundTraitOptions = {}) {
+  if(hasAircraftTemplate(actor))return{bonuses:0,penalties:0};
   const traits = new Set([
     ...actor.trainingState.baseTraits,
     ...actor.trainingState.acquiredTraits
@@ -730,7 +734,7 @@ function finalPreflight(start, entry ,roundTraitOptions = {}) {
   if (
     actor.instanceId === target.instanceId ||
     actor.side === target.side ||
-    combatTargetState(target)?.status === "sunk" || target.branch==='building'&&target.currentHp===0
+    combatTargetState(target)?.status === "destroyed" || combatTargetState(target)?.status === "sunk" || target.branch==='building'&&target.currentHp===0
   ) {
     ineligible(
       "自艦・同一陣営・沈没艦は攻撃対象外です。"
@@ -960,6 +964,7 @@ try {
     }
   }
 
+  if(hasAircraftTemplate(target)&&(!profile.pasOnly||damageRule.kind==='equipment'||profile.large||profile.guidance==='inertial'))ineligible('航空機への通常自動射撃はPASの数字威力・艦砲威力に対応しています。専用威力・慣性防御は後続規則が必要です。');
   // 正式随机之前验证真实伤害算法。
   // 算法不支持或资料错误必须整批拒绝。
   if (damageRule.kind === "cannon") {
@@ -1061,6 +1066,7 @@ function assertStartStateUnchanged(scene, start) {
       JSON.stringify(current.shipState) !==
         JSON.stringify(oldUnit.shipState) ||
       JSON.stringify(current.buildingState)!==JSON.stringify(oldUnit.buildingState) ||
+      JSON.stringify(current.aircraftState)!==JSON.stringify(oldUnit.aircraftState) ||
       current.currentHp !== oldUnit.currentHp ||
       equipmentDamageSignature(current) !==
       equipmentDamageSignature(oldUnit) ||
@@ -1110,7 +1116,7 @@ function assertEffectAlgorithms(scene, start, entries) {
         ? "flooding"
         : null;
 
-    if (type === null || target.branch==='building') continue;
+    if (type === null || target.branch==='building'||hasAircraftTemplate(target)) continue;
 
     // 隔离副本上的确定性支持检查，不消耗正式随机数。
     applyShipEffectAcquisition(
@@ -1340,7 +1346,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         : naval.armor;
 
       for (let index = 0; index < attack.hitCount; index++) {
-        const impact = target.branch==='building' ? resolveBuildingCannonImpact({penetration:attack.entry.profile.penetration,armor},coinSource) : coinSource === undefined
+        const impact = hasAircraftTemplate(target)?resolveAircraftCannonImpact({penetration:attack.entry.profile.penetration,armor},coinSource):target.branch==='building' ? resolveBuildingCannonImpact({penetration:attack.entry.profile.penetration,armor},coinSource) : coinSource === undefined
           ? resolveCannonImpact({
               penetration: attack.entry.profile.penetration,
               armor
@@ -1471,6 +1477,7 @@ for (const attack of attacks) {
         attackId: recordKey(context.turnNumber, context.phaseId) +
           ":" + targetId,
         kind: "batch",
+        hitCount:attacks.reduce((n,a)=>n+a.hitCount,0),
         hpDamage,
         hasDamageEffect,
         normalHitRemainder: ((combinedRemainder%3)+3)%3
@@ -1520,14 +1527,16 @@ for (const attack of attacks) {
  * - 不掷正式随机数、不扣弹、不保存。
  */
 function appendAutonomousAttackCommands(scene) {
-  if (!scene.controls?.enemyAutonomy) return;
+  const automaticPas=scene.turn.phaseId==='pas';
+  if (!scene.controls?.enemyAutonomy&&!automaticPas) return;
 
   initializeAttackRuntime(scene);
+  if(automaticPas)scene.attackRuntime.commands=scene.attackRuntime.commands.filter(c=>{const u=scene.instances.find(u=>u.instanceId===c.unitId),g=u?.equipmentState.groups.find(g=>g.id===c.groupId),e=u?.snapshot.equipmentSnapshots.find(e=>e.id===g?.equipmentId);return !e||!readWeaponProfile(e,g).pasOnly;});
 
   const start = getAttackPhaseStartScene(scene);
 
   // 不静默删除开启自主行动前保存的外方手动计划。
-  if (scene.attackRuntime.commands.some(command => {
+  if (!automaticPas && scene.attackRuntime.commands.some(command => {
     const actor = unitFor(start, command.unitId);
     return actor.side !== "ally";
   })) {
@@ -1559,7 +1568,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
 
   const actors = start.instances
     .filter(unit =>
-      !hasAircraftTemplate(unit) && (["navy","building"].includes(unit.branch) || !hasSupportEquipment(unit)) && (unit.side === "enemy" || unit.side === "neutral")
+      (!hasAircraftTemplate(unit)||automaticPas&&aircraftCanAct(unit,'attack')&&aircraftMayFly(start,unit)) && (!automaticPas||(unit.snapshot.equipmentSnapshots??[]).some(e=>e.kind==='weapon'&&String(e.maxOrder).toUpperCase()==='PAS')) && (["navy","building"].includes(unit.branch) || automaticPas&&hasAircraftTemplate(unit) || !hasSupportEquipment(unit)) && (automaticPas || unit.side === "enemy" || unit.side === "neutral")
     )
     .sort((a, b) =>
       compareText(a.instanceId, b.instanceId)
@@ -1572,10 +1581,18 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
       .map(lock => [lock.unitId, lock.targetId])
   );
 
+  // PAS needs visibility only for targets in reach of at least one participating battery.
+  const pasVisibilityTargets=new Map();
+  if(automaticPas)for(const actor of actors){
+    const equipment=new Map(actor.snapshot.equipmentSnapshots.map(e=>[e.id,e]));let range=0;
+    for(const g of actor.equipmentState.groups){const e=equipment.get(g.equipmentId);if(e?.kind==='weapon'&&String(e.maxOrder).toUpperCase()==='PAS')range=Math.max(range,Number.isFinite(e.range)?e.range:Infinity);}
+    if(!pasVisibilityTargets.has(actor.side))pasVisibilityTargets.set(actor.side,new Set());const ids=pasVisibilityTargets.get(actor.side);
+    for(const target of start.instances)if(target.side!==actor.side&&Math.hypot(target.x-actor.x,target.y-actor.y)<=range+EPSILON)ids.add(target.instanceId);
+  }
   // All actors plan from the same phase-start state. Plans do not mutate start.
   const visibilityBySide=new Map();
   for (const actor of actors) {
-    if (!["navy","building"].includes(actor.branch)) {
+    if (!["navy","building"].includes(actor.branch)&&!(automaticPas&&hasAircraftTemplate(actor))) {
       fail("海軍以外の自律攻撃は未接続です。");
     }
 
@@ -1597,19 +1614,17 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
       }
     };
 
-    if(!visibilityBySide.has(actor.side))visibilityBySide.set(actor.side,getVisibility(observedStart));
+    if(!visibilityBySide.has(actor.side))visibilityBySide.set(actor.side,getVisibility(observedStart,automaticPas?pasVisibilityTargets.get(actor.side):undefined));
     const visibility = visibilityBySide.get(actor.side);
 
     const targets = start.instances.filter(target =>
-      !hasAircraftTemplate(target) &&
+      (!hasAircraftTemplate(target)||automaticPas&&['airborne','landing'].includes(target.aircraftState.mission)&&target.aircraftState.status!=='destroyed') &&
       target.instanceId !== actor.instanceId &&
       target.side !== actor.side &&
       visibility.get(target.instanceId) === "identified" &&
       target.shipState?.status !== "sunk" && (target.branch!=='building'||target.currentHp>0) &&
       (
-        actor.side === "enemy"
-          ? target.side === "ally"
-          : neutralAggressors.has(target.instanceId)
+        actor.side === "enemy" ? target.side === "ally" : actor.side==='ally'?target.side==='enemy':neutralAggressors.has(target.instanceId)
       )
     ).sort((a, b) => {
       // 优先完成击沉，再以距离和稳定ID排序。
@@ -2123,6 +2138,7 @@ export function filterUnreachableAttackCommands(
 
 export function prepareSettlementAttackPlan(scene) {
   const working = copySceneWithSpecialHistory(scene);
+  preflightAirCombat(working);
 
   initializeSettlementRuntime(working);
 
@@ -2369,6 +2385,8 @@ for (const report of resourceReports) {
     coinSource
   );
 
+  const airCombatReports=resolveAirCombat(working,coinSource);
+  if(airCombatReports.length||damage.targetReports.some(r=>r.applied?.aircraftHit&&r.applied.aircraftHit.before.status!==r.applied.aircraftHit.after.status))rebuildAircraftClusters(working);
   reconcileAviation(working);
   recordSinkingStarts(
     working,
@@ -2429,6 +2447,7 @@ for (const report of resourceReports) {
     hitReports: hitStep.reports,
     rangeSelections: copy(hitStep.rangeSelections),
     targetReports: damage.targetReports,
+    airCombatIds:airCombatReports.map(r=>r.id),
     effectReports,
     rayReports,
     rescueInterruptions
@@ -2456,6 +2475,8 @@ for (const report of resourceReports) {
 
   // 只写回本正式事务负责的数据。
   scene.instances = working.instances;
+  scene.groups=working.groups;
+  scene.airCombatRuntime=working.airCombatRuntime;
   scene.aviationRuntime = working.aviationRuntime;
   scene.rescueTasks = working.rescueTasks;
   scene.rayTargetRuntime = working.rayTargetRuntime;

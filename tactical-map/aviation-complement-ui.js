@@ -10,5 +10,6 @@ export function mountAviationComplementEditor(parent,units,value=[]){
   const reader={active:true,read:()=>({unitId:types.value,count:Number(count.value),groupId:group.value.trim()||null})};readers.push(reader);
   const remove=node('button','この搭載設定を削除');remove.type='button';remove.addEventListener('click',()=>{reader.active=false;row.remove();});row.append(remove);list.append(row);
  }
+ if(!templates.length)host.append(node('p','使用可能な航空機テンプレートがありません。航空機図鑑で機体を新規登録するか、旧形式の機体を編集・保存してから戻ってください。'));
  for(const row of value)add(row);const button=node('button','搭載航空機を追加');button.type='button';button.disabled=!templates.length;button.addEventListener('click',()=>add());host.append(button);parent.append(host);return()=>readers.filter(r=>r.active).map(r=>r.read());
 }

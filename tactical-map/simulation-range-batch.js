@@ -7,7 +7,7 @@ import {
   prepareRangeProjection,
   selectRangeOccurrences,
   resolveRangeProjectionHits
-} from "./range-projection-runtime.js?v=facility-rules-1";
+} from "./range-projection-runtime.js?v=air-combat-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

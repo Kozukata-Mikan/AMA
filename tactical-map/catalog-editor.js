@@ -1,13 +1,13 @@
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
-import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=aviation-operations-1';
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-combat-1';
 import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=facility-rules-1';
-import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=facility-rules-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=facility-rules-1";
+import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-combat-1';
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=air-combat-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=facility-rules-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=air-combat-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=facility-rules-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=air-combat-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -18,7 +18,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=facility-rules-1";
+} from "../js/catalog-seed.js?v=air-combat-1";
 
 // ===== 图鉴界面 =====
 
@@ -309,6 +309,7 @@ export function mountCatalogEditor({
   factionFilter.setAttribute("aria-label", "色陣営で絞り込み");
 
 
+  const sortOrder=select([['updated','最近編集した順'],['name','名称順'],['manual','登録順・手動並べ替え']],'updated');sortOrder.setAttribute('aria-label','図鑑の並び順');sortOrder.addEventListener('change',renderList);
   const search = input();
   search.placeholder = "名称で検索";
   search.setAttribute("aria-label", "図鑑を検索");
@@ -438,6 +439,7 @@ export function mountCatalogEditor({
   toolbar.append(
     categorySelect,
     factionFilter,
+    sortOrder,
     search,
 
     button("編集を再ロック", () => {
@@ -555,6 +557,8 @@ export function mountCatalogEditor({
     );
 
 
+    if(sortOrder.value==='updated')items.sort((a,b)=>String(b.updatedAt??'').localeCompare(String(a.updatedAt??''))||a.name.localeCompare(b.name,'ja'));
+    if(sortOrder.value==='name')items.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
     for (const item of items) {
       const text = category === "units"
         ? `${item.name} · ${branchName(item.branch)}`
@@ -575,7 +579,10 @@ export function mountCatalogEditor({
         item.id === selectedId
       );
 
-      list.append(entry);
+      if(sortOrder.value==='manual'){
+        const row=node('div','','catalog-order-row'),index=items.indexOf(item);row.append(entry);
+        for(const [direction,label]of [[-1,'上へ'],[1,'下へ']]){const move=button(label,()=>safely(()=>store.moveItem(category,item.id,items[index+direction].id))());move.setAttribute('aria-label',`${item.name}を${label}`);move.disabled=!items[index+direction];row.append(move);}list.append(row);
+      }else list.append(entry);
     }
 
     if (!items.length) {
@@ -1004,6 +1011,7 @@ export function mountCatalogEditor({
           ["special", "特殊"],
           ["building", "建築"]
         ], value);
+      } else if(field.type==='air-training'){const aliases={'见习':'novice','見習い':'novice','普通':'regular','精锐':'elite','精鋭':'elite','王牌':'ace','エース':'ace'};control=select([['novice','見習い（反応力0）'],['regular','普通（反応力1）'],['elite','精鋭（反応力2）'],['ace','エース（反応力3）']],aliases[value]??value??'regular');if(!control.value)control.value='regular';
       } else if (field.type === "aircraft-type") {control=select(AIRCRAFT_TYPES,value);
       } else if (field.type === "support-effect") {control=select(SUPPORT_EFFECTS,value ?? "");
       } else if (field.type === "building-size") {
@@ -1187,7 +1195,7 @@ export function mountCatalogEditor({
         const position = labeled(
           row,
           "位置",
-          draft.branch === "building" ? select([["露天","露天"],["地下","地下"],["中心","中心"]], ["地下","中心"].includes(value.position) ? value.position : "露天") : draft.branch === "air" ? select(AIRCRAFT_WEAPON_ROLES.map(([,label])=>[label,label]),value.position||"主動武器") : input(value.position)
+          draft.branch === "building" ? select([["露天","露天"],["地下","地下"],["中心","中心"]], ["地下","中心"].includes(value.position) ? value.position : "露天") : draft.branch === "air" ? select(AIRCRAFT_WEAPON_ROLES.map(([,label])=>[label,label]),(AIRCRAFT_WEAPON_ROLES.some(([,label])=>label===value.position)?value.position:"主動武器")) : input(value.position)
         );
 
         const equipmentSelect = labeled(

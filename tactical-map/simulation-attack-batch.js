@@ -1,18 +1,20 @@
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-combat-1';
+import {aircraftMayFly} from './aviation-time.js?v=air-combat-1';
 import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=facility-rules-1";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=facility-rules-1";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=facility-rules-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=facility-rules-1";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=air-combat-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=air-combat-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-combat-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=air-combat-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=facility-rules-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-combat-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=facility-rules-1";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=facility-rules-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-combat-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=air-combat-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=facility-rules-1";
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=facility-rules-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-combat-1";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-combat-1";
 
 
 
@@ -259,7 +261,7 @@ export function getAttackPhaseStartScene(scene) {
 // 仅在独立规则场景副本上应用明确登记的缺失资料补完。
 // 不把当前损伤、位置、编队或其他资源覆盖进历史场景。
 for (const startUnit of start.instances) {
-  ensureBuildingState(startUnit);
+  ensureBuildingState(startUnit);ensureAircraftRuntime(startUnit);
   const currentUnit = scene.instances.find(
     unit => unit.instanceId === startUnit.instanceId
   );
@@ -351,12 +353,13 @@ function prepareCommand(startScene, command, visibilityBySide) {
 );
 
 
-  if (!["navy","building"].includes(actor.branch)) {
+  if (!["navy","building"].includes(actor.branch)&&!(hasAircraftTemplate(actor)&&profile.pasOnly)) {
     fail("この軍種の正式な攻撃批次処理は未接続です。");
   }
 
     // 同时供正式阶段检查和当前状态预览使用，
   // 因此不把所有错误都描述成“阶段开始时”。
+  if(hasAircraftTemplate(actor)&&(!aircraftCanAct(actor,'attack')||!aircraftMayFly(startScene,actor)))fail('行動不能の航空機はPAS射撃できません。');
   if(actor.branch==='building'&&(!buildingAlive(actor)||!buildingMountAvailable(actor,group.mountIndex)))fail('中心または武器配置の耐性が0のため攻撃できません。');
   if(actor.airshipBaseState&&actor.airshipBaseState.mission!=='airborne')fail('基地作業中の空中艦は攻撃できません。');
   if (["sinking", "sunk"].includes(actor.shipState?.status)) {
@@ -442,7 +445,7 @@ let memberIds;
   const members = memberIds.map(id => findUnit(startScene, id));
 
   // 未接入军种不能当作“不合格成员”静默跳过。
-  if (members.some(unit => !["navy","building"].includes(unit.branch))) {
+  if (members.some(unit => !["navy","building"].includes(unit.branch)&&!(profile.pasOnly&&hasAircraftTemplate(unit)))) {
     fail("範囲に未対応の軍種が含まれているため、結算できません。");
   }
 
@@ -475,7 +478,7 @@ let memberIds;
       fail("自分自身または同一陣営への攻撃は結算できません。");
     }
 
-        if (singleTarget.shipState?.status === "sunk" || singleTarget.branch==='building'&&singleTarget.currentHp===0) {
+        if (singleTarget.aircraftState?.status==='destroyed'||singleTarget.shipState?.status === "sunk" || singleTarget.branch==='building'&&singleTarget.currentHp===0) {
       // 目标已经沉没：本条计划失效，允许筛选层跳过。
       // 不扣弹、不改使用记录，也不自动换目标。
       const error = new Error(
