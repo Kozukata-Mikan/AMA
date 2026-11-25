@@ -1,6 +1,6 @@
 import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
 import {getTimePeriod,normalizeEnvironment,getWeatherInfo} from './environment-data.js?v=day-catalog-pas-1';
-import {supportCapacity} from './support-equipment.js?v=settlement-audit-1';
+import {supportCapacity} from './support-equipment.js?v=field-support-1';
 export const nightObservation=u=>supportCapacity(u,'night-observation')>0;
 export const aviationPeriod=scene=>getTimePeriod(normalizeEnvironment(scene.environment).time).id;
 const twilightWindow=(plane,time)=>{const [h,m]=time.split(':').map(Number),n=h*60+m;return hasAirTrait(plane,'twilight')&&n>=270&&n<=1290;};

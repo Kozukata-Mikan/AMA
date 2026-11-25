@@ -68,6 +68,7 @@ export function mountSimulationWorkflow(store) {
   const movement = originalDetails.find(node=>node.dataset.workflowPanel==='movement') ?? findPanel("ユニット移動・編隊行動", "艦船移動・編隊行動");
   const support = originalDetails.find(node=>node.dataset.workflowPanel==='support') ?? findPanel("外部支援・救助・補給");
   const rescue = support ?? findPanel("艦船救助");
+  const fieldSupport=originalDetails.find(node=>node.dataset.workflowPanel==='field-support');
   const aviation=originalDetails.find(node=>node.dataset.workflowPanel==='aviation');
   const airCombat=originalDetails.find(node=>node.dataset.workflowPanel==='air-combat');
   const formation = findPanel("編隊陣形");
@@ -273,6 +274,7 @@ export function mountSimulationWorkflow(store) {
   startSection.body.append(environment);
   if(aviation)startSection.body.prepend(aviation);
   movementSection.body.insertBefore(movement, repairNote);
+  if(fieldSupport)specialSection.body.append(fieldSupport);
   if(support)specialSection.body.append(support);
   else movementSection.body.insertBefore(rescue, repairNote);
   if(formation)movementSection.body.insertBefore(formation,repairNote);
@@ -287,7 +289,7 @@ export function mountSimulationWorkflow(store) {
 
   const knownPanels = new Set([
     environment, units, groups, drafts,
-    movement, rescue, attack, formation, formationAttack, aviation, airCombat
+    movement, rescue, attack, formation, formationAttack, aviation, airCombat, fieldSupport
   ]);
 
   // 保留其他模块创建的侧栏节点，不因布局重排而删除。

@@ -1,8 +1,9 @@
 import {buildingMountAvailable,buildingAlive} from './building-state.js?v=facility-rules-1';
-// 查询只读：不初始化运行状态、不按名称猜测支援能力。
-export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト']];
-export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult'];
-export const supportEffectOf=equipment=>equipment?.supportEffect||(equipment?.kind==='support'&&equipment.id==='eq-seaplane-catapult'?'catapult':'');
+// Read-only role lookup; legacy names below are explicit compatibility aliases.
+export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト'],['mine','機雷'],['mine-guard','掃海具'],['boat','舟艇'],['observation-balloon','観測気球'],['spotter','観測員'],['rato','RATO発進補助']];
+export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult','mine','mine-guard','boat','observation-balloon','spotter','rato'];
+const LEGACY_SUPPORT_NAMES=new Map([['观测气球','observation-balloon'],['観測気球','observation-balloon'],['破雷卫','mine-guard'],['破雷衛','mine-guard'],['舟艇','boat']]);
+export const supportEffectOf=equipment=>equipment?.supportEffect||(equipment?.kind==='support'?(equipment.id==='eq-seaplane-catapult'?'catapult':LEGACY_SUPPORT_NAMES.get(equipment.name?.trim())??(/(?:弹射器|彈射器|カタパルト)/.test(equipment.name??'')?'catapult':'')):'');
 export const SUPPORT_NAMES={rescue:'救助','damage-control':'外部損管',supply:'補給'};
 export function supportCapacity(unit,effect){
  const snapshots=unit.snapshot?.equipmentSnapshots??[];
@@ -31,5 +32,11 @@ export function supportEquipmentSeed(){return [
  ['ground-crew','地上整備員','1組につき毎ラウンド1耐性を修復。損傷が少ない駐機中の航空機から集中して全快させます。'],
  ['preparation-area','整備区','1組につき毎ラウンド最大9機を整備します。機位数ではなく機数です。'],
  ['runway','滑走路','1本につき毎ラウンド最大27機。同一ラウンドに離陸・着陸を併用できません。'],
- ['catapult','カタパルト','1基につき毎ラウンド最大3機。同ラウンドの移動段階から飛行できます。']
+ ['catapult','カタパルト','RATO搭載機のみ、1基につき毎ラウンド最大3機。同ラウンドの移動段階から飛行できます。'],
+ ['mine','機雷','特殊段階に現在の海域へ敷設します。他陣営の艦船が5マス以内を通過すると起爆し、威力1（水下）を適用します。'],
+ ['mine-guard','掃海具','機雷を起爆させず、周囲の機雷を除去できます。'],
+ ['boat','舟艇','機能は後続規則で定義します。現時点では追加効果はありません。'],
+ ['observation-balloon','観測気球','高度30の係留気球を展開し、偵察視点を高くします。特殊段階で上げ下げします。展開中は校射＋1。全校射源の合計は最大＋1。'],
+ ['spotter','観測員','装備するユニットの校射＋1。気球を含む全校射源の合計は最大＋1。'],
+ ['rato','RATO発進補助','搭載機がカタパルトを使用するための発進補助装置です。']
  ].map(([supportEffect,name,note])=>({id:'eq-support-'+supportEffect,name,kind:'support',supportEffect,note,remoteRange:supportEffect==='remote-station'?0:null,barrelCount:null,projectionCoefficient:null,projectionSuffix:'',ammo:null,slot:'',powerRule:'',penetration:'',ceilingU:null,range:null,maxOrder:'',guidance:'',targetScope:''}));}

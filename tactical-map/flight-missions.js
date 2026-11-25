@@ -1,17 +1,18 @@
+import {supportCapacity} from './support-equipment.js?v=field-support-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
 import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {expandFormationMemberIds} from './formation-target-runtime.js?v=settlement-audit-1';
-import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=settlement-audit-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=field-support-1';
+import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=field-support-1';
 import {validateFlightPlan} from './flight-plan-data.js';
 import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
-import {aircraftMayFly} from './aviation-time.js?v=settlement-audit-1';
-import {getVisibility} from './simulation-features.js?v=settlement-audit-1';
-import {aviationRunways,aviationHostAlive,landAircraft} from './aviation-operations.js?v=settlement-audit-1';
+import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
+import {getVisibility} from './simulation-features.js?v=field-support-1';
+import {aviationRunways,aviationLanes,aviationHostAlive,landAircraft} from './aviation-operations.js?v=field-support-1';
 import {sampleTerrain} from './terrain-data.js';
-import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=settlement-audit-1';
+import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=field-support-1';
 import {readFiringArc} from './weapon-firing-arc.js?v=settlement-audit-1';
 import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js';
-import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=settlement-audit-1';
+import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=field-support-1';
 const fail=m=>{throw Error(m);},distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),live=p=>hasAircraftTemplate(p)&&p.aircraftState?.status!=='destroyed';
 // CAS must not enqueue an ordinary gun against a submerged target. Such a
 // command has no legal fallback and would abort the whole attack transaction.
@@ -84,7 +85,7 @@ export function flightMissionRoutes(scene,excluded=new Set()){
 export function finishMissionMovement(scene,destinations,routes){const planes=new Map(scene.instances.map(p=>[p.instanceId,p]));const byId=new Map(destinations.map(d=>[d.instanceId,d]));for(const r of routes){const p=planes.get(r.instanceId),f=p.aircraftState.flightPlan,d=byId.get(r.instanceId);if(!d)continue;for(const c of r.missionProgress)if(d.distance>=c.distance-1e-7)f.cursor=c.cursor;if(f.kind==='CAR'&&f.cursor===f.waypoints.length&&f.stage==='outbound')f.stage='returning';if(f.kind==='CAS'&&f.behavior!=='escort'&&f.stage==='outbound'&&f.cursor===f.waypoints.length&&distance(p,f.targetPoint)<1e-5)f.stage='attack';}}
 export function autoLandMissions(scene){
  const groups=new Map();for(const p of scene.instances){const f=p.aircraftState?.flightPlan;if(!f||!live(p))continue;if(p.aircraftState.mission==='airborne'&&(p.aircraftState.remainingAirTime<=1||f.kind==='CAR'&&p.aircraftState.remainingAirTime<=Math.floor(readAircraftProfile(p).maximumAirTime/2)))f.stage='returning';if(p.aircraftState.mission==='parked'&&f.stage==='returning'){f.stage='complete';continue;}const home=scene.instances.find(u=>u.instanceId===f.homeId);if(f.stage!=='returning'||p.aircraftState.mission!=='airborne'||!aviationHostAlive(home)||distance(p,home)>(home.branch==='building'?25:12.5))continue;const key=p.side+':'+f.homeId;if(!groups.has(key))groups.set(key,{home,planes:[]});groups.get(key).planes.push(p);}
- const controls=scene.controls;try{for(const {home,planes}of groups.values()){scene.controls={...controls,enemyAutonomy:false,observationSide:home.side};let pending=[...planes];for(const r of aviationRunways(home)){const use=scene.aviationRuntime.runwayUse.find(u=>u.hostId===home.instanceId&&u.runwayId===r.id&&u.turnNumber===scene.turn.number);if(use&&use.kind!=='landing')continue;const n=Math.max(0,r.capacity-(use?.count??0));const chosen=pending.splice(0,n);if(!chosen.length)continue;try{landAircraft(scene,{hostId:home.instanceId,runwayId:r.id,aircraftIds:chosen.map(p=>p.instanceId)});for(const p of chosen)if(p.aircraftState.mission==='parked')p.aircraftState.flightPlan.stage='complete';}catch(e){for(const p of chosen)p.aircraftState.flightPlan.notice=e.message;}}for(const p of pending)p.aircraftState.flightPlan.notice='着陸枠の空きを待っています。';}}finally{scene.controls=controls;}
+ const controls=scene.controls;try{for(const {home,planes}of groups.values()){scene.controls={...controls,enemyAutonomy:false,observationSide:home.side};let pending=[...planes];for(const r of [...new Map(planes.flatMap(p=>aviationLanes(home,p.snapshot.aircraft.type)).map(r=>[r.id,r])).values()]){const use=scene.aviationRuntime.runwayUse.find(u=>u.hostId===home.instanceId&&u.runwayId===r.id&&u.turnNumber===scene.turn.number);if(use&&use.kind!=='landing')continue;const n=Math.max(0,r.capacity-(use?.count??0));const chosen=pending.filter(p=>r.kind==='water'?p.snapshot.aircraft.type==='seaplane':r.kind==='runway'?p.snapshot.aircraft.type!=='seaplane':supportCapacity(p,'rato')>0).slice(0,n);if(!chosen.length)continue;try{landAircraft(scene,{hostId:home.instanceId,runwayId:r.id,aircraftIds:chosen.map(p=>p.instanceId)});pending=pending.filter(p=>!chosen.includes(p));for(const p of chosen)if(p.aircraftState.mission==='parked')p.aircraftState.flightPlan.stage='complete';}catch(e){for(const p of chosen)p.aircraftState.flightPlan.notice=e.message;}}for(const p of pending)p.aircraftState.flightPlan.notice='着陸枠の空きを待っています。';}}finally{scene.controls=controls;}
 }
 export function appendMissionAttacks(scene){
  if(!/^order-[1-5]$/.test(scene.turn.phaseId))return;

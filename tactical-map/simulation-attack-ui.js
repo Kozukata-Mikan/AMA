@@ -1,7 +1,7 @@
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js';
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=day-catalog-pas-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=field-support-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
 
 

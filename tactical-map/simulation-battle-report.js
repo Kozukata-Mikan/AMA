@@ -758,6 +758,9 @@ function renderObservedRound(report, nodes) {
   section('自陣営の対空妨害', ['段階', '機隊', '機数', '総投射', '追加不利'],
     (report.disruption ?? []).map(row => [phaseLabel(row.phase), row.aircraft.join('・'), row.aircraftCount, row.projection, row.addedPenalties]),
     '記録された対空妨害はありません。');
+  section('機雷・観測気球', ['段階','行動','ユニット','結果'],
+    (report.fieldEvents??[]).map(r=>[phaseLabel(r.phase),({'mine-laid':'機雷敷設','mine-cleared':'掃海','mine-triggered':'機雷爆発',balloon:'観測気球'})[r.kind],r.unit,r.kind==='balloon'?(r.raised?'上昇':'降下'):r.damage??'—']),
+    '野外支援の記録はありません。');
   section('撞撃', ['接触した艦船', '回数'],
     report.collisions.map(row => [`${row.first} ↔ ${row.second}`, row.count]),
     '自陣営の撞撃はありません。');

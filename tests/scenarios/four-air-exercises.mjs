@@ -1,6 +1,6 @@
 import {source,ship} from '../fixtures.mjs';
 import {aircraft,host,weapon} from './carrier-air-strike.mjs';
-import {supportEquipmentSeed} from '../../tactical-map/support-equipment.js?v=settlement-audit-1';
+import {supportEquipmentSeed} from '../../tactical-map/support-equipment.js?v=field-support-1';
 const support=(u,role)=>{const e=supportEquipmentSeed().find(e=>e.supportEffect===role);u.equipmentSnapshots.push(e);u.mounts.push({position:u.branch==='air'?'ポッド':'露天',equipmentId:e.id,count:1});};
 function plane(id,traits=[],{training='elite',night=false,asw=false,engines=2}={}){
  const p=aircraft(id,{training,engines,bombOrder:3,bombPower:2});p.aircraft.traits=traits;p.aircraft.acePilotName=id+'・エース';

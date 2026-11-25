@@ -1,10 +1,11 @@
+import {supportEffectOf} from '../tactical-map/support-equipment.js?v=field-support-1';
 import {normalizeAviationComplement} from './equipment-options.js?v=aviation-operations-1';
 import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=air-training-1';
-import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=settlement-audit-1";
+import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=field-support-1";
 import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=settlement-audit-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=field-support-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -114,7 +115,7 @@ function normalizeEquipment(value) {
     protected: normalizeProtected(value.protected ?? false),
     kind: value.kind,
     updatedAt: typeof value.updatedAt==='string'?value.updatedAt:null,
-    supportEffect: text(value.supportEffect === 'control-tower' ? '' : value.supportEffect ?? "", "支援機能"),
+    supportEffect: text(value.supportEffect === 'control-tower' ? '' : supportEffectOf(value), "支援機能"),
     remoteRange: number(value.remoteRange ?? null,"遠隔操作範囲",{nullable:true,min:0}),
 
     barrelCount: number(
@@ -435,6 +436,8 @@ export function initializeCatalog(baseUnits) {
     data=normalizeCatalog({...data,supportStationsVersion:4,equipment:[...data.equipment,...supportEquipmentSeed().filter(item=>(data.supportStationsVersion<1||(data.supportStationsVersion<2?['preparation-area','runway','catapult','remote-station','ground-crew','night-observation']:data.supportStationsVersion<3?['remote-station','ground-crew','night-observation']:['night-observation']).includes(item.supportEffect))&&!existing.has(item.id))]});
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
   }
+
+  if(!recoveryError&&data.supportStationsVersion<5){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['mine','mine-guard','boat','observation-balloon','spotter','rato'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:5,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
 
   const units = [];
   const listeners = new Set();

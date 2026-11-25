@@ -1,8 +1,11 @@
-import {supportCapacity,supportRadius} from './support-equipment.js?v=settlement-audit-1';
+import {balloonActive,balloonObserver} from './support-effects.js?v=field-support-1';
+import {supportCapacity,supportRadius} from './support-equipment.js?v=field-support-1';
 import {sampleTerrain} from './terrain-data.js';
 export function drawSupportOverlay(parent,scene,project,highlightId=''){
  const ns='http://www.w3.org/2000/svg',layer=document.createElementNS(ns,'g');layer.setAttribute('class','support-overlay');layer.setAttribute('pointer-events','none');parent.append(layer);
  const add=(tag,attrs)=>{const n=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(attrs))n.setAttribute(k,v);layer.append(n);return n;};
+ for(const mine of scene.fieldSupportRuntime?.mines??[]){const p=project(mine.x,mine.y,0);add('circle',{cx:p.x,cy:p.y,r:5,fill:'#eac867',stroke:'#102a35','stroke-width':1});const label=add('text',{x:p.x,y:p.y+3,'text-anchor':'middle','font-size':9,fill:'#102a35'});label.textContent='✳';}
+ for(const u of scene.instances){if(!u.observationOwn||!balloonActive(u)||!Number.isFinite(u.x)||!Number.isFinite(u.y))continue;const observer=balloonObserver(scene,u),top=project(u.x,u.y,observer.reconnaissanceAltitude),bottom=project(u.x,u.y,observer.reconnaissanceAltitude-30);add('line',{x1:bottom.x,y1:bottom.y,x2:top.x,y2:top.y,stroke:'#eac867','stroke-width':1});add('ellipse',{cx:top.x,cy:top.y,rx:7,ry:5,fill:'#eac867',stroke:'#102a35','stroke-width':1});}
  const active=(scene.supportRuntime?.tasks??[]).filter(t=>t.status==='active'),participants=new Set(active.map(t=>t.providerId));
  const point=u=>project(u.x,u.y,sampleTerrain(scene.terrain,u.x,u.y).surface);
  for(const unit of scene.instances){

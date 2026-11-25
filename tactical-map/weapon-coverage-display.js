@@ -1,4 +1,4 @@
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=settlement-audit-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=field-support-1';
 import {firingArcDefinition} from './weapon-firing-arc.js?v=settlement-audit-1';
 import {buildingMountAvailable} from './building-state.js?v=facility-rules-1';
 import {activeAircraftMounts} from '../js/aircraft-template.js?v=air-training-1';

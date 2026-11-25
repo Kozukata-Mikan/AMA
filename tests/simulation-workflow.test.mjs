@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mountSimulationWorkflow} from '../tactical-map/simulation-workflow-ui.js';
+import {mountSimulationWorkflow} from '../tactical-map/simulation-workflow-ui.js?v=field-support-1';
 
 class Node {
  constructor(tag,text=''){this.tagName=tag.toUpperCase();this.textContent=text;this.children=[];this.dataset={};this.attributes={};this.className='';this.classList={contains:c=>this.className.split(' ').includes(c),toggle:(c,on)=>{const names=new Set(this.className.split(' ').filter(Boolean));if(on)names.add(c);else names.delete(c);this.className=[...names].join(' ');}};}

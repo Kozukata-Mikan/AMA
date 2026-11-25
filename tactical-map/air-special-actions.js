@@ -1,17 +1,17 @@
 import {hasAirTrait,airRetreating,resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {getVisibility} from './simulation-features.js?v=settlement-audit-1';
+import {getVisibility} from './simulation-features.js?v=field-support-1';
 import {readAircraftProfile} from './aircraft-runtime.js?v=air-losses-1';
-import {aviationHostAlive,aviationRunways} from './aviation-operations.js?v=settlement-audit-1';
+import {aviationHostAlive,aviationRunways,aviationLanes} from './aviation-operations.js?v=field-support-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=air-training-1';
 import {sampleTerrain} from './terrain-data.js';
 import {navalHeight} from './naval-kind.js';
-import {detonateAircraftPayloads} from './aviation-detonation.js?v=settlement-audit-1';
-import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=settlement-audit-1';
-import {applyShipEffectAcquisition} from './ship-runtime.js?v=settlement-audit-1';
+import {detonateAircraftPayloads} from './aviation-detonation.js?v=field-support-1';
+import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=field-support-1';
+import {applyShipEffectAcquisition} from './ship-runtime.js?v=field-support-1';
 import {compareArmorGrades} from './armor-runtime.js';
 export function ensureRetreatMissions(scene){
  const hosts=scene.instances.filter(aviationHostAlive),map=new Map(scene.instances.map(u=>[u.instanceId,u]));
- for(const p of scene.instances){if(!p.aircraftState||!airRetreating(p)||p.aircraftState.status==='destroyed'||p.aircraftState.mission!=='airborne')continue;const f=p.aircraftState.flightPlan;if(f){f.stage='returning';continue;}const originalHome=map.get(p.aircraftState.sortieHomeId),home=(aviationHostAlive(originalHome)?originalHome:null)??hosts.filter(h=>aviationRunways(h).length&&h.side===p.side&&aircraftFacilityCompatible(p.snapshot.aircraft.type,h)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];if(!home){p.aircraftState.retreatNotice='帰投先がありません。手動で着陸先を指定してください。';continue;}p.aircraftState.flightPlan={version:1,kind:'CAR',behavior:'priority',stage:'returning',homeId:home.instanceId,origin:{x:home.x,y:home.y},waypoints:[],cursor:0,radius:50,altitude:p.altitude,notice:''};}
+ for(const p of scene.instances){if(!p.aircraftState||!airRetreating(p)||p.aircraftState.status==='destroyed'||p.aircraftState.mission!=='airborne')continue;const f=p.aircraftState.flightPlan;if(f){f.stage='returning';continue;}const originalHome=map.get(p.aircraftState.sortieHomeId),home=(aviationHostAlive(originalHome)?originalHome:null)??hosts.filter(h=>aviationLanes(h,p.snapshot.aircraft.type).length&&h.side===p.side&&aircraftFacilityCompatible(p.snapshot.aircraft.type,h)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];if(!home){p.aircraftState.retreatNotice='帰投先がありません。手動で着陸先を指定してください。';continue;}p.aircraftState.flightPlan={version:1,kind:'CAR',behavior:'priority',stage:'returning',homeId:home.instanceId,origin:{x:home.x,y:home.y},waypoints:[],cursor:0,radius:50,altitude:p.altitude,notice:''};}
 }
 export function martyrRoutes(scene,excluded=new Set()){
  const routes=[],cache=new Map();for(const p of scene.instances){const s=p.aircraftState;if(!s||s.status!=='heavy'||s.mission!=='airborne'||!hasAirTrait(p,'martyr')||excluded.has(p.instanceId))continue;const candidates=scene.instances.filter(t=>((p.side==='ally'&&t.side==='enemy')||(p.side==='enemy'&&t.side==='ally'))&&Number.isFinite(t.x)&&Number.isFinite(t.y)&&t.aircraftState?.status!=='destroyed'&&t.shipState?.status!=='sunk'&&(t.branch!=='building'||t.currentHp>0)&&(!t.aircraftState||t.aircraftState.mission==='airborne'));

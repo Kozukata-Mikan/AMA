@@ -1,15 +1,15 @@
 import {AIR_TRAITS} from '../js/aircraft-training.js?v=air-training-1';
 import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js';
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
-import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-training-1';
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=field-support-1';
 import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=air-training-1';
 import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-training-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=settlement-audit-1";
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=field-support-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=settlement-audit-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=field-support-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=settlement-audit-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=field-support-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -20,7 +20,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=settlement-audit-1";
+} from "../js/catalog-seed.js?v=field-support-1";
 
 // ===== 图鉴界面 =====
 
@@ -929,22 +929,6 @@ export function mountCatalogEditor({
         detail.append(node("p", "装備未登録"));
       }
 
-      if (!["building","air"].includes(item.branch)) {
-      detail.append(node("h4", "搭載機"));
-
-      if (item.embarked.length) {
-        detail.append(table(
-          ["航空機", "機数"],
-          item.embarked.map(aircraft => [
-            aircraft.name,
-            aircraft.count
-          ])
-        ));
-      } else {
-        detail.append(node("p", "搭載機未登録"));
-      }
-
-      }
 
       if (item.description) {
         detail.append(
@@ -1169,7 +1153,7 @@ export function mountCatalogEditor({
     let description;
 
     const mountReaders = [];
-    const embarkedReaders = [];
+
 
     if (category === "equipment") {
       const preview = node("p", "", "catalog-notice");
@@ -1366,71 +1350,6 @@ export function mountCatalogEditor({
 
       if(['navy','building'].includes(draft.branch))readComplement=mountAviationComplementEditor(form,store.units,draft.aviationComplement??[]);
       if(draft.branch==='air')readLoadouts=mountAircraftLoadoutEditor(form,equipment,draft.aircraft.loadouts);
-      // ----- 舰载机编辑 -----
-      if (!["building","air"].includes(draft.branch)) {
-
-      form.append(node("h4", "搭載機"));
-
-      const embarkedHost = node(
-        "div",
-        "",
-        "catalog-repeat-list"
-      );
-
-      function addEmbarked(value = { name: "", count: 1 }) {
-        const row = node("div", "", "catalog-repeat-row");
-
-        const name = labeled(
-          row,
-          "航空機名",
-          input(value.name)
-        );
-
-        const count = labeled(
-          row,
-          "機数",
-          input(value.count, "number")
-        );
-
-        count.min = "1";
-        count.step = "1";
-
-        const reader = {
-          active: true,
-
-          read() {
-            return {
-              name: name.value,
-              count: readNumber(count, "搭載機数")
-            };
-          }
-        };
-
-        embarkedReaders.push(reader);
-
-        row.append(button("この搭載機を削除", () => {
-          reader.active = false;
-          row.remove();
-        }));
-
-        embarkedHost.append(row);
-      }
-
-      for (const aircraft of draft.embarked ?? []) {
-        addEmbarked(aircraft);
-      }
-
-      form.append(
-        embarkedHost,
-        button("搭載機を追加", () => addEmbarked()),
-        node(
-          "p",
-          "搭載機は名称と機数の登録です。" +
-          "今回の図鑑編集では航空機個体を自動生成しません。",
-          "catalog-muted"
-        )
-      );
-    }
 
       }
 
@@ -1499,9 +1418,7 @@ export function mountCatalogEditor({
             .filter(reader => reader.active)
             .map(reader => reader.read());
 
-          next.embarked = ["building","air"].includes(draft.branch) ? (draft.embarked ?? []) : embarkedReaders
-            .filter(reader => reader.active)
-            .map(reader => reader.read());
+          next.embarked = copy(draft.embarked ?? []);
 
           if(readComplement)next.aviationComplement=readComplement();
           if(next.branch==='air'){next.aircraft.loadouts=readLoadouts();next.maxHp=next.aircraft.engines;}
@@ -1535,7 +1452,7 @@ export function mountCatalogEditor({
       const next=copy(draft);
       for(const field of fields){const control=controls.get(field.key);setPath(next,field.key,typeof control.read==='function'?control.read():field.type==='checkbox'?control.checked:['number','optional-number','size','building-size','runway-count'].includes(field.type)?(control.value.trim()?Number(control.value):null):control.value);}
       next.hullNames=hullNames.value.split(/\r?\n/).filter(Boolean);next.description=description.value;
-      next.mounts=mountReaders.filter(reader=>reader.active).map(reader=>reader.read());next.embarked=["building","air"].includes(draft.branch) ? (draft.embarked ?? []) : embarkedReaders.filter(reader=>reader.active).map(reader=>reader.read());
+      next.mounts=mountReaders.filter(reader=>reader.active).map(reader=>reader.read());next.embarked=copy(draft.embarked??[]);
       if(readComplement)next.aviationComplement=readComplement();
       if(draft.branch==='air')next.aircraft.loadouts=readLoadouts();
       if(next.branch==='air')next.aircraft=normalizeAircraft(next.aircraft);

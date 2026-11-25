@@ -1,12 +1,12 @@
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {resolveAirNavigationLosses} from './aviation-losses.js?v=settlement-audit-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=settlement-audit-1';
-import {enforceRemoteControl} from './aviation-services.js?v=settlement-audit-1';
+import {resolveAirNavigationLosses} from './aviation-losses.js?v=field-support-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=field-support-1';
+import {enforceRemoteControl} from './aviation-services.js?v=field-support-1';
 import {ensureBuildingState} from './building-state.js?v=facility-rules-1';
-import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=settlement-audit-1';
+import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=field-support-1';
 import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=air-losses-1';
-import { hasSupportEquipment } from "./support-equipment.js?v=settlement-audit-1";
-import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=settlement-audit-1";
+import { hasSupportEquipment } from "./support-equipment.js?v=field-support-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=field-support-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -20,31 +20,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=settlement-audit-1";
+} from "./ship-runtime.js?v=field-support-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=settlement-audit-1";
+} from "./equipment-runtime.js?v=field-support-1";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=settlement-audit-1";
+} from "./simulation-special-runtime.js?v=field-support-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=settlement-audit-1";
+} from "./simulation-rescue-runtime.js?v=field-support-1";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=settlement-audit-1";
+} from "./equipment-item-runtime.js?v=field-support-1";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=settlement-audit-1";
+} from "./simulation-rescue.js?v=field-support-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -160,7 +160,7 @@ export function initializePhaseFinishRuntime(scene) {
         episode.turnNumber > scene.turn.number ||
         episode.elapsedMinutes > scene.turn.elapsedMinutes ||
         episode.elapsedMinutes < previous ||
-        !/^(order-[1-5]|pas|special)$/.test(episode.phaseId)
+        !/^(movement|order-[1-5]|pas|special)$/.test(episode.phaseId)
       ) {
         fail("沈没開始記録が現在の時刻と一致しません。");
       }

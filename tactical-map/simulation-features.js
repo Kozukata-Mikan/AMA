@@ -1,33 +1,35 @@
-import {observedAviationLosses} from './aviation-losses.js?v=settlement-audit-1';
+import {resolveFieldMines,observedFieldSupport} from './field-support-runtime.js?v=field-support-1';
+import {balloonObserver} from './support-effects.js?v=field-support-1';
+import {observedAviationLosses} from './aviation-losses.js?v=field-support-1';
 import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=settlement-audit-1';
+import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=field-support-1';
 import {airborneUnit} from './air-ground-rules.js';
-import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=settlement-audit-1';
+import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=field-support-1';
 import {observedAirCombat} from './air-combat-report.js?v=air-defense-1';
-import {aircraftMayFly} from './aviation-time.js?v=settlement-audit-1';
+import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=settlement-audit-1';
-import {reconcileAviation} from './aviation-operations.js?v=settlement-audit-1';
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=field-support-1';
+import {reconcileAviation} from './aviation-operations.js?v=field-support-1';
 import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-losses-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=settlement-audit-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=settlement-audit-1";
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=field-support-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=field-support-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, navalKind, navalHeight, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=settlement-audit-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=field-support-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=settlement-audit-1";
+} from "./ship-runtime.js?v=field-support-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=settlement-audit-1";
+} from "./simulation-rescue.js?v=field-support-1";
 
 import {
   createShipEffectsState,
@@ -38,11 +40,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=settlement-audit-1";
+} from "./equipment-item-runtime.js?v=field-support-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=settlement-audit-1";
+} from "./simulation-autonomous-rescue.js?v=field-support-1";
 
 import {
   routeLength,
@@ -235,6 +237,7 @@ function terrainBreaks(terrain, from, to) {
 
 // Rule coordinates only: no icon/label offsets or display exaggeration.
 function reconnaissanceHeight(unit, sample) {
+  if(Number.isFinite(unit.reconnaissanceAltitude))return unit.reconnaissanceAltitude;
   if (unit.branch === "air") return unit.altitude ?? 1;
   if (unit.branch === "navy") return navalHeight(unit, sample);
   if (unit.branch === "building") return sample.surface;
@@ -377,7 +380,7 @@ export function getEquipmentReconSourceVisibility(
  */
 function observerVisibility(scene, observer, target, readRecon) {
   if (!operational(observer) || !positioned(target)) return null;
-  if (isSubmerged(target)) return getNormalObserverVisibility(scene,observer,target);
+  if (isSubmerged(target)) return getNormalObserverVisibility(scene,balloonObserver(scene,observer),target);
   if (observer.branch === "navy" && target.branch === "navy") {
     const state=readRecon(observer);
     if(state.damaged){
@@ -385,7 +388,7 @@ function observerVisibility(scene, observer, target, readRecon) {
       return state.discoveries.find(entry=>entry.targetId===target.instanceId)?.level??null;
     }
   }
-  return getNormalObserverVisibility(scene,observer,target);
+  return getNormalObserverVisibility(scene,balloonObserver(scene,observer),target);
 }
 
 export function getObserverVisibility(scene, observer, target) {
@@ -483,6 +486,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         delete observed.buildingState;
         delete observed.airshipBaseState;
         delete observed.groundCrewLastTurn;
+        delete observed.fieldSupport;
         delete observed.rescueSupportLocked;
 
         if (observed.shipState) {
@@ -631,6 +635,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         : null
     })),
     actions,
+    fieldSupportRuntime:observedFieldSupport(scene,side),
     airCombatRuntime:observedAirCombat(scene,side),
     aviationRuntime: {version:1,lossReports:observedAviationLosses(scene,side),runwayUse:(scene.aviationRuntime?.runwayUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side)),preparationUse:(scene.aviationRuntime?.preparationUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side))},
     supportRuntime: {version:1, tasks:(scene.supportRuntime?.tasks??[]).filter(task=>visibility.get(task.providerId)==='identified'&&visibility.get(task.targetId)==='identified').map(task=>({id:task.id,kind:task.kind,providerId:task.providerId,targetId:task.targetId,status:task.status,startedTurn:task.startedTurn}))},
@@ -1768,7 +1773,9 @@ validationScene.controls.enemyAutonomy = false;
           );
         }
 
+        const mineReports=resolveFieldMines(scene,movement.destinations);
         reconcileActiveRescues(scene);
+        reconcileSupports(scene);
         reconcileAviation(scene);
 
         scene.movementRuntime ??= {
@@ -1783,6 +1790,7 @@ validationScene.controls.enemyAutonomy = false;
           elapsedMinutes: scene.turn.elapsedMinutes,
           destinations: clone(movement.destinations),
           collisions: clone(movement.collisions),
+          mineReports: clone(mineReports),
           damageReports: clone(damageReports)
         });
 

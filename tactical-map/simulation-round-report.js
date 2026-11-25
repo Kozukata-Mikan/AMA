@@ -1,5 +1,5 @@
 import {advanceEnvironment} from './environment-data.js?v=day-catalog-pas-1';
-import {getObservationSide, getVisibility} from './simulation-features.js?v=settlement-audit-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=field-support-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';
@@ -124,7 +124,9 @@ export function buildObservedRoundReports(scene, roundNumber) {
         addRow(damageRows, {phase:'movement', target:target.name}, {damage:damage.requestedHpDamage});
       }
     }
-    reports[side] = {
+    const fieldEvents=[];
+    for(const r of scene.fieldSupportRuntime?.records??[]){if(r.turnNumber!==roundNumber)continue;const own=r.side===side;if(!own&&!(r.kind==='mine-triggered'&&r.ownerSide===side))continue;fieldEvents.push({phase:r.phaseId,kind:r.kind,unit:own?units.get(r.unitId)?.name??'自陣営ユニット':'未識別目標',raised:r.raised,damage:own?r.damage:undefined});if(own&&r.kind==='mine-triggered')addRow(damageRows,{phase:r.phaseId,target:units.get(r.unitId)?.name??'自陣営ユニット'},{damage:r.damage});}
+    reports[side] = {fieldEvents,
       aircraftLosses:(scene.aviationRuntime?.records??[]).filter(r=>['navigation-loss','forced-landing'].includes(r.kind)&&r.turnNumber===roundNumber&&units.get(r.aircraftId)?.side===side).map(r=>({...r,aircraftName:units.get(r.aircraftId).name})),
       disruption, attacks:[...attackRows.values()], damage:[...damageRows.values()],
       collisions:[...collisions.values()], ownUnits, contacts, shadows

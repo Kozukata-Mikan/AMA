@@ -1,17 +1,17 @@
-import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-training-1';
+import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=field-support-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalKind } from "./naval-kind.js?v=catalog-layout-2";
 import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=fleet-cohesion-6";
 import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
-import { getBranchName } from "../js/data-store.js?v=settlement-audit-1";
+import { getBranchName } from "../js/data-store.js?v=field-support-1";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=settlement-audit-1";
+import { createSimulation } from "./simulation-store.js?v=field-support-1";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
-import { mountCatalogEditor } from "./catalog-editor.js?v=settlement-audit-1";
+import { mountCatalogEditor } from "./catalog-editor.js?v=field-support-1";
 import { FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 import { createCampaignIntroEditor } from "./campaign-intro.js";
-import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=settlement-audit-1";
+import { prepareSimulationAmmoSource } from "./equipment-runtime.js?v=field-support-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
 
 

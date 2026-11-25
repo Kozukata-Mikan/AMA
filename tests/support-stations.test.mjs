@@ -1,11 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=settlement-audit-1';
+import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';
 import {source,ship} from './fixtures.mjs';import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=settlement-audit-1';import {readSave,writeSave} from '../js/save-database.js';
-import {ensureShipRuntime,readShipProfile,applyShipFireFloodingPhase} from '../tactical-map/ship-runtime.js?v=settlement-audit-1';
-import {initializeSupportRuntime,startSupport,resolveSupportsAtSpecial,interruptSupportForMovement,reconcileSupports} from '../tactical-map/simulation-support.js?v=settlement-audit-1';
-import {supportEquipmentSeed,supportCapacity,supportRadius} from '../tactical-map/support-equipment.js?v=settlement-audit-1';
-import {initializeCatalog} from '../js/catalog-store.js?v=settlement-audit-1';import {isSinkingTimerPaused} from '../tactical-map/simulation-rescue.js?v=settlement-audit-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=field-support-1';import {readSave,writeSave} from '../js/save-database.js';
+import {ensureShipRuntime,readShipProfile,applyShipFireFloodingPhase} from '../tactical-map/ship-runtime.js?v=field-support-1';
+import {initializeSupportRuntime,startSupport,resolveSupportsAtSpecial,interruptSupportForMovement,reconcileSupports} from '../tactical-map/simulation-support.js?v=field-support-1';
+import {supportEquipmentSeed,supportCapacity,supportRadius} from '../tactical-map/support-equipment.js?v=field-support-1';
+import {initializeCatalog} from '../js/catalog-store.js?v=field-support-1';import {isSinkingTimerPaused} from '../tactical-map/simulation-rescue.js?v=field-support-1';
 const arm=(unit,effect,count=1)=>{const item=supportEquipmentSeed().find(e=>e.supportEffect===effect);unit.snapshot.equipmentSnapshots=[item];unit.snapshot.mounts=[{equipmentId:item.id,position:'中部①',count}];};
 function field({building=false,effect='repair-station',count=2,targets=2}={}){const scene=source();scene.instances=[ship('p'),...Array.from({length:targets},(_,i)=>ship('t'+i,'ally',8+i*2))];arm(scene.instances[0],effect,count);if(building){scene.instances[0].branch=scene.instances[0].snapshot.branch='building';scene.instances[0].snapshot.building={kind:'port'};}for(const unit of scene.instances){ensureShipRuntime(unit);ensureUnitCombatRuntime(unit);}scene.turn={number:1,phaseId:'special',elapsedMinutes:0};scene.controls={observationSide:'ally',enemyAutonomy:false};initializeSupportRuntime(scene);return scene;}
 const sinking=u=>{u.shipState.status='sinking';u.shipState.specialDamageStatus=true;};
@@ -15,7 +15,7 @@ async function special(store){await store.beginMovement();await store.resolveMov
 
 test('station catalog adds five generic support types once and building positions are exposed/underground',()=>{
  const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v)};let catalog=initializeCatalog([]);for(const eq of supportEquipmentSeed())assert.ok(catalog.getData().equipment.some(e=>e.id===eq.id));
- const existing=catalog.getData();existing.supportStationsVersion=0;existing.equipment=existing.equipment.filter(e=>!e.supportEffect);memory.set('junqi-catalog-v1',JSON.stringify(existing));catalog=initializeCatalog([]);assert.equal(catalog.getData().equipment.filter(e=>e.supportEffect).length,supportEquipmentSeed().length);
+ const existing=catalog.getData();existing.supportStationsVersion=0;existing.equipment=existing.equipment.filter(e=>!e.supportEffect);memory.set('junqi-catalog-v1',JSON.stringify(existing));catalog=initializeCatalog([]);assert.equal(catalog.getData().equipment.filter(e=>supportEquipmentSeed().some(seed=>seed.id===e.id)).length,supportEquipmentSeed().length);
  const value={...structuredClone(catalog.units[0]),id:'building-stations',protected:false,branch:'building',building:{kind:'port'},sizeLevel:1,mounts:[{equipmentId:supportEquipmentSeed()[0].id,position:'中央',count:2},{equipmentId:supportEquipmentSeed()[1].id,position:'地下',count:1}]};catalog.saveUnit(value);const found=catalog.units.find(u=>u.id===value.id);assert.deepEqual(found.mounts.map(m=>m.position),['露天','地下']);assert.equal(found.equipmentSnapshots[0].supportEffect,'repair-station');
 });
 test('station capacity counts usable groups, with no AR-type automatic rescue guarantee',()=>{
@@ -59,10 +59,10 @@ test('a non-naval unit with a repair station supplies guaranteed rescue without 
 });
 
 test('worker special-phase settlement saves support recovery and locks',async()=>{
- const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=settlement-audit-1');
+ const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=field-support-1');
  globalThis.Worker=class{constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}};
  try{const input=field({effect:'supply-station',targets:1});input.instances[1].shipState.remainingEndurance=0;const{id,store}=await sim(input);await special(store);await store.startSupport({providerId:'p',targetId:'t0',kind:'supply'});await store.finishSpecialPhase(store.getSceneSnapshot().revision);const raw=await saved(id);assert.equal(raw.instances[1].shipState.remainingEndurance,readShipProfile(raw.instances[1]).enduranceBudget*.25);assert.ok(raw.instances[0].supportLocked);assert.equal(raw.supportRuntime.records[0].results[0].kind,'supply');}finally{shutdownBackground();delete globalThis.Worker;}
 });
 test('observation hides support links and locks when a foreign participant is unidentified',async()=>{
- const {getObservedScene}=await import('../tactical-map/simulation-features.js?v=settlement-audit-1');const input=field({effect:'supply-station',targets:1});input.instances[1].shipState.remainingEndurance=0;const{id,store}=await sim(input);await special(store);await store.startSupport({providerId:'p',targetId:'t0',kind:'supply'});const raw=await saved(id);raw.controls.observationSide='enemy';const observed=getObservedScene(raw);assert.deepEqual(observed.supportRuntime.tasks,[]);assert.equal(observed.supportRuntime.records,undefined);assert.ok(observed.instances.every(u=>u.supportLocked===undefined));
+ const {getObservedScene}=await import('../tactical-map/simulation-features.js?v=field-support-1');const input=field({effect:'supply-station',targets:1});input.instances[1].shipState.remainingEndurance=0;const{id,store}=await sim(input);await special(store);await store.startSupport({providerId:'p',targetId:'t0',kind:'supply'});const raw=await saved(id);raw.controls.observationSide='enemy';const observed=getObservedScene(raw);assert.deepEqual(observed.supportRuntime.tasks,[]);assert.equal(observed.supportRuntime.records,undefined);assert.ok(observed.instances.every(u=>u.supportLocked===undefined));
 });

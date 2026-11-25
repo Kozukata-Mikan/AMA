@@ -1,4 +1,5 @@
-import { supportCapacity } from "./support-equipment.js?v=settlement-audit-1";
+import {resolveNumericDamage} from './numeric-damage-runtime.js';
+import { supportCapacity } from "./support-equipment.js?v=field-support-1";
 import { NAVAL_KINDS, navalKind, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import {
   EQUIPMENT_HIT_ITEMS
@@ -6,7 +7,7 @@ import {
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=settlement-audit-1";
+} from "./equipment-item-runtime.js?v=field-support-1";
 
 
 import {
@@ -25,12 +26,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=settlement-audit-1";
+} from "./equipment-runtime.js?v=field-support-1";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=settlement-audit-1";
+} from "./equipment-item-runtime.js?v=field-support-1";
 
 
 // ===== 舰船数据与推演状态接入 =====
@@ -567,10 +568,11 @@ function readDamageAttack(attack) {
  * - 救助中断与自然沉没计时。
  * - 同次序多次攻击的统一裁定。
  */
-export function applyShipDamageAttack(
+function applyShipDamageEvent(
   unit,
   attackValue,
-  context
+  context,
+  mineEvent=false
 ) {
   const attack = readDamageAttack(attackValue);
 
@@ -578,7 +580,7 @@ export function applyShipDamageAttack(
     !context ||
     !Number.isSafeInteger(context.turnNumber) ||
     context.turnNumber < 1 ||
-    !/^order-[1-5]$|^pas$/.test(context.phaseId)
+    (!/^order-[1-5]$|^pas$/.test(context.phaseId)&&!(mineEvent&&['movement','special'].includes(context.phaseId)))
   ) {
     throw new Error("攻撃被害を適用するラウンド・段階が不正です。");
   }
@@ -791,11 +793,12 @@ export function previewShipDamageAttack(
 // 必须对正式保存事务的工作副本调用。
 // 不保存、不扣弹、不推进阶段。
 
-export function applyShipEffectAcquisition(
+function applyShipEffectEvent(
   unit,
   request,
   context,
-  coinSource
+  coinSource,
+  mineEvent=false
 ) {
   if (
     !request ||
@@ -813,7 +816,7 @@ export function applyShipEffectAcquisition(
     !Number.isSafeInteger(context.turnNumber) ||
     context.turnNumber < 1 ||
     typeof context.phaseId !== "string" ||
-    !/^(order-[1-5]|pas)$/.test(context.phaseId)
+    (!/^(order-[1-5]|pas)$/.test(context.phaseId)&&!(mineEvent&&['movement','special'].includes(context.phaseId)))
   ) {
     throw new Error(
       "特殊状態を取得するラウンド・攻撃段階が不正です。"
@@ -1130,4 +1133,17 @@ if (!equipmentControl.skipped) {
 
   return report;
 
+}
+
+// Ordinary weapon entry points retain their original phase restrictions.
+export function applyShipDamageAttack(unit,attack,context){return applyShipDamageEvent(unit,attack,context);}
+export function applyShipEffectAcquisition(unit,request,context,coin){return applyShipEffectEvent(unit,request,context,coin);}
+export function applyShipMineDamage(unit,mineId,context,coin){
+ if(!['movement','special'].includes(context?.phaseId)||typeof mineId!=='string'||!mineId)throw Error('機雷被害の適用条件が不正です。');
+ const working=JSON.parse(JSON.stringify(unit));ensureShipRuntime(working);const p=readShipProfile(working),state=working.shipState;
+ const damage=resolveNumericDamage({powerRule:'1（水下）',hitCount:1,penetration:'-',armor:p.armor,strength:p.strength,strengthRemaining:p.strength-state.underwaterStrengthUses,inertial:false});
+ const attackId='mine:'+mineId,applied=applyShipDamageEvent(working,{attackId,kind:'underwater',hpDamage:damage.hpDamage,hasDamageEffect:true},context,true);
+ working.shipState.underwaterStrengthUses+=damage.strengthConsumed;
+ const flooding=applyShipEffectEvent(working,{attackId,type:'flooding'},context,coin,true);
+ unit.currentHp=working.currentHp;unit.shipState=working.shipState;return{...applied,waterDamage:damage,flooding};
 }

@@ -1,6 +1,6 @@
 const node=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;return n;};
 export function mountAviationComplementEditor(parent,units,value=[]){
- const host=node('fieldset');host.className='catalog-section';host.append(node('legend','搭載航空機（航空運用）'),node('p','航空機テンプレートと機数を登録します。駐機枠は発動機数×機数で消費します。起降には滑走路／カタパルト、整備には整備区が必要です。'));
+ const host=node('fieldset');host.className='catalog-section';host.append(node('legend','搭載航空機（航空運用）'),node('p','航空機テンプレートと機数を登録します。駐機枠は発動機数×機数で消費します。整備には整備区が必要です。起降には滑走路、またはRATO搭載機用のカタパルトを使用します。水上機は滑走路不要で水面から起降できます。'));
  const list=node('div'),readers=[],templates=units.filter(u=>u.branch==='air'&&u.aircraft?.version===1);host.append(list);
  function add(value={unitId:templates[0]?.id??'',count:1,groupId:null}){
   const row=node('div');row.className='catalog-repeat-row';const field=(title,control)=>{const label=node('label');label.className='catalog-field';label.append(node('span',title),control);row.append(label);return control;};
