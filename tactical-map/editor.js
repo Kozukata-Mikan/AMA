@@ -5,7 +5,7 @@ import { appendFleetOptions, fleetSideSections } from "./fleet-affiliation.js?v=
 import { FORMATION_EMBLEMS } from "./flagship-display.js?v=fleet-cohesion-6";
 import { getBranchName } from "../js/data-store.js?v=air-training-1";
 import { MAX_SCENE_FILE_BYTES } from "../js/save-limits.js";
-import { createSimulation } from "./simulation-store.js?v=day-catalog-pas-1";
+import { createSimulation } from "./simulation-store.js?v=air-exercises-1";
 import { mountSceneLibrary } from "./scene-library.js";
 import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
 import { mountCatalogEditor } from "./catalog-editor.js?v=day-catalog-pas-1";

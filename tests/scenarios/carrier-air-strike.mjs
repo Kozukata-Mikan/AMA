@@ -7,7 +7,7 @@ export function weapon(id,projection,power,order,{guidance='平射',range=200,sc
   return {id,name:id,kind:'weapon',barrelCount:1,projectionCoefficient:projection,projectionSuffix:'R',ammo:600,
     powerRule:String(power),penetration,guidance,range,ceilingU:100,maxOrder:String(order),targetScope:scope};
 }
-function aircraft(id,{engines=2,maneuverability='3R',training='regular',activeOrder=5,bombOrder=3,bombPower=2}={}) {
+export function aircraft(id,{engines=2,maneuverability='3R',training='regular',activeOrder=5,bombOrder=3,bombPower=2}={}) {
   const unit=ship(id).snapshot;
   Object.assign(unit,{id,name:id,branch:'air',sizeLevel:1,maxHp:engines});
   unit.aircraft=normalizeAircraft({type:'carrier',engines,crew:1,training,maneuverability,ceiling:100,attackModes:['dive','torpedo','level'],loadouts:[{id:'strike',name:'攻撃装備',mounts:[{equipmentId:id+'・爆弾',count:1}]}]});
@@ -16,7 +16,7 @@ function aircraft(id,{engines=2,maneuverability='3R',training='regular',activeOr
   unit.equipmentSnapshots=[weapon(id+'・機銃',1,1,activeOrder),weapon(id+'・自衛銃',1,1,5),weapon(id+'・爆弾',2,bombPower,bombOrder)];
   return unit;
 }
-function host(id,side,x,{building=false,templates=[],counts=[],runways=3,aa=[]}={}) {
+export function host(id,side,x,{building=false,templates=[],counts=[],runways=3,aa=[]}={}) {
   const u=ship(id,side,x);u.name=id;
   u.currentHp=u.snapshot.maxHp=building?60:80;
   u.snapshot.naval={...u.snapshot.naval,type:building?'':'CV',armor:'C',speedKnots:0,endurance:'1k',airRecon:'A',seaRecon:'A'};

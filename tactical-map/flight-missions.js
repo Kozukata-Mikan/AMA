@@ -1,17 +1,24 @@
+import {parseDamageRule} from './weapon-damage-rule.js';
 import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {expandFormationMemberIds} from './formation-target-runtime.js?v=day-catalog-pas-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=air-exercises-1';
 import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=day-catalog-pas-1';
 import {validateFlightPlan} from './flight-plan-data.js';
 import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
 import {aircraftMayFly} from './aviation-time.js?v=day-catalog-pas-1';
-import {getVisibility} from './simulation-features.js?v=day-catalog-pas-1';
-import {aviationRunways,aviationHostAlive,landAircraft} from './aviation-operations.js?v=day-catalog-pas-1';
+import {getVisibility} from './simulation-features.js?v=air-exercises-1';
+import {aviationRunways,aviationHostAlive,landAircraft} from './aviation-operations.js?v=air-exercises-1';
 import {sampleTerrain} from './terrain-data.js';
 import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=day-catalog-pas-1';
 import {readFiringArc} from './weapon-firing-arc.js?v=air-defense-1';
 import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js';
-import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=day-catalog-pas-1';
+import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=air-exercises-1';
 const fail=m=>{throw Error(m);},distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),live=p=>hasAircraftTemplate(p)&&p.aircraftState?.status!=='destroyed';
+// CAS must not enqueue an ordinary gun against a submerged target. Such a
+// command has no legal fallback and would abort the whole attack transaction.
+function missionWeaponCanTarget(scene,target,underwaterWeapon){
+ if(!underwaterWeapon)return target.underwater!==true;
+ return target.branch!=='building'||sampleTerrain(scene.terrain,target.x,target.y).surface<=0;
+}
 function own(scene,planes){const side=scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;if(planes.some(p=>p.side!==side))fail('操作中の陣営の機体だけ指定してください。');}
 function visibility(scene,side,ids,cache){const key='view:'+side+':'+ids.join('|');if(cache?.has(key))return cache.get(key);const result=getVisibility({...scene,controls:{...scene.controls,observationSide:side,enemyAutonomy:false}},new Set(ids));cache?.set(key,result);return result;}
 export function assignFlightMission(scene,{aircraftIds,plan}){
@@ -97,8 +104,8 @@ export function appendMissionAttacks(scene){
   const z=target.branch==='building'?sampleTerrain(scene.terrain,target.x,target.y).surface:target.underwater?-(target.depth??0):sampleTerrain(scene.terrain,target.x,target.y).surface;
   try{checkAirAttackMode(p,target,f.attackMethod,p.altitude,z);}catch(e){f.notice=e.message;continue;}
   let pending=0;
-  for(const g of p.equipmentState.groups){if(!['主動武器','掛載'].includes(g.position)||g.damaged||g.destroyed||g.lastUsedTurn===scene.turn.number)continue;const e=p.snapshot.equipmentSnapshots.find(e=>e.id===g.equipmentId);if(e?.kind!=='weapon')continue;const profile=readWeaponProfile(e,g);if(profile.pasOnly||g.remainingAmmo<profile.fullAmmoCost)continue;pending++;if(profile.issues.length||Number(scene.turn.phaseId.slice(-1))>profile.maxOrder)continue;
-   let chosen=target;if(hasAirTrait(p,'economy')&&f.targetGroupId){chosen=candidates.filter(t=>(reservations.get(t.instanceId)?.damage??0)<Math.max(1,t.currentHp)).sort((a,b)=>(reservations.get(a.instanceId)?.count??0)-(reservations.get(b.instanceId)?.count??0))[0];if(!chosen)continue;}
+  for(const g of p.equipmentState.groups){if(!['主動武器','掛載'].includes(g.position)||g.damaged||g.destroyed||g.lastUsedTurn===scene.turn.number)continue;const e=p.snapshot.equipmentSnapshots.find(e=>e.id===g.equipmentId);if(e?.kind!=='weapon')continue;const profile=readWeaponProfile(e,g);if(profile.pasOnly||g.remainingAmmo<profile.fullAmmoCost)continue;const underwaterWeapon=profile.underwater===true||parseDamageRule(e).underwater,eligibleCandidates=candidates.filter(t=>missionWeaponCanTarget(scene,t,underwaterWeapon));if(!eligibleCandidates.length)continue;pending++;if(profile.issues.length||Number(scene.turn.phaseId.slice(-1))>profile.maxOrder)continue;
+   let chosen=eligibleCandidates[0];if(hasAirTrait(p,'economy')&&f.targetGroupId){chosen=eligibleCandidates.filter(t=>(reservations.get(t.instanceId)?.damage??0)<Math.max(1,t.currentHp)).sort((a,b)=>(reservations.get(a.instanceId)?.count??0)-(reservations.get(b.instanceId)?.count??0))[0];if(!chosen)continue;}
    const chosenZ=chosen.branch==='building'?sampleTerrain(scene.terrain,chosen.x,chosen.y).surface:chosen.underwater?-(chosen.depth??0):sampleTerrain(scene.terrain,chosen.x,chosen.y).surface;try{checkAirAttackMode(p,chosen,f.attackMethod,p.altitude,chosenZ);}catch{continue;}
    const d=Math.hypot(p.x-chosen.x,p.y-chosen.y,p.altitude-chosenZ);if(d>profile.range||chosenZ-p.altitude>profile.ceilingU)continue;try{readFiringArc(p,g,chosen);}catch{continue;}
    const scope=readWeaponTargetScope(profile.targetScope);if(scope.kind!=='single'&&profile.targetScope.trim()!=='集群'){f.notice='範囲武器は手動で編隊目標を指定してください。';continue;}

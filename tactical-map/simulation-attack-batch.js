@@ -10,12 +10,12 @@ import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=day-ca
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-training-1";
 import { ensureShipRuntime } from "./ship-runtime.js?v=day-catalog-pas-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=day-catalog-pas-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-exercises-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=day-catalog-pas-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-exercises-1";
 import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=day-catalog-pas-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=day-catalog-pas-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-exercises-1";
 import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-defense-1";
 
 

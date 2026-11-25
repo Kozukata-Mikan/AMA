@@ -1,13 +1,13 @@
-import {planFormationAttack} from "./simulation-formation-attack.js?v=day-catalog-pas-1";
-import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js?v=day-catalog-pas-1";
+import {planFormationAttack} from "./simulation-formation-attack.js?v=air-exercises-1";
+import {buildObservedRoundReports, captureRoundWitnesses} from "./simulation-round-report.js?v=air-exercises-1";
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import {freezeSpecialHistory} from './special-history-snapshot.js';
 import {generateTerrainTask} from './terrain-generation-task.js';
 import {applyBrush,resizeTerrain} from './terrain-data.js';
 import {beginTerrainEdit} from './terrain-edit-history.js';
-import {settleAttackPhase,prepareSettlementAttackPlan} from './simulation-settlement.js?v=day-catalog-pas-1';
-import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js?v=day-catalog-pas-1';
-import {resolveMovementScene} from './simulation-features.js?v=day-catalog-pas-1';
+import {settleAttackPhase,prepareSettlementAttackPlan} from './simulation-settlement.js?v=air-exercises-1';
+import {finishSpecialPhase,finishTurn} from './simulation-phase-finish.js?v=air-exercises-1';
+import {resolveMovementScene} from './simulation-features.js?v=air-exercises-1';
 const strokes=new Map();
 export function executeBackgroundTask(task,payload){
  if(task==='terrain-generate')return generateTerrainTask(payload);

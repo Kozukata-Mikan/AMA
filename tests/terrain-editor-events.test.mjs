@@ -3,7 +3,7 @@ import {resetDatabase} from './save-test-environment.mjs';
 beforeEach(resetDatabase);
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mountTerrainEditor } from '../tactical-map/terrain-editor.js?v=day-catalog-pas-1';
+import { mountTerrainEditor } from '../tactical-map/terrain-editor.js?v=air-exercises-1';
 import { createBattleStore } from '../js/battle-state.js?v=day-catalog-pas-1';
 import { sampleTerrain, resizeTerrain, applyBrush, readTerrainVertex } from '../tactical-map/terrain-data.js';
 import { flatTerrain } from './fixtures.mjs';

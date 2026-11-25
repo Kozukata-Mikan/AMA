@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {resetDatabase,IDBObjectStore} from './save-test-environment.mjs';
 import {readSave,writeSave,listSaveMetadata,closeSaveDatabase} from '../js/save-database.js';
 import {createBattleStore} from '../js/battle-state.js?v=day-catalog-pas-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=day-catalog-pas-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-exercises-1';
 import {source} from './fixtures.mjs';
 let legacy;
 beforeEach(async()=>{

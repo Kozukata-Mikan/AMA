@@ -8,7 +8,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=day-catalog-pas-1";
+} from "./simulation-rescue.js?v=air-exercises-1";
 
 import {
   ensureEquipmentRuntime

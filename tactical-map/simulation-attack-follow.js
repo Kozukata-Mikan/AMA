@@ -9,12 +9,12 @@ import {
 
 import {
   filterUnreachableAttackCommands
-} from "./simulation-settlement.js?v=day-catalog-pas-1";
+} from "./simulation-settlement.js?v=air-exercises-1";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=day-catalog-pas-1";
+} from "./simulation-features.js?v=air-exercises-1";
 
 // ===== 分旗舰攻击追随 =====
 // 只在store的候选事务内调用。

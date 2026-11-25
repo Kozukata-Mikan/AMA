@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=day-catalog-pas-1";
+} from "./formation-target-runtime.js?v=air-exercises-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=day-catalog-pas-1";
+} from "./simulation-features.js?v=air-exercises-1";
 
 import {
   resolveHitCoins

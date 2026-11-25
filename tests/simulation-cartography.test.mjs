@@ -32,7 +32,7 @@ test('empty/offscreen and maximum grid maps remain bounded',()=>{
 });
 test('mode switch and stylesheet are wired to the simulation page',async()=>{
  const html=await readFile(new URL('../tactical-map/simulation.html',import.meta.url),'utf8');
- const js=await readFile(new URL('../tactical-map/simulation-main.js?v=day-catalog-pas-1',import.meta.url),'utf8');
+ const js=await readFile(new URL('../tactical-map/simulation-main.js?v=air-exercises-1',import.meta.url),'utf8');
  const css=await readFile(new URL('../tactical-map/simulation-cartography.css',import.meta.url),'utf8');
  assert(html.includes('href="./simulation-cartography.css"'));assert(html.includes('id="mapStyleLabel"'));
  assert(js.includes('drawSimulationCartography(layer, terrain, makeTerrainRenderGrid(terrain, window), {colored})'));

@@ -1,7 +1,7 @@
 import { listSaveMetadata } from "../js/save-database.js";
 import {
   openSimulation
-} from "./simulation-store.js?v=day-catalog-pas-1";
+} from "./simulation-store.js?v=air-exercises-1";
 
 import {
   readWeaponTargetScope

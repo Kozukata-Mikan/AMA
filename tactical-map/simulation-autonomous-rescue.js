@@ -6,7 +6,7 @@ import {
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=day-catalog-pas-1";
+} from "./simulation-rescue.js?v=air-exercises-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

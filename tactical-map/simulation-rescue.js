@@ -5,7 +5,7 @@ import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=day-catalog-pas-1";
+} from "./simulation-features.js?v=air-exercises-1";
 
 import {
   getEquipmentControlCandidates,

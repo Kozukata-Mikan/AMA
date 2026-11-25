@@ -1,6 +1,6 @@
 import {resolveForcedLanding,recordAviationAceLosses} from './aviation-losses.js?v=day-catalog-pas-1';
 import {initializeAirTraining,clearLandedPanic} from './air-training-runtime.js?v=air-training-1';
-import {autoLandMissions} from './flight-missions.js?v=day-catalog-pas-1';
+import {autoLandMissions} from './flight-missions.js?v=air-exercises-1';
 import {assertAircraftPreparationTime,assertAircraftLaunchTime,assertAircraftLandingTime} from './aviation-time.js?v=day-catalog-pas-1';
 import {buildingAlive,buildingMountAvailable} from './building-state.js?v=facility-rules-1';
 import {advanceFacilityServices,enforceRemoteControl,isAirshipBase,isAirship} from './aviation-services.js?v=air-losses-1';

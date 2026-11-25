@@ -1,21 +1,21 @@
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
-import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=day-catalog-pas-1';
+import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=air-exercises-1';
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=day-catalog-pas-1';
+import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=air-exercises-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
 import {aircraftMayFly} from './aviation-time.js?v=day-catalog-pas-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=day-catalog-pas-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=day-catalog-pas-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-exercises-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=air-exercises-1';
 import {buildingAlive,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
 import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=day-catalog-pas-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=day-catalog-pas-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=day-catalog-pas-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-exercises-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-exercises-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=air-training-1';
 import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
 import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=day-catalog-pas-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-exercises-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -27,7 +27,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=day-catalog-pas-1";
+} from "./simulation-attack-batch.js?v=air-exercises-1";
 
 
 
@@ -46,7 +46,7 @@ import {
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=day-catalog-pas-1";
+} from "./simulation-features.js?v=air-exercises-1";
 
 import {
   getEquipmentDamagePlan,
@@ -89,11 +89,11 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=day-catalog-pas-1";
+} from "./simulation-rescue.js?v=air-exercises-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=day-catalog-pas-1";
+} from "./simulation-phase-finish.js?v=air-exercises-1";
 
 
 import {
@@ -110,11 +110,11 @@ import {
 
 import {
   getVisibility
-} from "./simulation-features.js?v=day-catalog-pas-1";
+} from "./simulation-features.js?v=air-exercises-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=day-catalog-pas-1";
+} from "./formation-target-runtime.js?v=air-exercises-1";
 
 import {
   readRangeCommandTarget
@@ -127,7 +127,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=day-catalog-pas-1";
+} from "./range-projection-runtime.js?v=air-exercises-1";
 
 import {
   initializeRoundTraitRuntime,
