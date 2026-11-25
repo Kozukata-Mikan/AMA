@@ -835,7 +835,7 @@ function selectableGroups() {
       `次の段階：${getPhaseLabel(result.nextPhaseId)}`;
     } catch (error) {
     console.error(error);
-    console.error("結算の内部原因：", error.cause);
+    console.error("結算の内部原因：", error.cause ?? error);
 
     // 不向其他观察阵营直接显示完整内部异常。
 

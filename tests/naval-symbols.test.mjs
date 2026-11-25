@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {NAVAL_SYMBOL_OPTIONS,NAVAL_ICON_SCALE,navalSymbolPath,navalSymbolFor} from '../js/naval-symbols.js';
-import {initializeCatalog} from '../js/catalog-store.js';
+import {initializeCatalog} from '../js/catalog-store.js?v=settlement-audit-1';
 
 test('five naval display markers round-trip through the catalog without altering combat attributes',()=>{
   globalThis.localStorage={getItem:()=>null,setItem(){}};

@@ -1,4 +1,4 @@
-import {subscribeBackgroundStatus} from './background-client.js?v=air-exercises-1';
+import {subscribeBackgroundStatus} from './background-client.js?v=settlement-audit-1';
 // Saving/computing is visible; selection and panning remain usable.
 export function mountSaveIndicator(store) {
   const indicator = document.createElement('p');

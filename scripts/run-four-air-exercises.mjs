@@ -3,11 +3,11 @@ import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {fourAirScene} from '../tests/scenarios/four-air-exercises.mjs';
 import {resetDatabase} from '../tests/save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-exercises-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=settlement-audit-1';
 import {readSave} from '../js/save-database.js';
-import {aviationRunways} from '../tactical-map/aviation-operations.js?v=air-exercises-1';
-import {assertAircraftLaunchTime} from '../tactical-map/aviation-time.js?v=day-catalog-pas-1';
-import {getObserverVisibility,getVisibility} from '../tactical-map/simulation-features.js?v=air-exercises-1';
+import {aviationRunways} from '../tactical-map/aviation-operations.js?v=settlement-audit-1';
+import {assertAircraftLaunchTime} from '../tactical-map/aviation-time.js?v=settlement-audit-1';
+import {getObserverVisibility,getVisibility} from '../tactical-map/simulation-features.js?v=settlement-audit-1';
 const clone=structuredClone;
 export async function runAirExercise(number,{seed=20261125,outputDirectory=null,searchFirst=false}={}){
  const originalCrypto=globalThis.crypto;let rng=seed,randomCalls=0;

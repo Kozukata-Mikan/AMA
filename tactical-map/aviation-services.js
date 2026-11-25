@@ -1,4 +1,4 @@
-import {supportCapacity} from './support-equipment.js?v=air-training-1';
+import {supportCapacity} from './support-equipment.js?v=settlement-audit-1';
 import {buildingAlive,buildingMountAvailable,recoverBuildingAtStart} from './building-state.js?v=facility-rules-1';
 import {hasAircraftTemplate,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-losses-1';
 import {navalKind} from './naval-kind.js';

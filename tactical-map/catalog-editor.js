@@ -4,12 +4,12 @@ import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operat
 import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=air-training-1';
 import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=air-training-1';
 import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-training-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=air-training-1";
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=settlement-audit-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=settlement-audit-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=air-training-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=settlement-audit-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -20,7 +20,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=air-training-1";
+} from "../js/catalog-seed.js?v=settlement-audit-1";
 
 // ===== 图鉴界面 =====
 

@@ -1,4 +1,4 @@
-import {runBackgroundTask} from './background-client.js?v=air-exercises-1';
+import {runBackgroundTask} from './background-client.js?v=settlement-audit-1';
 import {beginTerrainEdit,applyTerrainChanges} from './terrain-edit-history.js';
 export function createTerrainStrokeSession(source,brush){
  const sessionId=crypto.randomUUID(),edit=beginTerrainEdit(source);let cancelled=false,closed=false;

@@ -2,15 +2,16 @@ import {buildingMountAvailable,buildingAlive} from './building-state.js?v=facili
 // 查询只读：不初始化运行状态、不按名称猜测支援能力。
 export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト']];
 export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult'];
+export const supportEffectOf=equipment=>equipment?.supportEffect||(equipment?.kind==='support'&&equipment.id==='eq-seaplane-catapult'?'catapult':'');
 export const SUPPORT_NAMES={rescue:'救助','damage-control':'外部損管',supply:'補給'};
 export function supportCapacity(unit,effect){
  const snapshots=unit.snapshot?.equipmentSnapshots??[];
- if(!snapshots.some(item=>item.kind==='support'&&item.supportEffect===effect))return 0;
+ if(!snapshots.some(item=>item.kind==='support'&&supportEffectOf(item)===effect))return 0;
  const equipment=new Map(snapshots.map(item=>[item.id,item]));
- if(unit.equipmentState?.groups)return unit.equipmentState.groups.filter(group=>buildingMountAvailable(unit,group.mountIndex)&&!group.damaged&&!group.destroyed&&equipment.get(group.equipmentId)?.kind==='support'&&equipment.get(group.equipmentId)?.supportEffect===effect).length;
- return (unit.snapshot?.mounts??[]).reduce((n,m,index)=>n+(buildingMountAvailable(unit,index)&&equipment.get(m.equipmentId)?.kind==='support'&&equipment.get(m.equipmentId)?.supportEffect===effect&&Number.isSafeInteger(m.count)&&m.count>0?m.count:0),0);
+ if(unit.equipmentState?.groups)return unit.equipmentState.groups.filter(group=>buildingMountAvailable(unit,group.mountIndex)&&!group.damaged&&!group.destroyed&&equipment.get(group.equipmentId)?.kind==='support'&&supportEffectOf(equipment.get(group.equipmentId))===effect).length;
+ return (unit.snapshot?.mounts??[]).reduce((n,m,index)=>n+(buildingMountAvailable(unit,index)&&equipment.get(m.equipmentId)?.kind==='support'&&supportEffectOf(equipment.get(m.equipmentId))===effect&&Number.isSafeInteger(m.count)&&m.count>0?m.count:0),0);
 }
-export const hasSupportEquipment=unit=>(unit.snapshot?.equipmentSnapshots??[]).some(item=>item.kind==='support'&&STATION_IDS.includes(item.supportEffect));
+export const hasSupportEquipment=unit=>(unit.snapshot?.equipmentSnapshots??[]).some(item=>item.kind==='support'&&STATION_IDS.includes(supportEffectOf(item)));
 export const supportRadius=unit=>unit.branch==='building'?25:12.5;
 export const inSupportRange=(provider,target)=>[provider.x,provider.y,target.x,target.y].every(Number.isFinite)&&Math.hypot(provider.x-target.x,provider.y-target.y)<=supportRadius(provider)+1e-7;
 export const supportActive=scene=>(scene.supportRuntime?.tasks??[]).filter(task=>task.status==='active');

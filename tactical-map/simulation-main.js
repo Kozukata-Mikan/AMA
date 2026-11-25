@@ -1,9 +1,9 @@
 import {environmentTimeLabel} from './environment-data.js?v=day-catalog-pas-1';
 import {AIR_TRAITS,hasAirTrait} from '../js/aircraft-training.js?v=air-training-1';
 import {drawFlightMissions} from './flight-mission-display.js';
-import {mountAirCombatUI} from './air-combat-ui.js?v=day-catalog-pas-1';
-import {drawWeaponCoverage} from './weapon-coverage-display.js?v=day-catalog-pas-1';
-import {mountAviationUI} from './aviation-ui.js?v=air-exercises-1';
+import {mountAirCombatUI} from './air-combat-ui.js?v=settlement-audit-1';
+import {drawWeaponCoverage} from './weapon-coverage-display.js?v=settlement-audit-1';
+import {mountAviationUI} from './aviation-ui.js?v=settlement-audit-1';
 import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=air-losses-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
@@ -17,7 +17,7 @@ import {getVerticalExaggeration} from './relief-display.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { terrainMaximumHeight } from "./terrain-data.js";
 import { applySceneLighting, drawDistanceGrid } from "./simulation-scene-display.js?v=day-catalog-pas-1";
-import { mountSaveIndicator } from "./save-indicator.js?v=air-exercises-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=settlement-audit-1";
 import { drawSimulationCartography } from "./simulation-cartography.js?v=day-catalog-pas-1";
 import {
   projectMap,
@@ -36,16 +36,16 @@ import {mountSimulationRulebook, getPhaseLabel} from "./simulation-rulebook.js?v
 import {
   getShipDetailLines,
   getReconConditions
-} from "./ship-runtime.js?v=day-catalog-pas-1";
+} from "./ship-runtime.js?v=settlement-audit-1";
 
 import { mountSimulationFeatures } from "./simulation-feature-ui.js?v=air-losses-1";
-import { mountSupportUI } from "./simulation-support-ui.js?v=day-catalog-pas-1";
-import { drawSupportOverlay } from "./support-map-display.js?v=air-training-1";
+import { mountSupportUI } from "./simulation-support-ui.js?v=settlement-audit-1";
+import { drawSupportOverlay } from "./support-map-display.js?v=settlement-audit-1";
 import {
   getTrainingTraitLabel,
   getEquipmentLabel
-} from "../js/catalog-seed.js?v=air-training-1";
-import { mountAttackUI } from "./simulation-attack-ui.js?v=day-catalog-pas-1";
+} from "../js/catalog-seed.js?v=settlement-audit-1";
+import { mountAttackUI } from "./simulation-attack-ui.js?v=settlement-audit-1";
 import {
   mountSimulationWorkflow
 } from "./simulation-workflow-ui.js?v=air-training-1";
@@ -63,7 +63,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=air-exercises-1";
+} from "./simulation-store.js?v=settlement-audit-1";
 
 import {
   gridPosition,

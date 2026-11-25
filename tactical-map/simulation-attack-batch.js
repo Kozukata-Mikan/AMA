@@ -1,22 +1,22 @@
 import {applyAirDisruption,airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
 import {initializeAirTraining} from './air-training-runtime.js?v=air-training-1';
 import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-losses-1';
-import {aircraftMayFly} from './aviation-time.js?v=day-catalog-pas-1';
+import {aircraftMayFly} from './aviation-time.js?v=settlement-audit-1';
 import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=day-catalog-pas-1";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=air-training-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=day-catalog-pas-1";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=settlement-audit-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=settlement-audit-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=settlement-audit-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=settlement-audit-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=air-exercises-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=settlement-audit-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=air-exercises-1";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=day-catalog-pas-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=settlement-audit-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=settlement-audit-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=air-exercises-1";
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=air-defense-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=settlement-audit-1";
+import { assertBroadsideQuotas, assertPlannedBroadsideQuotas } from "./weapon-firing-arc.js?v=settlement-audit-1";
 
 
 
@@ -363,7 +363,7 @@ function prepareCommand(startScene, command, visibilityBySide) {
     // 同时供正式阶段检查和当前状态预览使用，
   // 因此不把所有错误都描述成“阶段开始时”。
   if(hasAircraftTemplate(actor)&&(!aircraftCanAct(actor,profile.pasOnly&&group.position==='自衛武器'?'defend':'attack')||!aircraftMayFly(startScene,actor)))fail('行動不能の航空機は射撃できません。');
-  if(actor.branch==='building'&&(!buildingAlive(actor)||!buildingMountAvailable(actor,group.mountIndex)))fail('中心または武器配置の耐性が0のため攻撃できません。');
+  if(actor.branch==='building'&&(!buildingAlive(actor)||!buildingMountAvailable(actor,group.mountIndex))){const error=new Error('中心または武器配置の耐性が0のため攻撃できません。');error.code='ATTACK_WEAPON_UNAVAILABLE';throw error;}
   if(actor.airshipBaseState&&actor.airshipBaseState.mission!=='airborne')fail('基地作業中の空中艦は攻撃できません。');
   if (["sinking", "sunk"].includes(actor.shipState?.status)) {
     const error = new Error([
@@ -497,11 +497,11 @@ let memberIds;
   }
 
   if (group.destroyed === true) {
-  fail("段階開始時に完全破損している装備組は使用できません。");
+  const error=new Error("段階開始時に完全破損している装備組は使用できません。");error.code="ATTACK_WEAPON_UNAVAILABLE";throw error;
 }
 
   if (group.damaged) {
-  fail("段階開始時に損傷している装備組は使用できません。");
+  const error=new Error("段階開始時に損傷している装備組は使用できません。");error.code="ATTACK_WEAPON_UNAVAILABLE";throw error;
 }
 
 
@@ -836,22 +836,9 @@ export function prepareBatchHitChecks(
   const startScene = getAttackPhaseStartScene(copySceneWithSpecialHistory(scene));
   const checks = checkBatchEntries(startScene, expected.entries, finalPreflight);
 
- // 单体命令的左右侧在随机前已经确定。
-// 提前检查，供手动保存和自主选目标使用。
-// 范围命令的实际侧向在目标选择后统一检查。
-const singleEntries = expected.entries.filter(
-  (_, index) => checks[index].kind === "single"
-);
-
-assertBroadsideQuotas(
-  startScene,
-  singleEntries,
-  singleEntries.map(entry => ({
-    commandId: entry.commandId,
-    targetIds: [entry.targetId]
-  })),
-  scene.settlementRuntime?.attackRecords ?? []
-);
+ // Validate all possible range sides before drawing, including odd mounts
+ // whose random one-target attacks choose one side rather than both.
+ assertPlannedBroadsideQuotas(startScene,expected.entries,checks,scene.settlementRuntime?.attackRecords??[]);
 
   return {
     prepared: expected,
@@ -977,8 +964,7 @@ export function createAutonomousAttackValidator(scene, finalPreflight) {
     }
     const [check] = checkBatchEntries(start, [entry], finalPreflight, observations);
     const nextEntries = [...entries, entry], nextChecks = [...checks, check];
-    const singles = nextEntries.filter((_, index) => nextChecks[index].kind === "single");
-    assertBroadsideQuotas(start, singles, singles.map(item => ({commandId:item.commandId,targetIds:[item.targetId]})), scene.settlementRuntime?.attackRecords ?? []);
+    assertPlannedBroadsideQuotas(start,nextEntries,nextChecks,scene.settlementRuntime?.attackRecords??[]);
     entries.push(entry); checks.push(check);
   };
 }

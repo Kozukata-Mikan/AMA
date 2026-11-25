@@ -1,8 +1,8 @@
 import {forkTerrainForEditing, MAX_TERRAIN_SAMPLES} from "./terrain-data.js";
 import {applyTerrainFrame} from "./terrain-edit-history.js";
-import {createTerrainStrokeSession} from "./terrain-stroke-session.js?v=air-exercises-1";
-import {mountTerrainGenerator} from './terrain-generator-panel.js?v=air-exercises-1';
-import {runBackgroundTask} from "./background-client.js?v=air-exercises-1";
+import {createTerrainStrokeSession} from "./terrain-stroke-session.js?v=settlement-audit-1";
+import {mountTerrainGenerator} from './terrain-generator-panel.js?v=settlement-audit-1';
+import {runBackgroundTask} from "./background-client.js?v=settlement-audit-1";
 
 import {
   mountEnvironmentEditor

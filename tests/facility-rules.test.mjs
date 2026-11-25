@@ -1,14 +1,14 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {source,ship} from './fixtures.mjs';
 import {ensureBuildingState,applyBuildingHits,recoverBuildingAtStart,resolveBuildingFire,buildingAlive,chooseBuildingSlot} from '../tactical-map/building-state.js';
-import {supportEquipmentSeed,supportCapacity} from '../tactical-map/support-equipment.js';
-import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js';
-import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=day-catalog-pas-1';
+import {supportEquipmentSeed,supportCapacity} from '../tactical-map/support-equipment.js?v=settlement-audit-1';
+import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=settlement-audit-1';
+import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=settlement-audit-1';
 import {normalizeAircraft,aircraftFacilityCompatible} from '../js/aircraft-template.js';
 import {ensureAircraftRuntime,finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=air-losses-1';
-import {enforceRemoteControl,repairAircraftAtStart,checkDroneRoute} from '../tactical-map/aviation-services.js?v=air-losses-1';
-import {aviationRunways,initializeAviationRuntime,prepareAircraft,operateAirshipBase,advanceAviationStart} from '../tactical-map/aviation-operations.js?v=air-exercises-1';
-import {resetDatabase} from './save-test-environment.mjs';import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=air-exercises-1';import {readSave} from '../js/save-database.js';
+import {enforceRemoteControl,repairAircraftAtStart,checkDroneRoute} from '../tactical-map/aviation-services.js?v=settlement-audit-1';
+import {aviationRunways,initializeAviationRuntime,prepareAircraft,operateAirshipBase,advanceAviationStart} from '../tactical-map/aviation-operations.js?v=settlement-audit-1';
+import {resetDatabase} from './save-test-environment.mjs';import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=settlement-audit-1';import {readSave} from '../js/save-database.js';
 function addEquipment(u,effect,count=1,position='露天',extra={}){const e={...supportEquipmentSeed().find(e=>e.supportEffect===effect),...extra};if(!u.snapshot.equipmentSnapshots.some(item=>item.id===e.id))u.snapshot.equipmentSnapshots.push(e);u.snapshot.mounts.push({position,equipmentId:e.id,count});return u;}
 function building(permanent=false){const u=ship('base');u.branch=u.snapshot.branch='building';u.snapshot.building={kind:'airport',airportType:'runway',permanence:permanent?'permanent':'temporary',runways:3};u.snapshot.maxHp=u.currentHp=15;for(let n=0;n<6;n++)addEquipment(u,n===0?'runway':'preparation-area',1,n<4?'露天':'地下');ensureBuildingState(u);ensureUnitCombatRuntime(u);return u;}
 function plane(id,hp=2,mission='parked',type='carrier'){const u=ship(id);u.branch=u.snapshot.branch='air';u.snapshot.aircraft=normalizeAircraft({engines:2,type,ceiling:100});u.snapshot.maxHp=2;u.currentHp=hp;u.snapshot.naval.speedKnots=200;u.snapshot.naval.endurance='1k';u.altitude=10;const s=ensureAircraftRuntime(u);Object.assign(s,{mission,hostId:mission==='parked'?'base':null,prepared:false});ensureUnitCombatRuntime(u);return u;}
@@ -58,7 +58,7 @@ test('legacy building and frozen attack-start snapshots migrate deterministicall
  const old=building();old.buildingState={version:1,status:'intact',normalHitRemainder:1,underwaterStrengthUses:0};old.currentHp=10;const frozen=structuredClone(old),copy=structuredClone(old);ensureBuildingState(copy);ensureBuildingState(old);assert.deepEqual(old.buildingState,copy.buildingState);assert.equal(old.currentHp,10);assert.equal(frozen.buildingState.version,1);assert.equal(old.buildingState.slots.reduce((n,s)=>n+s.hp,0),10);
 });
 test('round-end background task persists permanent reconstruction and concentrated ground-crew repair once across reopen',async()=>{
- const {Worker:NodeWorker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=air-exercises-1');
+ const {Worker:NodeWorker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=settlement-audit-1');
  class BrowserWorker{constructor(){this.worker=new NodeWorker(new URL('./worker-thread-adapter.mjs',import.meta.url),{type:'module'});this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}}
  globalThis.Worker=BrowserWorker;try{
  await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};const input=source(),base=building(true);applyBuildingHits(base,[{mountId:'center',damage:3}],context);const carrier=ship('carrier');addEquipment(carrier,'ground-crew',3,'後部');ensureShipRuntime(carrier);ensureUnitCombatRuntime(carrier);const p=plane('parked-damaged',0);p.aircraftState.hostId='carrier';input.instances=[base,carrier,p];const id=await createSimulation(input,()=>({valid:true}));let store=await openSimulation(id);await store.beginMovement();await store.resolveMovement();for(let i=0;i<6;i++)await store.settleAttackPhase(store.getSceneSnapshot().revision);await store.finishSpecialPhase(store.getSceneSnapshot().revision);await store.finishTurn(store.getSceneSnapshot().revision);const raw=JSON.parse(await readSave('junqi-simulation-v1:'+id));assert.equal(raw.instances[0].buildingState.slots.at(-1).hp,1);assert.equal(raw.instances[2].currentHp,2);store=await openSimulation(id);assert.equal(store.getSceneSnapshot().instances.find(u=>u.instanceId==='base').buildingState.slots.at(-1).hp,1);

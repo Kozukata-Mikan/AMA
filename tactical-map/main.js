@@ -10,10 +10,10 @@ import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js
 import { pickProjectedTerrainPoint } from "./terrain-picking.js?v=day-catalog-pas-1";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=air-exercises-1";
-import { loadUnitData } from "../js/data-store.js?v=air-training-1";
-import { createBattleStore } from "../js/battle-state.js?v=day-catalog-pas-1";
-import { mountEditor } from "./editor.js?v=air-exercises-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=settlement-audit-1";
+import { loadUnitData } from "../js/data-store.js?v=settlement-audit-1";
+import { createBattleStore } from "../js/battle-state.js?v=settlement-audit-1";
+import { mountEditor } from "./editor.js?v=settlement-audit-1";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js?v=day-catalog-pas-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
@@ -34,7 +34,7 @@ import {
 } from "./cluster-engine.js?v=aviation-operations-1";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=air-exercises-1";
+import { mountTerrainEditor } from "./terrain-editor.js?v=settlement-audit-1";
 
 let terrain = createDemoTerrain();
 let terrainController = null;

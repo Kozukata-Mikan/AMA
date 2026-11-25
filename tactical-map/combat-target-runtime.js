@@ -1,5 +1,5 @@
 import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=air-losses-1';
-import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=day-catalog-pas-1';
+import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=settlement-audit-1';
 import {compareArmorGrades} from './armor-runtime.js';
 export {ensureBuildingState as ensureBuildingCombatRuntime} from './building-state.js?v=facility-rules-1';
 import {ensureBuildingState,applyBuildingHits,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';

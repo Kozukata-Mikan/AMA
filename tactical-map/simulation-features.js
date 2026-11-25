@@ -1,33 +1,33 @@
-import {observedAviationLosses} from './aviation-losses.js?v=day-catalog-pas-1';
+import {observedAviationLosses} from './aviation-losses.js?v=settlement-audit-1';
 import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=air-exercises-1';
+import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=settlement-audit-1';
 import {airborneUnit} from './air-ground-rules.js';
-import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=air-exercises-1';
+import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=settlement-audit-1';
 import {observedAirCombat} from './air-combat-report.js?v=air-defense-1';
-import {aircraftMayFly} from './aviation-time.js?v=day-catalog-pas-1';
+import {aircraftMayFly} from './aviation-time.js?v=settlement-audit-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=air-losses-1';
-import {reconcileAviation} from './aviation-operations.js?v=air-exercises-1';
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=settlement-audit-1';
+import {reconcileAviation} from './aviation-operations.js?v=settlement-audit-1';
 import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=air-losses-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=day-catalog-pas-1";
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=settlement-audit-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=settlement-audit-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, navalKind, navalHeight, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=day-catalog-pas-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=settlement-audit-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=day-catalog-pas-1";
+} from "./ship-runtime.js?v=settlement-audit-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-exercises-1";
+} from "./simulation-rescue.js?v=settlement-audit-1";
 
 import {
   createShipEffectsState,
@@ -38,11 +38,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=air-training-1";
+} from "./equipment-item-runtime.js?v=settlement-audit-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=air-exercises-1";
+} from "./simulation-autonomous-rescue.js?v=settlement-audit-1";
 
 import {
   routeLength,

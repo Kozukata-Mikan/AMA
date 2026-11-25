@@ -342,3 +342,22 @@ export function firingArcDefinition(actor,position){
  const kind=actor.branch==='air'?'middle':positionKind(position,actor.branch);
  return {kind,center:kind==='rear'||kind==='tail'?180:0,half:kind==='front'||kind==='rear'?120:kind==='tail'?90:180};
 }
+
+/** Reserve legal sides before random range targets are drawn; never roll here.
+ * A random single-target draw can use left OR right, not both. For each mount,
+ * quota excess is convex in that choice, so the all-left and all-right extremes
+ * cover every possible draw without rejecting a legal one-group odd mount.
+ */
+export function assertPlannedBroadsideQuotas(start,entries,checks,records=[]){
+ if(!checks.some(check=>check.kind==='range'))return assertBroadsideQuotas(start,entries,entries.map(e=>({commandId:e.commandId,targetIds:[e.targetId]})),records);
+ const variants=[[],[]];
+ for(let index=0;index<entries.length;index++){
+  const entry=entries[index],check=checks[index];
+  if(check.kind==='single'){for(const assignments of variants)assignments.push({commandId:entry.commandId,targetIds:[entry.targetId]});continue;}
+  const range=check.range,ids=range.scope.mode==='specified'?range.specifiedTargetIds:range.eligibleIds,actor=unitFor(start,entry.unitId),group=groupFor(actor,entry.groupId);
+  const choices=new Map();for(const id of ids){const arc=readFiringArc(actor,group,unitFor(start,id));if(!choices.has(arc.side))choices.set(arc.side,id);}
+  const flexible=range.scope.mode==='random'&&Math.min(range.scope.maximumTargets,range.eligibleIds.length)===1;
+  for(let side=0;side<2;side++)variants[side].push({commandId:entry.commandId,targetIds:flexible?[choices.get(side===0?'left':'right')??ids[0]]:[...choices.values()]});
+ }
+ for(const assignments of variants)assertBroadsideQuotas(start,entries,assignments,records);
+}

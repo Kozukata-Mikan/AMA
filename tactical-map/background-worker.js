@@ -1,6 +1,7 @@
-import {executeBackgroundTask} from './background-tasks.js?v=air-exercises-1';
+import {serializeBackgroundError} from './background-errors.js?v=settlement-audit-1';
+import {executeBackgroundTask} from './background-tasks.js?v=settlement-audit-1';
 self.onmessage=async event=>{
  const {id,task,payload}=event.data;
  try{self.postMessage({id,result:await executeBackgroundTask(task,payload)})}
- catch(error){self.postMessage({id,error:{name:error.name,message:error.message}})}
+ catch(error){self.postMessage({id,error:serializeBackgroundError(error)})}
 };

@@ -1,6 +1,6 @@
 import {source,ship} from '../fixtures.mjs';
 import {normalizeAircraft} from '../../js/aircraft-template.js';
-import {supportEquipmentSeed} from '../../tactical-map/support-equipment.js';
+import {supportEquipmentSeed} from '../../tactical-map/support-equipment.js?v=settlement-audit-1';
 
 export const TEST_SEED = 20261125;
 export function weapon(id,projection,power,order,{guidance='平射',range=200,scope='単体',penetration='A'}={}) {

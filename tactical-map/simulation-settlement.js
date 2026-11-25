@@ -1,21 +1,21 @@
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
-import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=air-exercises-1';
+import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=settlement-audit-1';
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=air-exercises-1';
+import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=settlement-audit-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
-import {aircraftMayFly} from './aviation-time.js?v=day-catalog-pas-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=air-exercises-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=air-exercises-1';
-import {buildingAlive,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=day-catalog-pas-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=air-exercises-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=air-exercises-1';
+import {aircraftMayFly} from './aviation-time.js?v=settlement-audit-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=settlement-audit-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=settlement-audit-1';
+import {buildingAlive,buildingMountAvailable,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=settlement-audit-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=settlement-audit-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=settlement-audit-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=air-training-1';
 import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
-import { STATION_IDS, hasSupportEquipment } from "./support-equipment.js?v=air-training-1";
+import { STATION_IDS, supportEffectOf, hasSupportEquipment } from "./support-equipment.js?v=settlement-audit-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=air-exercises-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=settlement-audit-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -27,7 +27,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=air-exercises-1";
+} from "./simulation-attack-batch.js?v=settlement-audit-1";
 
 
 
@@ -37,16 +37,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=day-catalog-pas-1";
+} from "./ship-runtime.js?v=settlement-audit-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=air-training-1";
+} from "./equipment-runtime.js?v=settlement-audit-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=air-exercises-1";
+} from "./simulation-features.js?v=settlement-audit-1";
 
 import {
   getEquipmentDamagePlan,
@@ -56,7 +56,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=air-training-1";
+} from "./equipment-item-runtime.js?v=settlement-audit-1";
 
 
 import {
@@ -89,32 +89,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=air-exercises-1";
+} from "./simulation-rescue.js?v=settlement-audit-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=air-exercises-1";
+} from "./simulation-phase-finish.js?v=settlement-audit-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
+} from "./weapon-profile-runtime.js?v=settlement-audit-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=day-catalog-pas-1";
+} from "./simulation-attack-runtime.js?v=settlement-audit-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=day-catalog-pas-1";
+} from "./weapon-profile-runtime.js?v=settlement-audit-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=air-exercises-1";
+} from "./simulation-features.js?v=settlement-audit-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=air-exercises-1";
+} from "./formation-target-runtime.js?v=settlement-audit-1";
 
 import {
   readRangeCommandTarget
@@ -122,12 +122,12 @@ import {
 
 import {
   readFiringArc,
-  assertBroadsideQuotas
-} from "./weapon-firing-arc.js?v=air-defense-1";
+  assertBroadsideQuotas, assertPlannedBroadsideQuotas
+} from "./weapon-firing-arc.js?v=settlement-audit-1";
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=air-exercises-1";
+} from "./range-projection-runtime.js?v=settlement-audit-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -703,7 +703,7 @@ function assertNoUnconnectedSupport(scene) {
 
       const source = equipment.get(group.equipmentId);
 
-      if (source?.kind === "support" && !STATION_IDS.includes(source.supportEffect)) {
+      if (source?.kind === "support" && !STATION_IDS.includes(supportEffectOf(source))) {
         fail(
           "支援装備の電子効果・追加効果の照合が未接続です。" +
           "補正を0として代用せず、結算を停止します。"
@@ -1670,7 +1670,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
       continue;
       }
 
-      if (group.damaged || group.destroyed) continue;
+      if (group.damaged || group.destroyed || !buildingMountAvailable(actor,group.mountIndex)) continue;
 
       if (
         group.lastUsedTurn !== null &&
@@ -1845,6 +1845,9 @@ if (profile.issues.length) {
           phaseId: start.turn.phaseId,
           unitId: actor.instanceId,
           groupId: group.id,
+          // Airships already have BVR in their allowed mode set. Autonomous
+          // fire must supply a mode just like a manually registered shot.
+          ...(airborneUnit(actor)&&!profile.pasOnly?{attackMethod:'bvr'}:{}),
           ...copy(target),
           createdAt: scene.updatedAt,
           boundaries: []
@@ -1903,7 +1906,7 @@ if (profile.issues.length) {
 export function validateDeferredAttackPlans(
   scene,
   commands,
-  { includeCurrent = false } = {},
+  { includeCurrent = false, onChecked = null } = {},
   previewCommand = prepareAttackCommandPreview
 ) {
   const entries = [];
@@ -1929,6 +1932,7 @@ export function validateDeferredAttackPlans(
     };
 
     const effectEntries = [];
+    let quotaCheck;
 
         const singleTarget =
       entry.scope.kind === "single" ||
@@ -1940,6 +1944,7 @@ export function validateDeferredAttackPlans(
     if (singleTarget) {
 
       finalPreflight(observedCurrent, entry);
+      quotaCheck={kind:"single"};
       effectEntries.push(entry);
     } else {
       const range = prepareRangeProjection({
@@ -1983,6 +1988,7 @@ export function validateDeferredAttackPlans(
         }
       });
 
+      quotaCheck={kind:"range",range};
       for (const targetId of range.eligibleIds) {
         effectEntries.push({
           ...entry,
@@ -1992,6 +1998,7 @@ export function validateDeferredAttackPlans(
     }
 
     assertEffectAlgorithms(current, current, effectEntries);
+    onChecked?.({current,entry,check:quotaCheck});
     entries.push(entry);
   }
   return entries;
@@ -2029,7 +2036,7 @@ export function filterUnreachableAttackCommands(
   assertBroadsideQuotas(scene, [], [], records);
 
   const reservedEntries = [];
-  const reservedAssignments = [];
+  const reservedChecks = [];
 
   const phasePriority = {
     "order-5": 0,
@@ -2063,18 +2070,19 @@ export function filterUnreachableAttackCommands(
   }
 
   for (const command of ordered) {
+    let checked;
     try {
       validateDeferredAttackPlans(
         scene,
         [command],
-        { includeCurrent: true }
+        { includeCurrent: true, onChecked:value=>{checked=value;} }
       );
     } catch (error) {
             // 只用于正式执行当前阶段已有计划。
       // 登记和普通预览仍拒绝无法行动舰船的攻击。
       if (
         skipUnavailableActors === true &&
-        error.code === "ATTACK_ACTOR_UNAVAILABLE"
+        ["ATTACK_ACTOR_UNAVAILABLE","ATTACK_WEAPON_UNAVAILABLE"].includes(error.code)
       ) {
         skip(command, error.message);
         continue;
@@ -2095,51 +2103,16 @@ export function filterUnreachableAttackCommands(
       continue;
     }
 
-    const { current, entry } =
-      prepareAttackCommandPreview(scene, command);
-
-    if (entry.scope.kind === "single") {
-      const assignment = {
-        commandId: entry.commandId,
-        targetIds: [entry.targetId]
-      };
-
-      try {
-        // 先尝试加入；不合格命令不会占用后续额度。
-        assertBroadsideQuotas(
-          current,
-          [...reservedEntries, entry],
-          [...reservedAssignments, assignment],
-          records
-        );
-      } catch (error) {
-        if (error.code !== "BROADSIDE_QUOTA") {
-          throw error;
-        }
-
-        const actor = unitFor(current, entry.unitId);
-        const group = actor.equipmentState.groups.find(
-          item => item.id === entry.groupId
-        );
-
-        const target = unitFor(current, entry.targetId);
-        const arc = readFiringArc(actor, group, target);
-
-        skip(command, [
-          "このラウンドの両舷装備の残り使用枠が不足しています。",
-          `攻撃側：${actor.name}`,
-          `兵装：${entry.profile.label ?? "名称未登録"}`,
-          `装備組：${group.position} / 第${group.groupIndex + 1}組`,
-          `射撃側：${arc.side === "left" ? "左舷" : "右舷"}`,
-          "この組は発射せず、弾薬も消費しません。"
-        ].join("\n"));
-
-        continue;
-      }
-
-      reservedEntries.push(entry);
-      reservedAssignments.push(assignment);
+    const {current,entry,check}=checked;
+    try{
+      assertPlannedBroadsideQuotas(current,[...reservedEntries,entry],[...reservedChecks,check],records);
+    }catch(error){
+      if(error.code!=="BROADSIDE_QUOTA")throw error;
+      const actor=unitFor(current,entry.unitId),group=actor.equipmentState.groups.find(g=>g.id===entry.groupId);
+      skip(command,["このラウンドの両舷装備の残り使用枠が不足しています。",`攻撃側：${actor.name}`,`兵装：${entry.profile.label??"名称未登録"}`,`装備組：${group.position} / 第${group.groupIndex+1}組`,"この組は発射せず、弾薬も消費しません。"].join("\n"));
+      continue;
     }
+    reservedEntries.push(entry);reservedChecks.push(check);
 
     accepted.push(command);
   }
