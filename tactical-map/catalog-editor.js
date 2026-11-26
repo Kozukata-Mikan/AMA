@@ -1,3 +1,4 @@
+import {drawCatalogSymbol} from './catalog-symbols.js?v=catalog-symbols-1';
 import {AIR_TRAITS} from '../js/aircraft-training.js?v=air-training-1';
 import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js';
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
@@ -6,7 +7,7 @@ import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} f
 import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=air-training-1';
 import { SUPPORT_EFFECTS } from "./support-equipment.js?v=field-support-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=field-support-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=catalog-symbols-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
 import { getCatalogStore } from "../js/catalog-store.js?v=field-support-1";
@@ -224,12 +225,12 @@ function catalogVisual(item) {
   const box=node('span','','catalog-visual');box.setAttribute('aria-hidden','true');
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','-40 -40 80 80');
   if(item.branch==='building')drawBuildingIcon({snapshot:{building:normalizeBuilding(item.building)}},svg,path=>transformBuildingPath(path,(x,y)=>({x,y})));
-  else {const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',item.branch==='navy'?navalSymbolPath(item.naval?.iconType??'combat'):item.branch==='air'?'M0 -30 L7 -5 L30 10 L30 16 L6 9 L5 24 L14 30 L14 34 L0 29 L-14 34 L-14 30 L-5 24 L-6 9 L-30 16 L-30 10 L-7 -5 Z':item.kind==='weapon'?'M-28 20 L-22 8 L18 -24 L25 -16 L-12 14 L-8 25 L-28 25 Z':item.kind==='support'?'M-12 -27 L12 -27 L12 -12 L27 -12 L27 12 L12 12 L12 27 L-12 27 L-12 12 L-27 12 L-27 -12 L-12 -12 Z':'M0 -28 L25 0 L0 28 L-25 0 Z');path.setAttribute('fill','currentColor');path.setAttribute('stroke','currentColor');svg.append(path);}
+  else if(!drawCatalogSymbol(svg,item)){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',item.branch==='navy'?navalSymbolPath(item.naval?.iconType??'combat'):item.kind==='support'?'M-12 -27 L12 -27 L12 -12 L27 -12 L27 12 L12 12 L12 27 L-12 27 L-12 12 L-27 12 L-27 -12 L-12 -12 Z':'M0 -28 L25 0 L0 28 L-25 0 Z');path.setAttribute('fill','currentColor');path.setAttribute('stroke','currentColor');svg.append(path);}
   box.append(svg);return box;
 }
 function catalogOverview(item,category) {
   const hero=node('div','','catalog-overview'),identity=node('div','','catalog-identity'),title=node('div');
-  title.append(node('h3',category==='units'?item.name:getEquipmentLabel(item)),node('p',`${category==='units'?branchName(item.branch):item.kind==='support'?'支援装備':'武器'} · ${getFactionName(item.faction)}${item.protected?' · 保護あり':''}`,'catalog-muted'));
+  title.append(node('h3',category==='units'?item.name:getEquipmentLabel(item)),node('p',`${category==='units'?(item.branch==='air'?(AIRCRAFT_TYPES.find(([id])=>id===item.aircraft?.type)?.[1]??'航空機'):branchName(item.branch)):item.kind==='support'?'支援装備':`武器 · ${getGuidanceLabel(item.guidance)||'引導方式未設定'}`} · ${getFactionName(item.faction)}${item.protected?' · 保護あり':''}`,'catalog-muted'));
   identity.append(catalogVisual(item),title);hero.append(identity);
   const stats=category==='units'?[['耐性',item.maxHp],['装甲',item.naval?.armor],['速度',item.naval?.speedKnots],['対海',item.naval?.seaRecon],['対空',item.naval?.airRecon],['対潜',item.naval?.aswRecon]]:item.kind==='support'?[['支援効果',SUPPORT_EFFECTS.find(([id])=>id===item.supportEffect)?.[1]],['遠隔範囲',item.remoteRange]]:[['投射',getProjectionLabel(item)],['威力',item.powerRule],['穿深',item.penetration],['射距',item.range],['射高',item.ceilingU],['次序',item.maxOrder]];
   const cards=node('dl','','catalog-stat-cards');for(const [label,value]of stats){const card=node('div');card.append(node('dt',label),node('dd',displayValue(value)));cards.append(card);}hero.append(cards);return hero;
@@ -614,7 +615,7 @@ export function mountCatalogEditor({
 
       entry.setAttribute('aria-label',text);
       entry.classList.add('catalog-entry');
-      const caption=node('span','','catalog-entry-caption');caption.append(node('strong',item.name),node('small',category==='units'?`${branchName(item.branch)} · 耐性 ${item.maxHp} · ${getFactionName(item.faction)}`:item.kind==='support'?(SUPPORT_EFFECTS.find(([id])=>id===item.supportEffect)?.[1]??'支援装備'):`射距 ${displayValue(item.range)} · 次序 ${displayValue(item.maxOrder)}`));
+      const caption=node('span','','catalog-entry-caption');caption.append(node('strong',item.name),node('small',category==='units'?`${item.branch==='air'?(AIRCRAFT_TYPES.find(([id])=>id===(item.aircraft?.type??'carrier'))?.[1]??'航空機'):branchName(item.branch)} · 耐性 ${item.maxHp} · ${getFactionName(item.faction)}`:item.kind==='support'?(SUPPORT_EFFECTS.find(([id])=>id===item.supportEffect)?.[1]??'支援装備'):`${getGuidanceLabel(item.guidance)||'引導方式未設定'} · 射距 ${displayValue(item.range)} · 次序 ${displayValue(item.maxOrder)}`));
       entry.replaceChildren(catalogVisual(item),caption);
       entry.classList.toggle(
         "active",

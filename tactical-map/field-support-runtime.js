@@ -4,7 +4,7 @@ import {sampleTerrain} from './terrain-data.js';
 import {navalKind} from './naval-kind.js';
 import {balloonActive} from './support-effects.js?v=field-support-1';
 import {applyShipMineDamage,readShipProfile} from './ship-runtime.js?v=field-support-1';
-import {recordSinkingStarts} from './simulation-phase-finish.js?v=field-support-1';
+import {recordSinkingStarts} from './simulation-phase-finish.js?v=catalog-symbols-1';
 const SIDES=['ally','enemy','neutral'],RADIUS=5,EPS=1e-7;
 const fail=m=>{throw Error(m);};
 const key=(unitId,groupId)=>JSON.stringify([unitId,groupId]);

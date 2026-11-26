@@ -21,11 +21,11 @@ import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=field-support-1";
+} from "./simulation-rescue.js?v=catalog-symbols-1";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=field-support-1";
+} from "./simulation-rescue-runtime.js?v=catalog-symbols-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

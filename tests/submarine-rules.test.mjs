@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {source,ship} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=field-support-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=catalog-symbols-1';
 import {readSave} from '../js/save-database.js';
 import {navalKind,isSubmerged,normalizeNavalPosition,navalCanTraverse} from '../tactical-map/naval-kind.js';
 import {readShipProfile} from '../tactical-map/ship-runtime.js?v=field-support-1';
-import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=field-support-1';
-import {readWeaponProfile} from '../tactical-map/weapon-profile-runtime.js?v=field-support-1';
+import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=catalog-symbols-1';
+import {readWeaponProfile} from '../tactical-map/weapon-profile-runtime.js?v=catalog-symbols-1';
 import {initializeCatalog} from '../js/catalog-store.js?v=field-support-1';
 
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
@@ -107,7 +107,7 @@ test('new underwater guidance retains algorithms for half-width parentheses and 
 
 test('real background worker settles vertical orders with the selected surface speed',async()=>{
  const {Worker}=await import('node:worker_threads');
- const {shutdownBackground}=await import('../tactical-map/background-client.js?v=field-support-1');
+ const {shutdownBackground}=await import('../tactical-map/background-client.js?v=catalog-symbols-1');
  const scene=source();submarine(scene.instances[0]);const {id,store}=await simulation(scene);
  globalThis.Worker=class{
   constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error));}

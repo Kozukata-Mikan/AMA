@@ -1,22 +1,22 @@
 import {spottingBonus} from './support-effects.js?v=field-support-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
-import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=field-support-1';
+import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=catalog-symbols-1';
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=field-support-1';
+import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=catalog-symbols-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
 import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=field-support-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=field-support-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=catalog-symbols-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=catalog-symbols-1';
 import {buildingAlive,buildingMountAvailable,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
 import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=field-support-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=field-support-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=field-support-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=catalog-symbols-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=catalog-symbols-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=air-training-1';
 import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
 import { STATION_IDS, supportEffectOf, hasSupportEquipment } from "./support-equipment.js?v=field-support-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=field-support-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=catalog-symbols-1";
 import {parseDamageRule} from "./weapon-damage-rule.js";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -28,7 +28,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=field-support-1";
+} from "./simulation-attack-batch.js?v=catalog-symbols-1";
 
 
 
@@ -47,7 +47,7 @@ import {
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=field-support-1";
+} from "./simulation-features.js?v=catalog-symbols-1";
 
 import {
   getEquipmentDamagePlan,
@@ -90,32 +90,32 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=field-support-1";
+} from "./simulation-rescue.js?v=catalog-symbols-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=field-support-1";
+} from "./simulation-phase-finish.js?v=catalog-symbols-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=field-support-1";
+} from "./weapon-profile-runtime.js?v=catalog-symbols-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=field-support-1";
+} from "./simulation-attack-runtime.js?v=catalog-symbols-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=field-support-1";
+} from "./weapon-profile-runtime.js?v=catalog-symbols-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=field-support-1";
+} from "./simulation-features.js?v=catalog-symbols-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=field-support-1";
+} from "./formation-target-runtime.js?v=catalog-symbols-1";
 
 import {
   readRangeCommandTarget
@@ -128,7 +128,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=field-support-1";
+} from "./range-projection-runtime.js?v=catalog-symbols-1";
 
 import {
   initializeRoundTraitRuntime,

@@ -6,7 +6,7 @@ import {
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=field-support-1";
+} from "./simulation-rescue.js?v=catalog-symbols-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

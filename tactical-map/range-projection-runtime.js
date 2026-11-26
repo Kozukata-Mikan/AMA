@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=field-support-1";
+} from "./formation-target-runtime.js?v=catalog-symbols-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=field-support-1";
+} from "./simulation-features.js?v=catalog-symbols-1";
 
 import {
   resolveHitCoins

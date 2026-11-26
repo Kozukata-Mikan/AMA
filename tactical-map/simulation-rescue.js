@@ -5,7 +5,7 @@ import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=field-support-1";
+} from "./simulation-features.js?v=catalog-symbols-1";
 
 import {
   getEquipmentControlCandidates,

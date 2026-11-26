@@ -282,8 +282,11 @@ if (source === "集群") {
 
 export const GUIDANCE_OPTIONS = ["抛射","平射","惯性","惯性（大型）","射线","雷达","数控","平射（水下）","抛射（水下）","雷达（水下）","数控（水下）","惯性（水下）"];
 
+// Shared read-only classification for catalog symbols and labels.
+export function getGuidanceKind(value) {const profile=GUIDANCE.get(text(value));return profile?{...profile}:null;}
+
 export function getGuidanceLabel(value) {
-  const profile=GUIDANCE.get(value);
+  const profile=getGuidanceKind(value);
   if (!profile) return value;
   const names={lobbed:'曲射',direct:'平射',inertial:'慣性',ray:'射線',radar:'レーダー',computer:'数値制御'};
   return names[profile.id]+(profile.large?'（大型）':'')+(profile.underwater?'（水中）':'');

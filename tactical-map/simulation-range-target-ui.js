@@ -6,7 +6,7 @@ import {
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=field-support-1";
+} from "./weapon-profile-runtime.js?v=catalog-symbols-1";
 
 
 function fail(message) {

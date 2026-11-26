@@ -1,18 +1,18 @@
 import {supportCapacity} from './support-equipment.js?v=field-support-1';
 import {parseDamageRule} from './weapon-damage-rule.js';
 import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {expandFormationMemberIds} from './formation-target-runtime.js?v=field-support-1';
-import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=field-support-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=catalog-symbols-1';
+import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=catalog-symbols-1';
 import {validateFlightPlan} from './flight-plan-data.js';
 import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
 import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
-import {getVisibility} from './simulation-features.js?v=field-support-1';
-import {aviationRunways,aviationLanes,aviationHostAlive,landAircraft} from './aviation-operations.js?v=field-support-1';
+import {getVisibility} from './simulation-features.js?v=catalog-symbols-1';
+import {aviationRunways,aviationLanes,aviationHostAlive,landAircraft} from './aviation-operations.js?v=catalog-symbols-1';
 import {sampleTerrain} from './terrain-data.js';
-import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=field-support-1';
+import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=catalog-symbols-1';
 import {readFiringArc} from './weapon-firing-arc.js?v=settlement-audit-1';
 import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js';
-import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=field-support-1';
+import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=catalog-symbols-1';
 const fail=m=>{throw Error(m);},distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),live=p=>hasAircraftTemplate(p)&&p.aircraftState?.status!=='destroyed';
 // CAS must not enqueue an ordinary gun against a submerged target. Such a
 // command has no legal fallback and would abort the whole attack transaction.
