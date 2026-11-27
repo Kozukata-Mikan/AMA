@@ -1,7 +1,9 @@
+import {createRangeTargetEditor} from './simulation-range-target-ui.js?v=blast-area-1';
+import {readWeaponTargetScope} from './weapon-profile-runtime.js?v=catalog-symbols-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js?v=car-return-1';
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=car-return-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=blast-area-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
 
 
@@ -108,59 +110,12 @@ export function mountAttackUI(store) {
   const equipmentList = element("div");
   equipmentList.setAttribute("role", "group");
   equipmentList.setAttribute("aria-label", "使用する装備組");
-  const rangeHost = element("div");
-rangeHost.className = "attack-range-editor-host";
-
-let mountedRangePanel = null;
-let mountedRangeKey = "";
-
-function clearRangePanel() {
-  mountedRangePanel?.dispose();
-  mountedRangePanel = null;
-  mountedRangeKey = "";
-  rangeHost.replaceChildren();
-}
-
-function syncRangePanel(scene) {
-  const actingUnit = scene.instances.find(
-    unit => unit.instanceId === actor.value
-  );
-
-  if (
-    actingUnit?.observationOwn !== true ||
-    actingUnit.observationLevel !== "identified"
-  ) {
-    clearRangePanel();
-    return;
+  const rangeEditors = new Map();
+  function rangeScope(group) {
+    try { const scope=readWeaponTargetScope(group.profile?.targetScope); return scope.kind==='range'?scope:null; }
+    catch { return null; }
   }
-
-  const key = JSON.stringify([
-    scene.controls.observationSide,
-    actingUnit.instanceId
-  ]);
-
-  // 同一单位的保存通知由范围面板自己的订阅刷新。
-  if (key === mountedRangeKey) return;
-
-  clearRangePanel();
-
-  try {
-    mountedRangePanel = store.mountRangeAttackPanel(
-      rangeHost,
-      actingUnit.instanceId
-    );
-
-    mountedRangeKey = key;
-  } catch (error) {
-    clearRangePanel();
-
-    const message = element("p");
-    message.className = "note";
-    message.textContent = error.message;
-    rangeHost.append(message);
-  }
-}
-
+  function clearRangePanel() { rangeEditors.clear(); }
 
   const selectionInfo = element("p");
   selectionInfo.className = "note";
@@ -173,7 +128,7 @@ function syncRangePanel(scene) {
    const notice = element(
     "p",
     "装備組を選択し、目標を割り当ててください。" +
-    "別の組には別の目標を割り当てられます。" +
+    "別の組には別の目標を割り当てられます。範囲武器を選択すると、その組の直下に範囲目標の設定欄が開きます。" +
     "「攻撃計画を保存」で計画を保存します。" +
     "PASは上の手動PAS設定に従います。手動の計画もPAS段階に実行し、通常次序では発射しません。" +
     "現在より低い最高次序の武器は、その次序に自動分類します。" +
@@ -183,9 +138,7 @@ function syncRangePanel(scene) {
     "その組だけ登録を見送り、他の合法な計画は保存します。" +
     "登録を見送った組と理由は、保存結果に表示します。" +
     "「現在の攻撃段階を一括結算」で全陣営の保存計画を処理します。" +
-    "単体・集群を含む攻撃装備を同じ一覧に表示します。" +
-    "編隊の主目標や対象メンバーの指定が必要な武器は、" +
-    "このパネル内の範囲対象編集で計画を保存してください。" +
+    "範囲武器は各装備組の下で目標を指定し、単体武器と同じ保存ボタンで一括登録できます。" +
     "未対応の効果・特殊能力がある場合は、正式結算を停止します。"
 
 
@@ -285,7 +238,7 @@ function selectableGroups() {
         lines.push(
           `・${group?.label ?? "装備組"}` +
           ` / 第${(group?.groupIndex ?? 0) + 1}組` +
-          ` → ${savedTarget?.name ?? "現在確認できない目標"}` +
+          ` → ${command.targetRef?.kind==='point'?`座標（${command.targetRef.x}, ${command.targetRef.y}, ${command.targetRef.z}）`:command.targetRef?.kind==='group'?visibleScene.groups.find(g=>g.id===command.targetRef.id)?.name??"現在確認できない編隊":savedTarget?.name ?? "現在確認できない目標"}` +
          ` / 実行：${getPhaseLabel(command.phaseId)}` +
          (command.phaseId === saved.phaseId
          ? "［現在の段階］"
@@ -420,7 +373,11 @@ function selectableGroups() {
       }
 
       
-            const assignedTargetId = assignedTargets.get(group.groupId);
+      if(rangeScope(group)){
+        try{const selection=rangeEditors.get(group.groupId)?.read();const ref=selection?.targetRef;const scene=store.getSceneSnapshot();const name=ref?.kind==='point'?`座標（${ref.x}, ${ref.y}, ${ref.z}）`:ref?.kind==='group'?scene.groups.find(g=>g.id===ref.id)?.name:scene.instances.find(u=>u.instanceId===ref?.id)?.name;lines.push("",`範囲目標：${name??"未指定"}`);}catch{lines.push("","範囲目標：装備組の下で指定してください。");}
+        continue;
+      }
+      const assignedTargetId = assignedTargets.get(group.groupId);
 
       if (!assignedTargetId) {
         lines.push("", "目標：未割り当て");
@@ -507,8 +464,9 @@ function selectableGroups() {
     }
 
     for (const group of groups) {
-      const row = element("label");
-      row.style.display = "flex";
+      const row = element("div");
+      row.className = "attack-weapon-card";
+      row.style.display = "block";
       row.style.alignItems = "flex-start";
       row.style.gap = "8px";
       row.style.marginBottom = "6px";
@@ -535,7 +493,9 @@ function selectableGroups() {
           option.value === assignedTargetId
       );
 
-      const assignmentText = targetOption
+      const assignmentText = rangeScope(group)
+        ? " / 範囲目標：この組の下で指定"
+        : targetOption
         ? ` / 目標：${targetOption.textContent}`
         : " / 目標：未割り当て";
 
@@ -551,6 +511,19 @@ function selectableGroups() {
         (flags.length ? `［${flags.join("・")}］` : "")
       );
 
+      const scope=rangeScope(group);
+      let rangeEditor=null;
+      if(scope){
+        rangeEditor=rangeEditors.get(group.groupId);
+        if(!rangeEditor){
+          const current=store.getAttackCommands(report.unitId).commands.find(c=>c.groupId===group.groupId);
+          const available=store.getRangeAttackTargetOptions(report.unitId);
+          rangeEditor=createRangeTargetEditor({options:available.options,coordinateMembers:available.coordinateMembers,penetration:group.profile.penetration,scope,initial:current?.targetRef?current:null});
+          rangeEditor.element.addEventListener('change',renderReport);
+          rangeEditors.set(group.groupId,rangeEditor);
+        }
+        rangeEditor.element.hidden=!checkbox.checked;
+      }
       checkbox.addEventListener("change", () => {
         if (checkbox.checked) {
           selectedGroupIds.add(group.groupId);
@@ -558,10 +531,13 @@ function selectableGroups() {
           selectedGroupIds.delete(group.groupId);
         }
 
+        if(rangeEditor)rangeEditor.element.hidden=!checkbox.checked;
+        updateSelectionInfo();
         renderReport();
       });
 
-      row.append(checkbox, description);
+      const heading=element("label");heading.className="attack-weapon-card-heading";heading.append(checkbox,description);row.append(heading);
+      if(rangeEditor)row.append(rangeEditor.element);
       equipmentList.append(row);
     }
 
@@ -583,7 +559,7 @@ function selectableGroups() {
     renderReport();
   });
 
-    const assignTarget = button("選択した組に目標を割り当て", () => {
+    const assignTarget = button("単体武器に目標を割り当て", () => {
     const groups = selectedGroups();
 
     if (!groups.length) {
@@ -597,7 +573,7 @@ function selectableGroups() {
     }
 
     for (const group of groups) {
-      assignedTargets.set(group.groupId, target.value);
+      if(!rangeScope(group))assignedTargets.set(group.groupId, target.value);
     }
 
     renderEquipmentList();
@@ -607,6 +583,7 @@ function selectableGroups() {
   const removeAssignment = button("選択した組の目標を解除", () => {
     for (const group of selectedGroups()) {
       assignedTargets.delete(group.groupId);
+      const scope=rangeScope(group);if(scope){const available=store.getRangeAttackTargetOptions(report.unitId);rangeEditors.set(group.groupId,createRangeTargetEditor({options:available.options,coordinateMembers:available.coordinateMembers,penetration:group.profile.penetration,scope}));}
     }
 
     renderEquipmentList();
@@ -629,12 +606,11 @@ function selectableGroups() {
       return;
     }
 
-    const assignments = groups.map(group => ({
-      groupId: group.groupId,
-      targetId: assignedTargets.get(group.groupId)
-    }));
+    let assignments;
+    try{assignments=groups.map(group=>({groupId:group.groupId,...(rangeScope(group)?rangeEditors.get(group.groupId).read():{targetId:assignedTargets.get(group.groupId)})}));}
+    catch(error){saveFeedback.textContent=error.message;return;}
 
-    if (assignments.some(item => !item.targetId)) {
+    if (assignments.some(item => !item.targetId&&!item.targetRef)) {
       saveFeedback.textContent =
         "選択したすべての装備組に目標を割り当ててください。";
       return;
@@ -916,14 +892,13 @@ panel.append(
   manualPasNote,
   selectionInfo,
   equipmentList,
-  labeled("選択した装備組に割り当てる目標", target),
+  labeled("単体武器の目標（範囲武器は各組の下で指定）", target),
   assignTarget,
   removeAssignment,
   followControl,
   followNote,
   saveCommands,
   cancelCommands,
-  rangeHost,
   executeBatch,
   finishPhase,
   notice,
@@ -989,6 +964,7 @@ aside.append(panel);
     }
 
     try {
+      clearRangePanel();
       report = store.getAttackGroupReport(actor.value);
 
       const validIds = new Set(
@@ -1038,6 +1014,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
       // 组ID只在单位内唯一，不跨单位沿用。
       selectedGroupIds.clear();
       assignedTargets.clear();
+      clearRangePanel();
       target.value = "";
       selectedActorId = actor.value;
     }
@@ -1046,7 +1023,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
    syncFollowControl(scene);
    refillTargets(scene);
    refreshReport();
-   syncRangePanel(scene);
+
 
   }
 
@@ -1054,6 +1031,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
   saveFeedback.textContent = "";
   selectedGroupIds.clear();
   assignedTargets.clear();
+  clearRangePanel();
   selectedActorId = actor.value;
   target.value = "";
 
@@ -1063,7 +1041,7 @@ finishPhase.textContent = scene.turn.phaseId === "end"
   syncFollowControl(scene, true);
   refillTargets(scene);
   refreshReport();
-  syncRangePanel(scene);
+
 });
 
 

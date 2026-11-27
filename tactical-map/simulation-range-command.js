@@ -1,3 +1,4 @@
+import {readBlastPoint} from './blast-area.js?v=blast-area-1';
 const copy = value => JSON.parse(JSON.stringify(value));
 
 function fail(message) {
@@ -9,6 +10,7 @@ function validId(value) {
 }
 
 function readRef(value) {
+  if(value?.kind==='point')return readBlastPoint(value);
   if (
     !value ||
     !["unit", "group"].includes(value.kind) ||

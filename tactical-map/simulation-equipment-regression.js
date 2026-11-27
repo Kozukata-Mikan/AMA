@@ -21,11 +21,11 @@ import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=car-return-1";
+} from "./simulation-rescue.js?v=blast-area-1";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=car-return-1";
+} from "./simulation-rescue-runtime.js?v=blast-area-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

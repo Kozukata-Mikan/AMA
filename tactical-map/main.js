@@ -10,10 +10,10 @@ import {getVerticalExaggeration,unprojectDisplayPoint} from './relief-display.js
 import { pickProjectedTerrainPoint } from "./terrain-picking.js?v=day-catalog-pas-1";
 import { terrainRenderWindow, makeTerrainRenderGrid } from "./terrain-render-grid.js";
 import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
-import { mountSaveIndicator } from "./save-indicator.js?v=car-return-1";
+import { mountSaveIndicator } from "./save-indicator.js?v=blast-area-1";
 import { loadUnitData } from "../js/data-store.js?v=field-support-1";
 import { createBattleStore } from "../js/battle-state.js?v=car-return-1";
-import { mountEditor } from "./editor.js?v=car-return-1";
+import { mountEditor } from "./editor.js?v=blast-area-1";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js?v=day-catalog-pas-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";
@@ -34,7 +34,7 @@ import {
 } from "./cluster-engine.js?v=aviation-operations-1";
 
 
-import { mountTerrainEditor } from "./terrain-editor.js?v=car-return-1";
+import { mountTerrainEditor } from "./terrain-editor.js?v=blast-area-1";
 
 let terrain = createDemoTerrain();
 let terrainController = null;

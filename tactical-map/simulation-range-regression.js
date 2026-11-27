@@ -1,17 +1,17 @@
 import {
   selectRangeOccurrences,
   validateRangeSelection
-} from "./range-projection-runtime.js?v=car-return-1";
+} from "./range-projection-runtime.js?v=blast-area-1";
 
 import {
   withRangeCommandTarget,
   readRangeCommandTarget
-} from "./simulation-range-command.js";
+} from "./simulation-range-command.js?v=blast-area-1";
 
 import {
   expandFormationMemberIds,
   validateFormationTopology
-} from "./formation-target-runtime.js?v=car-return-1";
+} from "./formation-target-runtime.js?v=blast-area-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

@@ -10,7 +10,7 @@ import {parseDamageRule} from './weapon-damage-rule.js?v=car-return-1';
 import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js?v=day-catalog-pas-1';
 import {resolveNumericDamage} from './numeric-damage-runtime.js?v=car-return-1';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js?v=car-return-1';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=car-return-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=blast-area-1';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}

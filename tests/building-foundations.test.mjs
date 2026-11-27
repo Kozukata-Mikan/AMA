@@ -4,8 +4,8 @@ import {normalizeBuilding,normalizeBuildingUnit,buildingPlacement,buildingSymbol
 import {BUILDING_FIELDS} from '../js/catalog-seed.js?v=field-support-1';
 import {initializeCatalog} from '../js/catalog-store.js?v=field-support-1';
 import {createBattleStore} from '../js/battle-state.js?v=car-return-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=car-return-1';
-import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=car-return-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=blast-area-1';
+import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=blast-area-1';
 import {source,ship} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
 import {prepareSimulationAmmoSource} from '../tactical-map/equipment-runtime.js?v=field-support-1';

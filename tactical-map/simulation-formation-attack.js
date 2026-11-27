@@ -1,6 +1,6 @@
-import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=car-return-1";
+import { assertBroadsideQuotas } from "./weapon-firing-arc.js?v=blast-area-1";
 import { formationMembers } from "./formation-layout.js?v=fleet-cohesion-6";
-import { assertManualControl, getVisibility } from "./simulation-features.js?v=car-return-1";
+import { assertManualControl, getVisibility } from "./simulation-features.js?v=blast-area-1";
 import {
   readWeaponProfile,
   readWeaponTargetScope,
@@ -8,12 +8,12 @@ import {
 import {
   getAttackExecutionPhase,
   initializeAttackRuntime,
-} from "./simulation-attack-runtime.js?v=catalog-symbols-1";
+} from "./simulation-attack-runtime.js?v=blast-area-1";
 import {
   createDeferredAttackValidator,
   filterUnreachableAttackCommands,
   prepareSettlementAttackPlan,
-} from "./simulation-settlement.js?v=car-return-1";
+} from "./simulation-settlement.js?v=blast-area-1";
 
 function shuffle(values) {
   const result = [...values];

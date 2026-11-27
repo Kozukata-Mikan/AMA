@@ -1,4 +1,4 @@
-import {aviationHostAlive,aviationLanes,initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft} from './aviation-operations.js?v=car-return-1';
+import {aviationHostAlive,aviationLanes,initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft} from './aviation-operations.js?v=blast-area-1';
 import {hasAircraftTemplate,ensureAircraftRuntime} from './aircraft-runtime.js?v=car-return-1';
 import {supportCapacity} from './support-equipment.js?v=field-support-1';
 const fail=m=>{throw Error(m);};

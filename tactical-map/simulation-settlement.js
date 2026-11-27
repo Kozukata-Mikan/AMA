@@ -1,22 +1,22 @@
 import {spottingBonus} from './support-effects.js?v=field-support-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
-import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=car-return-1';
+import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=blast-area-1';
 import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=car-return-1';
+import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=blast-area-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js?v=car-return-1';
 import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=car-return-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=car-return-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=blast-area-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=blast-area-1';
 import {buildingAlive,buildingMountAvailable,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
 import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=car-return-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=car-return-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=car-return-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=blast-area-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=blast-area-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=car-return-1';
 import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=car-return-1';
 import { STATION_IDS, supportEffectOf, hasSupportEquipment } from "./support-equipment.js?v=field-support-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=car-return-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=blast-area-1";
 import {parseDamageRule} from "./weapon-damage-rule.js?v=car-return-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -28,7 +28,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=car-return-1";
+} from "./simulation-attack-batch.js?v=blast-area-1";
 
 
 
@@ -47,7 +47,7 @@ import {
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=car-return-1";
+} from "./simulation-features.js?v=blast-area-1";
 
 import {
   getEquipmentDamagePlan,
@@ -90,11 +90,11 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=car-return-1";
+} from "./simulation-rescue.js?v=blast-area-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=car-return-1";
+} from "./simulation-phase-finish.js?v=blast-area-1";
 
 
 import {
@@ -103,7 +103,7 @@ import {
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=catalog-symbols-1";
+} from "./simulation-attack-runtime.js?v=blast-area-1";
 
 import {
   readWeaponProfile
@@ -111,24 +111,24 @@ import {
 
 import {
   getVisibility
-} from "./simulation-features.js?v=car-return-1";
+} from "./simulation-features.js?v=blast-area-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=car-return-1";
+} from "./formation-target-runtime.js?v=blast-area-1";
 
 import {
   readRangeCommandTarget
-} from "./simulation-range-command.js";
+} from "./simulation-range-command.js?v=blast-area-1";
 
 import {
   readFiringArc,
   assertBroadsideQuotas, assertPlannedBroadsideQuotas
-} from "./weapon-firing-arc.js?v=car-return-1";
+} from "./weapon-firing-arc.js?v=blast-area-1";
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=car-return-1";
+} from "./range-projection-runtime.js?v=blast-area-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -387,6 +387,7 @@ for (const resource of record.resourceReports) {
       const selectionCommands = new Set();
 
       for (const selection of record.rangeSelections) {
+        const emptyBlast=selection?.blast&&Number.isFinite(selection.blast.radius)&&selection.blast.radius>=0&&['x','y','z'].every(k=>Number.isFinite(selection.blast.center?.[k]))&&selection.candidateIds?.length===0&&selection.selections?.length===0&&selection.occurrences?.length===0;
         if (
           !selection ||
           selection.version !== 1 ||
@@ -395,7 +396,7 @@ for (const resource of record.resourceReports) {
           selectionCommands.has(selection.commandId) ||
           !["all", "specified", "random"].includes(selection.mode) ||
           !Array.isArray(selection.candidateIds) ||
-          selection.candidateIds.length === 0 ||
+          (selection.candidateIds.length === 0&&!emptyBlast) ||
           selection.candidateIds.some(
             id => typeof id !== "string" || id.trim() === ""
           ) ||
@@ -403,7 +404,7 @@ for (const resource of record.resourceReports) {
             selection.candidateIds.length ||
           !Array.isArray(selection.selections) ||
           !Array.isArray(selection.occurrences) ||
-          selection.occurrences.length === 0
+          (selection.occurrences.length === 0&&!emptyBlast)
         ) {
           fail("範囲攻撃の選択履歴が不正です。");
         }
@@ -719,7 +720,7 @@ function assertNoUnconnectedSupport(scene) {
 
 function finalPreflight(start, entry ,roundTraitOptions = {}) {
   const actor = unitFor(start, entry.unitId);
-  const target = unitFor(start, entry.targetId);
+  const target = entry.blastAimOnly?actor:unitFor(start, entry.targetId);
   const profile = entry.profile;
   const targetProfile = readCombatTargetProfile(target);
 
@@ -739,9 +740,8 @@ function finalPreflight(start, entry ,roundTraitOptions = {}) {
 
 
   if (
-    actor.instanceId === target.instanceId ||
-    actor.side === target.side ||
-    combatTargetState(target)?.status === "destroyed" || combatTargetState(target)?.status === "sunk" || target.branch==='building'&&target.currentHp===0
+    (!entry.area && (actor.instanceId === target.instanceId || actor.side === target.side)) ||
+    !entry.blastAimOnly && combatTargetState(target)?.status === "destroyed" || combatTargetState(target)?.status === "sunk" || target.branch==='building'&&target.currentHp===0
   ) {
     ineligible(
       "自艦・同一陣営・沈没艦は攻撃対象外です。"
@@ -766,7 +766,7 @@ if (scope.kind === "single" || clusterSingleTarget) {
   // 必须就是该单体，不能自动扩展所属集群。
 } else if (
   scope.kind === "range" &&
-  entry.targetRef?.kind !== "group"
+  !["group","point"].includes(entry.targetRef?.kind)
 ) {
   fail("範囲武器の主目標が不正です。");
 }
@@ -789,7 +789,7 @@ if (!firingGroup) {
 }
 
 try {
-  readFiringArc(actor, firingGroup, target);
+  readFiringArc(actor, firingGroup, entry.area?{...target,...entry.area.center}:target);
 } catch (error) {
   // 只有目标确实在射界外时，允许跳过本条攻击。
   // 装备位置资料错误等其他异常仍向上抛出。
@@ -846,7 +846,7 @@ try {
   if (isSubmerged(actor) && !underwaterWeapon) ineligible("潜航中の水中艦は水中武器のみ使用できます。");
 
   const from = navalPoint(start, actor);
-  const to = navalPoint(start, target);
+  const to = entry.area?.center ?? navalPoint(start, target);
 
   const trace = traceAttackTerrainLine(
     start.terrain,
@@ -863,7 +863,7 @@ try {
       );
     }
   } else if (
-    target.underwater === true ||
+    (entry.area?to.z<0:target.underwater === true) ||
     relativeHeight < -EPSILON && !airborneUnit(actor)
   ) {
     ineligible(
@@ -871,7 +871,7 @@ try {
     );
   }
 
-  const airAttack = profile.pasOnly ? {penalty:0} : checkAirAttackMode(actor,target,entry.attackMethod,from.z,to.z);
+  const airAttack = profile.pasOnly ? {penalty:0} : checkAirAttackMode(actor,entry.area?{branch:'navy',snapshot:{naval:{kind:'surface'}}}:target,entry.attackMethod,from.z,to.z);
 
   const rangeExceeded =
     trace.distance3D > profile.range + EPSILON;
@@ -938,12 +938,12 @@ try {
       break;
 
     case "radar":
-      if (
+      if (!entry.area && (
         getObserverVisibility(
           start,
           actor,
           target
-        ) === null
+        ) === null)
       ) {
         ineligible(
           "レーダー誘導には発射艦自身の目標発見が必要です。"
@@ -973,8 +973,9 @@ try {
     }
   }
 
+  if(entry.blastAimOnly)return {allowed:true,commandId:entry.commandId,bonuses:0,penalties:0};
   if(hasAircraftTemplate(target)&&!['airborne','landing'].includes(target.aircraftState?.mission))ineligible('駐機中・離陸待機中の機体は対空射撃の対象外です。');
-  if(hasAircraftTemplate(actor)&&hasAircraftTemplate(target)&&!profile.pasOnly)ineligible('航空機同士の攻撃は空戦計画から指定してください。');
+  if(!entry.area&&hasAircraftTemplate(actor)&&hasAircraftTemplate(target)&&!profile.pasOnly)ineligible('航空機同士の攻撃は空戦計画から指定してください。');
   if(hasAircraftTemplate(target)&&(damageRule.kind==='equipment'||damageRule.underwater||profile.large||profile.guidance==='inertial'))ineligible('航空機への射撃は通常の数字威力・艦砲威力に対応しています。専用威力・慣性防御は後続規則が必要です。');
   // 正式随机之前验证真实伤害算法。
   // 算法不支持或资料错误必须整批拒绝。
@@ -1265,6 +1266,8 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
     const indexes = occurrencesByCommand.get(entry.commandId);
 
     if (!indexes || indexes.size === 0) {
+      const selected=hitStep.rangeSelections?.find(s=>s.commandId===entry.commandId);
+      if(entry.area&&selected?.occurrences.length===0)continue;
       fail("攻撃命令の命中報告が不足しています。");
     }
 
@@ -1956,6 +1959,8 @@ export function validateDeferredAttackPlans(
         scope: entry.scope,
         projection: entry.projection,
         guidance: entry.profile.guidance,
+        area: entry.area,
+        aimCheck:()=>finalPreflight(observedCurrent,{...entry,blastAimOnly:true}),
         specifiedTargetIds: entry.specifiedTargetIds
       }, (memberScene, actor, target) => {
         const memberEntry = {

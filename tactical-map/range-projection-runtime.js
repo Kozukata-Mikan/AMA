@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=car-return-1";
+} from "./formation-target-runtime.js?v=blast-area-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=car-return-1";
+} from "./simulation-features.js?v=blast-area-1";
 
 import {
   resolveHitCoins
@@ -170,6 +170,8 @@ export function prepareRangeProjection({
   scope,
   projection,
   guidance,
+  area = null,
+  aimCheck = null,
   specifiedTargetIds = []
 }, checkMember) {
   if (
@@ -208,10 +210,8 @@ export function prepareRangeProjection({
     fail("単独Rの投射設定が不正です。");
   }
 
-  const memberIds = expandFormationMemberIds(
-    scene,
-    targetRef
-  );
+  if(area){if(typeof aimCheck!=='function')fail('爆心の射撃条件照合がありません。');aimCheck();}
+  const memberIds = area?[...area.memberIds]:expandFormationMemberIds(scene,targetRef);
 
   const observationScene = {
     ...scene,
@@ -223,10 +223,7 @@ export function prepareRangeProjection({
 
   // 不通过候选报告泄露未识别成员。
   // 当前采用保守拒绝，不自行增加盲射规则。
-  assertIdentifiedTargets(
-    observationScene,
-    memberIds.map(id => findUnit(scene, id))
-  );
+  if(!area)assertIdentifiedTargets(observationScene,memberIds.map(id=>findUnit(scene,id)));
 
   const checks = [];
 
@@ -234,8 +231,8 @@ export function prepareRangeProjection({
     const target = findUnit(scene, targetId);
 
     if (
-      targetId === actorId ||
-      target.side === actor.side
+      !area && (targetId === actorId ||
+      target.side === actor.side)
     ) {
       checks.push({
         targetId,
@@ -272,7 +269,7 @@ export function prepareRangeProjection({
     .map(check => check.targetId)
     .sort(compareText);
 
-    if (eligibleIds.length === 0) {
+    if (eligibleIds.length === 0 && !area) {
     // 即使没有合格成员，也先检查命令结构与引导参数。
     // 坏数据、未支持规则不能伪装成普通候选不合格。
     if (!Array.isArray(specifiedTargetIds)) {
@@ -398,6 +395,7 @@ export function prepareRangeProjection({
     ammoCost,
 
     memberIds,
+    ...(area?{area:copy(area)}:{}),
     eligibleIds,
     specifiedTargetIds: specifiedIds,
     checks
@@ -420,7 +418,7 @@ export function selectRangeOccurrences(
     !prepared ||
     prepared.version !== 1 ||
     !Array.isArray(prepared.eligibleIds) ||
-    prepared.eligibleIds.length === 0 ||
+    (prepared.eligibleIds.length === 0 && !prepared.area) ||
     new Set(prepared.eligibleIds).size !==
       prepared.eligibleIds.length ||
     typeof indexSource !== "function"
@@ -481,6 +479,7 @@ export function selectRangeOccurrences(
     commandId: prepared.commandId,
     mode: scope.mode,
     candidateIds: candidates,
+    ...(prepared.area?{blast:{center:copy(prepared.area.center),radius:prepared.area.radius}}:{}),
     selections,
     occurrences: targetIds.map((targetId, occurrenceIndex) => ({
       commandId: prepared.commandId,
@@ -507,7 +506,7 @@ export function validateRangeSelection(prepared, selected) {
     typeof prepared.commandId !== "string" ||
     prepared.commandId.trim() === "" ||
     !Array.isArray(prepared.eligibleIds) ||
-    prepared.eligibleIds.length === 0 ||
+    (prepared.eligibleIds.length === 0 && !prepared.area) ||
     prepared.eligibleIds.some(
       id => typeof id !== "string" || id.trim() === ""
     ) ||
@@ -518,6 +517,7 @@ export function validateRangeSelection(prepared, selected) {
   }
 
   const scope = readScope(prepared.scope);
+  if(prepared.area&&JSON.stringify(selected?.blast)!==JSON.stringify({center:prepared.area.center,radius:prepared.area.radius}))fail('爆心の選択記録が正式照合と一致しません。');
   const candidates = prepared.eligibleIds;
 
   if (
@@ -528,7 +528,7 @@ export function validateRangeSelection(prepared, selected) {
     !Array.isArray(selected.candidateIds) ||
     !Array.isArray(selected.selections) ||
     !Array.isArray(selected.occurrences) ||
-    selected.occurrences.length === 0
+    (selected.occurrences.length === 0 && !prepared.area)
   ) {
     fail("範囲攻撃の目標選択記録が不正です。");
   }

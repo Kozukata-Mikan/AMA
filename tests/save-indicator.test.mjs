@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mountSaveIndicator} from '../tactical-map/save-indicator.js?v=car-return-1';
+import {mountSaveIndicator} from '../tactical-map/save-indicator.js?v=blast-area-1';
 test('save indicator reflects pending writes and warns only while saving',()=>{
  const children=[],events=new Map(),subscribers=new Set();let saving=false;
  globalThis.document={body:{append:n=>children.push(n)},createElement:()=>({style:{},setAttribute(){},remove(){children.splice(children.indexOf(this),1)}})};

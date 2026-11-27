@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {encodeSpecialHistory,decodeSpecialHistory} from '../tactical-map/special-history-codec.js';
 import {freezeSpecialHistory,copySceneWithSpecialHistory,isImmutableSpecialRecord} from '../tactical-map/special-history-snapshot.js';
-import {getVisibility,getObserverVisibility,initializeSimulationFeatures} from '../tactical-map/simulation-features.js?v=car-return-1';
+import {getVisibility,getObserverVisibility,initializeSimulationFeatures} from '../tactical-map/simulation-features.js?v=blast-area-1';
 import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=car-return-1';import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';
 import {source,ship} from './fixtures.mjs';
 const copy=x=>JSON.parse(JSON.stringify(x));
@@ -39,7 +39,7 @@ test('damage, retained discovery expiry, movement, terrain and observation chang
 
 test('legacy full histories reopen, compact on successful save and preserve public copy contracts',async()=>{
  const {resetDatabase}=await import('./save-test-environment.mjs');await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};
- const {createSimulation,openSimulation}=await import('../tactical-map/simulation-store.js?v=car-return-1'),{readSave,writeSave}=await import('../js/save-database.js');
+ const {createSimulation,openSimulation}=await import('../tactical-map/simulation-store.js?v=blast-area-1'),{readSave,writeSave}=await import('../js/save-database.js');
  const id=await createSimulation(source(),()=>({valid:true}));let store=await openSimulation(id);
  await store.beginMovement();await store.resolveMovement();for(let n=0;n<6;n++)await store.settleAttackPhase(store.getSceneSnapshot().revision);await store.finishSpecialPhase(store.getSceneSnapshot().revision);await store.finishTurn(store.getSceneSnapshot().revision);
  const key='junqi-simulation-v1:'+id,packedRaw=await readSave(key),full=decodeSpecialHistory(JSON.parse(packedRaw));assert(full.specialRuntime.records[0].shipReports.length>0);

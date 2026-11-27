@@ -1,0 +1,11 @@
+/* A single weapon selection and save workflow for direct and area attacks. */
+.attack-weapon-card { padding: 10px; margin: 8px 0; border: 1px solid #29485b; border-radius: 8px; background: #0d1c28; }
+.attack-weapon-card-heading { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
+.attack-weapon-card .simulation-range-target { margin: 10px 0 0; border: 0; border-top: 1px solid #29485b; padding: 10px 0 0; }
+.attack-weapon-card .simulation-range-target[hidden] { display: none; }
+.attack-weapon-card .simulation-range-target legend { padding: 0 6px 0 0; color: #a9d9f1; }
+
+.blast-coordinate-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.blast-coordinate-fields[hidden] { display: none; }
+.blast-coordinate-fields input { width: 100%; min-width: 0; }
+.blast-summary { color: #a9d9f1; font-variant-numeric: tabular-nums; }

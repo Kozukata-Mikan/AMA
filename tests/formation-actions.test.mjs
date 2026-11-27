@@ -5,7 +5,7 @@ import { source, ship } from "./fixtures.mjs";
 import {
   createSimulation,
   openSimulation,
-} from "../tactical-map/simulation-store.js?v=car-return-1";
+} from "../tactical-map/simulation-store.js?v=blast-area-1";
 import { createBattleStore } from "../js/battle-state.js?v=car-return-1";
 import { readSave } from "../js/save-database.js";
 import { normalizeFormation } from "../tactical-map/formation-layout.js";
@@ -255,7 +255,7 @@ test("repeated whole-group movement keeps a nonzero anchor offset and a fixed fo
 test("real worker plans a formation attack atomically and refuses orders for foreign formations", async () => {
   const { Worker } = await import("node:worker_threads");
   const { shutdownBackground } = await import(
-    "../tactical-map/background-client.js?v=car-return-1"
+    "../tactical-map/background-client.js?v=blast-area-1"
   );
   const { id, store } = await simulation();
   globalThis.Worker = class {

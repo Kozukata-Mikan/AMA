@@ -1,3 +1,4 @@
+import {readBlastPoint} from './blast-area.js?v=blast-area-1';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { resolveAttackExecutionPhase } from "./attack-order-runtime.js";
 import { readWeaponProfile } from "./weapon-profile-runtime.js?v=catalog-symbols-1";
@@ -138,13 +139,13 @@ export function readAttackCommandTarget(value) {
     !rawRef ||
     typeof rawRef !== "object" ||
     Array.isArray(rawRef) ||
-    !["unit", "group"].includes(rawRef.kind) ||
-    !text(rawRef.id)
+    !["unit", "group", "point"].includes(rawRef.kind) ||
+    (rawRef.kind!=="point" && !text(rawRef.id))
   ) {
     fail("攻撃の主目標が不正です。");
   }
 
-  const targetRef = {
+  const targetRef = rawRef.kind==='point'?readBlastPoint(rawRef):{
     kind: rawRef.kind,
     id: rawRef.id
   };
@@ -213,7 +214,8 @@ function targetFields(value) {
 }
 
 function assertTargetExists(scene, target, actorId) {
-  if (target.targetRef.kind === "unit") {
+  if(target.targetRef.kind==='point') { readBlastPoint(target.targetRef); }
+  else if (target.targetRef.kind === "unit") {
     if (
       target.targetRef.id === actorId ||
       !scene.instances.some(
@@ -235,7 +237,6 @@ function assertTargetExists(scene, target, actorId) {
   // 是否属于阶段开始编队、是否合格，交给正式批次检查。
   for (const targetId of target.specifiedTargetIds) {
     if (
-      targetId === actorId ||
       !scene.instances.some(
         unit => unit.instanceId === targetId
       )

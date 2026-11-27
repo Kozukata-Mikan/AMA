@@ -1,6 +1,6 @@
 import {writeFile,mkdir,readFile} from 'node:fs/promises';
 import {Worker as NodeWorker} from 'node:worker_threads';
-import {shutdownBackground} from '../tactical-map/background-client.js?v=car-return-1';
+import {shutdownBackground} from '../tactical-map/background-client.js?v=blast-area-1';
 import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=car-return-1';
@@ -11,7 +11,7 @@ import {supportEquipmentSeed,STATION_IDS,supportEffectOf} from '../tactical-map/
 import {ensureBuildingState} from '../tactical-map/building-state.js?v=facility-rules-1';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';
 import {resetDatabase} from '../tests/save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=car-return-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=blast-area-1';
 import {readSave} from '../js/save-database.js';
 export function auditCases(){
  const cases=[];

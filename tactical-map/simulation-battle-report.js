@@ -490,6 +490,8 @@ export function buildBattleReport(scene) {
           unitsById.get(targetRef.id),
           targetRef.id
         );
+      } else if (targetRef?.kind === "point") {
+        target=`座標（${targetRef.x}, ${targetRef.y}, ${targetRef.z}）`;
       } else if (targetRef?.kind === "group") {
         target = scene.groups.find(
           group => group.id === targetRef.id

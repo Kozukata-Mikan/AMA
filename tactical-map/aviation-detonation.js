@@ -1,5 +1,5 @@
 import {chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {aviationRunways} from './aviation-operations.js?v=car-return-1';
+import {aviationRunways} from './aviation-operations.js?v=blast-area-1';
 import {hasAircraftTemplate} from './aircraft-runtime.js?v=car-return-1';
 import {parseDamageRule} from './weapon-damage-rule.js?v=car-return-1';
 import {readWeaponProfile} from './weapon-profile-runtime.js?v=catalog-symbols-1';

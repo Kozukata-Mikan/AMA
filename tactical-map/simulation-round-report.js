@@ -1,5 +1,5 @@
 import {advanceEnvironment} from './environment-data.js?v=day-catalog-pas-1';
-import {getObservationSide, getVisibility} from './simulation-features.js?v=car-return-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=blast-area-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';
@@ -91,6 +91,7 @@ export function buildObservedRoundReports(scene, roundNumber) {
         const actor = units.get(hit.unitId);
         const target = units.get(hit.targetId);
         const ownAttack = actor?.side === side;
+        if(target?.side!==side&&!identified.has(hit.targetId))continue;
         const hits = hit.hit.hitCount;
         if (!ownAttack && (target?.side !== side || hits === 0)) continue;
         addRow(attackRows, {

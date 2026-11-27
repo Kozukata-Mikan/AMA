@@ -18,7 +18,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=car-return-1";
+} from "./simulation-rescue.js?v=blast-area-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ATTACK_PHASE = /^(order-[1-5]|pas)$/;

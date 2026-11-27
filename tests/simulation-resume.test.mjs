@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {source,ship} from './fixtures.mjs';import {resetDatabase,IDBObjectStore} from './save-test-environment.mjs';
-import {createSimulation,openSimulation,importSimulationSave,listSimulationSaves} from '../tactical-map/simulation-store.js?v=car-return-1';
+import {createSimulation,openSimulation,importSimulationSave,listSimulationSaves} from '../tactical-map/simulation-store.js?v=blast-area-1';
 import {readSave,writeSave,listSaveMetadata} from '../js/save-database.js';
 import {supportEquipmentSeed} from '../tactical-map/support-equipment.js?v=field-support-1';import {normalizeAircraft} from '../js/aircraft-template.js';
 const key=id=>'junqi-simulation-v1:'+id;const raw=async id=>JSON.parse(await readSave(key(id)));

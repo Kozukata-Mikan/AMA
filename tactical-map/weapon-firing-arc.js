@@ -276,7 +276,7 @@ export function assertBroadsideQuotas(
       !assignment ||
       byCommand.has(assignment.commandId) ||
       !Array.isArray(assignment.targetIds) ||
-      !assignment.targetIds.length
+      (!assignment.targetIds.length&&!entries.some(e=>e.commandId===assignment.commandId&&e.area))
     ) {
       fail("射界の投射対象記録が不正です。");
     }
@@ -297,12 +297,8 @@ export function assertBroadsideQuotas(
 
     const sides = new Set();
 
-    for (const id of new Set(targetIds)) {
-      const arc = readFiringArc(
-        actor,
-        group,
-        unitFor(start, id)
-      );
+    for (const aim of entry.area?[entry.area.center]:[...new Set(targetIds)].map(id=>unitFor(start,id))) {
+      const arc = readFiringArc(actor,group,aim);
 
       if (arc.positionKind === "sides") {
         sides.add(arc.side);
@@ -353,6 +349,7 @@ export function assertPlannedBroadsideQuotas(start,entries,checks,records=[]){
  const variants=[[],[]];
  for(let index=0;index<entries.length;index++){
   const entry=entries[index],check=checks[index];
+  if(entry.area){for(const assignments of variants)assignments.push({commandId:entry.commandId,targetIds:[]});continue;}
   if(check.kind==='single'){for(const assignments of variants)assignments.push({commandId:entry.commandId,targetIds:[entry.targetId]});continue;}
   const range=check.range,ids=range.scope.mode==='specified'?range.specifiedTargetIds:range.eligibleIds,actor=unitFor(start,entry.unitId),group=groupFor(actor,entry.groupId);
   const choices=new Map();for(const id of ids){const arc=readFiringArc(actor,group,unitFor(start,id));if(!choices.has(arc.side))choices.set(arc.side,id);}

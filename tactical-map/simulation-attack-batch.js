@@ -1,3 +1,4 @@
+import {blastArea} from './blast-area.js?v=blast-area-1';
 import {applyAirDisruption,airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
 import {initializeAirTraining} from './air-training-runtime.js?v=air-training-1';
 import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=car-return-1';
@@ -6,17 +7,17 @@ import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './buildi
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=catalog-symbols-1";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=catalog-symbols-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=blast-area-1";
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=field-support-1";
 import { ensureShipRuntime } from "./ship-runtime.js?v=car-return-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=car-return-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=blast-area-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=car-return-1";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=catalog-symbols-1";
-import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=car-return-1";
-import { assertBroadsideQuotas, assertPlannedBroadsideQuotas } from "./weapon-firing-arc.js?v=car-return-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=blast-area-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=blast-area-1";
+import { readRangeCommandTarget } from "./simulation-range-command.js?v=blast-area-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=blast-area-1";
+import { assertBroadsideQuotas, assertPlannedBroadsideQuotas } from "./weapon-firing-arc.js?v=blast-area-1";
 
 
 
@@ -429,19 +430,16 @@ let memberIds;
 
     memberIds = [target.targetRef.id];
   } else {
-    if (target.targetRef.kind !== "group") {
+    if (!["group","point"].includes(target.targetRef.kind)) {
       fail("範囲武器には一つの編隊を主目標として指定してください。");
     }
 
     readRangeCommandTarget(command, scope);
 
-    memberIds = expandFormationMemberIds(
-      startScene,
-      target.targetRef
-    );
+    memberIds = blastArea(startScene,target.targetRef,profile.penetration).memberIds;
   }
 
-  if (!memberIds.length) {
+  if (!memberIds.length && scope.kind!=='range') {
     fail("主目標の編隊にメンバーがいません。");
   }
 
@@ -465,7 +463,12 @@ let memberIds;
 
   };
 
-  if (visibilityBySide) {
+  if (scope.kind==='range') {
+    if(target.targetRef.kind==='group') {
+      const primary=expandFormationMemberIds(startScene,target.targetRef).map(id=>findUnit(startScene,id));
+      assertIdentifiedTargets(observationScene,primary);
+    }
+  } else if (visibilityBySide) {
     if (!visibilityBySide.has(actor.side)) visibilityBySide.set(actor.side, getVisibility(observationScene));
     const visibility = visibilityBySide.get(actor.side);
     if (members.some(unit => visibility.get(unit.instanceId) !== "identified")) fail("未発見または未識別の対象の詳細は参照できません。");
@@ -567,6 +570,7 @@ let memberIds;
     specifiedTargetIds: [...target.specifiedTargetIds],
     scope: copy(scope),
     memberIds: [...memberIds],
+    ...(scope.kind==='range'?{area:blastArea(startScene,target.targetRef,profile.penetration)}:{}),
     projection: {
       groups: profile.projection.groups,
       coinsPerGroup: profile.projection.coinsPerGroup,
@@ -868,6 +872,8 @@ function checkBatchEntries(startScene, entries, finalPreflight, observations = n
         scope: entry.scope,
         projection: entry.projection,
         guidance: entry.profile.guidance,
+        area: entry.area,
+        aimCheck: () => finalPreflight(copy(observedStart),{...copy(entry),blastAimOnly:true}),
         specifiedTargetIds: entry.specifiedTargetIds
       }, (memberScene, actor, target) => {
         const memberEntry = {

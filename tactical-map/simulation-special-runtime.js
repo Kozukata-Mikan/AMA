@@ -8,7 +8,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=car-return-1";
+} from "./simulation-rescue.js?v=blast-area-1";
 
 import {
   ensureEquipmentRuntime

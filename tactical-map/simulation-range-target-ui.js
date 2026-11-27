@@ -1,8 +1,9 @@
+import {blastRadius} from './blast-area.js?v=blast-area-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airAttackModes,airborneUnit} from './air-ground-rules.js?v=car-return-1';
 import {
   readRangeCommandTarget
-} from "./simulation-range-command.js";
+} from "./simulation-range-command.js?v=blast-area-1";
 
 import {
   readWeaponTargetScope
@@ -92,220 +93,39 @@ function checkOptions(options) {
  *
  * このUI自体は保存、乱数、扣弾、射線登録を行わない。
  */
-export function createRangeTargetEditor({
-  options,
-  scope,
-  initial = null
-}) {
+export function createRangeTargetEditor({options,scope,initial=null,penetration=null,coordinateMembers=[]}) {
   checkOptions(options);
-
-  if (
-    !scope ||
-    !["all", "specified", "random"].includes(scope.mode) ||
-    (
-      scope.mode === "all"
-        ? scope.maximumTargets !== null
-        : (
-            !Number.isSafeInteger(scope.maximumTargets) ||
-            scope.maximumTargets < 1
-          )
-    )
-  ) {
-    fail("装備の正式な範囲定義がありません。");
+  if(!scope||!['all','specified','random'].includes(scope.mode)||(scope.mode==='all'?scope.maximumTargets!==null:!Number.isSafeInteger(scope.maximumTargets)||scope.maximumTargets<1))fail('装備の範囲定義が不正です。');
+  const radius=penetration===null?null:blastRadius(penetration);
+  const node=(tag,text='')=>{const el=document.createElement(tag);el.textContent=text;return el;};
+  const root=node('fieldset');root.className='simulation-range-target';root.append(node('legend','範囲攻撃の目標'));
+  const labeled=(title,el)=>{const label=node('label');label.append(node('span',title),el);return label;};
+  const mode=node('select');mode.append(new Option('編隊・集群を狙う','group'),new Option('爆心の座標を入力','point'));root.append(labeled('照準方法',mode));
+  const select=node('select');select.append(new Option('選択してください',''),...options.map((o,i)=>new Option(o.label,String(i))));const groupLabel=labeled('目標の編隊・集群',select);root.append(groupLabel);
+  const coordinates=node('div');coordinates.className='blast-coordinate-fields';const inputs={};for(const axis of ['x','y','z']){const input=node('input');input.type='number';input.step='any';input.value=axis==='z'?'0':'';inputs[axis]=input;coordinates.append(labeled('爆心 '+axis.toUpperCase(),input));}root.append(coordinates,node('p','Zは海面0、上空は正、水中は負の値です。'));
+  const summary=node('p');summary.className='blast-summary';root.append(summary);
+  const rule=scope.mode==='all'?'範囲内の全対象へそれぞれ完全投射。':scope.mode==='specified'?`識別済みの対象を最大${scope.maximumTargets}体まで指定。`:`範囲内から最大${scope.maximumTargets}回抽選。同じ対象の重複当選があります。`;
+  root.append(node('p',(radius===null?'':`爆発半径 ${radius}マス（高さ・深さを含む球形）。`)+rule+' 弾薬は1回分です。友軍も巻き込みます。未識別の対象は表示しません。'));
+  const membersBox=node('div'),errorBox=node('p');errorBox.setAttribute('role','alert');root.append(membersBox,errorBox);let checks=[],requiresReselection=false;
+  const option=()=>select.value===''?null:options[Number(select.value)];
+  function ref(){if(mode.value==='point'){if(Object.values(inputs).some(i=>!i.value.trim()||!Number.isFinite(Number(i.value))))fail('爆心のX・Y・Zを入力してください。');return{kind:'point',...Object.fromEntries(Object.entries(inputs).map(([k,i])=>[k,Number(i.value)]))};}if(!option())fail('目標の編隊・集群を選択してください。');return{...option().targetRef};}
+  function renderMembers(selectedIds=checks.filter(c=>c.checked).map(c=>c.value)){
+    groupLabel.hidden=mode.value==='point';coordinates.hidden=mode.value!=='point';membersBox.replaceChildren();checks=[];errorBox.textContent='';
+    let center;try{const r=ref();center=r.kind==='point'?r:option()?.center;}catch{summary.textContent='照準方法と爆心を指定してください。';return;}
+    summary.textContent=center?`爆心 X ${center.x.toFixed(2)} / Y ${center.y.toFixed(2)} / Z ${center.z.toFixed(2)}`:'編隊・集群を主目標にします。';
+    if(scope.mode!=='specified')return;
+    let members=coordinateMembers.length?coordinateMembers:option()?.members??[];
+    if(center&&radius!==null)members=members.filter(m=>m.point&&Math.hypot(m.point.x-center.x,m.point.y-center.y,m.point.z-center.z)<=radius+1e-7);
+    for(const m of members){const checkbox=node('input');checkbox.type='checkbox';checkbox.value=m.id;checkbox.checked=selectedIds.includes(m.id);checkbox.addEventListener('change',()=>{if(checks.filter(c=>c.checked).length>scope.maximumTargets){checkbox.checked=false;errorBox.textContent=`指定できるのは最大${scope.maximumTargets}体です。`;}else errorBox.textContent='';});checks.push(checkbox);membersBox.append(labeled(m.label,checkbox));}
+    if(!members.length)membersBox.append(node('p','表示できる指定対象がありません。全体・ランダムの候補数は表示しません。'));
   }
-
-  const root = document.createElement("fieldset");
-  root.className = "simulation-range-target";
-
-  const legend = document.createElement("legend");
-  legend.textContent = "主目標と範囲対象";
-  root.append(legend);
-
-  const mainLabel = document.createElement("label");
-  mainLabel.textContent = "主目標 ";
-
-  const select = document.createElement("select");
-
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "選択してください";
-  select.append(placeholder);
-
-  options.forEach((option, index) => {
-    const item = document.createElement("option");
-    item.value = String(index);
-    item.textContent = option.label;
-    select.append(item);
-  });
-
-  mainLabel.append(select);
-  root.append(mainLabel);
-
-  const explanation = document.createElement("p");
-
-  explanation.textContent = scope.mode === "all"
-    ? "攻撃可能な各メンバーへ、完全な投射を一回ずつ行います。"
-    : scope.mode === "specified"
-      ? `最大${scope.maximumTargets}名を指定できます。上限未満でも攻撃できます。`
-      : `最大${scope.maximumTargets}回の抽選を行います。同じ対象の重複当選があります。`;
-
-  root.append(explanation);
-
-  const membersBox = document.createElement("div");
-  root.append(membersBox);
-
-  const errorBox = document.createElement("p");
-  errorBox.setAttribute("role", "alert");
-  root.append(errorBox);
-
-    let checks = [];
-
-  // 旧目标失去观察权限时，必须明确重新指定。
-  // 不允许保存时静默删除不可见成员。
-  let requiresReselection = false;
-
-  function selectedOption() {
-    if (select.value === "") return null;
-
-    const index = Number(select.value);
-
-    return Number.isSafeInteger(index)
-      ? options[index] ?? null
-      : null;
-  }
-
-  function renderMembers(selectedIds = []) {
-    membersBox.replaceChildren();
-    checks = [];
-    errorBox.textContent = "";
-
-    const option = selectedOption();
-    if (!option) return;
-
-    if (scope.mode !== "specified") {
-      const note = document.createElement("p");
-      note.textContent = scope.mode === "random"
-        ? "対象の抽選は正式な攻撃処理時に実行します。"
-        : "対象資格は正式な攻撃処理時に再確認します。";
-      membersBox.append(note);
-      return;
-    }
-
-    for (const member of option.members) {
-      const label = document.createElement("label");
-      label.style.display = "block";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = member.id;
-      checkbox.checked = selectedIds.includes(member.id);
-
-      checkbox.addEventListener("change", () => {
-        const count = checks.filter(item => item.checked).length;
-
-        if (count > scope.maximumTargets) {
-          checkbox.checked = false;
-          errorBox.textContent =
-            `指定できるのは最大${scope.maximumTargets}名です。`;
-        } else {
-          errorBox.textContent = "";
-        }
-      });
-
-      checks.push(checkbox);
-
-      label.append(
-        checkbox,
-        document.createTextNode(` ${member.label}`)
-      );
-
-      membersBox.append(label);
-    }
-  }
-
-    select.addEventListener("change", () => {
-    requiresReselection = false;
-    renderMembers();
-  });
-
-
-   if (initial) {
-    const saved = readRangeCommandTarget(initial, scope);
-
-    const index = options.findIndex(option =>
-      option.targetRef.kind === saved.targetRef.kind &&
-      option.targetRef.id === saved.targetRef.id
-    );
-
-    if (index >= 0) {
-      const visibleIds = new Set(
-        options[index].members.map(member => member.id)
-      );
-
-      const hasUnavailableMember =
-        saved.specifiedTargetIds.some(
-          memberId => !visibleIds.has(memberId)
-        );
-
-      if (hasUnavailableMember) {
-        // 不恢复部分集合，也不显示隐藏成员的名称或数量。
-        // 保持主目标未选择，要求用户明确重新指定。
-        requiresReselection = true;
-        select.value = "";
-        renderMembers();
-
-        errorBox.textContent =
-          "以前の指定対象を表示できません。主目標と対象を再指定してください。";
-      } else {
-        select.value = String(index);
-        renderMembers(saved.specifiedTargetIds);
-      }
-    } else {
-      requiresReselection = true;
-      select.value = "";
-      renderMembers();
-
-      errorBox.textContent =
-        "以前の主目標を表示できません。主目標を再指定してください。";
-    }
-  }
-
-
-  return {
-    element: root,
-
-    read() {
-      if (requiresReselection) {
-        fail("以前の対象を保存できません。主目標と対象を再指定してください。");
-      }
-
-      const option = selectedOption();
-
-
-      if (!option) {
-        fail("主目標を選択してください。");
-      }
-
-      const selection = {
-        targetRef: {
-          kind: option.targetRef.kind,
-          id: option.targetRef.id
-        },
-        specifiedTargetIds: scope.mode === "specified"
-          ? checks
-              .filter(item => item.checked)
-              .map(item => item.value)
-          : []
-      };
-
-      // 保存前にも上限・方式・重複を検査する。
-      return readRangeCommandTarget(selection, scope);
-    },
-
-    setDisabled(disabled) {
-      root.disabled = Boolean(disabled);
-    }
-  };
+  for(const control of [mode,select,...Object.values(inputs)])control.addEventListener('change',()=>{requiresReselection=false;renderMembers();});
+  for(const input of Object.values(inputs))input.addEventListener('input',()=>{requiresReselection=false;renderMembers();});
+  if(initial){const saved=readRangeCommandTarget(initial,scope);if(saved.targetRef.kind==='point'){mode.value='point';for(const k of ['x','y','z'])inputs[k].value=String(saved.targetRef[k]);renderMembers(saved.specifiedTargetIds);}else{const index=options.findIndex(o=>o.targetRef.kind===saved.targetRef.kind&&o.targetRef.id===saved.targetRef.id);if(index>=0){select.value=String(index);renderMembers(saved.specifiedTargetIds);}else requiresReselection=true;}
+    if(saved.specifiedTargetIds.some(id=>!checks.some(c=>c.value===id))){requiresReselection=true;for(const c of checks)c.checked=false;}
+  }else renderMembers();
+  if(requiresReselection)errorBox.textContent='以前の目標を表示できません。目標を再指定してください。';
+  return{element:root,read(){if(requiresReselection)fail('目標を再指定してください。');return readRangeCommandTarget({targetRef:ref(),specifiedTargetIds:scope.mode==='specified'?checks.filter(c=>c.checked).map(c=>c.value):[]},scope);},setDisabled(value){root.disabled=Boolean(value);}};
 }
 
 /**
@@ -383,6 +203,8 @@ export function createRangeAttackPanel({ store, unitId }) {
 
         const editor = createRangeTargetEditor({
           options: targets.options,
+          coordinateMembers:targets.coordinateMembers,
+          penetration:group.profile.penetration,
           scope,
           initial: current?.targetRef ? current : null
         });
