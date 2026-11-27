@@ -275,7 +275,7 @@ export function mountSimulationWorkflow(store) {
   if(aviation)startSection.body.prepend(aviation);
   movementSection.body.insertBefore(movement, repairNote);
   if(fieldSupport)specialSection.body.append(fieldSupport);
-  if(support)specialSection.body.append(support);
+  if(support)startSection.body.append(support);
   else movementSection.body.insertBefore(rescue, repairNote);
   if(formation)movementSection.body.insertBefore(formation,repairNote);
   attackSection.body.prepend(attack);
