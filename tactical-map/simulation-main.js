@@ -1,3 +1,4 @@
+import {mountTransportUI} from './transport-ui.js';
 import {mountSupportBoard} from './support-board.js';
 import {mountVisualSupportUI,drawVisualSupport} from './visual-support-ui.js?v=visual-support-bridge-1';
 import {mountElectronicWarfareUI,drawBallisticOverlay} from './electronic-warfare-ui.js?v=visual-support-bridge-1';
@@ -1422,7 +1423,7 @@ registerPageDisposer(mountFormationEditor(store,document.querySelector('aside'))
 registerPageDisposer(mountFormationAttackUI(store,document.querySelector('aside')));
 
   mountSimulationFeatures(store, {svg,viewport,view,project,screenPoint});
-registerPageDisposer(mountSupportBoard(store, [mountSupportUI, mountFieldSupportUI, mountElectronicWarfareUI, mountVisualSupportUI]));
+registerPageDisposer(mountSupportBoard(store, [mountSupportUI, mountFieldSupportUI, mountElectronicWarfareUI, mountVisualSupportUI, mountTransportUI]));
 registerPageDisposer(mountAviationUI(store));
 registerPageDisposer(mountAttackUI(store));
 registerPageDisposer(mountAirCombatUI(store));

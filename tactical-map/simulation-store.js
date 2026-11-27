@@ -1,3 +1,4 @@
+import {operateTransport,validateTransport} from './transport-hold.js';
 import {initializeVisualSupport,reconcileVisualSupport,setSmoke,setSearchlight} from './visual-support.js?v=visual-support-bridge-1';
 import {initializeProjectiles} from './ballistic-projectiles.js?v=visual-support-bridge-1';
 import {initializeElectronicRuntime,refreshElectronicEffects,setElectronicMode,setFlareAuto} from './electronic-warfare.js?v=visual-support-bridge-1';
@@ -222,7 +223,8 @@ function initializeCombatRuntime(scene) {
   if (!Array.isArray(scene.instances)) {
     throw new Error("推演のユニット一覧が不正です。");
   }
-      validateFlagshipState(scene);
+  validateTransport(scene);
+  validateFlagshipState(scene);
     initializeRoundTraitRuntime(scene);
 
 
@@ -1066,6 +1068,7 @@ export async function openSimulation(id) {
        const api = {
     getFleetStatus(){return buildFleetStatus(state,observedScene());},
     getFieldSupportOptions(){return fieldSupportOptions(state,getObservationSide(state));},
+    async operateTransport(request){await commit(scene=>operateTransport(scene,request));},
     async operateFieldSupport(request){await commit(scene=>{const unit=scene.instances.find(u=>u.instanceId===request.unitId);if(!unit)throw Error('ユニットを選択してください。');assertManualControl(scene,[unit]);operateFieldSupport(scene,request);reconcileActiveRescues(scene);reconcileSupports(scene);reconcileAviation(scene);});},
     async assignFlightMission(request){await commit(scene=>assignFlightMission(scene,request));},
     async setSmoke(request){await commit(scene=>{const u=scene.instances.find(u=>u.instanceId===request.unitId);assertManualControl(scene,u?[u]:[]);setSmoke(scene,request);});},

@@ -1,3 +1,4 @@
+import {passiveArmy} from './transport-hold.js';
 import {resolveVisualSupportSpecial} from './visual-support.js?v=visual-support-bridge-1';
 import {resolveElectronicSpecial} from './electronic-warfare.js?v=visual-support-bridge-1';
 import {resolveAceLosses} from './air-training-runtime.js?v=electronic-ballistic-1';
@@ -298,7 +299,7 @@ function preflightSpecial(scene) {
     
    
 
-    if (unit.branch === "building" || hasAircraftTemplate(unit) || (unit.branch !== "navy" && hasSupportEquipment(unit))) continue;
+    if (passiveArmy(unit) || unit.branch === "building" || hasAircraftTemplate(unit) || (unit.branch !== "navy" && hasSupportEquipment(unit))) continue;
     if (unit.branch !== "navy") {
       fail(
         "海軍以外の特殊段階処理が未接続です。"

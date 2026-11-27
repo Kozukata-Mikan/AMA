@@ -451,6 +451,12 @@ export function initializeCatalog(baseUnits) {
     data=normalizeCatalog({...data,supportStationsVersion:8,equipment});
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
   }
+  if(!recoveryError&&data.supportStationsVersion<9){
+    const hold=supportEquipmentSeed().find(e=>e.supportEffect==='transport-hold');
+    const equipment=data.equipment.some(e=>e.id===hold.id)?data.equipment:[...data.equipment,hold];
+    data=normalizeCatalog({...data,supportStationsVersion:9,equipment});
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  }
   const units = [];
   const listeners = new Set();
   // 只在当前页面内有效，不写入 localStorage。

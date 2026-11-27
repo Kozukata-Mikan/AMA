@@ -1,3 +1,4 @@
+import {passiveArmy} from './transport-hold.js';
 import {harborNetProtectedUnits} from './support-equipment.js?v=visual-support-bridge-1';
 import {launchProjectiles,dueProjectiles,markProjectileImpacts,initializeProjectiles} from './ballistic-projectiles.js?v=visual-support-bridge-1';
 import {captureAttackPhaseStart} from './simulation-attack-batch.js?v=visual-support-bridge-1';
@@ -1598,7 +1599,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
   }
 
   const actors = start.instances
-    .filter(unit => !unit.projectileState &&
+    .filter(unit => !unit.projectileState && !passiveArmy(unit) &&
       (!automaticPas||!manualPasEnabled(scene,unit.side)) &&
       (!hasAircraftTemplate(unit)||automaticPas&&aircraftCanAct(unit,'defend')&&aircraftMayFly(start,unit)) && (!automaticPas||(unit.snapshot.equipmentSnapshots??[]).some(e=>e.kind==='weapon'&&String(e.maxOrder).toUpperCase()==='PAS')) && (["navy","building"].includes(unit.branch) || automaticPas&&hasAircraftTemplate(unit) || !hasSupportEquipment(unit)) && (automaticPas || unit.side === "enemy" || unit.side === "neutral")
     )

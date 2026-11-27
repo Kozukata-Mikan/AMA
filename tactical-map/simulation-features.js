@@ -1,3 +1,4 @@
+import {passiveArmy,transportManifests} from './transport-hold.js';
 import {smokeBlocks,observedVisualSupport,extendSmokeRoutes} from './visual-support.js?v=visual-support-bridge-1';
 import {resolveFieldMines,observedFieldSupport} from './field-support-runtime.js?v=visual-support-bridge-1';
 import {balloonObserver} from './support-effects.js?v=visual-support-bridge-1';
@@ -402,6 +403,7 @@ export function getVisibility(scene, targetIds) {
   };
 
   for (const target of scene.instances) {
+    if(target.transportHostId)continue;
     if(hasAircraftTemplate(target)&&target.aircraftState?.status==='destroyed')continue;
     if (targetIds && !targetIds.has(target.instanceId)) continue;
     if(hasAircraftTemplate(target)&&target.side!==side&&!['airborne','landing'].includes(target.aircraftState?.mission))continue;
@@ -441,6 +443,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
   const side = getObservationSide(scene);
 
   const instances = [];
+  const manifests=transportManifests(scene.instances);
 
   for (const unit of scene.instances) {
     if(unit.projectileState&&unit.projectileState.status!=='flying')continue;
@@ -451,6 +454,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         if (level === "identified") {
       const observed = clone(unit);
       const observationOwn = unit.side === side;
+      if(observationOwn&&manifests.has(unit.instanceId))observed.transportManifest=manifests.get(unit.instanceId);
             // 从完整运行状态生成白名单式公开词条。
       // 外方只能看到是否起火，不能看到进水或损管历史。
       observed.observedEffects = {
@@ -1122,7 +1126,7 @@ function createAutonomousMovementPlans(
   const autonomousUnits = planning.instances
     .filter(unit =>
     !unit.projectileState && ["enemy", "neutral"].includes(unit.side) &&
-    unit.branch !== "building" && !hasAircraftTemplate(unit) && (unit.branch === "navy" || !hasSupportEquipment(unit)) &&
+    !passiveArmy(unit) && unit.branch !== "building" && !hasAircraftTemplate(unit) && (unit.branch === "navy" || !hasSupportEquipment(unit)) &&
     !excludedIds.has(unit.instanceId)
   )
 

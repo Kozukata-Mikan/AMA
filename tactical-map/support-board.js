@@ -78,7 +78,7 @@ export function mountSupportBoard(store,sections){
  actions.append(el('h3','支援操作'),tabs,actionBody,activeTasks);
  grid.append(fleet,detail,actions);dialog.append(header,stats,grid);document.body.append(dialog);
  let selected='',tab=0,mountedKey=null,unmount=null,visibleCount=80;
- const tabButtons=['救助・損管・補給・防雷網','機雷・気球','電子戦・フレア','発煙・照明'].map((label,i)=>{
+ const tabButtons=['救助・損管・補給・防雷網','機雷・気球','電子戦・フレア','発煙・照明','輸送庫'].map((label,i)=>{
   const b=button(label,()=>{tab=i;refresh();});tabs.append(b);return b;
  });
  function renderActions(unit,scene){
