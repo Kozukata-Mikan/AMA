@@ -1,6 +1,6 @@
 import {drawCatalogSymbol} from './catalog-symbols.js?v=catalog-symbols-1';
 import {AIR_TRAITS} from '../js/aircraft-training.js?v=air-training-1';
-import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js';
+import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js?v=car-return-1';
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
 import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=field-support-1';
 import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=air-training-1';
@@ -1037,7 +1037,10 @@ export function mountCatalogEditor({
       } else if (field.type === "air-attack-modes") {
         control=node("div");const boxes=AIR_ATTACK_MODES.map(([id,name])=>{const box=input("","checkbox");box.checked=(value??[]).includes(id);labeled(control,name,box);return[id,box];});control.read=()=>boxes.filter(([,b])=>b.checked).map(([id])=>id);
       } else if (["armor-grade","penetration-grade"].includes(field.type)) {
-        const values=field.type==="penetration-grade"?["-",...ARMOR_OPTIONS]:ARMOR_OPTIONS;const old=value===0||value==="0"?"-":String(value??"").trim().toUpperCase().replace(/[−–—－]/g,"-");control=select([["","未設定"],...values.map(v=>[v,v==="-"?"0（穿深なし）":v]),...(old&&!values.includes(old)?[[old,old+"（旧資料・要確認）"]]:[])],old);
+        const penetration=field.type==="penetration-grade";
+        const values=penetration?["-",...ARMOR_OPTIONS.filter(v=>v!=="0")]:ARMOR_OPTIONS;
+        const old=value===0||value==="0"?(penetration?"-":"0"):String(value??"").trim().toUpperCase().replace(/[−–—－]/g,"-");
+        control=select([["","未設定"],...values.map(v=>[v,v==="-"?"0（穿深なし）":v==="0"?"0（装甲なし）":v]),...(old&&!values.includes(old)?[[old,old+"（旧資料・要確認）"]]:[])],old);
       } else if (field.type === "faction") {
 
         control = select(FACTION_OPTIONS, value ?? "");

@@ -1,11 +1,11 @@
-import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js';
+import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js?v=car-return-1';
 const node=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function createFlightMissionEditor(store,selected){
  const panel=node('fieldset'),kind=node('select'),behavior=node('select'),waypoints=node('textarea'),radius=node('input'),altitude=node('input'),target=node('select'),escort=node('select'),method=node('select'),status=node('p');
  panel.append(node('legend','離陸前の航路計画'));kind.append(...[['','手動航行'],['CAR','CAR｜空中戦術偵察'],['CAS','CAS｜空中戦術支援'],['CAP','CAP｜空中戦術巡邏']].map(([id,name])=>new Option(name,id)));
  const labels=new Map();for(const [title,c]of [['任務',kind],['行動方針',behavior],['航点（1行に X, Y）',waypoints],['起点からの巡航半径（マス）',radius],['巡航高度（高度単位）',altitude],['CASの攻撃目標',target],['護衛する飛行中のCAS攻撃隊',escort],['CASの攻撃方式',method]]){const l=node('label');l.append(node('span',title),c);panel.append(l);labels.set(c,l);}
  radius.type=altitude.type='number';radius.min='1';radius.value='50';altitude.min='1';altitude.value='10';waypoints.rows=4;waypoints.placeholder='100, 50\n150, 100';
- const note=node('p','CARは終点到達または滞空時間半分で帰投。CAPは残り1Rで帰投を開始し、間に合わなければ墜落します。CASは主動武器と選択掛載を使用します。帰投後の着陸は次のラウンド開始に自動登録し、通常の滑走路枠・駐機枠・時間制限を照合します。護衛は攻撃隊の100マス以内の識別済み敵機を迎撃します。手動移動計画がある機体は、そのラウンドの自動航行を休止します。');note.className='note';panel.append(note);
+ const note=node('p','CARは終点到達または滞空時間半分で帰投。終点到達後は同じラウンドの残り移動距離で直ちに帰投します。CAPは残り1Rで帰投を開始し、間に合わなければ墜落します。CASは主動武器と選択掛載を使用します。帰投後の着陸は次のラウンド開始に自動登録し、通常の滑走路枠・駐機枠・時間制限を照合します。護衛は攻撃隊の100マス以内の識別済み敵機を迎撃します。手動移動計画がある機体は、そのラウンドの自動航行を休止します。');note.className='note';panel.append(note);
  const save=node('button','航路を保存'),clear=node('button','航路を解除');save.type=clear.type='button';status.setAttribute('role','status');panel.append(save,clear,status);
  const reset=(c,options)=>{const old=c.value;c.replaceChildren(...options.map(([id,name])=>new Option(name,id)));if(options.some(([id])=>id===old))c.value=old;};
  let lastSelection='';

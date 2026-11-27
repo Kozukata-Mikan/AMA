@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assertBroadsideQuotas,assertPlannedBroadsideQuotas} from '../tactical-map/weapon-firing-arc.js?v=settlement-audit-1';
+import {assertBroadsideQuotas,assertPlannedBroadsideQuotas} from '../tactical-map/weapon-firing-arc.js?v=car-return-1';
 const modes=['left','right','all','random1','random2'];
 const permitted=f=>{try{f();return true;}catch(e){if(e.code==='BROADSIDE_QUOTA')return false;throw e;}};
 function fixture(total,types,history=false){

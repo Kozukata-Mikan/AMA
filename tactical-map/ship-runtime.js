@@ -1,4 +1,4 @@
-import {resolveNumericDamage} from './numeric-damage-runtime.js';
+import {resolveNumericDamage} from './numeric-damage-runtime.js?v=car-return-1';
 import { supportCapacity } from "./support-equipment.js?v=field-support-1";
 import { NAVAL_KINDS, navalKind, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import {

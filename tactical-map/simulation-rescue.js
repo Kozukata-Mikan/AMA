@@ -1,11 +1,11 @@
 import { rescueSupported, supportRadius } from "./support-equipment.js?v=field-support-1";
-import { readShipProfile } from "./ship-runtime.js?v=field-support-1";
+import { readShipProfile } from "./ship-runtime.js?v=car-return-1";
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=aviation-deck-1";
+} from "./simulation-features.js?v=car-return-1";
 
 import {
   getEquipmentControlCandidates,

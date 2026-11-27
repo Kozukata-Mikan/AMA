@@ -1,18 +1,18 @@
 import {supportCapacity} from './support-equipment.js?v=field-support-1';
-import {parseDamageRule} from './weapon-damage-rule.js';
+import {parseDamageRule} from './weapon-damage-rule.js?v=car-return-1';
 import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
-import {expandFormationMemberIds} from './formation-target-runtime.js?v=aviation-deck-1';
-import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=catalog-symbols-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=car-return-1';
+import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=car-return-1';
 import {validateFlightPlan} from './flight-plan-data.js';
-import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=aviation-deck-1';
+import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=car-return-1';
 import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
-import {getVisibility} from './simulation-features.js?v=aviation-deck-1';
-import {aviationRunways,aviationLanes,aviationHostAlive,landAircraft} from './aviation-operations.js?v=aviation-deck-1';
+import {getVisibility} from './simulation-features.js?v=car-return-1';
+import {aviationRunways,aviationLanes,aviationHostAlive,landAircraft} from './aviation-operations.js?v=car-return-1';
 import {sampleTerrain} from './terrain-data.js';
 import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=catalog-symbols-1';
-import {readFiringArc} from './weapon-firing-arc.js?v=settlement-audit-1';
-import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js';
-import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=aviation-deck-1';
+import {readFiringArc} from './weapon-firing-arc.js?v=car-return-1';
+import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js?v=car-return-1';
+import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=car-return-1';
 const fail=m=>{throw Error(m);},distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),live=p=>hasAircraftTemplate(p)&&p.aircraftState?.status!=='destroyed';
 // CAS must not enqueue an ordinary gun against a submerged target. Such a
 // command has no legal fallback and would abort the whole attack transaction.
@@ -73,7 +73,10 @@ export function flightMissionRoutes(scene,excluded=new Set()){
     }
    }
   }
+  // CAR completes its route as soon as the final waypoint is reached.
+  // Spend the remaining movement budget returning instead of waiting there.
   if(f.stage==='returning')targets=[home];
+  else if(f.kind==='CAR')targets=[...targets,home];
   p.altitude=Math.min(f.altitude,profile.ceiling);
   let budget=Math.min(profile.movementLimit,s.remainingEndurance),current={x:p.x,y:p.y},route=[current],travel=0,checkpoints=[];
   for(const t of targets){const d=distance(current,t);if(d>budget+1e-7){if(budget>0)route.push({x:current.x+(t.x-current.x)*budget/d,y:current.y+(t.y-current.y)*budget/d});break;}route.push({x:t.x,y:t.y});budget-=d;travel+=d;current=route.at(-1);if(!intercept&&f.stage!=='returning'&&f.kind!=='CAP'&&f.behavior!=='escort'&&checkpoints.length<f.waypoints.length-f.cursor)checkpoints.push({distance:travel,cursor:f.cursor+checkpoints.length+1});if(route.length>=257)break;}

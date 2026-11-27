@@ -1,4 +1,4 @@
-import {airborneUnit} from './air-ground-rules.js';
+import {airborneUnit} from './air-ground-rules.js?v=car-return-1';
 
 export function airDisruptionPenalty(scene, unit) {
   const state = unit?.aircraftState?.disruption;

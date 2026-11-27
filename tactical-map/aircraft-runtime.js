@@ -1,4 +1,4 @@
-import {airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
+import {airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
 import {airConfused,airRetreating,airTrainingRule,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
 import {validateFlightPlan} from './flight-plan-data.js';
 import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=air-training-1';

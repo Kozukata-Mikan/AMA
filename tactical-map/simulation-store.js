@@ -1,62 +1,62 @@
 import {MAX_SCENE_FILE_BYTES} from '../js/save-limits.js';
-import {dispatchAviation} from './aviation-dispatch.js?v=aviation-deck-1';
-import {initializeFieldSupport,operateFieldSupport,fieldSupportOptions} from './field-support-runtime.js?v=aviation-deck-1';
-import {buildFleetStatus} from './fleet-status.js?v=aviation-deck-1';
+import {dispatchAviation} from './aviation-dispatch.js?v=car-return-1';
+import {initializeFieldSupport,operateFieldSupport,fieldSupportOptions} from './field-support-runtime.js?v=car-return-1';
+import {buildFleetStatus} from './fleet-status.js?v=car-return-1';
 import {manualPasEnabled,validateManualPasSides} from './pas-control.js?v=day-catalog-pas-1';
 import {advanceEnvironment} from './environment-data.js?v=day-catalog-pas-1';
-import {assignFlightMission} from './flight-missions.js?v=aviation-deck-1';
+import {assignFlightMission} from './flight-missions.js?v=car-return-1';
 import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
-import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js';
-import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=aviation-deck-1';
-import {enforceRemoteControl} from './aviation-services.js?v=aviation-deck-1';
+import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js?v=car-return-1';
+import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=car-return-1';
+import {enforceRemoteControl} from './aviation-services.js?v=car-return-1';
 import {buildingAlive,buildingMountAvailable} from './building-state.js?v=facility-rules-1';
-import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=aviation-deck-1';
-import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=aviation-deck-1';
-import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=aviation-deck-1';
-import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=aviation-deck-1";
+import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=car-return-1';
+import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=car-return-1';
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=car-return-1';
+import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=car-return-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=aviation-deck-1";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=car-return-1";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=aviation-deck-1";
+import { runBackgroundTask } from "./background-client.js?v=car-return-1";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js?v=day-catalog-pas-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=field-support-1";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=aviation-deck-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=car-return-1";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=car-return-1";
 
-import {initializeRescueState,createRescueFeatures,reconcileActiveRescues} from "./simulation-rescue.js?v=aviation-deck-1";
+import {initializeRescueState,createRescueFeatures,reconcileActiveRescues} from "./simulation-rescue.js?v=car-return-1";
 import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=field-support-1";
 import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=catalog-symbols-1";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=aviation-deck-1";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=car-return-1";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
 import { sampleTerrain, validateTerrain, freezeTerrainSnapshot } from "./terrain-data.js";
-import { getArmorPreview } from "./armor-runtime.js";
-import { getCannonDamagePreview } from "./cannon-damage-runtime.js?v=air-training-1";
+import { getArmorPreview } from "./armor-runtime.js?v=car-return-1";
+import { getCannonDamagePreview } from "./cannon-damage-runtime.js?v=car-return-1";
 
-import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js";
+import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js?v=car-return-1";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=aviation-deck-1";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=car-return-1";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=aviation-deck-1";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=car-return-1";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
 import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=catalog-symbols-1";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=aviation-deck-1";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=car-return-1";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=aviation-deck-1";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=aviation-deck-1";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=car-return-1";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=car-return-1";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=aviation-deck-1";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=car-return-1";
 
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=catalog-symbols-1";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=car-return-1";
 
 import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=field-support-1";
 
@@ -64,14 +64,14 @@ import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-ru
 
 import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
 
-import { readFiringArc } from "./weapon-firing-arc.js?v=settlement-audit-1";
+import { readFiringArc } from "./weapon-firing-arc.js?v=car-return-1";
 import { normalizeCampaignIntro } from "./campaign-intro-data.js";
 
 import { buildBattleReport } from "./simulation-battle-report.js?v=field-support-1";
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=aviation-deck-1";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=car-return-1";
 
 
 

@@ -1,6 +1,6 @@
 import {
   compareArmorGrades
-} from "./armor-runtime.js";
+} from "./armor-runtime.js?v=car-return-1";
 
 // 舰炮命中后的判定。
 // 不修改场景，不扣弹，不直接改变舰船损伤状态。

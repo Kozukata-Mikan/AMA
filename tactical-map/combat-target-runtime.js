@@ -1,6 +1,6 @@
-import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=aviation-deck-1';
-import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=field-support-1';
-import {compareArmorGrades} from './armor-runtime.js';
+import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=car-return-1';
+import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=car-return-1';
+import {compareArmorGrades} from './armor-runtime.js?v=car-return-1';
 export {ensureBuildingState as ensureBuildingCombatRuntime} from './building-state.js?v=facility-rules-1';
 import {ensureBuildingState,applyBuildingHits,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
 export function combatTargetState(unit){return hasAircraftTemplate(unit)?unit.aircraftState:unit.branch==='building'?unit.buildingState??{status:unit.currentHp===0?'destroyed':'intact',normalHitRemainder:0,underwaterStrengthUses:0}:unit.shipState;}

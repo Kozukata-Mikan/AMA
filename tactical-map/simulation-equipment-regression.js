@@ -1,7 +1,7 @@
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=field-support-1";
+} from "./ship-runtime.js?v=car-return-1";
 
 import {
   ensureUnitCombatRuntime
@@ -21,11 +21,11 @@ import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=aviation-deck-1";
+} from "./simulation-rescue.js?v=car-return-1";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=aviation-deck-1";
+} from "./simulation-rescue-runtime.js?v=car-return-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

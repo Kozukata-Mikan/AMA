@@ -11,4 +11,4 @@ export function checkAirAttackMode(actor,target,id,fromHeight,toHeight){
  if(id!=='bvr'&&(delta<0||delta<mode[3]||delta>mode[4]||['level','high'].includes(id)&&delta===mode[3])){const e=Error(`${mode[1]}：目標との高度差が使用条件を満たしていません。`);e.code='TARGET_INELIGIBLE';e.skipAttack=true;throw e;}
  return {penalty:mode[2],heightDifference:delta,label:mode[1]};
 }
-export const ARMOR_OPTIONS=['F','E','D','C','B','A','S'].flatMap(g=>['--','-','','+','++'].map(s=>g+s)).concat('U');
+export const ARMOR_OPTIONS=['0',...['F','E','D','C','B','A','S'].flatMap(g=>['--','-','','+','++'].map(s=>g+s)).concat('U')];

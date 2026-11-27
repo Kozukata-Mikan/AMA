@@ -19,6 +19,9 @@ export const PENETRATION_LABELS = Object.freeze({
 });
 
 export function readArmorGrade(value) {
+  if (value === 0 || typeof value === "string" && value.trim() === "0") {
+    return {label:"0",grade:null,suffix:"",rank:-3};
+  }
   if (typeof value !== "string") {
     throw new Error("装甲・貫通等級は文字列で指定してください。");
   }

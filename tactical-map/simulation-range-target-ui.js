@@ -1,5 +1,5 @@
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
-import {AIR_ATTACK_MODES,airAttackModes,airborneUnit} from './air-ground-rules.js';
+import {AIR_ATTACK_MODES,airAttackModes,airborneUnit} from './air-ground-rules.js?v=car-return-1';
 import {
   readRangeCommandTarget
 } from "./simulation-range-command.js";

@@ -1,4 +1,4 @@
-import { compareArmorGrades } from "./armor-runtime.js";
+import { compareArmorGrades } from "./armor-runtime.js?v=car-return-1";
 
 // 普通数字威力与水下数字威力。
 // 不处理舰炮、设备损坏，不修改场景或存档。

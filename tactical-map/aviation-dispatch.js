@@ -1,5 +1,5 @@
-import {aviationHostAlive,aviationLanes,initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft} from './aviation-operations.js?v=aviation-deck-1';
-import {hasAircraftTemplate,ensureAircraftRuntime} from './aircraft-runtime.js?v=aviation-deck-1';
+import {aviationHostAlive,aviationLanes,initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft} from './aviation-operations.js?v=car-return-1';
+import {hasAircraftTemplate,ensureAircraftRuntime} from './aircraft-runtime.js?v=car-return-1';
 import {supportCapacity} from './support-equipment.js?v=field-support-1';
 const fail=m=>{throw Error(m);};
 const side=scene=>scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;

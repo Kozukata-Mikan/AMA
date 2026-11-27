@@ -1,9 +1,9 @@
 import {writeFile,mkdir,readFile} from 'node:fs/promises';
 import {Worker as NodeWorker} from 'node:worker_threads';
-import {shutdownBackground} from '../tactical-map/background-client.js?v=aviation-deck-1';
+import {shutdownBackground} from '../tactical-map/background-client.js?v=car-return-1';
 import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
-import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=field-support-1';
+import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=car-return-1';
 import {TRAINING_TRAIT_OPTIONS} from '../js/catalog-seed.js?v=field-support-1';
 import {source,ship} from '../tests/fixtures.mjs';
 import {aircraft,weapon} from '../tests/scenarios/carrier-air-strike.mjs';
@@ -11,7 +11,7 @@ import {supportEquipmentSeed,STATION_IDS,supportEffectOf} from '../tactical-map/
 import {ensureBuildingState} from '../tactical-map/building-state.js?v=facility-rules-1';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';
 import {resetDatabase} from '../tests/save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=car-return-1';
 import {readSave} from '../js/save-database.js';
 export function auditCases(){
  const cases=[];

@@ -4,21 +4,21 @@ import {
   readShipProfile,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=field-support-1";
+} from "./ship-runtime.js?v=car-return-1";
 
 import {
   summarizeCannonImpacts
-} from "./cannon-damage-runtime.js?v=air-training-1";
+} from "./cannon-damage-runtime.js?v=car-return-1";
 
 import {
   readNumericPower,
   resolveNumericDamage
-} from "./numeric-damage-runtime.js";
+} from "./numeric-damage-runtime.js?v=car-return-1";
 
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=aviation-deck-1";
+} from "./simulation-rescue.js?v=car-return-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ATTACK_PHASE = /^(order-[1-5]|pas)$/;
