@@ -1,6 +1,6 @@
 import {parseTerrainDescription} from './terrain-generator.js';
 import {searchGeographicPlaces,GEOGRAPHIC_PRESETS} from './terrain-geography.js';
-import {runBackgroundTask} from './background-client.js?v=catalog-symbols-1';
+import {runBackgroundTask} from './background-client.js?v=aviation-deck-1';
 import {readTerrainVertex} from './terrain-data.js';
 const initialDescription='我想要生成一片连绵10km左右的山脉';
 const labels={mountains:'連なる山脈',hills:'丘陵',island:'島',archipelago:'群島',plain:'平原',ocean:'海域',coast:'海岸',river:'河川',valley:'渓谷'};

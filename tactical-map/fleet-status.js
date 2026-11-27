@@ -1,4 +1,4 @@
-import {getObservationSide,getObservedScene} from './simulation-features.js?v=catalog-symbols-1';
+import {getObservationSide,getObservedScene} from './simulation-features.js?v=aviation-deck-1';
 const SHIP_STATUS={intact:'無損傷',minor:'軽微な損傷',light:'小破',moderate:'中破',heavy:'大破',sinking:'沈没寸前',sunk:'沈没'};
 const AIR_MISSION={parked:'駐機',ready:'整備完了・離陸待機',launching:'離陸中',landing:'着陸中',airborne:'飛行中'};
 const SUPPORT={rescue:'救助', 'damage-control':'外部損管',supply:'補給'};
@@ -19,7 +19,7 @@ export function buildFleetStatus(scene,observed=getObservedScene(scene)){
   const actions=[...(taskActions.get(u.instanceId)??[])];
   if(moving.has(u.instanceId))actions.push('移動計画あり');
   const targets=commandTargets.get(u.instanceId);if(targets?.size)actions.push('攻撃準備：'+[...targets].join(' / '));
-  if(air&&air.status!=='destroyed'){actions.push(AIR_MISSION[air.mission]??air.mission);const f=air.flightPlan;if(air.mission==='airborne'&&f)actions.push(f.stage==='returning'?'帰投中':`${f.kind}任務${f.targetId?'：'+names(f.targetId):''}`);}
+  if(air&&air.status!=='destroyed'){actions.push(air.mission==='parked'?(air.deckZone==='preparation'?'整備区':'格納庫')+(air.prepared?'・整備済み':'・未整備'):AIR_MISSION[air.mission]??air.mission);const f=air.flightPlan;if(air.mission==='airborne'&&f)actions.push(f.stage==='returning'?'帰投中':`${f.kind}任務${f.targetId?'：'+names(f.targetId):''}`);}
   if(!actions.length&&latest.has(u.instanceId))actions.push('攻撃済み：'+[...latest.get(u.instanceId)].join(' / '));
 
   const group=groups.get(u.groupId),path=[];let g=group;const seen=new Set();while(g&&!seen.has(g.id)){seen.add(g.id);path.unshift(g.name);g=groups.get(g.parentId);}

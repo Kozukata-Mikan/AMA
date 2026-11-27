@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resetDatabase} from './save-test-environment.mjs';
 import {source} from './fixtures.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=catalog-symbols-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
 import {readSave} from '../js/save-database.js';
-import {createAutonomousAttackValidator,prepareAttackBatchResources,prepareBatchHitChecks} from '../tactical-map/simulation-attack-batch.js?v=catalog-symbols-1';
+import {createAutonomousAttackValidator,prepareAttackBatchResources,prepareBatchHitChecks} from '../tactical-map/simulation-attack-batch.js?v=aviation-deck-1';
 
 async function fixture(position='中部①',range=125){
  await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};
@@ -54,7 +54,7 @@ test('all-out-of-range manual plan is rejected atomically and empty phase still 
 
 test('manual plan full preflight runs in a real worker before the atomic save',async()=>{
  const {Worker}=await import('node:worker_threads');
- const {shutdownBackground}=await import('../tactical-map/background-client.js?v=catalog-symbols-1');
+ const {shutdownBackground}=await import('../tactical-map/background-client.js?v=aviation-deck-1');
  const {store,scene}=await fixture();let dispatched=0;
  globalThis.Worker=class{
   constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',error=>this.onerror?.(error))}

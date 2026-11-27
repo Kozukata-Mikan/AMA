@@ -1,12 +1,12 @@
 import {hasAirTrait,airRetreating,resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {getVisibility} from './simulation-features.js?v=catalog-symbols-1';
-import {readAircraftProfile} from './aircraft-runtime.js?v=air-losses-1';
-import {aviationHostAlive,aviationRunways,aviationLanes} from './aviation-operations.js?v=catalog-symbols-1';
+import {getVisibility} from './simulation-features.js?v=aviation-deck-1';
+import {readAircraftProfile} from './aircraft-runtime.js?v=aviation-deck-1';
+import {aviationHostAlive,aviationRunways,aviationLanes} from './aviation-operations.js?v=aviation-deck-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=air-training-1';
 import {sampleTerrain} from './terrain-data.js';
 import {navalHeight} from './naval-kind.js';
-import {detonateAircraftPayloads} from './aviation-detonation.js?v=catalog-symbols-1';
-import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=field-support-1';
+import {detonateAircraftPayloads} from './aviation-detonation.js?v=aviation-deck-1';
+import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=aviation-deck-1';
 import {applyShipEffectAcquisition} from './ship-runtime.js?v=field-support-1';
 import {compareArmorGrades} from './armor-runtime.js';
 export function ensureRetreatMissions(scene){

@@ -1,4 +1,4 @@
-import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=air-losses-1';
+import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=aviation-deck-1';
 import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=field-support-1';
 import {compareArmorGrades} from './armor-runtime.js';
 export {ensureBuildingState as ensureBuildingCombatRuntime} from './building-state.js?v=facility-rules-1';

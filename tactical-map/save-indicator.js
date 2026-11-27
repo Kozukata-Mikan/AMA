@@ -1,4 +1,4 @@
-import {subscribeBackgroundStatus} from './background-client.js?v=catalog-symbols-1';
+import {subscribeBackgroundStatus} from './background-client.js?v=aviation-deck-1';
 // Saving/computing is visible; selection and panning remain usable.
 export function mountSaveIndicator(store) {
   const indicator = document.createElement('p');

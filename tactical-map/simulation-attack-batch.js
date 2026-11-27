@@ -1,6 +1,6 @@
 import {applyAirDisruption,airDisruptionPenalty} from './air-disruption.js?v=air-defense-1';
 import {initializeAirTraining} from './air-training-runtime.js?v=air-training-1';
-import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=air-losses-1';
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=aviation-deck-1';
 import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
 import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
@@ -10,12 +10,12 @@ import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=catalo
 import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=field-support-1";
 import { ensureShipRuntime } from "./ship-runtime.js?v=field-support-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=catalog-symbols-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=aviation-deck-1";
 import { resolveHitCoins } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=catalog-symbols-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=aviation-deck-1";
 import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=catalog-symbols-1";
 import { readRangeCommandTarget } from "./simulation-range-command.js";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=catalog-symbols-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=aviation-deck-1";
 import { assertBroadsideQuotas, assertPlannedBroadsideQuotas } from "./weapon-firing-arc.js?v=settlement-audit-1";
 
 

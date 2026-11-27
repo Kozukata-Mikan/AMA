@@ -7,7 +7,7 @@ import {
 
 import {
   createBattleStore
-} from "./battle-state.js?v=field-support-1";
+} from "./battle-state.js?v=aviation-deck-1";
 
 import {
   previewAction

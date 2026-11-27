@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {normalizeAircraft,aircraftAirTime,aircraftParkingSlots,aircraftFacilityCompatible} from '../js/aircraft-template.js';
 import {AIRCRAFT_FIELDS} from '../js/catalog-seed.js?v=field-support-1';
 import {initializeCatalog} from '../js/catalog-store.js?v=field-support-1';
-import {createBattleStore} from '../js/battle-state.js?v=field-support-1';
-import {ensureAircraftRuntime,applyAircraftHit,aircraftCanAct,aircraftTimerDisplay,finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=air-losses-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=catalog-symbols-1';
-import {getObservedScene} from '../tactical-map/simulation-features.js?v=catalog-symbols-1';
+import {createBattleStore} from '../js/battle-state.js?v=aviation-deck-1';
+import {ensureAircraftRuntime,applyAircraftHit,aircraftCanAct,aircraftTimerDisplay,finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {getObservedScene} from '../tactical-map/simulation-features.js?v=aviation-deck-1';
 import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=field-support-1';
 import {readSave} from '../js/save-database.js';
 import {resetDatabase} from './save-test-environment.mjs';
@@ -54,7 +54,9 @@ test('time advances once at round end even while stationary, with strict private
 test('custom scene enforces ceiling and endurance-derived engine health without changing saved snapshots',async()=>{
  await resetDatabase();memory();const plane=aircraft();const battle=await createBattleStore([plane.snapshot]);const unit=await battle.addUnit(plane.unitId);assert.equal(unit.altitude,80);const before=battle.exportScene();await assert.rejects(battle.updateUnit(unit.instanceId,{altitude:101}),/上昇限度/);await assert.rejects(battle.updateUnit(unit.instanceId,{currentHp:3}),/耐性/);assert.equal(battle.exportScene(),before);await battle.updateUnit(unit.instanceId,{altitude:100});await battle.importScene(battle.exportScene());assert.equal(battle.getScene().instances[0].snapshot.aircraft.engines,2);
 });
-test('real simulation moves a heavy aircraft, consumes route endurance, saves elapsed time and hides foreign clocks',async()=>{
+test('real simulation moves a heavy aircraft, consumes route endurance, saves elapsed time and hides foreign clocks',async(t)=>{
+ // This test checks movement and clocks; survival of the separate navigation roll is deterministic.
+ t.mock.method(crypto,'getRandomValues',values=>{values.fill(1);return values;});
  const{id,store}=await setup('1k','ally',0);await store.beginMovement();await store.planMovement({kind:'unit',id:'plane'},50,0,{altitude:20});await store.resolveMovement();let scene=await raw(id);assert.equal(scene.instances[0].x,50);assert.equal(scene.instances[0].altitude,20);assert.equal(scene.instances[0].aircraftState.remainingEndurance,4580);for(let i=0;i<6;i++)await store.settleAttackPhase(store.getSceneSnapshot().revision);await store.finishSpecialPhase(store.getSceneSnapshot().revision);await store.finishTurn(store.getSceneSnapshot().revision);scene=await raw(id);assert.equal(scene.instances[0].aircraftState.remainingAirTime,9);const reopened=await openSimulation(id);assert.equal(reopened.getSceneSnapshot().instances[0].aircraftState.remainingAirTime,9);
  const observer=ship('observer','enemy',50);ensureShipRuntime(observer);scene.instances.push(observer);scene.controls.observationSide='enemy';const observed=getObservedScene(scene).instances.find(u=>u.instanceId==='plane');assert.ok(observed);assert.equal(observed.aircraftState,undefined);assert.equal(aircraftTimerDisplay(observed),null);
 });
@@ -63,7 +65,7 @@ test('expiry is committed at round end and removed from map; enemy autonomy does
 });
 
 test('isolated worker saves aircraft clocks and expiry through complete simulation phases',async()=>{
- const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=catalog-symbols-1');
+ const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=aviation-deck-1');
  globalThis.Worker=class{constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}};
  try{const{id,store}=await setup('100');await round(store);const scene=await raw(id);assert.equal(scene.instances[0].aircraftState.remainingAirTime,0);assert.equal(scene.instances[0].aircraftState.status,'destroyed');assert.equal(scene.phaseFinishRuntime.records.at(-1).aircraftReports[0].destroyed,true);assert.ok(!store.getSceneSnapshot().instances.length);}finally{shutdownBackground();delete globalThis.Worker;}
 });

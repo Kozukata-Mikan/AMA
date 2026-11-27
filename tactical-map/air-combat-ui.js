@@ -1,5 +1,5 @@
 import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=air-losses-1';
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=aviation-deck-1';
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAirCombatUI(store){
  const panel=el('details');panel.open=true;panel.dataset.toolCategory='attack';panel.dataset.workflowPanel='air-combat';panel.append(el('summary','空対空戦闘｜小隊・機動・反応力'));

@@ -29,6 +29,7 @@ export function ensureAircraftRuntime(unit){
  normalizeAircraftPosition(unit);const profile=readAircraftProfile(unit);
  unit.aircraftState??={version:1,status:unit.currentHp===0?'heavy':'operational',mission:'airborne',remainingAirTime:profile.maximumAirTime,remainingEndurance:profile.enduranceBudget,lastElapsedTurn:0,activeLoadoutId:null,destroyedReason:null};
  const s=unit.aircraftState;
+ if(s.deckZone!==undefined&&!['hangar','preparation','runway'].includes(s.deckZone))fail('航空管制盤の配置状態が不正です。');
  validateFlightPlan(s.flightPlan);
  if(s.disruption&&(!Number.isSafeInteger(s.disruption.turnNumber)||s.disruption.turnNumber<1||!Number.isSafeInteger(s.disruption.penalties)||s.disruption.penalties<0))fail('航空機の対空妨害状態が不正です。');
  if(s.panic&&(!Number.isSafeInteger(s.panic.count)||s.panic.count<0||!['normal','confused','retreating'].includes(s.panic.state)))fail('航空機の恐慌状態が不正です。');

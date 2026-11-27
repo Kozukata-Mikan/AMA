@@ -9,12 +9,12 @@ import {
 
 import {
   filterUnreachableAttackCommands
-} from "./simulation-settlement.js?v=catalog-symbols-1";
+} from "./simulation-settlement.js?v=aviation-deck-1";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=catalog-symbols-1";
+} from "./simulation-features.js?v=aviation-deck-1";
 
 // ===== 分旗舰攻击追随 =====
 // 只在store的候选事务内调用。

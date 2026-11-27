@@ -6,12 +6,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDemoTerrain, resizeTerrain, sampleTerrain, gridPosition, applyBrush, validateTerrain, readTerrainVertex } from '../tactical-map/terrain-data.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from '../tactical-map/terrain-render-grid.js';
-import { createBattleStore } from '../js/battle-state.js?v=field-support-1';
-import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=catalog-symbols-1';
-import { isTerrainBlocked } from '../tactical-map/simulation-features.js?v=catalog-symbols-1';
+import { createBattleStore } from '../js/battle-state.js?v=aviation-deck-1';
+import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import { isTerrainBlocked } from '../tactical-map/simulation-features.js?v=aviation-deck-1';
 import { traceAttackTerrainLine } from '../tactical-map/attack-terrain-runtime.js';
-import { runEquipmentRegressionTests } from '../tactical-map/simulation-equipment-regression.js?v=catalog-symbols-1';
-import { runRangeRegression } from '../tactical-map/simulation-range-regression.js?v=catalog-symbols-1';
+import { runEquipmentRegressionTests } from '../tactical-map/simulation-equipment-regression.js?v=aviation-deck-1';
+import { runRangeRegression } from '../tactical-map/simulation-range-regression.js?v=aviation-deck-1';
 
 const copy = v => JSON.parse(JSON.stringify(v));
 const data = new Map();
@@ -143,8 +143,8 @@ test('viewport completely outside the map renders no cells',()=>{
 
 import { ensureShipRuntime } from '../tactical-map/ship-runtime.js?v=field-support-1';
 import { ensureUnitCombatRuntime } from '../tactical-map/equipment-runtime.js?v=field-support-1';
-import { finishSpecialPhase, finishTurn, recordSinkingStarts } from '../tactical-map/simulation-phase-finish.js?v=catalog-symbols-1';
-import { startPlannedRescues } from '../tactical-map/simulation-rescue.js?v=catalog-symbols-1';
+import { finishSpecialPhase, finishTurn, recordSinkingStarts } from '../tactical-map/simulation-phase-finish.js?v=aviation-deck-1';
+import { startPlannedRescues } from '../tactical-map/simulation-rescue.js?v=aviation-deck-1';
 import { ship } from './fixtures.mjs';
 function rescueScene(){
  const s={turn:{number:1,phaseId:'special',elapsedMinutes:0},instances:[ship('rescuer'),ship('target','ally',1)],groups:[],rescuePlans:[],rescueTasks:[]};

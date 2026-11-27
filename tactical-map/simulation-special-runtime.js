@@ -8,7 +8,7 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=catalog-symbols-1";
+} from "./simulation-rescue.js?v=aviation-deck-1";
 
 import {
   ensureEquipmentRuntime
