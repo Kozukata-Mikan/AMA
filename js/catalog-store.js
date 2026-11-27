@@ -1,11 +1,11 @@
-import {supportEffectOf} from '../tactical-map/support-equipment.js?v=field-support-1';
+import {supportEffectOf} from '../tactical-map/support-equipment.js?v=electronic-ballistic-1';
 import {normalizeAviationComplement} from './equipment-options.js?v=aviation-operations-1';
 import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=self-sealing-1';
-import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=field-support-1";
+import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=electronic-ballistic-1";
 import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=self-sealing-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=electronic-ballistic-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -439,6 +439,7 @@ export function initializeCatalog(baseUnits) {
 
   if(!recoveryError&&data.supportStationsVersion<5){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['mine','mine-guard','boat','observation-balloon','spotter','rato'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:5,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
 
+  if(!recoveryError&&data.supportStationsVersion<6){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['electronic-warfare-pod','flare'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:6,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
   const units = [];
   const listeners = new Set();
   // 只在当前页面内有效，不写入 localStorage。

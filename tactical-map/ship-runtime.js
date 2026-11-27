@@ -1,5 +1,5 @@
 import {resolveNumericDamage} from './numeric-damage-runtime.js?v=car-return-1';
-import { supportCapacity } from "./support-equipment.js?v=field-support-1";
+import { supportCapacity } from "./support-equipment.js?v=electronic-ballistic-1";
 import { NAVAL_KINDS, navalKind, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import {
   EQUIPMENT_HIT_ITEMS
@@ -7,7 +7,7 @@ import {
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=self-sealing-1";
+} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
 
 
 import {
@@ -26,12 +26,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=self-sealing-1";
+} from "./equipment-runtime.js?v=electronic-ballistic-1";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=self-sealing-1";
+} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
 
 
 // ===== 舰船数据与推演状态接入 =====

@@ -1,5 +1,5 @@
 import {TURN_PHASES} from './rules-engine.js';
-import {listSimulationSaves,importSimulationSave} from './simulation-store.js?v=self-sealing-1';
+import {listSimulationSaves,importSimulationSave} from './simulation-store.js?v=electronic-ballistic-1';
 import {MAX_SCENE_FILE_BYTES} from '../js/save-limits.js';
 const el=(tag,text='',cls='')=>{const n=document.createElement(tag);n.textContent=text;n.className=cls;return n;};
 const simulationURL=id=>{const url=new URL('./simulation.html',import.meta.url);url.searchParams.set('id',id);return url.href;};

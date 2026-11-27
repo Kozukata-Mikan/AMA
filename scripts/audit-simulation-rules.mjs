@@ -1,17 +1,17 @@
 import {writeFile,mkdir,readFile} from 'node:fs/promises';
 import {Worker as NodeWorker} from 'node:worker_threads';
-import {shutdownBackground} from '../tactical-map/background-client.js?v=self-sealing-1';
+import {shutdownBackground} from '../tactical-map/background-client.js?v=electronic-ballistic-1';
 import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
-import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=self-sealing-1';
-import {TRAINING_TRAIT_OPTIONS} from '../js/catalog-seed.js?v=self-sealing-1';
+import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=electronic-ballistic-1';
+import {TRAINING_TRAIT_OPTIONS} from '../js/catalog-seed.js?v=electronic-ballistic-1';
 import {source,ship} from '../tests/fixtures.mjs';
 import {aircraft,weapon} from '../tests/scenarios/carrier-air-strike.mjs';
-import {supportEquipmentSeed,STATION_IDS,supportEffectOf} from '../tactical-map/support-equipment.js?v=field-support-1';
+import {supportEquipmentSeed,STATION_IDS,supportEffectOf} from '../tactical-map/support-equipment.js?v=electronic-ballistic-1';
 import {ensureBuildingState} from '../tactical-map/building-state.js?v=facility-rules-1';
-import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=self-sealing-1';
+import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=electronic-ballistic-1';
 import {resetDatabase} from '../tests/save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=self-sealing-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=electronic-ballistic-1';
 import {readSave} from '../js/save-database.js';
 export function auditCases(){
  const cases=[];
@@ -37,7 +37,7 @@ export function auditCases(){
  for(const weather of ['fog','dense-fog','blizzard','thunderstorm','typhoon'])add('炮战天气/'+weather,s=>{arm(s.instances[1]);s.environment={day:1,time:'12:00',weather};});
  for(const type of ['fire','flooding'])add('炮战既有状态/'+type,s=>{arm(s.instances[1]);const u=s.instances[1];ensureShipRuntime(u);u.shipState.effects[type]={level:type==='fire'?'small':'light',acquiredTurn:1,failedControls:0};});
  for(const trait of TRAINING_TRAIT_OPTIONS)add('炮战词条/'+trait.id,s=>{arm(s.instances[1]);s.instances[1].snapshot.trainingTraits=[trait.id];if(trait.id==='one-against-thousand')s.instances[1].currentHp=40;});
- for(const name of ['unknown-support','large','army','special'])add('预留规则/'+name,s=>{arm(s.instances[1]);if(name==='unknown-support'){s.instances[1].snapshot.equipmentSnapshots.push({id:'other',name:'未定義電子装備',kind:'support'});s.instances[1].snapshot.mounts.push({position:'後部',equipmentId:'other',count:1});}if(name==='large')s.instances[1].snapshot.equipmentSnapshots[0].guidance='惯性（大型）';if(['army','special'].includes(name))s.instances[1].branch=s.instances[1].snapshot.branch=name;},'stop');
+ for(const name of ['unknown-support','large','army','special'])add('预留规则/'+name,s=>{arm(s.instances[1]);if(name==='unknown-support'){s.instances[1].snapshot.equipmentSnapshots.push({id:'other',name:'未定義電子装備',kind:'support'});s.instances[1].snapshot.mounts.push({position:'後部',equipmentId:'other',count:1});}if(name==='large')s.instances[1].snapshot.equipmentSnapshots[0].guidance='惯性（大型）';if(['army','special'].includes(name))s.instances[1].branch=s.instances[1].snapshot.branch=name;},name==='large'?'advance':'stop');
  return cases;
 }
 function chain(e){const a=[];for(let depth=0;e&&depth<8;depth++,e=e.cause)a.push({name:e.name,message:e.message,code:e.code});return a;}

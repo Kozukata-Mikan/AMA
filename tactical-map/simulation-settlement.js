@@ -1,22 +1,25 @@
-import {spottingBonus} from './support-effects.js?v=field-support-1';
+import {launchProjectiles,dueProjectiles,markProjectileImpacts,initializeProjectiles} from './ballistic-projectiles.js?v=electronic-ballistic-1';
+import {captureAttackPhaseStart} from './simulation-attack-batch.js?v=electronic-ballistic-1';
+import {refreshElectronicEffects} from './electronic-warfare.js?v=electronic-ballistic-1';
+import {spottingBonus} from './support-effects.js?v=electronic-ballistic-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
-import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=self-sealing-1';
-import {resolveAceLosses} from './air-training-runtime.js?v=self-sealing-1';
-import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=self-sealing-1';
+import {resolveMartyrRams,aimedAircraftPosition} from './air-special-actions.js?v=electronic-ballistic-1';
+import {resolveAceLosses} from './air-training-runtime.js?v=electronic-ballistic-1';
+import {appendMissionAttacks,finishMissionAttacks} from './flight-missions.js?v=electronic-ballistic-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js?v=car-return-1';
-import {aircraftMayFly} from './aviation-time.js?v=self-sealing-1';
-import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=self-sealing-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=self-sealing-1';
+import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
+import {preflightAirCombat,resolveAirCombat} from './air-combat.js?v=electronic-ballistic-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=electronic-ballistic-1';
 import {buildingAlive,buildingMountAvailable,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
-import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=self-sealing-1';
-import {explodeRunwayPayloads} from './aviation-detonation.js?v=self-sealing-1';
-import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=self-sealing-1';
+import {readCombatTargetProfile,combatTargetState,applyCombatTargetDamage,resolveBuildingCannonImpact,buildingHitPosition,resolveAircraftCannonImpact} from './combat-target-runtime.js?v=electronic-ballistic-1';
+import {explodeRunwayPayloads} from './aviation-detonation.js?v=electronic-ballistic-1';
+import {aviationRunways,reconcileAviation} from './aviation-operations.js?v=electronic-ballistic-1';
 import {choosePosition} from './cannon-damage-runtime.js?v=car-return-1';
-import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=self-sealing-1';
-import { STATION_IDS, supportEffectOf, hasSupportEquipment } from "./support-equipment.js?v=field-support-1";
+import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=electronic-ballistic-1';
+import { STATION_IDS, supportEffectOf, hasSupportEquipment } from "./support-equipment.js?v=electronic-ballistic-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
-import {captureRoundWitnesses} from "./simulation-round-report.js?v=self-sealing-1";
+import {captureRoundWitnesses} from "./simulation-round-report.js?v=electronic-ballistic-1";
 import {parseDamageRule} from "./weapon-damage-rule.js?v=car-return-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
@@ -28,7 +31,7 @@ import {
   prepareAttackCommandPreview,
   createAttackCommandPreviewer,
   prepareBatchHitChecks
-} from "./simulation-attack-batch.js?v=self-sealing-1";
+} from "./simulation-attack-batch.js?v=electronic-ballistic-1";
 
 
 
@@ -38,16 +41,16 @@ import {
   getReconConditions,
   applyShipDamageAttack,
   applyShipEffectAcquisition
-} from "./ship-runtime.js?v=self-sealing-1";
+} from "./ship-runtime.js?v=electronic-ballistic-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=self-sealing-1";
+} from "./equipment-runtime.js?v=electronic-ballistic-1";
 
 import {
   getObserverVisibility,
   getEquipmentReconSourceVisibility
-} from "./simulation-features.js?v=self-sealing-1";
+} from "./simulation-features.js?v=electronic-ballistic-1";
 
 import {
   getEquipmentDamagePlan,
@@ -57,7 +60,7 @@ import {
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentAttack
-} from "./equipment-item-runtime.js?v=self-sealing-1";
+} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
 
 
 import {
@@ -69,7 +72,7 @@ import { sampleTerrain } from "./terrain-data.js";
 
 import {
   getHitModifiers
-} from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
+} from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
 
 import {
   getCannonDamagePreview,
@@ -90,36 +93,36 @@ import {
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=self-sealing-1";
+} from "./simulation-rescue.js?v=electronic-ballistic-1";
 
 import {
   recordSinkingStarts
-} from "./simulation-phase-finish.js?v=self-sealing-1";
+} from "./simulation-phase-finish.js?v=electronic-ballistic-1";
 
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=self-sealing-1";
+} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
 
 import {
   initializeAttackRuntime
-} from "./simulation-attack-runtime.js?v=self-sealing-1";
+} from "./simulation-attack-runtime.js?v=electronic-ballistic-1";
 
 import {
   readWeaponProfile
-} from "./weapon-profile-runtime.js?v=self-sealing-1";
+} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
 
 import {
   getVisibility
-} from "./simulation-features.js?v=self-sealing-1";
+} from "./simulation-features.js?v=electronic-ballistic-1";
 
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=self-sealing-1";
+} from "./formation-target-runtime.js?v=electronic-ballistic-1";
 
 import {
   readRangeCommandTarget
-} from "./simulation-range-command.js?v=self-sealing-1";
+} from "./simulation-range-command.js?v=electronic-ballistic-1";
 
 import {
   readFiringArc,
@@ -128,7 +131,7 @@ import {
 
 import {
   prepareRangeProjection
-} from "./range-projection-runtime.js?v=self-sealing-1";
+} from "./range-projection-runtime.js?v=electronic-ballistic-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -719,6 +722,7 @@ function assertNoUnconnectedSupport(scene) {
 
 
 function finalPreflight(start, entry ,roundTraitOptions = {}) {
+  if(entry.profile.large)return finalPreflight(start,{...entry,blastAimOnly:true,profile:{...entry.profile,large:false,targetScope:"範囲（全体）"}},roundTraitOptions);
   const actor = unitFor(start, entry.unitId);
   const target = entry.blastAimOnly?actor:unitFor(start, entry.targetId);
   const profile = entry.profile;
@@ -771,14 +775,6 @@ if (scope.kind === "single" || clusterSingleTarget) {
   fail("範囲武器の主目標が不正です。");
 }
 
-
-  // 未接入的效果必须整批拒绝，不能排除成员后继续。
-  if (profile.large) {
-    fail(
-      "大型武器の専用効果が未接続です。" +
-      "通常武器として代用せず、結算を停止します。"
-    );
-  }
 
   const firingGroup = actor.equipmentState.groups.find(
   group => group.id === entry.groupId
@@ -1380,7 +1376,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
 
 
         if(targetRunways.length)runwayPositions.push(impact.position.label);
-        if (impact.fireEligible && target.branch!=='building') {
+        if (impact.fireEligible && target.branch!=='building'&&!target.projectileState) {
           effects.push({
             targetId,
             attackId: attack.entry.commandId,
@@ -1593,7 +1589,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
   }
 
   const actors = start.instances
-    .filter(unit =>
+    .filter(unit => !unit.projectileState &&
       (!automaticPas||!manualPasEnabled(scene,unit.side)) &&
       (!hasAircraftTemplate(unit)||automaticPas&&aircraftCanAct(unit,'defend')&&aircraftMayFly(start,unit)) && (!automaticPas||(unit.snapshot.equipmentSnapshots??[]).some(e=>e.kind==='weapon'&&String(e.maxOrder).toUpperCase()==='PAS')) && (["navy","building"].includes(unit.branch) || automaticPas&&hasAircraftTemplate(unit) || !hasSupportEquipment(unit)) && (automaticPas || unit.side === "enemy" || unit.side === "neutral")
     )
@@ -1710,7 +1706,7 @@ const validateCandidate = createAutonomousAttackValidator(scene, finalPreflight)
      const profile = readWeaponProfile(source, group);
 
 
-if (profile.kind !== "weapon") continue;
+if (profile.kind !== "weapon" || profile.large) continue;
 if(hasAircraftTemplate(actor)&&!aircraftCanAct(actor,profile.pasOnly&&group.position==='自衛武器'?'defend':'attack'))continue;
 
 const order = /^order-([1-5])$/.exec(start.turn.phaseId);
@@ -2238,6 +2234,20 @@ export function prepareSettlementAttackPlan(scene) {
 
 }
 
+function settleProjectileImpacts(scene,coinSource){
+ const due=dueProjectiles(scene);if(!due.length)return null;
+ const temp=copySceneWithSpecialHistory(scene);
+ temp.attackRuntime.commands=due.map(u=>({id:u.instanceId+':impact',status:'planned',createdAt:new Date().toISOString(),boundaries:[],unitId:u.instanceId,groupId:u.equipmentState.groups[0].id,turnNumber:scene.turn.number,phaseId:scene.turn.phaseId,targetRef:{kind:'point',...u.projectileState.center},specifiedTargetIds:[],attackMethod:'bvr'}));
+ temp.attackBatchRuntime=undefined;captureAttackPhaseStart(temp);
+ const prepared=prepareAttackBatchResources(temp),start=getAttackPhaseStartScene(temp);
+ prepareBatchHitChecks(temp,prepared,finalPreflight);
+ const resourceReports=applyAttackBatchResources(temp,prepared),hitStep=resolveAttackBatchHitStep(temp,prepared,finalPreflight,coinSource),damage=summarizeTargets(temp,start,prepared,hitStep,coinSource);
+ for(const r of resourceReports)r.firingSides=hitStep.firingReports.find(f=>f.commandId===r.commandId).firingSides;
+ scene.instances=temp.instances;scene.electronicRuntime=temp.electronicRuntime;
+ markProjectileImpacts(scene,due.map(u=>u.instanceId));
+ return{resourceReports,hitStep,damage,projectileIds:due.map(u=>u.instanceId)};
+}
+
 // 只能从store的完整保存事务内部调用。
 // 本函数另用工作副本，内部失败也不留下半结算。
 export function settleAttackPhase(scene, coinSource) {
@@ -2258,6 +2268,7 @@ export function settleAttackPhase(scene, coinSource) {
 
   initializeSettlementRuntime(working);
   initializeRoundTraitRuntime(working);
+  refreshElectronicEffects(working);
 
   const context = contextFor(working);
   const key = recordKey(context.turnNumber, context.phaseId);
@@ -2391,6 +2402,10 @@ for (const report of resourceReports) {
     coinSource
   );
 
+  initializeProjectiles(working);
+  const ballisticImpacts=settleProjectileImpacts(working,coinSource);
+  if(ballisticImpacts){resourceReports.push(...ballisticImpacts.resourceReports);hitStep.reports.push(...ballisticImpacts.hitStep.reports);hitStep.rangeSelections.push(...ballisticImpacts.hitStep.rangeSelections);damage.targetReports.push(...ballisticImpacts.damage.targetReports);damage.effects.push(...ballisticImpacts.damage.effects);}
+  const ballisticLaunches=launchProjectiles(working,prepared.entries,coinSource);
   const preAirAceLosses=resolveAceLosses(working,coinSource);
   const airCombatReports=resolveAirCombat(working,coinSource,{prevalidated:true});
   const ramReports=resolveMartyrRams(working,coinSource),aceLosses=preAirAceLosses.concat(resolveAceLosses(working,coinSource));
@@ -2458,7 +2473,7 @@ for (const report of resourceReports) {
     rangeSelections: copy(hitStep.rangeSelections),
     targetReports: damage.targetReports,
     airCombatIds:airCombatReports.map(r=>r.id),
-    ramReports,aceLosses,
+    ramReports,aceLosses,ballisticLaunches,ballisticImpactIds:ballisticImpacts?.projectileIds??[],
     effectReports,
     rayReports,
     rescueInterruptions
@@ -2485,6 +2500,7 @@ for (const report of resourceReports) {
   initializeSettlementRuntime(working);
 
   // 只写回本正式事务负责的数据。
+  scene.electronicRuntime=working.electronicRuntime;
   scene.instances = working.instances;
   scene.groups=working.groups;
   scene.airCombatRuntime=working.airCombatRuntime;

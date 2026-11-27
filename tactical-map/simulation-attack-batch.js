@@ -1,22 +1,23 @@
-import {blastArea} from './blast-area.js?v=self-sealing-1';
+import {flareBlocks} from './electronic-warfare.js?v=electronic-ballistic-1';
+import {blastArea} from './blast-area.js?v=electronic-ballistic-1';
 import {applyAirDisruption,airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
-import {initializeAirTraining} from './air-training-runtime.js?v=self-sealing-1';
-import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=self-sealing-1';
-import {aircraftMayFly} from './aviation-time.js?v=self-sealing-1';
+import {initializeAirTraining} from './air-training-runtime.js?v=electronic-ballistic-1';
+import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=electronic-ballistic-1';
+import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
 import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=self-sealing-1";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=self-sealing-1";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=self-sealing-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=self-sealing-1";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=electronic-ballistic-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=electronic-ballistic-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=electronic-ballistic-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=self-sealing-1";
-import { resolveHitCoins } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=self-sealing-1";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=self-sealing-1";
-import { readRangeCommandTarget } from "./simulation-range-command.js?v=self-sealing-1";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=self-sealing-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=electronic-ballistic-1";
+import { resolveHitCoins } from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=electronic-ballistic-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=electronic-ballistic-1";
+import { readRangeCommandTarget } from "./simulation-range-command.js?v=electronic-ballistic-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=electronic-ballistic-1";
 import { assertBroadsideQuotas, assertPlannedBroadsideQuotas } from "./weapon-firing-arc.js?v=blast-area-1";
 
 
@@ -405,6 +406,7 @@ function prepareCommand(startScene, command, visibilityBySide) {
   }
 
   const target = readAttackCommandTarget(command);
+  if(profile.large&&target.targetRef.kind!=="point")fail("大型慣性は爆心座標のみ指定できます。");
 
 // 武器性能范围不变；本次执行范围由实际指定的目标决定。
 // 集群武器直接指定单体时，只攻击该单体，
@@ -413,7 +415,7 @@ const clusterSingleTarget =
   profile.targetScope.trim() === "集群" &&
   target.targetRef.kind === "unit";
 
-const scope = clusterSingleTarget
+const scope = profile.large ? {kind:"range",mode:"all",maximumTargets:null} : clusterSingleTarget
   ? { kind: "single" }
   : weaponScope;
 
@@ -436,7 +438,7 @@ let memberIds;
 
     readRangeCommandTarget(command, scope);
 
-    memberIds = blastArea(startScene,target.targetRef,profile.penetration).memberIds;
+    memberIds = profile.large ? [] : blastArea(startScene,target.targetRef,profile.penetration).memberIds;
   }
 
   if (!memberIds.length && scope.kind!=='range') {
@@ -570,7 +572,7 @@ let memberIds;
     specifiedTargetIds: [...target.specifiedTargetIds],
     scope: copy(scope),
     memberIds: [...memberIds],
-    ...(scope.kind==='range'?{area:blastArea(startScene,target.targetRef,profile.penetration)}:{}),
+    ...(scope.kind==='range'?{area:{...blastArea(startScene,target.targetRef,profile.penetration),memberIds:[...memberIds]}}:{}),
     projection: {
       groups: profile.projection.groups,
       coinsPerGroup: profile.projection.coinsPerGroup,
@@ -872,6 +874,7 @@ function checkBatchEntries(startScene, entries, finalPreflight, observations = n
         scope: entry.scope,
         projection: entry.projection,
         guidance: entry.profile.guidance,
+        radarSuppressed:findUnit(startScene,entry.unitId).electronicState?.radarSuppressed??false,
         area: entry.area,
         aimCheck: () => finalPreflight(copy(observedStart),{...copy(entry),blastAimOnly:true}),
         specifiedTargetIds: entry.specifiedTargetIds
@@ -1097,6 +1100,8 @@ const firingReports = assertBroadsideQuotas(
           fail("範囲命中の正式な修正記録が不足しています。");
         }
 
+        const immune=flareBlocks(scene,findUnit(scene,occurrence.targetId),entry.profile.guidance);
+        if(immune){occurrence.hit={...occurrence.hit,hitCount:0,flareBlocked:true};}
         reports.push({
           version: 1,
           commandId: entry.commandId,
@@ -1123,10 +1128,14 @@ const firingReports = assertBroadsideQuotas(
     const input = {
       ...entry.projection,
       guidance: entry.profile.guidance,
+      radarSuppressed:findUnit(scene,entry.unitId).electronicState?.radarSuppressed??false,
       bonuses: check.bonuses,
       penalties: check.penalties
     };
 
+    const immune=flareBlocks(scene,findUnit(scene,entry.targetId),entry.profile.guidance);
+    const resolvedHit=coinSource===undefined?resolveHitCoins(input):resolveHitCoins(input,coinSource);
+    if(immune){resolvedHit.hitCount=0;resolvedHit.flareBlocked=true;}
     reports.push({
       version: 1,
       commandId: entry.commandId,
@@ -1142,11 +1151,7 @@ const firingReports = assertBroadsideQuotas(
         penalties: check.penalties,
         airDisruption: airDisruptionPenalty(scene, findUnit(scene, entry.unitId))
       },
-      hit: copy(
-        coinSource === undefined
-          ? resolveHitCoins(input)
-          : resolveHitCoins(input, coinSource)
-      )
+      hit: copy(resolvedHit)
     });
   }
 

@@ -1,35 +1,35 @@
-import {resolveFieldMines,observedFieldSupport} from './field-support-runtime.js?v=self-sealing-1';
-import {balloonObserver} from './support-effects.js?v=field-support-1';
-import {observedAviationLosses} from './aviation-losses.js?v=self-sealing-1';
-import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=self-sealing-1';
-import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=self-sealing-1';
+import {resolveFieldMines,observedFieldSupport} from './field-support-runtime.js?v=electronic-ballistic-1';
+import {balloonObserver} from './support-effects.js?v=electronic-ballistic-1';
+import {observedAviationLosses} from './aviation-losses.js?v=electronic-ballistic-1';
+import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=electronic-ballistic-1';
+import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=electronic-ballistic-1';
 import {airborneUnit} from './air-ground-rules.js?v=car-return-1';
-import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=self-sealing-1';
+import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=electronic-ballistic-1';
 import {observedAirCombat} from './air-combat-report.js?v=self-sealing-1';
-import {aircraftMayFly} from './aviation-time.js?v=self-sealing-1';
+import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
 import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=self-sealing-1';
-import {reconcileAviation} from './aviation-operations.js?v=self-sealing-1';
-import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=self-sealing-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=field-support-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=self-sealing-1";
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=electronic-ballistic-1';
+import {reconcileAviation} from './aviation-operations.js?v=electronic-ballistic-1';
+import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=electronic-ballistic-1';
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=electronic-ballistic-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=electronic-ballistic-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, navalKind, navalHeight, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=self-sealing-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=electronic-ballistic-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=self-sealing-1";
+} from "./ship-runtime.js?v=electronic-ballistic-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=self-sealing-1";
+} from "./simulation-rescue.js?v=electronic-ballistic-1";
 
 import {
   createShipEffectsState,
@@ -40,11 +40,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=self-sealing-1";
+} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=self-sealing-1";
+} from "./simulation-autonomous-rescue.js?v=electronic-ballistic-1";
 
 import {
   routeLength,
@@ -76,7 +76,7 @@ function setUnitVertical(unit,value){
   return normalizeAircraftPosition(unit);
 }
 function operational(unit) {
-  if (!positioned(unit)) return false;
+  if (unit.projectileState || !positioned(unit)) return false;
 
   if(unit.airshipBaseState&&unit.airshipBaseState.mission!=='airborne')return false;
   if(unit.branch==='building')return buildingAlive(unit);
@@ -313,8 +313,9 @@ function getNormalObserverVisibility(scene, observer, target) {
     return null;
   }
 
-  const detection = navalGrade(target, "detection");
-  const recon = navalGrade(observer, isSubmerged(target) ? "aswRecon" : target.branch==='air'||target.branch==='navy'&&navalKind(target)==='air'?"airRecon":"seaRecon");
+  const detection = target.electronicState?.detectionGradeE?1:navalGrade(target, "detection");
+  if(observer.electronicState?.reconDisabled)return null;
+  const recon = observer.electronicState?.seaAirGradeE&&!isSubmerged(target)?1:navalGrade(observer, isSubmerged(target) ? "aswRecon" : target.branch==='air'||target.branch==='navy'&&navalKind(target)==='air'?"airRecon":"seaRecon");
 
   return (
     detection !== null &&
@@ -379,6 +380,7 @@ export function getEquipmentReconSourceVisibility(
  * 多观察者合并仍由getVisibility负责。
  */
 function observerVisibility(scene, observer, target, readRecon) {
+  if(observer.electronicState?.reconDisabled&&Math.hypot(observer.x-target.x,observer.y-target.y)>100)return null;
   if (!operational(observer) || !positioned(target)) return null;
   if (isSubmerged(target)) return getNormalObserverVisibility(scene,balloonObserver(scene,observer),target);
   if (observer.branch === "navy" && target.branch === "navy") {
@@ -452,6 +454,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
   const instances = [];
 
   for (const unit of scene.instances) {
+    if(unit.projectileState&&unit.projectileState.status!=='flying')continue;
     if(hasAircraftTemplate(unit)&&unit.aircraftState?.status==='destroyed')continue;
     const level = visibility.get(unit.instanceId);
     if (!level) continue;
@@ -478,6 +481,8 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         delete observed.equipmentState;
         delete observed.trainingState;
         observed.acePilotMarker=unit.aircraftState?.acePilot&&unit.aircraftState.status!=='destroyed'?unit.aircraftState.acePilotName:null;
+        if(observed.projectileState){delete observed.projectileState.sourceId;delete observed.projectileState.sourceName;delete observed.projectileState.launchPoint;delete observed.projectileState.weapon;}
+        delete observed.electronicState;delete observed.flareUse;delete observed.flareAutoEnabled;
         delete observed.aircraftState;
         delete observed.flightPlan;
         delete observed.snapshot.aircraftSnapshots;
@@ -702,6 +707,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
 }
 
 export function assertManualControl(scene, members) {
+  if(members.some(u=>u.projectileState))fail("弾道弾の飛行経路は発射時に固定され、手動行動は指定できません。");
   const side = getObservationSide(scene);
 
   if (!members.length || members.some(unit => unit.side !== side)) {
@@ -1124,7 +1130,7 @@ function createAutonomousMovementPlans(
   const damageByProfile = new Map();
   const autonomousUnits = planning.instances
     .filter(unit =>
-    ["enemy", "neutral"].includes(unit.side) &&
+    !unit.projectileState && ["enemy", "neutral"].includes(unit.side) &&
     unit.branch !== "building" && !hasAircraftTemplate(unit) && (unit.branch === "navy" || !hasSupportEquipment(unit)) &&
     !excludedIds.has(unit.instanceId)
   )

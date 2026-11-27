@@ -1,14 +1,14 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=self-sealing-1";
+} from "./formation-target-runtime.js?v=electronic-ballistic-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=self-sealing-1";
+} from "./simulation-features.js?v=electronic-ballistic-1";
 
 import {
   resolveHitCoins
-} from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
+} from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -170,6 +170,7 @@ export function prepareRangeProjection({
   scope,
   projection,
   guidance,
+  radarSuppressed = false,
   area = null,
   aimCheck = null,
   specifiedTargetIds = []
@@ -390,6 +391,7 @@ export function prepareRangeProjection({
       standalone: projection.standalone
     },
     guidance,
+    radarSuppressed,
 
     // 无论展开几名成员，本命令只有这一份资源消耗。
     ammoCost,
@@ -747,6 +749,7 @@ export function resolveRangeProjectionHits(
         coinsPerGroup,
         standalone: prepared.projection.standalone,
         guidance: prepared.guidance,
+        radarSuppressed:prepared.radarSuppressed??false,
         bonuses: check.bonuses,
         penalties: check.penalties
       }

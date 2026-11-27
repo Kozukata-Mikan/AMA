@@ -1,13 +1,13 @@
-import {blastRadius} from './blast-area.js?v=self-sealing-1';
+import {blastRadius} from './blast-area.js?v=electronic-ballistic-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airAttackModes,airborneUnit} from './air-ground-rules.js?v=car-return-1';
 import {
   readRangeCommandTarget
-} from "./simulation-range-command.js?v=self-sealing-1";
+} from "./simulation-range-command.js?v=electronic-ballistic-1";
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=self-sealing-1";
+} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
 
 
 function fail(message) {
@@ -93,14 +93,14 @@ function checkOptions(options) {
  *
  * このUI自体は保存、乱数、扣弾、射線登録を行わない。
  */
-export function createRangeTargetEditor({options,scope,initial=null,penetration=null,coordinateMembers=[]}) {
+export function createRangeTargetEditor({options,scope,initial=null,penetration=null,coordinateMembers=[],coordinateOnly=false}) {
   checkOptions(options);
   if(!scope||!['all','specified','random'].includes(scope.mode)||(scope.mode==='all'?scope.maximumTargets!==null:!Number.isSafeInteger(scope.maximumTargets)||scope.maximumTargets<1))fail('装備の範囲定義が不正です。');
   const radius=penetration===null?null:blastRadius(penetration);
   const node=(tag,text='')=>{const el=document.createElement(tag);el.textContent=text;return el;};
   const root=node('fieldset');root.className='simulation-range-target';root.append(node('legend','範囲攻撃の目標'));
   const labeled=(title,el)=>{const label=node('label');label.append(node('span',title),el);return label;};
-  const mode=node('select');mode.append(new Option('編隊・集群を狙う','group'),new Option('爆心の座標を入力','point'));root.append(labeled('照準方法',mode));
+  const mode=node('select');mode.append(new Option('編隊・集群を狙う','group'),new Option('爆心の座標を入力','point'));if(coordinateOnly){mode.value='point';root.append(node('p','大型慣性：爆心座標を指定。次ラウンドの同一次序に着弾します。弾体は迎撃可能です。'));}else root.append(labeled('照準方法',mode));
   const select=node('select');select.append(new Option('選択してください',''),...options.map((o,i)=>new Option(o.label,String(i))));const groupLabel=labeled('目標の編隊・集群',select);root.append(groupLabel);
   const coordinates=node('div');coordinates.className='blast-coordinate-fields';const inputs={};for(const axis of ['x','y','z']){const input=node('input');input.type='number';input.step='any';input.value=axis==='z'?'0':'';inputs[axis]=input;coordinates.append(labeled('爆心 '+axis.toUpperCase(),input));}root.append(coordinates,node('p','Zは海面0、上空は正、水中は負の値です。'));
   const summary=node('p');summary.className='blast-summary';root.append(summary);
@@ -201,7 +201,7 @@ export function createRangeAttackPanel({ store, unitId }) {
           command => command.groupId === group.groupId
         );
 
-        const editor = createRangeTargetEditor({
+        const editor = createRangeTargetEditor({coordinateOnly:group.profile.large,
           options: targets.options,
           coordinateMembers:targets.coordinateMembers,
           penetration:group.profile.penetration,

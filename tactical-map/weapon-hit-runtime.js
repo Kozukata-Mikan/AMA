@@ -77,7 +77,8 @@ export function resolveHitCoins({
   guidance,
   bonuses = 0,
   penalties = 0,
-  standalone = false
+  standalone = false,
+  radarSuppressed = false
 }, coinSource = randomCoin) {
 
   requireInteger(groups, "硬貨の束数", 1);
@@ -89,6 +90,7 @@ export function resolveHitCoins({
     throw new Error("誘導方式の指定が不正です。");
   }
 
+  if(typeof radarSuppressed!=="boolean")throw Error("電子圧制の設定が不正です。");
   if (typeof coinSource !== "function") {
     throw new Error("コイン判定関数がありません。");
   }
@@ -104,7 +106,7 @@ export function resolveHitCoins({
 
     // 单独R没有X叠，奖励／惩罚不能作用于叠内硬币。
     // 雷达、数控、射线的硬币必命中效果仍保留。
-    const guaranteed = GUARANTEED_COIN_GUIDANCE.has(guidance);
+    const guaranteed = GUARANTEED_COIN_GUIDANCE.has(guidance)&&!(guidance==='radar'&&radarSuppressed);
     const heads = guaranteed ? true : toss(coinSource);
 
     return {
@@ -212,7 +214,7 @@ export function resolveHitCoins({
   }
 
   const guaranteedCoins =
-    GUARANTEED_COIN_GUIDANCE.has(guidance);
+    GUARANTEED_COIN_GUIDANCE.has(guidance)&&!(guidance==='radar'&&radarSuppressed);
 
   const coinResults = [];
 
@@ -300,7 +302,7 @@ export function parseHitExpression(value) {
  * 由属性适配层根据练度与词条计算，不能用猜测的图鉴字段。
  *
  * electronicBonuses / electronicPenalties:
- * 电子干扰效果尚未具体定义，由正式电子规则提供。
+ * 电子战的雷达束内50%通过radarSuppressed单独处理，不伪装成奖惩骰。
  *
  * globalBonuses / globalPenalties:
  * 明确作用于本次R判定的其他效果，不等同于天气或练度。

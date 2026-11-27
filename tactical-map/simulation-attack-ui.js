@@ -1,10 +1,10 @@
-import {createRangeTargetEditor} from './simulation-range-target-ui.js?v=self-sealing-1';
-import {readWeaponTargetScope} from './weapon-profile-runtime.js?v=self-sealing-1';
+import {createRangeTargetEditor} from './simulation-range-target-ui.js?v=electronic-ballistic-1';
+import {readWeaponTargetScope} from './weapon-profile-runtime.js?v=electronic-ballistic-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js?v=car-return-1';
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=self-sealing-1";
-import { getHitModifiers } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=electronic-ballistic-1";
+import { getHitModifiers } from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
 
 
 
@@ -518,7 +518,7 @@ function selectableGroups() {
         if(!rangeEditor){
           const current=store.getAttackCommands(report.unitId).commands.find(c=>c.groupId===group.groupId);
           const available=store.getRangeAttackTargetOptions(report.unitId);
-          rangeEditor=createRangeTargetEditor({options:available.options,coordinateMembers:available.coordinateMembers,penetration:group.profile.penetration,scope,initial:current?.targetRef?current:null});
+          rangeEditor=createRangeTargetEditor({coordinateOnly:group.profile.large,options:available.options,coordinateMembers:available.coordinateMembers,penetration:group.profile.penetration,scope,initial:current?.targetRef?current:null});
           rangeEditor.element.addEventListener('change',renderReport);
           rangeEditors.set(group.groupId,rangeEditor);
         }
@@ -583,7 +583,7 @@ function selectableGroups() {
   const removeAssignment = button("選択した組の目標を解除", () => {
     for (const group of selectedGroups()) {
       assignedTargets.delete(group.groupId);
-      const scope=rangeScope(group);if(scope){const available=store.getRangeAttackTargetOptions(report.unitId);rangeEditors.set(group.groupId,createRangeTargetEditor({options:available.options,coordinateMembers:available.coordinateMembers,penetration:group.profile.penetration,scope}));}
+      const scope=rangeScope(group);if(scope){const available=store.getRangeAttackTargetOptions(report.unitId);rangeEditors.set(group.groupId,createRangeTargetEditor({coordinateOnly:group.profile.large,options:available.options,coordinateMembers:available.coordinateMembers,penetration:group.profile.penetration,scope}));}
     }
 
     renderEquipmentList();

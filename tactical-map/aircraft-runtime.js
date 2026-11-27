@@ -1,5 +1,5 @@
 import {airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
-import {airConfused,airRetreating,airTrainingRule,hasAirTrait} from './air-training-runtime.js?v=self-sealing-1';
+import {airConfused,airRetreating,airTrainingRule,hasAirTrait} from './air-training-runtime.js?v=electronic-ballistic-1';
 import {validateFlightPlan} from './flight-plan-data.js';
 import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=self-sealing-1';
 import {TURN_DURATION_MINUTES} from './rules-engine.js';
@@ -47,7 +47,7 @@ export function ensureAircraftRuntime(unit){
 }
 export function aircraftCanAct(unit,action){
  const state=unit.aircraftState;
- return hasAircraftTemplate(unit)&&Boolean(state)&&state.mission==='airborne'&&state.status!=='destroyed'&&(action==='move'||state?.status==='operational'&&(action!=='attack'||!airConfused(unit)&&!airRetreating(unit)));
+ return (!['attack','defend'].includes(action)||!['drone','land-drone'].includes(unit.snapshot?.aircraft?.type)||!unit.electronicState?.droneSuppressed)&&hasAircraftTemplate(unit)&&Boolean(state)&&state.mission==='airborne'&&state.status!=='destroyed'&&(action==='move'||state?.status==='operational'&&(action!=='attack'||!airConfused(unit)&&!airRetreating(unit)));
 }
 export function applyAircraftHit(unit,{hit,durabilityDamage=0}){
  const s=ensureAircraftRuntime(unit);

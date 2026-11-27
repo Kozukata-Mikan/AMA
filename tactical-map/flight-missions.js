@@ -1,18 +1,18 @@
-import {supportCapacity} from './support-equipment.js?v=field-support-1';
+import {supportCapacity} from './support-equipment.js?v=electronic-ballistic-1';
 import {parseDamageRule} from './weapon-damage-rule.js?v=car-return-1';
-import {hasAirTrait} from './air-training-runtime.js?v=self-sealing-1';
-import {expandFormationMemberIds} from './formation-target-runtime.js?v=self-sealing-1';
-import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=self-sealing-1';
+import {hasAirTrait} from './air-training-runtime.js?v=electronic-ballistic-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=electronic-ballistic-1';
+import {maximumHullDamage} from './simulation-autonomous-weapon.js?v=electronic-ballistic-1';
 import {validateFlightPlan} from './flight-plan-data.js';
-import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=self-sealing-1';
-import {aircraftMayFly} from './aviation-time.js?v=self-sealing-1';
-import {getVisibility} from './simulation-features.js?v=self-sealing-1';
-import {aviationRunways,aviationLanes,aviationHostAlive,landAircraft} from './aviation-operations.js?v=self-sealing-1';
+import {hasAircraftTemplate,readAircraftProfile,aircraftCanAct} from './aircraft-runtime.js?v=electronic-ballistic-1';
+import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
+import {getVisibility} from './simulation-features.js?v=electronic-ballistic-1';
+import {aviationRunways,aviationLanes,aviationHostAlive,landAircraft} from './aviation-operations.js?v=electronic-ballistic-1';
 import {sampleTerrain} from './terrain-data.js';
-import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=self-sealing-1';
+import {readWeaponProfile,readWeaponTargetScope} from './weapon-profile-runtime.js?v=electronic-ballistic-1';
 import {readFiringArc} from './weapon-firing-arc.js?v=blast-area-1';
 import {checkAirAttackMode,airborneUnit} from './air-ground-rules.js?v=car-return-1';
-import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=self-sealing-1';
+import {saveAirCombat,initializeAirCombat} from './air-combat.js?v=electronic-ballistic-1';
 const fail=m=>{throw Error(m);},distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),live=p=>hasAircraftTemplate(p)&&p.aircraftState?.status!=='destroyed';
 // CAS must not enqueue an ordinary gun against a submerged target. Such a
 // command has no legal fallback and would abort the whole attack transaction.

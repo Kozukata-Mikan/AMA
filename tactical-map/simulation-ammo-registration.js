@@ -1,6 +1,6 @@
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=self-sealing-1";
+} from "./equipment-runtime.js?v=electronic-ballistic-1";
 
 export function createAmmoRegistrationFeatures(getState, commit) {
   function registerMissingAmmo(request, expectedRevision) {

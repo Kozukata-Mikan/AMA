@@ -1,16 +1,16 @@
-import {drawCatalogSymbol} from './catalog-symbols.js?v=self-sealing-1';
+import {drawCatalogSymbol} from './catalog-symbols.js?v=electronic-ballistic-1';
 import {AIR_TRAITS} from '../js/aircraft-training.js?v=self-sealing-1';
 import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js?v=car-return-1';
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
 import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=field-support-1';
 import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=self-sealing-1';
 import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=self-sealing-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=field-support-1";
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=electronic-ballistic-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=self-sealing-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=self-sealing-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=electronic-ballistic-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -21,7 +21,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=self-sealing-1";
+} from "../js/catalog-seed.js?v=electronic-ballistic-1";
 
 // ===== 图鉴界面 =====
 

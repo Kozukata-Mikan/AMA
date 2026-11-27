@@ -1,16 +1,16 @@
-import { rescueSupported, supportRadius } from "./support-equipment.js?v=field-support-1";
-import { readShipProfile } from "./ship-runtime.js?v=self-sealing-1";
+import { rescueSupported, supportRadius } from "./support-equipment.js?v=electronic-ballistic-1";
+import { readShipProfile } from "./ship-runtime.js?v=electronic-ballistic-1";
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=self-sealing-1";
+} from "./simulation-features.js?v=electronic-ballistic-1";
 
 import {
   getEquipmentControlCandidates,
   applyExternalEquipmentRepairResult
-} from "./equipment-item-runtime.js?v=self-sealing-1";
+} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

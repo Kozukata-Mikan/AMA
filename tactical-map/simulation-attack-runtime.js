@@ -1,7 +1,7 @@
-import {readBlastPoint} from './blast-area.js?v=self-sealing-1';
+import {readBlastPoint} from './blast-area.js?v=electronic-ballistic-1';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { resolveAttackExecutionPhase } from "./attack-order-runtime.js";
-import { readWeaponProfile } from "./weapon-profile-runtime.js?v=self-sealing-1";
+import { readWeaponProfile } from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
 
 
 // 攻击计划的持久化与结构校验。

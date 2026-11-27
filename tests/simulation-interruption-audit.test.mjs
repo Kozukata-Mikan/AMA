@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Worker as NodeWorker} from 'node:worker_threads';
 import {auditSimulationRules} from '../scripts/audit-simulation-rules.mjs';
-import {applyEquipmentAttack} from '../tactical-map/equipment-item-runtime.js?v=self-sealing-1';
+import {applyEquipmentAttack} from '../tactical-map/equipment-item-runtime.js?v=electronic-ballistic-1';
 import {source} from './fixtures.mjs';
 import {weapon} from './scenarios/carrier-air-strike.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=self-sealing-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=electronic-ballistic-1';
 import {readSave,writeSave} from '../js/save-database.js';
-import {shutdownBackground} from '../tactical-map/background-client.js?v=self-sealing-1';
+import {shutdownBackground} from '../tactical-map/background-client.js?v=electronic-ballistic-1';
 import {serializeBackgroundError,deserializeBackgroundError} from '../tactical-map/background-errors.js?v=settlement-audit-1';
-import {supportCapacity,supportEffectOf} from '../tactical-map/support-equipment.js?v=field-support-1';
+import {supportCapacity,supportEffectOf} from '../tactical-map/support-equipment.js?v=electronic-ballistic-1';
 
 test('worker diagnostics preserve nested causes, public messages and codes without arbitrary battlefield data',()=>{
  const root=Object.assign(new TypeError('炮位失效'),{code:'ATTACK_WEAPON_UNAVAILABLE',skipAttack:true,scene:{enemySecret:'hidden'}}),outer=new Error('自律攻撃計画を作成できません。',{cause:root});Object.assign(outer,{name:'SimulationSettlementError',publicMessage:outer.message});
@@ -25,10 +25,10 @@ test('rule-category matrix completes supported rounds and preserves deliberate u
  for(const row of rows)await t.test(row.name,()=>assert.equal(row.outcome,row.expected,JSON.stringify(row.error)));
 });
 test('real worker sends internal settlement causes and failed settlement leaves the saved scene untouched',async()=>{
- await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};const s=source();s.instances[1].x=50;const actor=s.instances[1],gun=weapon('unsupported',1,1,5,{guidance:'惯性（大型）',range:300});actor.snapshot.equipmentSnapshots=[gun];actor.snapshot.mounts=[{position:'中部①',equipmentId:gun.id,count:1}];
+ await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};const s=source();s.instances[1].x=50;const actor=s.instances[1],gun=weapon('unsupported',1,1,5,{guidance:'未定義誘導',range:300});actor.snapshot.equipmentSnapshots=[gun];actor.snapshot.mounts=[{position:'中部①',equipmentId:gun.id,count:1}];
  let calls=0;globalThis.Worker=class{constructor(){this.w=new NodeWorker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.w.on('message',data=>this.onmessage?.({data}));this.w.on('error',error=>this.onerror?.(error));}postMessage(data){calls++;this.w.postMessage(data);}terminate(){this.w.terminate();}};
  try{const id=await createSimulation(s,()=>({valid:true})),store=await openSimulation(id);await store.setEnemyAutonomy(true);await store.beginMovement();await store.resolveMovement();const before=await readSave('junqi-simulation-v1:'+id),beforeCalls=calls;
-  await assert.rejects(store.settleAttackPhase(store.getSceneSnapshot().revision),e=>{assert.equal(e.name,'SimulationSettlementError');assert.match(e.publicMessage,/自律攻撃/);assert.match(e.cause.message,/大型武器/);assert.match(e.cause.stack,/finalPreflight/);return true;});assert.equal(calls-beforeCalls,1,'failed random calculation must never be retried silently');assert.equal(await readSave('junqi-simulation-v1:'+id),before);
+  await assert.rejects(store.settleAttackPhase(store.getSceneSnapshot().revision),e=>{assert.equal(e.name,'SimulationSettlementError');assert.match(e.publicMessage,/自律攻撃/);assert.match(e.cause.message,/引導方式/);assert.match(e.cause.stack,/appendAutonomousAttackCommands/);return true;});assert.equal(calls-beforeCalls,1,'failed random calculation must never be retried silently');assert.equal(await readSave('junqi-simulation-v1:'+id),before);
  }finally{shutdownBackground();delete globalThis.Worker;}
 });
 test('a saved plan invalidated by weapon damage is skipped at execution, but a new damaged-weapon order is rejected',async()=>{

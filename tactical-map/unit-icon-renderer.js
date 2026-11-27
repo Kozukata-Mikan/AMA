@@ -170,6 +170,7 @@ function makeSpecialPath() {
 }
 
 function getUnitIconPath(unit) {
+  if(unit.projectileState)return "M 0 -22 Q 6 -16 6 -8 L 6 8 L 12 17 L 4 15 L 0 22 L -4 15 L -12 17 L -6 8 L -6 -8 Q -6 -16 0 -22 Z M -5 -6 L 5 -6";
   switch (unit.branch) {
     case "navy":
       return navalSymbolPath(navalSymbolFor(unit), unit.sizeLevel);

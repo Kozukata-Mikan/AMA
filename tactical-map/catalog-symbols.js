@@ -1,4 +1,4 @@
-import {getGuidanceKind,getGuidanceLabel} from './weapon-profile-runtime.js?v=self-sealing-1';
+import {getGuidanceKind,getGuidanceLabel} from './weapon-profile-runtime.js?v=electronic-ballistic-1';
 import {AIRCRAFT_TYPES} from '../js/aircraft-template.js?v=self-sealing-1';
 const shape=d=>({tag:'path',d,fill:'currentColor',stroke:'none'});
 const line=d=>({tag:'path',d,fill:'none',stroke:'currentColor','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'});

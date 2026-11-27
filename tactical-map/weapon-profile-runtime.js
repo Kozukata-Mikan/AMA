@@ -1,6 +1,6 @@
-import { parseHitExpression } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
-import { getEquipmentLabel } from "../js/catalog-seed.js?v=self-sealing-1";
-import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=self-sealing-1";
+import { parseHitExpression } from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
+import { getEquipmentLabel } from "../js/catalog-seed.js?v=electronic-ballistic-1";
+import { readEffectiveInitialAmmo } from "./equipment-runtime.js?v=electronic-ballistic-1";
 
 
 // 只适配已经确认的图鉴字段。
@@ -135,6 +135,7 @@ export function readWeaponProfile(equipment, group = null) {
     result.guidance = guidance.id;
     result.underwater = guidance.underwater;
     result.large = guidance.large === true;
+    if(result.large)result.targetScope="範囲（全体）";
   } else {
     issues.push("引導方式が未登録、または未対応です。");
   }

@@ -1,4 +1,4 @@
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=self-sealing-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=electronic-ballistic-1';
 import {firingArcDefinition} from './weapon-firing-arc.js?v=blast-area-1';
 import {buildingMountAvailable} from './building-state.js?v=facility-rules-1';
 import {activeAircraftMounts} from '../js/aircraft-template.js?v=self-sealing-1';
