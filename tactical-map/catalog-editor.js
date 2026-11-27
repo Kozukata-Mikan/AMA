@@ -200,6 +200,10 @@ function labeled(parent, labelText, control, definition = "") {
   return control;
 }
 
+const bridgeTitle = "艦橋";
+const bridgeDescription = "対海・対空・対潜偵察の値は「偵察・探測」で設定します。艦橋が損傷すると、これらの偵察と艦橋の支援設備が停止します。";
+const isBridgePosition = position => ["艦橋", "舰桥", "bridge"].includes(position);
+
 function catalogFieldSections(fields, category) {
   const sections = category === "units" ? [
     ["basic", "基本情報", ["name","branch","naval.kind","faction","naval.type","naval.iconType","aircraft.type","protected"]],
@@ -845,7 +849,6 @@ export function mountCatalogEditor({
 
     }
 
-    if(category==='units'&&item.aviationComplement?.length)detail.append(node('h4','搭載航空機（航空運用）'),table(['機体','機数','航空編隊'],item.aviationComplement.map(e=>[store.units.find(u=>u.id===e.unitId)?.name??e.unitId,e.count,e.groupId??'なし'])));
     if(category==='units' && item.branch==='air')appendAircraftSummary(detail,item,store.getData().equipment);
     if (category === "equipment") {
       detail.append(node(
@@ -894,7 +897,9 @@ export function mountCatalogEditor({
         data.equipment.map(value => [value.id, value])
       );
 
-      const rows = item.mounts.map(mount => {
+      const rows = [];
+      const bridgeRows = [];
+      for (const mount of item.mounts) {
         const equipment = equipmentMap.get(mount.equipmentId);
 
         const link = button(
@@ -919,8 +924,9 @@ export function mountCatalogEditor({
               : ` · ${mount.count * equipment.barrelCount} 管`
           );
 
-        return [mount.position, link, quantity];
-      });
+        const onBridge = item.branch === "navy" && isBridgePosition(mount.position);
+        (onBridge ? bridgeRows : rows).push([onBridge ? bridgeTitle : mount.position, link, quantity]);
+      }
 
       if (rows.length) {
         detail.append(table(
@@ -931,6 +937,18 @@ export function mountCatalogEditor({
         detail.append(node("p", "装備未登録"));
       }
 
+
+      if (item.branch === "navy") {
+        detail.append(node("h4", bridgeTitle), node("p", bridgeDescription));
+        detail.append(bridgeRows.length ? table(["位置", "装備", "数量"], bridgeRows) : node("p", "支援設備未登録"));
+      }
+      if (item.branch === "navy" || item.aviationComplement?.length) {
+        const planes = (item.aviationComplement ?? []).map(entry => [
+          store.units.find(unit => unit.id === entry.unitId)?.name ?? entry.unitId,
+          entry.count, entry.groupId ?? "なし"
+        ]);
+        detail.append(node("h4", "搭載航空機（航空運用）"), planes.length ? table(["機体", "機数", "航空編隊"], planes) : node("p", "搭載機未登録"));
+      }
 
       if (item.description) {
         detail.append(
@@ -1235,8 +1253,11 @@ export function mountCatalogEditor({
       const equipment = store.getData().equipment;
       const compartment=['navy','building'].includes(draft.branch)?node('fieldset','','catalog-section'):null;
       const compartmentHost=compartment?node('div','','catalog-repeat-list'):null;
-      if(compartment){compartment.append(node('legend',draft.branch==='navy'?'艦橋｜偵察・支援設備':'中心｜偵察・支援設備'),node('p',draft.branch==='navy'?'対海・対空・対潜偵察と追加の支援設備をまとめた区画です。設備威力で艦橋が損傷すると同時に停止します。':'中心は建築に1か所です。複数の支援設備を収容でき、装備を追加しても中心耐性を分割しません。中心停止中は偵察を含む全設備が停止します。'));
-       const sensors=node('div','','catalog-section-grid');for(const key of ['naval.seaRecon','naval.airRecon','naval.aswRecon']){const control=controls.get(key);if(control)sensors.append(control.closest('label'));}compartment.append(sensors,compartmentHost);
+      if(compartment){compartment.append(node('legend',draft.branch==='navy'?bridgeTitle:'中心｜偵察・支援設備'),node('p',draft.branch==='navy'?bridgeDescription:'中心は建築に1か所です。複数の支援設備を収容でき、装備を追加しても中心耐性を分割しません。中心停止中は偵察を含む全設備が停止します。'));
+       if (draft.branch === 'building') {
+        const sensors=node('div','','catalog-section-grid');for(const key of ['naval.seaRecon','naval.airRecon','naval.aswRecon']){const control=controls.get(key);if(control)sensors.append(control.closest('label'));}compartment.append(sensors);
+       }
+       compartment.append(compartmentHost);
       }
 
       function addMount(value = {
@@ -1278,12 +1299,12 @@ export function mountCatalogEditor({
         function updatePreview() {
           if(draft.branch==='air'||compartment){
             const previous=equipmentSelect.value;
-            const restricted=position.value==='ポッド'||position.value==='艦橋'||position.value==='中心';
+            const restricted=position.value==='ポッド'||isBridgePosition(position.value)||position.value==='中心';
             const available=equipment.filter(e=>!restricted||e.kind==='support'||e.id===value.equipmentId&&value.position==='中心'&&position.value==='中心');
             fillEquipmentOptions(equipmentSelect,available,previous,getEquipmentLabel);
             if(available.some(e=>e.id===previous))equipmentSelect.value=previous;
           }
-          if(compartment){const host=['艦橋','中心'].includes(position.value)?compartmentHost:mountHost;if(row.parentElement!==host)host.append(row);}
+          if(compartment){const host=(isBridgePosition(position.value)||position.value==='中心')?compartmentHost:mountHost;if(row.parentElement!==host)host.append(row);}
           const item = equipment.find(
             candidate => candidate.id === equipmentSelect.value
           );
