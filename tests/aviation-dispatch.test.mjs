@@ -46,3 +46,21 @@ test('rotorcraft use one instant 27-aircraft pad without runway or RATO',()=>{
  land();
  assert.ok(s.instances.slice(1,28).every(p=>p.aircraftState.mission==='parked'));
 });
+
+test('fresh preparation refills fixed weapons, defensive weapons, loadout and consumables once while preserving damage',()=>{
+ const s=scene({count:1}),p=s.instances[1];
+ const flare=supportEquipmentSeed().find(e=>e.supportEffect==='flare');
+ p.snapshot.equipmentSnapshots.push(flare);
+ p.snapshot.mounts.push({equipmentId:'bomb',position:'自衛武器',count:1},{equipmentId:flare.id,position:'ポッド',count:1});
+ delete p.equipmentState;ensureUnitCombatRuntime(p);
+ const [fixed,defense,pod]=p.equipmentState.groups;
+ fixed.remainingAmmo=0;defense.remainingAmmo=1;defense.damaged=true;pod.consumed=true;
+ s.fieldSupportRuntime={spent:[{unitId:p.instanceId,groupId:'old-mine'},{unitId:'other',groupId:'other-mine'}]};
+ command(s,'stage',{zone:'preparation'});command(s,'prepare',{loadoutId:'A'});
+ let groups=p.equipmentState.groups;
+ assert.deepEqual(groups.map(g=>g.remainingAmmo),[3,3,null,3]);assert.ok(groups[1].damaged);assert.ok(!groups[2].consumed);
+ assert.deepEqual(s.fieldSupportRuntime.spent.map(u=>u.unitId),['other']);
+ groups[2].consumed=true;groups[1].remainingAmmo=0;
+ command(s,'prepare',{loadoutId:'B'});groups=p.equipmentState.groups;
+ assert.equal(groups[1].remainingAmmo,0);assert.ok(groups[2].consumed);
+});

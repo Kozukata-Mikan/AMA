@@ -1,4 +1,4 @@
-import {supportCapacity,supportEffectOf} from './support-equipment.js?v=visual-support-bridge-1';
+import {harborNetProtectedUnits,supportCapacity,supportEffectOf} from './support-equipment.js?v=visual-support-bridge-1';
 import {buildingMountAvailable} from './building-state.js?v=visual-support-bridge-1';
 import {sampleTerrain} from './terrain-data.js';
 import {navalKind} from './naval-kind.js';
@@ -44,9 +44,13 @@ export function resolveFieldMines(scene,destinations=[],coin){
   for(const mine of pathCandidates(route,buckets)){if(mine.side===unit.side)continue;const contact=firstContact(route,mine);if(contact===null)continue;const speed=unit.branch==='navy'?readShipProfile(unit).movementLimit:1;events.push({unit,mine,clear:guard,time:contact/Math.max(1,speed)});}
  }
  events.sort((a,b)=>a.time-b.time||Number(b.clear)-Number(a.clear)||a.unit.instanceId.localeCompare(b.unit.instanceId)||a.mine.id.localeCompare(b.mine.id));
+ const netProtection=harborNetProtectedUnits(scene);
  const removed=new Set(),reports=[];
  for(const event of events){const {unit,mine}=event;if(removed.has(mine.id)||unit.shipState?.status==='sunk')continue;removed.add(mine.id);
   if(event.clear){record(scene,{kind:'mine-cleared',mineId:mine.id,unitId:unit.instanceId,side:unit.side,x:mine.x,y:mine.y});continue;}
+  if(netProtection.has(unit.instanceId)){
+   record(scene,{kind:'mine-triggered',mineId:mine.id,unitId:unit.instanceId,side:unit.side,ownerSide:mine.side,x:mine.x,y:mine.y,damage:0,harborNetBlocked:true});continue;
+  }
   const report=applyShipMineDamage(unit,mine.id,{turnNumber:scene.turn.number,phaseId:scene.turn.phaseId},coin);recordSinkingStarts(scene,[report]);reports.push(report);record(scene,{kind:'mine-triggered',mineId:mine.id,unitId:unit.instanceId,side:unit.side,ownerSide:mine.side,x:mine.x,y:mine.y,damage:report.actualHpLoss,report});
  }
  runtime.mines=runtime.mines.filter(m=>!removed.has(m.id));return reports;

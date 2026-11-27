@@ -66,3 +66,29 @@ test('worker special-phase settlement saves support recovery and locks',async()=
 test('observation hides support links and locks when a foreign participant is unidentified',async()=>{
  const {getObservedScene}=await import('../tactical-map/simulation-features.js?v=visual-support-bridge-1');const input=field({effect:'supply-station',targets:1});input.instances[1].shipState.remainingEndurance=0;const{id,store}=await sim(input);await special(store);await store.startSupport({providerId:'p',targetId:'t0',kind:'supply'});const raw=await saved(id);raw.controls.observationSide='enemy';const observed=getObservedScene(raw);assert.deepEqual(observed.supportRuntime.tasks,[]);assert.equal(observed.supportRuntime.records,undefined);assert.ok(observed.instances.every(u=>u.supportLocked===undefined));
 });
+
+test('ammo alone enables resupply and each registered finite pool refills to its own cap',()=>{
+ const s=field({effect:'supply-station',targets:1}),t=s.instances[1];
+ const gun={id:'rounds',name:'rounds',kind:'weapon',ammo:9};
+ t.snapshot.equipmentSnapshots=[gun];t.snapshot.mounts=[{position:'前部',equipmentId:gun.id,count:2}];
+ delete t.equipmentState;ensureUnitCombatRuntime(t);
+ const [a,b]=t.equipmentState.groups;a.remainingAmmo=1;b.remainingAmmo=8;b.lastUsedTurn=1;
+ startSupport(s,{providerId:'p',targetId:t.instanceId,kind:'supply'});
+ for(const [i,n] of [4,7,9].entries()){
+  s.turn.number=i+1;resolveSupportsAtSpecial(s);assert.equal(a.remainingAmmo,n);assert.equal(b.remainingAmmo,9);assert.equal(b.lastUsedTurn,1);
+ }
+ assert.equal(s.supportRuntime.tasks[0].status,'complete');
+});
+
+test('harbor net can deploy for the provider alone or protect an ally until interrupted or damaged',async()=>{
+ const {harborNetProtectedUnits}=await import('../tactical-map/support-equipment.js?v=visual-support-bridge-1');
+ for(const building of [true,false])for(const self of [true,false]){
+  const s=field({building,effect:'harbor-net',targets:1}),[p,t]=s.instances;
+  startSupport(s,{kind:'harbor-net',providerId:p.instanceId,targetId:self?p.instanceId:t.instanceId});
+  resolveSupportsAtSpecial(s);
+  assert.deepEqual(harborNetProtectedUnits(s),new Set(self?[p.instanceId]:[p.instanceId,t.instanceId]));
+  assert.ok(p.supportLocked);assert.throws(()=>interruptSupportForMovement(s,[p.instanceId],false),/移動/);
+  for(const g of p.equipmentState.groups)g.damaged=true;
+  assert.equal(harborNetProtectedUnits(s).size,0);reconcileSupports(s);assert.equal(p.supportLocked,false);
+ }
+});

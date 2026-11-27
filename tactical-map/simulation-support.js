@@ -4,15 +4,17 @@ import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=electr
 import {supportCapacity,supportRadius,inSupportRange,supportActive,supportConflicts,synchronizeSupportLocks,SUPPORT_NAMES} from './support-equipment.js?v=visual-support-bridge-1';
 import {readShipProfile,applyShipFireFloodingPhase} from './ship-runtime.js?v=visual-support-bridge-1';
 import {getEquipmentControlCandidates} from './equipment-item-runtime.js?v=visual-support-bridge-1';
+import {readEffectiveInitialAmmo} from './equipment-runtime.js?v=visual-support-bridge-1';
 const fail=message=>{throw new Error(message);};
 const find=(scene,id)=>scene.instances.find(u=>u.instanceId===id);
 const alive=unit=>unit&&(unit.branch!=='building'||buildingAlive(unit))&&(!hasAircraftTemplate(unit)||aircraftCanAct(unit,'support'))&&Number.isFinite(unit.x)&&Number.isFinite(unit.y)&&(unit.branch==='navy'?!['sinking','sunk'].includes(unit.shipState?.status):unit.currentHp>0);
-const station={rescue:'repair-station','damage-control':'damage-control-station',supply:'supply-station'};
+const station={rescue:'repair-station','damage-control':'damage-control-station',supply:'supply-station','harbor-net':'harbor-net'};
 export function supportLimit(unit,kind){return kind==='rescue'&&unit.branch==='navy'?Math.max(1,supportCapacity(unit,station[kind])):supportCapacity(unit,station[kind]);}
 export function needsSupport(unit,kind){
+ if(kind==='harbor-net')return unit&&alive(unit)&&['navy','building'].includes(unit.branch);
  if(!unit||unit.branch!=='navy'||unit.shipState?.status==='sunk')return false;
  if(kind==='rescue')return unit.shipState.status==='sinking';
- if(kind==='supply')return unit.shipState.status!=='sinking'&&unit.shipState.remainingEndurance<readShipProfile(unit).enduranceBudget;
+ if(kind==='supply')return unit.shipState.status!=='sinking'&&(unit.shipState.remainingEndurance<readShipProfile(unit).enduranceBudget||(unit.equipmentState?.groups??[]).some(g=>g.remainingAmmo<readEffectiveInitialAmmo(g)));
  return unit.shipState.status!=='sinking'&&Boolean(unit.shipState.effects?.fire||unit.shipState.effects?.flooding||getEquipmentControlCandidates(unit).length);
 }
 export function initializeSupportRuntime(scene){
@@ -20,7 +22,7 @@ export function initializeSupportRuntime(scene){
  if(r.version!==1||!Array.isArray(r.tasks)||!Array.isArray(r.records)||!Number.isSafeInteger(r.lastSpecialTurn)||r.lastSpecialTurn<0||r.lastSpecialTurn>scene.turn.number)fail('支援任務の保存状態が不正です。');
  const ids=new Set(),targets=new Set();
  for(const t of r.tasks){
-  if(!t||typeof t.id!=='string'||ids.has(t.id)||!SUPPORT_NAMES[t.kind]||!['active','complete','failed','interrupted'].includes(t.status)||!find(scene,t.providerId)||!find(scene,t.targetId)||t.providerId===t.targetId||!Number.isSafeInteger(t.startedTurn)||t.startedTurn<1||t.startedTurn>scene.turn.number||!Number.isSafeInteger(t.lastProcessedTurn)||t.lastProcessedTurn<0||t.lastProcessedTurn>scene.turn.number)fail('支援任務の記録が不正です。');
+  if(!t||typeof t.id!=='string'||ids.has(t.id)||!SUPPORT_NAMES[t.kind]||!['active','complete','failed','interrupted'].includes(t.status)||!find(scene,t.providerId)||!find(scene,t.targetId)||(t.providerId===t.targetId&&t.kind!=='harbor-net')||!Number.isSafeInteger(t.startedTurn)||t.startedTurn<1||t.startedTurn>scene.turn.number||!Number.isSafeInteger(t.lastProcessedTurn)||t.lastProcessedTurn<0||t.lastProcessedTurn>scene.turn.number)fail('支援任務の記録が不正です。');
   ids.add(t.id);if(t.status==='active'){if(targets.has(t.targetId))fail('同じ艦船が複数の支援を受けています。');targets.add(t.targetId);}
  }
  synchronizeSupportLocks(scene);
@@ -40,7 +42,7 @@ export function reconcileSupports(scene){
  for(const task of supportActive(scene)){
   const provider=find(scene,task.providerId),target=find(scene,task.targetId),key=task.providerId+':'+task.kind;
   const count=(used.get(key)??0)+1;used.set(key,count);
-  if(!alive(provider)||(!inSupportRange(provider,target)||isAirshipBase(provider)&&!isAirship(target)||provider.branch==='building'&&provider.snapshot.building?.airportType==='anchorage')||provider.side!==target.side||count>supportLimit(provider,task.kind)||provider.shipState?.rescueTaskId||target.shipState?.rescueTaskId)endSupport(scene,task,'継続条件を失いました。');
+  if(!alive(provider)||(!inSupportRange(provider,target)||isAirshipBase(provider)&&!isAirship(target)&&provider!==target||provider.branch==='building'&&provider.snapshot.building?.airportType==='anchorage')||provider.side!==target.side||count>supportLimit(provider,task.kind)||provider.shipState?.rescueTaskId||target.shipState?.rescueTaskId)endSupport(scene,task,'継続条件を失いました。');
   else if(!needsSupport(target,task.kind))endSupport(scene,task,'支援が不要になりました。','complete');
  }
  synchronizeSupportLocks(scene);
@@ -48,10 +50,11 @@ export function reconcileSupports(scene){
 export function startSupport(scene,{providerId,targetId,kind},autonomous=false){
  initializeSupportRuntime(scene);if(scene.turn.phaseId!=='special')fail('支援は特殊段階で開始してください。');
  const provider=find(scene,providerId),target=find(scene,targetId),side=autonomous&&scene.controls.enemyAutonomy&&['enemy','neutral'].includes(provider?.side)?provider.side:scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;
- if(!SUPPORT_NAMES[kind]||!alive(provider)||provider.side!==side||target?.side!==side||providerId===targetId||!needsSupport(target,kind))fail('支援側・対象・任務を確認してください。');
- if(isAirshipBase(provider)&&!isAirship(target))fail('空中艦基地は空中艦だけを支援できます。');
+ if(!SUPPORT_NAMES[kind]||!alive(provider)||provider.side!==side||target?.side!==side||(providerId===targetId&&kind!=='harbor-net')||!needsSupport(target,kind))fail('支援側・対象・任務を確認してください。');
+ if(isAirshipBase(provider)&&!isAirship(target)&&provider!==target)fail('空中艦基地は空中艦だけを支援できます。');
  if(provider.branch==='building'&&provider.snapshot.building?.airportType==='anchorage')fail('泊地は水上機の航空運用施設です。');
  if(!inSupportRange(provider,target))fail('対象艦が支援円の外です。');
+ if(kind==='harbor-net'&&(!['navy','building'].includes(provider.branch)||(target!==provider&&target.branch!=='navy')))fail('防雷網は自艦・自施設または支援範囲内の味方艦に展開してください。');
  const active=supportActive(scene);
  if(active.some(t=>t.targetId===targetId||t.targetId===providerId||t.providerId===targetId)||provider.shipState?.rescueTaskId||target.shipState?.rescueTaskId)fail('別の支援・救助任務に参加しています。');
  if(active.filter(t=>t.providerId===providerId&&t.kind===kind).length>=supportLimit(provider,kind))fail('この支援設備の同時支援数を超えています。');
@@ -83,6 +86,7 @@ export function resolveSupportsAtSpecial(scene,{coinSource,selectRepairIndex}={}
  const results=[];
  for(const task of supportActive(scene)){
   const provider=find(scene,task.providerId),target=find(scene,task.targetId);const result={taskId:task.id,kind:task.kind,providerId:task.providerId,targetId:task.targetId,turnNumber:scene.turn.number};
+  if(task.kind==='harbor-net')continue;
   if(task.kind==='rescue'){
    if(scene.turn.number<task.startedTurn+1)continue;
    const guaranteed=supportCapacity(provider,'repair-station')>0,heads=guaranteed?null:(coinSource?coinSource():Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1));
@@ -94,6 +98,14 @@ export function resolveSupportsAtSpecial(scene,{coinSource,selectRepairIndex}={}
   }else{
    const before=target.shipState.remainingEndurance,initial=readShipProfile(target).enduranceBudget;
    target.shipState.remainingEndurance=Math.min(initial,before+initial*.25);Object.assign(result,{before,after:target.shipState.remainingEndurance,restored:target.shipState.remainingEndurance-before});
+   result.ammoRestored=0;
+   for(const group of target.equipmentState?.groups??[]){
+    const capacity=readEffectiveInitialAmmo(group);
+    if(capacity===null||group.remainingAmmo===null)continue;
+    const added=Math.min(capacity-group.remainingAmmo,Math.ceil(capacity/4));
+    group.remainingAmmo+=added;
+    result.ammoRestored+=added;
+   }
    if(!needsSupport(target,task.kind))endSupport(scene,task,'補給完了','complete');
   }
   task.lastProcessedTurn=scene.turn.number;results.push(result);

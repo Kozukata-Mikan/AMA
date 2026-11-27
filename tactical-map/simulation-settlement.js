@@ -1,3 +1,4 @@
+import {harborNetProtectedUnits} from './support-equipment.js?v=visual-support-bridge-1';
 import {launchProjectiles,dueProjectiles,markProjectileImpacts,initializeProjectiles} from './ballistic-projectiles.js?v=visual-support-bridge-1';
 import {captureAttackPhaseStart} from './simulation-attack-batch.js?v=visual-support-bridge-1';
 import {refreshElectronicEffects} from './electronic-warfare.js?v=visual-support-bridge-1';
@@ -241,6 +242,7 @@ function resolveUnderwaterDetonation(hitCount, coinSource) {
  * 不给旧记录补掷诱爆，不重写旧伤害。
  */
 function readDamageHitCount(hitReport) {
+  if(hitReport.harborNetBlocked===true)return 0;
   const originalHitCount = integer(
     hitReport?.hit?.hitCount,
     "武器命中数"
@@ -1284,6 +1286,7 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
 
 
   const targetReports = [];
+  const netProtection=harborNetProtectedUnits(scene);
   const queuedAircraftHosts=new Set(scene.instances.filter(p=>p.aircraftState&&['ready','launching'].includes(p.aircraftState.mission)&&p.aircraftState.status!=='destroyed').map(p=>p.aircraftState.hostId));
   const effects = [];
   const context = contextFor(scene);
@@ -1323,6 +1326,11 @@ function summarizeTargets(scene, start, prepared, hitStep, coinSource) {
         continue;
       }
 
+      if(netProtection.has(targetId)){
+        attack.hitReport.harborNetBlocked=true;
+        attack.hitCount=0;
+        continue;
+      }
       // 正式命中报告应为本事务新生成的结果，
       // 不接受预先带入的诱爆记录，也不重复投币。
       if (

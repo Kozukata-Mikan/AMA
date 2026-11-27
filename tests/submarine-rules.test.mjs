@@ -128,3 +128,21 @@ test('duplicate legacy surface speed migrates to the original speed field',()=>{
  const unit=ship('legacy');Object.assign(unit.snapshot.naval,{kind:'submarine',speedKnots:10,surfaceSpeedKnots:18,submergedSpeedKnots:9});normalizeNavalPosition(unit);
  assert.equal(readShipProfile(unit).speedKnots,18);assert.ok(!('surfaceSpeedKnots' in unit.snapshot.naval));
 });
+
+test('deployed net blocks underwater damage and flooding after a confirmed game hit, while spending the fired ammunition',async()=>{
+ const {supportEquipmentSeed}=await import('../tactical-map/support-equipment.js?v=visual-support-bridge-1');
+ const {settleAttackPhase}=await import('../tactical-map/simulation-settlement.js?v=visual-support-bridge-1');
+ const scene=source(),[a,b]=scene.instances;b.x=40;
+ arm(a,[gun('test-round','平射','1（水下）')]);
+ arm(b,[supportEquipmentSeed().find(e=>e.supportEffect==='harbor-net')]);
+ const {id,store}=await simulation(scene);await store.beginMovement();await store.resolveMovement();
+ const group=store.getAttackGroupReport('a').groups[0];
+ await store.saveAttackCommands({unitId:'a',assignments:[{groupId:group.groupId,targetId:'b'}]},store.getSceneSnapshot().revision);
+ const raw=await saved(id);
+ raw.supportRuntime.tasks.push({id:'net',kind:'harbor-net',providerId:'b',targetId:'b',status:'active',startedTurn:1,lastProcessedTurn:0});
+ settleAttackPhase(raw,()=>true);
+ const hit=raw.settlementRuntime.attackRecords.at(-1).hitReports[0];
+ assert.equal(hit.hit.hitCount,1);assert.equal(hit.harborNetBlocked,true);
+ assert.equal(raw.instances[1].currentHp,10);assert.equal(raw.instances[1].shipState.effects.flooding,null);
+ assert.equal(raw.instances[0].equipmentState.groups[0].remainingAmmo,19);
+});

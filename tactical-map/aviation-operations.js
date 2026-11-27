@@ -70,15 +70,31 @@ function chosen(scene,ids){if(!Array.isArray(ids)||!ids.length||ids.length>10000
 function roundStart(scene){initializeAviationRuntime(scene);if(scene.turn.phaseId!=='start')fail('整備・起降はラウンド開始時に指定してください。');}
 function reserveRunway(scene,host,runway,kind,count){if(runway.kind==='water')return;const r=scene.aviationRuntime;let use=r.runwayUse.find(u=>u.turnNumber===scene.turn.number&&u.hostId===host.instanceId&&u.runwayId===runway.id);if(use&&use.kind!==kind)fail('このラウンドは同じ滑走路で離陸・着陸を併用できません。');if((use?.count??0)+count>runway.capacity)fail(`この滑走路の1ラウンド${runway.capacity}機の上限を超えています。`);if(!use){use={turnNumber:scene.turn.number,hostId:host.instanceId,runwayId:runway.id,kind,count:0};r.runwayUse.push(use);}use.count+=count;}
 function equipLoadout(unit,id,{refill=true}={}){
- const permanent=unit.snapshot.mounts.length,old=unit.equipmentState?.groups?.filter(g=>g.mountIndex<permanent)??[];
- unit.aircraftState.activeLoadoutId=id;delete unit.equipmentState;ensureUnitCombatRuntime(unit);
- for(const g of unit.equipmentState.groups){const previous=old.find(o=>o.id===g.id);if(previous){g.damaged=previous.damaged;g.destroyed=previous.destroyed;if(previous.ammoRegistration)g.ammoRegistration=clone(previous.ammoRegistration);}g.remainingAmmo=!refill&&previous?previous.remainingAmmo:readEffectiveInitialAmmo(g);g.lastUsedTurn=!refill&&previous?previous.lastUsedTurn:null;}
+ const oldLoadout=unit.aircraftState.activeLoadoutId;
+ const previous=new Map((unit.equipmentState?.groups??[]).map(g=>[g.id,g]));
+ unit.aircraftState.activeLoadoutId=id;
+ delete unit.equipmentState;
+ ensureUnitCombatRuntime(unit);
+ for(const group of unit.equipmentState.groups){
+  const old=previous.get(group.id);
+  const retained=old?.equipmentId===group.equipmentId&&(group.mountIndex<unit.snapshot.mounts.length||oldLoadout===id);
+  if(retained)Object.assign(group,old);
+  if(refill||!retained){
+   group.remainingAmmo=readEffectiveInitialAmmo(group);
+   group.lastUsedTurn=null;
+   if(refill&&group.consumed)group.consumed=false;
+  }
+ }
 }
 export function prepareAircraft(scene,{hostId,runwayId=null,aircraftIds,loadoutId=null,reconfigure=false}){
  roundStart(scene);const host=scene.instances.find(u=>u.instanceId===hostId);own(scene,host);if(!aviationHostAlive(host))fail('母艦・施設は航空運用できません。');const runway=runwayId===null?null:runwayFor(scene,hostId,runwayId).runway,planes=chosen(scene,aircraftIds);if(runway){assertLaneAircraft(runway,planes);assertRunwayOpenForStaging(scene,host,runway);}
  for(const p of planes){own(scene,p);if(!aircraftFacilityCompatible(p.snapshot.aircraft.type,host))fail('この母艦・施設では対象機を整備できません。');assertAircraftPreparationTime(scene,p,host);const s=ensureAircraftRuntime(p);if(s.hostId!==hostId||!['parked','ready'].includes(s.mission)||s.status!=='operational')fail('母艦内の行動可能な未発進機を選択してください。');if(p.currentHp<p.snapshot.maxHp)fail('損傷機は全快するまで整備できません。');if(s.preparedTurn===scene.turn.number&&!(reconfigure&&s.prepared))fail('この機体は今ラウンドに整備済みです。');if(loadoutId!==null&&!p.snapshot.aircraft.loadouts.some(l=>l.id===loadoutId))fail('選択した掛載構成がありません。');const selected=p.snapshot.aircraft.loadouts.find(l=>l.id===loadoutId);for(const m of selected?.mounts??[]){const e=p.snapshot.equipmentSnapshots.find(e=>e.id===m.equipmentId);if(e?.kind!=='weapon')fail('掛載には武器を登録してください。');if(/大型/.test(e.guidance??''))fail('大型武器の専用誘爆規則が未接続です。');const rule=parseDamageRule(e);if(rule.kind==='equipment')fail('設備威力の掛載は誘爆時の被害規則が未接続です。');}}
  const fresh=planes.filter(p=>p.aircraftState.preparedTurn!==scene.turn.number);let use=scene.aviationRuntime.preparationUse.find(u=>u.hostId===hostId&&u.turnNumber===scene.turn.number);const capacity=supportCapacity(host,'preparation-area')*9;if((use?.count??0)+fresh.length>capacity)fail(`整備能力は今ラウンド${capacity}機です。`);
  if(fresh.length){if(!use){use={hostId,turnNumber:scene.turn.number,count:0};scene.aviationRuntime.preparationUse.push(use);}use.count+=fresh.length;}
+ if(fresh.length&&scene.fieldSupportRuntime?.spent.length){
+  const serviced=new Set(fresh.map(p=>p.instanceId));
+  scene.fieldSupportRuntime.spent=scene.fieldSupportRuntime.spent.filter(use=>!serviced.has(use.unitId));
+ }
  for(const p of planes){const s=p.aircraftState,profile=readAircraftProfile(p);const refill=s.preparedTurn!==scene.turn.number;equipLoadout(p,loadoutId,{refill});Object.assign(s,{mission:runway?'ready':'parked',deckZone:runway?'runway':'preparation',prepared:true,preparedTurn:scene.turn.number,runwayId:runway?.id??null,...(refill?{remainingEndurance:profile.enduranceBudget,remainingAirTime:profile.maximumAirTime}:{})});}
  scene.aviationRuntime.records.push({kind:'prepare',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],loadoutId});
 }

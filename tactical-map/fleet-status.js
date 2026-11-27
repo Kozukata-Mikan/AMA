@@ -1,7 +1,7 @@
 import {getObservationSide,getObservedScene} from './simulation-features.js?v=visual-support-bridge-1';
 const SHIP_STATUS={intact:'無損傷',minor:'軽微な損傷',light:'小破',moderate:'中破',heavy:'大破',sinking:'沈没寸前',sunk:'沈没'};
 const AIR_MISSION={parked:'駐機',ready:'整備完了・離陸待機',launching:'離陸中',landing:'着陸中',airborne:'飛行中'};
-const SUPPORT={rescue:'救助', 'damage-control':'外部損管',supply:'補給'};
+const SUPPORT={rescue:'救助', 'damage-control':'外部損管',supply:'補給','harbor-net':'港湾防雷網'};
 export function buildFleetStatus(scene,observed=getObservedScene(scene)){
  const side=getObservationSide(scene),known=new Map(observed.instances.filter(u=>u.observationOwn||u.observationLevel==='identified').map(u=>[u.instanceId,u.name]));
  const own=scene.instances.filter(u=>u.side===side),ownIds=new Set(own.map(u=>u.instanceId));for(const u of own)known.set(u.instanceId,u.name);

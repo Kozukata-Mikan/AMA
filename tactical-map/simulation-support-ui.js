@@ -1,3 +1,4 @@
+import {readEffectiveInitialAmmo} from './equipment-runtime.js?v=visual-support-bridge-1';
 import {inSupportRange,SUPPORT_NAMES,supportCapacity} from './support-equipment.js?v=visual-support-bridge-1';
 import {needsSupport,supportLimit} from './simulation-support.js?v=visual-support-bridge-1';
 import {isAirship,isAirshipBase} from './aviation-services.js?v=visual-support-bridge-1';
@@ -29,21 +30,33 @@ export function mountSupportUI(store,container,selectedUnit){
   const all=scene.supportRuntime?.tasks??[],active=all.filter(t=>t.status==='active');
   const used=active.filter(t=>t.providerId===provider.instanceId&&t.kind===kind).length;
   const capacity=supportLimit(provider,kind);
-  const eligible=capacity>used&&!provider.aviationStored&&Number.isFinite(provider.x)&&Number.isFinite(provider.y)&&
+  const eligible=(kind!=='harbor-net'||['navy','building'].includes(provider.branch))&&capacity>used&&!provider.aviationStored&&Number.isFinite(provider.x)&&Number.isFinite(provider.y)&&
    !['sinking','sunk'].includes(provider.shipState?.status)&&!['destroyed','rebuilding'].includes(provider.buildingState?.status)&&
    provider.snapshot.building?.airportType!=='anchorage'&&!provider.shipState?.rescueTaskId&&!active.some(t=>t.targetId===provider.instanceId);
-  const candidates=eligible?scene.instances.filter(u=>u.observationOwn&&u.instanceId!==provider.instanceId&&
-   (!isAirshipBase(provider)||isAirship(u))&&inSupportRange(provider,u)&&needsSupport(u,kind)&&
+  const candidates=eligible?scene.instances.filter(u=>u.observationOwn&&(u.instanceId!==provider.instanceId||kind==='harbor-net')&&
+   (kind!=='harbor-net'||u===provider||u.branch==='navy')&&
+   (!isAirshipBase(provider)||isAirship(u)||u===provider)&&inSupportRange(provider,u)&&needsSupport(u,kind)&&
    !u.shipState?.rescueTaskId&&!active.some(t=>t.providerId===u.instanceId||t.targetId===u.instanceId)):[];
+  start.textContent=kind==='harbor-net'?'防雷網を展開':'支援を開始';
   if(!candidates.some(u=>u.instanceId===targetId))targetId='';
   slots.textContent=`支援枠 ${used} / ${capacity}`+(scene.turn.phaseId==='special'?'':' · 開始は特殊段階')+
    (kind==='rescue'&&capacity?' · '+(supportCapacity(provider,'repair-station')?'修理所あり':'通常救助'):'');
+  if(kind==='harbor-net')slots.textContent+=' · 展開元と対象は水中攻撃無効・移動停止';
+  if(kind==='supply')slots.textContent+=' · 航続距離・各組の弾薬を補給';
   targets.replaceChildren();
   for(const u of candidates){
    const b=button('',()=>{targetId=u.instanceId;sync();});b.setAttribute('aria-pressed',String(targetId===u.instanceId));
    const fx=u.shipState?.effects;
-   b.append(el('strong',u.name),el('small',`${conditionLabel(u)} · 耐性 ${u.currentHp}/${u.snapshot.maxHp}`+
+   b.append(el('strong',u===provider?u.name+'（自ユニット）':u.name),el('small',`${conditionLabel(u)} · 耐性 ${u.currentHp}/${u.snapshot.maxHp}`+
     (fx?.fire?' · '+effectLabel('fire',fx.fire):'')+(fx?.flooding?' · '+effectLabel('flooding',fx.flooding)+'浸水':'')));
+   if(kind==='supply'){
+    let stock=0,capacity=0;
+    for(const group of u.equipmentState?.groups??[]){
+     const max=readEffectiveInitialAmmo(group);
+     if(max!==null){stock+=group.remainingAmmo;capacity+=max;}
+    }
+    if(capacity)b.append(el('small',`登録弾薬 ${stock} / ${capacity}`));
+   }
    targets.append(b);
   }
   if(!candidates.length)targets.append(el('small',eligible?'支援範囲内に該当する対象なし':'この支援を開始できる枠がありません。'));

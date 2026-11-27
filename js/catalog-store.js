@@ -442,6 +442,15 @@ export function initializeCatalog(baseUnits) {
 
   if(!recoveryError&&data.supportStationsVersion<6){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['electronic-warfare-pod','flare'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:6,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
   if(!recoveryError&&data.supportStationsVersion<7){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['smoke-generator','searchlight'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:7,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
+  if(!recoveryError&&data.supportStationsVersion<8){
+    const net=supportEquipmentSeed().find(e=>e.supportEffect==='harbor-net');
+    const equipment=[...data.equipment];
+    if(!equipment.some(e=>e.id===net.id))equipment.push(net);
+    const supply=equipment.findIndex(e=>e.id==='eq-support-supply-station'&&e.note==='毎ラウンド、初期総航続距離の最大25%を回復します。');
+    if(supply>=0)equipment[supply]={...equipment[supply],note:supportEquipmentSeed().find(e=>e.supportEffect==='supply-station').note};
+    data=normalizeCatalog({...data,supportStationsVersion:8,equipment});
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  }
   const units = [];
   const listeners = new Set();
   // 只在当前页面内有效，不写入 localStorage。

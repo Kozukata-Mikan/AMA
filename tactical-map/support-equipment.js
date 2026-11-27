@@ -1,10 +1,10 @@
 import {buildingMountAvailable,buildingAlive} from './building-state.js?v=visual-support-bridge-1';
 // Read-only role lookup; legacy names below are explicit compatibility aliases.
-export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト'],['mine','機雷'],['mine-guard','掃海具'],['boat','舟艇'],['observation-balloon','観測気球'],['spotter','観測員'],['rato','RATO発進補助'],['electronic-warfare-pod','電子戦ポッド'],['flare','フレア'],['smoke-generator','発煙筒'],['searchlight','探照灯']];
-export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult','mine','mine-guard','boat','observation-balloon','spotter','rato','electronic-warfare-pod','flare','smoke-generator','searchlight'];
+export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['harbor-net','港湾防雷網'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト'],['mine','機雷'],['mine-guard','掃海具'],['boat','舟艇'],['observation-balloon','観測気球'],['spotter','観測員'],['rato','RATO発進補助'],['electronic-warfare-pod','電子戦ポッド'],['flare','フレア'],['smoke-generator','発煙筒'],['searchlight','探照灯']];
+export const STATION_IDS=['repair-station','damage-control-station','supply-station','harbor-net','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult','mine','mine-guard','boat','observation-balloon','spotter','rato','electronic-warfare-pod','flare','smoke-generator','searchlight'];
 const LEGACY_SUPPORT_NAMES=new Map([['观测气球','observation-balloon'],['観測気球','observation-balloon'],['破雷卫','mine-guard'],['破雷衛','mine-guard'],['舟艇','boat']]);
 export const supportEffectOf=equipment=>equipment?.supportEffect||(equipment?.kind==='support'?(equipment.id==='eq-seaplane-catapult'?'catapult':LEGACY_SUPPORT_NAMES.get(equipment.name?.trim())??(/(?:弹射器|彈射器|カタパルト)/.test(equipment.name??'')?'catapult':'')):'');
-export const SUPPORT_NAMES={rescue:'救助','damage-control':'外部損管',supply:'補給'};
+export const SUPPORT_NAMES={rescue:'救助','damage-control':'外部損管',supply:'補給','harbor-net':'港湾防雷網'};
 export function supportCapacity(unit,effect){
  const snapshots=unit.snapshot?.equipmentSnapshots??[];
  if(!snapshots.some(item=>item.kind==='support'&&supportEffectOf(item)===effect))return 0;
@@ -16,6 +16,21 @@ export const hasSupportEquipment=unit=>(unit.snapshot?.equipmentSnapshots??[]).s
 export const supportRadius=unit=>unit.branch==='building'?25:12.5;
 export const inSupportRange=(provider,target)=>[provider.x,provider.y,target.x,target.y].every(Number.isFinite)&&Math.hypot(provider.x-target.x,provider.y-target.y)<=supportRadius(provider)+1e-7;
 export const supportActive=scene=>(scene.supportRuntime?.tasks??[]).filter(task=>task.status==='active');
+export function harborNetProtectedUnits(scene){
+ const protectedIds=new Set();
+ const nets=supportActive(scene).filter(t=>t.kind==='harbor-net');
+ if(!nets.length)return protectedIds;
+ const units=new Map(scene.instances.map(u=>[u.instanceId,u])),used=new Map();
+ for(const task of nets){
+  const provider=units.get(task.providerId),target=units.get(task.targetId);
+  if(!provider||!target||provider.side!==target.side||!inSupportRange(provider,target))continue;
+  const disabled=u=>u.branch==='navy'?['sinking','sunk'].includes(u.shipState?.status):!buildingAlive(u);
+  const slots=used.get(provider)??0;
+  if(disabled(provider)||disabled(target)||slots>=supportCapacity(provider,'harbor-net'))continue;
+  used.set(provider,slots+1);protectedIds.add(provider.instanceId);protectedIds.add(target.instanceId);
+ }
+ return protectedIds;
+}
 export const supportConflicts=(scene,ids)=>{const members=new Set(ids);return supportActive(scene).filter(t=>members.has(t.providerId)||members.has(t.targetId));};
 export const rescueSupported=(scene,id)=>supportActive(scene).some(task=>task.kind==='rescue'&&task.targetId===id);
 export function synchronizeSupportLocks(scene){
@@ -25,7 +40,7 @@ export function synchronizeSupportLocks(scene){
 export function supportEquipmentSeed(){return [
  ['repair-station','修理所','沈没寸前の艦船を第2ラウンドに必ず救助します。組数が同時救助数です。'],
  ['damage-control-station','損管所','対象艦に通常と同じ損管判定を追加で実施します。失敗時の影響も同じです。'],
- ['supply-station','補給所','毎ラウンド、初期総航続距離の最大25%を回復します。'],
+ ['supply-station','補給所','毎ラウンド、初期航続距離の25%と各装備組の登録弾数の25%（端数切上げ）を上限まで補給します。'],
  ['parking-stand','駐機枠','組数は駐機枠数です。航空機数とは異なります。搭載・着陸時に発動機数に応じて消費します。'],
  ['remote-station','遠隔操作所','同陣営の無人機は有効な遠隔操作範囲内で行動します。範囲外では滞空時間が直ちに0になります。'],
  ['night-observation','夜間観測','機体に装備すると全時間帯の飛行・起降が可能です。母艦・施設に装備すると夜間整備が可能です。'],
@@ -33,6 +48,7 @@ export function supportEquipmentSeed(){return [
  ['preparation-area','整備区','1組につき毎ラウンド最大9機を整備します。機位数ではなく機数です。'],
  ['runway','滑走路','1本につき毎ラウンド最大27機。同一ラウンドに離陸・着陸を併用できません。'],
  ['catapult','カタパルト','RATO搭載機のみ、1基につき毎ラウンド最大3機。同ラウンドの移動段階から飛行できます。'],
+ ['harbor-net','港湾防雷網','特殊段階で展開。1組につき自ユニットまたは支援範囲内の味方艦1隻を指定します。展開元と対象は移動を停止し、水中攻撃と機雷の被害を無効化します。'],
  ['mine','機雷','特殊段階に現在の海域へ敷設します。他陣営の艦船が5マス以内を通過すると起爆し、威力1（水下）を適用します。'],
  ['mine-guard','掃海具','機雷を起爆させず、周囲の機雷を除去できます。'],
  ['boat','舟艇','機能は後続規則で定義します。現時点では追加効果はありません。'],
