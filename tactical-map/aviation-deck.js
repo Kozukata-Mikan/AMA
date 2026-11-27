@@ -1,6 +1,6 @@
-import {hasAircraftTemplate} from './aircraft-runtime.js?v=car-return-1';
-import {aviationRunways,aviationLanes,aviationHostAlive,WATER_LANE} from './aviation-operations.js?v=blast-area-1';
-import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=air-training-1';
+import {hasAircraftTemplate} from './aircraft-runtime.js?v=self-sealing-1';
+import {aviationRunways,aviationLanes,aviationHostAlive,WATER_LANE} from './aviation-operations.js?v=self-sealing-1';
+import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=self-sealing-1';
 import {supportCapacity,supportEffectOf} from './support-equipment.js?v=field-support-1';
 export const aviationDeckZone=p=>['ready','launching','landing'].includes(p.aircraftState?.mission)?'runway':p.aircraftState?.mission==='airborne'?'airborne':p.aircraftState?.deckZone==='preparation'?'preparation':'hangar';
 export function buildAviationDeck(scene,hostId){

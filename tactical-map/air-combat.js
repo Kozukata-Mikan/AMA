@@ -1,16 +1,16 @@
 import {spottingBonus} from './support-effects.js?v=field-support-1';
 import {airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
-import {initializeAirTraining,resolveAceLosses,airTrainingRule,rollManeuver,applySquadPanic,airConfused,airRetreating,canAmbush,markAmbush} from './air-training-runtime.js?v=air-training-1';
+import {initializeAirTraining,resolveAceLosses,airTrainingRule,rollManeuver,applySquadPanic,airConfused,airRetreating,canAmbush,markAmbush} from './air-training-runtime.js?v=self-sealing-1';
 import {checkRayTarget,registerRayTarget,initializeRayTargetRuntime} from './ray-target-runtime.js';
 import {traceAttackTerrainLine,entersTerrainInterior} from './attack-terrain-runtime.js';
-import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=car-return-1';
-import {aircraftMayFly} from './aviation-time.js?v=field-support-1';
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=catalog-symbols-1';
+import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=self-sealing-1';
+import {aircraftMayFly} from './aviation-time.js?v=self-sealing-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=self-sealing-1';
 import {parseDamageRule} from './weapon-damage-rule.js?v=car-return-1';
 import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js?v=day-catalog-pas-1';
 import {resolveNumericDamage} from './numeric-damage-runtime.js?v=car-return-1';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js?v=car-return-1';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=blast-area-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=self-sealing-1';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}

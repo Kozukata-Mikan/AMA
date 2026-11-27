@@ -1,7 +1,7 @@
 import {airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
-import {airConfused,airRetreating,airTrainingRule,hasAirTrait} from './air-training-runtime.js?v=air-training-1';
+import {airConfused,airRetreating,airTrainingRule,hasAirTrait} from './air-training-runtime.js?v=self-sealing-1';
 import {validateFlightPlan} from './flight-plan-data.js';
-import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=air-training-1';
+import {normalizeAircraft,aircraftAirTime,parseAircraftEndurance} from '../js/aircraft-template.js?v=self-sealing-1';
 import {TURN_DURATION_MINUTES} from './rules-engine.js';
 export const hasAircraftTemplate=unit=>unit?.branch==='air'&&unit.snapshot?.aircraft?.version===1;
 const fail=message=>{throw new Error(message);};
@@ -35,6 +35,8 @@ export function ensureAircraftRuntime(unit){
  if(s.panic&&(!Number.isSafeInteger(s.panic.count)||s.panic.count<0||!['normal','confused','retreating'].includes(s.panic.state)))fail('航空機の恐慌状態が不正です。');
  if(s.navigationLossTurn!==undefined&&(!Number.isSafeInteger(s.navigationLossTurn)||s.navigationLossTurn<1))fail('迷航判定の保存状態が不正です。');
  if(s.emergencyLanding&&(typeof s.emergencyLanding.success!=='boolean'||!Number.isSafeInteger(s.emergencyLanding.turnNumber)||s.emergencyLanding.turnNumber<1||typeof s.emergencyLanding.hostId!=='string'||typeof s.emergencyLanding.runwayId!=='string'))fail('不時着判定の保存状態が不正です。');
+ s.selfSealingUses??=0;
+ if(!Number.isSafeInteger(s.selfSealingUses)||s.selfSealingUses<0||s.selfSealingUses>profile.engines)fail('自封式燃料タンクの使用回数が不正です。');
  s.normalHitRemainder??=0;s.underwaterStrengthUses??=0;
  if(s.normalHitRemainder!==undefined&&(!Number.isSafeInteger(s.normalHitRemainder)||s.normalHitRemainder<0||s.normalHitRemainder>2))fail('航空機の通常命中蓄積が不正です。');
  if(s.version!==1||!['operational','heavy','destroyed'].includes(s.status)||!['airborne','parked','ready','launching','landing'].includes(s.mission)||!Number.isSafeInteger(s.remainingAirTime)||s.remainingAirTime<0||s.remainingAirTime>profile.maximumAirTime||!Number.isFinite(s.remainingEndurance)||s.remainingEndurance<0||s.remainingEndurance>profile.enduranceBudget||!Number.isSafeInteger(s.lastElapsedTurn)||s.lastElapsedTurn<0)fail('航空機の保存状態が不正です。');
@@ -51,11 +53,20 @@ export function applyAircraftHit(unit,{hit,durabilityDamage=0}){
  const s=ensureAircraftRuntime(unit);
  if(typeof hit!=='boolean'||!Number.isFinite(durabilityDamage)||durabilityDamage<0||(!hit&&durabilityDamage!==0))fail('航空機の命中・被害値が不正です。');
  const before={currentHp:unit.currentHp,status:s.status};
+ let selfSealingRecovery=null;
  if(hit&&s.status!=='destroyed'){
   if(s.status==='heavy'){s.status='destroyed';s.destroyedReason='shot-down';}
-  else{unit.currentHp=Math.max(0,unit.currentHp-durabilityDamage);if(unit.currentHp===0)s.status='heavy';}
+  else{
+   unit.currentHp=Math.max(0,unit.currentHp-durabilityDamage);
+   if(unit.currentHp===0){
+    if(unit.snapshot.aircraft.selfSealingTank===true&&s.selfSealingUses<unit.snapshot.aircraft.engines){
+     s.selfSealingUses++;unit.currentHp=1;s.status='operational';
+     selfSealingRecovery={restored:1,used:s.selfSealingUses,limit:unit.snapshot.aircraft.engines};
+    }else s.status='heavy';
+   }
+  }
  }
- return{targetId:unit.instanceId,before,after:{currentHp:unit.currentHp,status:s.status}};
+ return{targetId:unit.instanceId,before,after:{currentHp:unit.currentHp,status:s.status},...(selfSealingRecovery?{selfSealingRecovery}:{})};
 }
 export function finishAircraftTurn(scene){
  const reports=[];
@@ -83,6 +94,6 @@ export function aircraftDetailLines(unit, turnNumber){
  if(!hasAircraftTemplate(unit))return[];
  const data=unit.snapshot.aircraft;
  const lines=[`発動機数 / 最大耐性：${data.engines} / 必要駐機枠：${data.engines}`,`乗員数：${data.crew}`,`機動性：${data.maneuverability||'未設定'} / 上昇限度：${data.ceiling??'未設定'}`,`最高速度：${unit.snapshot.naval?.speedKnots??'未設定'}ノット`];
- if(unit.observationOwn&&unit.aircraftState){const s=unit.aircraftState;const rule=airTrainingRule(unit);lines.push(`対空妨害：不利${airDisruptionPenalty({turn:{number:turnNumber}},unit)}（ラウンド終了まで）`,`練度：${rule.label} / 反応力${rule.reaction} / 機動修正${rule.maneuver>=0?'+':''}${rule.maneuver}`,`恐慌：${s.panic?.count??0} / 閾値${rule.panic} / ${({normal:'通常',confused:'混乱（自衛のみ）',retreating:'撤退'})[s.panic?.state??'normal']}`);if(s.acePilot)lines.push(`ACE：${s.acePilotName}${s.status==='destroyed'?'（戦死）':''}`);if(s.flightPlan)lines.push(`航空任務：${s.flightPlan.kind} / ${({outbound:'往路',attack:'攻撃待機',returning:'帰投中',complete:'完了'})[s.flightPlan.stage]}${s.flightPlan.notice?' / '+s.flightPlan.notice:''}`);lines.push(`状態：${({operational:'行動可能',heavy:'大破（移動のみ）',destroyed:'撃墜・墜落'})[s.status]}`,`残り滞空時間：${s.remainingAirTime}ラウンド / 残り航続距離：${s.remainingEndurance.toFixed(1)}マス`);}
+ if(unit.observationOwn&&unit.aircraftState){const s=unit.aircraftState;const rule=airTrainingRule(unit);lines.push(`対空妨害：不利${airDisruptionPenalty({turn:{number:turnNumber}},unit)}（ラウンド終了まで）`,`練度：${rule.label} / 反応力${rule.reaction} / 機動修正${rule.maneuver>=0?'+':''}${rule.maneuver}`,`恐慌：${s.panic?.count??0} / 閾値${rule.panic} / ${({normal:'通常',confused:'混乱（自衛のみ）',retreating:'撤退'})[s.panic?.state??'normal']}`);if(data.selfSealingTank)lines.push(`自封式燃料タンク：残り${data.engines-s.selfSealingUses} / ${data.engines}回`);if(s.acePilot)lines.push(`ACE：${s.acePilotName}${s.status==='destroyed'?'（戦死）':''}`);if(s.flightPlan)lines.push(`航空任務：${s.flightPlan.kind} / ${({outbound:'往路',attack:'攻撃待機',returning:'帰投中',complete:'完了'})[s.flightPlan.stage]}${s.flightPlan.notice?' / '+s.flightPlan.notice:''}`);lines.push(`状態：${({operational:'行動可能',heavy:'大破（移動のみ）',destroyed:'撃墜・墜落'})[s.status]}`,`残り滞空時間：${s.remainingAirTime}ラウンド / 残り航続距離：${s.remainingEndurance.toFixed(1)}マス`);}
  return lines;
 }

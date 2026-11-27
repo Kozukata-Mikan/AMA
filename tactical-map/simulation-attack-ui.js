@@ -1,9 +1,9 @@
-import {createRangeTargetEditor} from './simulation-range-target-ui.js?v=blast-area-1';
-import {readWeaponTargetScope} from './weapon-profile-runtime.js?v=catalog-symbols-1';
+import {createRangeTargetEditor} from './simulation-range-target-ui.js?v=self-sealing-1';
+import {readWeaponTargetScope} from './weapon-profile-runtime.js?v=self-sealing-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js?v=car-return-1';
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=blast-area-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=self-sealing-1";
 import { getHitModifiers } from "./weapon-hit-runtime.js?v=day-catalog-pas-1";
 
 

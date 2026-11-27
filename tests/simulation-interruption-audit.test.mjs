@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Worker as NodeWorker} from 'node:worker_threads';
 import {auditSimulationRules} from '../scripts/audit-simulation-rules.mjs';
-import {applyEquipmentAttack} from '../tactical-map/equipment-item-runtime.js?v=field-support-1';
+import {applyEquipmentAttack} from '../tactical-map/equipment-item-runtime.js?v=self-sealing-1';
 import {source} from './fixtures.mjs';
 import {weapon} from './scenarios/carrier-air-strike.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=blast-area-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=self-sealing-1';
 import {readSave,writeSave} from '../js/save-database.js';
-import {shutdownBackground} from '../tactical-map/background-client.js?v=blast-area-1';
+import {shutdownBackground} from '../tactical-map/background-client.js?v=self-sealing-1';
 import {serializeBackgroundError,deserializeBackgroundError} from '../tactical-map/background-errors.js?v=settlement-audit-1';
 import {supportCapacity,supportEffectOf} from '../tactical-map/support-equipment.js?v=field-support-1';
 

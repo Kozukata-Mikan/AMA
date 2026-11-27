@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeAircraft,aircraftAirTime,aircraftParkingSlots,aircraftFacilityCompatible} from '../js/aircraft-template.js';
-import {AIRCRAFT_FIELDS} from '../js/catalog-seed.js?v=field-support-1';
-import {initializeCatalog} from '../js/catalog-store.js?v=field-support-1';
-import {createBattleStore} from '../js/battle-state.js?v=car-return-1';
-import {ensureAircraftRuntime,applyAircraftHit,aircraftCanAct,aircraftTimerDisplay,finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=car-return-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=blast-area-1';
-import {getObservedScene} from '../tactical-map/simulation-features.js?v=blast-area-1';
-import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=car-return-1';
+import {normalizeAircraft,aircraftAirTime,aircraftParkingSlots,aircraftFacilityCompatible} from '../js/aircraft-template.js?v=self-sealing-1';
+import {AIRCRAFT_FIELDS} from '../js/catalog-seed.js?v=self-sealing-1';
+import {initializeCatalog} from '../js/catalog-store.js?v=self-sealing-1';
+import {createBattleStore} from '../js/battle-state.js?v=self-sealing-1';
+import {ensureAircraftRuntime,applyAircraftHit,aircraftCanAct,aircraftTimerDisplay,finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=self-sealing-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=self-sealing-1';
+import {getObservedScene} from '../tactical-map/simulation-features.js?v=self-sealing-1';
+import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=self-sealing-1';
 import {readSave} from '../js/save-database.js';
 import {resetDatabase} from './save-test-environment.mjs';
 import {source,ship} from './fixtures.mjs';
@@ -65,7 +65,7 @@ test('expiry is committed at round end and removed from map; enemy autonomy does
 });
 
 test('isolated worker saves aircraft clocks and expiry through complete simulation phases',async()=>{
- const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=blast-area-1');
+ const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=self-sealing-1');
  globalThis.Worker=class{constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}};
  try{const{id,store}=await setup('100');await round(store);const scene=await raw(id);assert.equal(scene.instances[0].aircraftState.remainingAirTime,0);assert.equal(scene.instances[0].aircraftState.status,'destroyed');assert.equal(scene.phaseFinishRuntime.records.at(-1).aircraftReports[0].destroyed,true);assert.ok(!store.getSceneSnapshot().instances.length);}finally{shutdownBackground();delete globalThis.Worker;}
 });
@@ -74,7 +74,7 @@ test('aircraft form calculations and loadout controls preserve independent combi
  class Element{constructor(tag,text=''){this.tagName=tag;this.textContent=text;this.children=[];this.dataset={};this.listeners=new Map();this._value='';}set value(v){this._value=String(v??'');}get value(){return this._value;}append(...nodes){for(const n of nodes){n.parent=this;this.children.push(n);if(this.tagName==='select'&&!this.value)this.value=n.value;}}replaceChildren(...nodes){this.children=[];this.append(...nodes);}setAttribute(k,v){this[k]=v;}addEventListener(type,fn){this.listeners.set(type,fn);}closest(){return this.parent;}remove(){this.parent.children=this.parent.children.filter(n=>n!==this);}fire(type){this.listeners.get(type)?.({type});}}
  const oldDocument=globalThis.document,oldOption=globalThis.Option;globalThis.document={createElement:tag=>new Element(tag)};globalThis.Option=class extends Element{constructor(text,value){super('option',text);this.value=value;}};
  try{
-  const {mountAircraftDerivedFields,mountAircraftLoadoutEditor}=await import('../tactical-map/aircraft-catalog-ui.js');const controls=new Map();for(const [key,value]of Object.entries({'naval.speedKnots':'200','naval.endurance':'1k','aircraft.engines':'2','aircraft.type':'carrier','aircraft.crew':'1','aircraft.remoteRange':''})){const label=new Element('label'),control=new Element('input');control.value=value;label.append(control);controls.set(key,control);}
+  const {mountAircraftDerivedFields,mountAircraftLoadoutEditor}=await import('../tactical-map/aircraft-catalog-ui.js?v=self-sealing-1');const controls=new Map();for(const [key,value]of Object.entries({'naval.speedKnots':'200','naval.endurance':'1k','aircraft.engines':'2','aircraft.type':'carrier','aircraft.crew':'1','aircraft.remoteRange':''})){const label=new Element('label'),control=new Element('input');control.value=value;label.append(control);controls.set(key,control);}
   const host=new Element('div'),output=mountAircraftDerivedFields(controls,host);assert.match(output.textContent,/2.*10ラウンド.*5時間/);controls.get('aircraft.type').value='drone';controls.get('aircraft.type').fire('change');assert.equal(controls.get('aircraft.crew').value,'0');assert.equal(controls.get('aircraft.remoteRange').parent.hidden,false);controls.get('naval.endurance').value='500';controls.get('naval.endurance').fire('input');assert.match(output.textContent,/5ラウンド/);
   const data=[{id:'a',name:'雷装',mounts:[{equipmentId:'weapon-a',count:2}]},{id:'b',name:'爆装',mounts:[{equipmentId:'weapon-b',count:1}]}];const root=new Element('div');const read=mountAircraftLoadoutEditor(root,[{id:'weapon-a',name:'魚雷',kind:'weapon'},{id:'weapon-b',name:'爆弾',kind:'weapon'}],data);assert.deepEqual(read(),data);const firstGroup=root.children[0].children.find(n=>n.tagName==='div').children[0];firstGroup.children.find(n=>n.textContent==='この構成を削除').fire('click');assert.deepEqual(read(),[data[1]]);
  }finally{globalThis.document=oldDocument;globalThis.Option=oldOption;}

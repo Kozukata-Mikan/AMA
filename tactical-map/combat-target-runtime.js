@@ -1,5 +1,5 @@
-import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=car-return-1';
-import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=car-return-1';
+import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=self-sealing-1';
+import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=self-sealing-1';
 import {compareArmorGrades} from './armor-runtime.js?v=car-return-1';
 export {ensureBuildingState as ensureBuildingCombatRuntime} from './building-state.js?v=facility-rules-1';
 import {ensureBuildingState,applyBuildingHits,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
@@ -13,7 +13,8 @@ export function readCombatTargetProfile(unit){
  return{maxHp:unit.snapshot.maxHp,strength,strengthArmor:['F','E','D','C','B','A','S','U'][strength],armor:n.armor};
 }
 export function applyCombatTargetDamage(unit,event,context){
- if(hasAircraftTemplate(unit)){ensureAircraftRuntime(unit);const beforeHp=unit.currentHp,beforeState=structuredClone(unit.aircraftState);const hit=applyAircraftHit(unit,{hit:event.hitCount>0,durabilityDamage:event.hpDamage});unit.aircraftState.normalHitRemainder=event.normalHitRemainder??unit.aircraftState.normalHitRemainder;return{version:1,targetId:unit.instanceId,attackId:event.attackId,turnNumber:context.turnNumber,phaseId:context.phaseId,beforeHp,afterHp:unit.currentHp,beforeState,afterState:structuredClone(unit.aircraftState),hpDamage:beforeHp-unit.currentHp,hasDamageEffect:event.hasDamageEffect,sinkingStarted:null,aircraftHit:hit};}
+ if(hasAircraftTemplate(unit)){ensureAircraftRuntime(unit);const beforeHp=unit.currentHp,beforeState=structuredClone(unit.aircraftState);const applications=(event.aircraftApplications??[{hit:event.hitCount>0,durabilityDamage:event.hpDamage}]).map(event=>{const applied=applyAircraftHit(unit,event);if(event.normalHitRemainder!==undefined)unit.aircraftState.normalHitRemainder=event.normalHitRemainder;return{...applied,...(event.commandId?{commandId:event.commandId,occurrenceIndex:event.occurrenceIndex}:{})};});
+ const hit=applications.length===1?applications[0]:{targetId:unit.instanceId,before:{currentHp:beforeHp,status:beforeState.status},after:{currentHp:unit.currentHp,status:unit.aircraftState.status},applications};unit.aircraftState.normalHitRemainder=event.normalHitRemainder??unit.aircraftState.normalHitRemainder;return{version:1,targetId:unit.instanceId,attackId:event.attackId,turnNumber:context.turnNumber,phaseId:context.phaseId,beforeHp,afterHp:unit.currentHp,beforeState,afterState:structuredClone(unit.aircraftState),hpDamage:beforeHp-unit.currentHp,hasDamageEffect:event.hasDamageEffect,sinkingStarted:null,aircraftHit:hit};}
  if(unit.branch!=='building')return applyShipDamageAttack(unit,event,context);
  ensureBuildingState(unit);const beforeHp=unit.currentHp,beforeState=structuredClone(unit.buildingState);
  const hits=event.buildingHits??[{mountId:chooseBuildingSlot(unit).id,damage:event.hpDamage}];

@@ -1,5 +1,5 @@
-import {airTrainingRule,effectiveTraining,trainingCoin,randomAirCoin,resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {restrictedAircraftFlight} from './aviation-time.js?v=field-support-1';
+import {airTrainingRule,effectiveTraining,trainingCoin,randomAirCoin,resolveAceLosses} from './air-training-runtime.js?v=self-sealing-1';
+import {restrictedAircraftFlight} from './aviation-time.js?v=self-sealing-1';
 
 function destroy(plane, reason) {
   plane.currentHp = 0;

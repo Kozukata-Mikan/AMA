@@ -1,5 +1,5 @@
-import {getGuidanceKind,getGuidanceLabel} from './weapon-profile-runtime.js?v=catalog-symbols-1';
-import {AIRCRAFT_TYPES} from '../js/aircraft-template.js?v=air-training-1';
+import {getGuidanceKind,getGuidanceLabel} from './weapon-profile-runtime.js?v=self-sealing-1';
+import {AIRCRAFT_TYPES} from '../js/aircraft-template.js?v=self-sealing-1';
 const shape=d=>({tag:'path',d,fill:'currentColor',stroke:'none'});
 const line=d=>({tag:'path',d,fill:'none',stroke:'currentColor','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'});
 const PLANE='M0 -30 L6 -7 L26 7 L26 13 L5 6 L4 19 L12 24 L12 28 L0 24 L-12 28 L-12 24 L-4 19 L-5 6 L-26 13 L-26 7 L-6 -7 Z';

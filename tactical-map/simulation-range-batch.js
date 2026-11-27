@@ -1,13 +1,13 @@
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readRangeCommandTarget
-} from "./simulation-range-command.js?v=blast-area-1";
+} from "./simulation-range-command.js?v=self-sealing-1";
 
 import {
   prepareRangeProjection,
   selectRangeOccurrences,
   resolveRangeProjectionHits
-} from "./range-projection-runtime.js?v=blast-area-1";
+} from "./range-projection-runtime.js?v=self-sealing-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

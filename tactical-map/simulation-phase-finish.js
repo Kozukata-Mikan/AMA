@@ -1,12 +1,12 @@
-import {resolveAceLosses} from './air-training-runtime.js?v=air-training-1';
-import {resolveAirNavigationLosses} from './aviation-losses.js?v=field-support-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=blast-area-1';
-import {enforceRemoteControl} from './aviation-services.js?v=car-return-1';
+import {resolveAceLosses} from './air-training-runtime.js?v=self-sealing-1';
+import {resolveAirNavigationLosses} from './aviation-losses.js?v=self-sealing-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=self-sealing-1';
+import {enforceRemoteControl} from './aviation-services.js?v=self-sealing-1';
 import {ensureBuildingState} from './building-state.js?v=facility-rules-1';
-import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=blast-area-1';
-import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=car-return-1';
+import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=self-sealing-1';
+import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=self-sealing-1';
 import { hasSupportEquipment } from "./support-equipment.js?v=field-support-1";
-import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=car-return-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=self-sealing-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -20,31 +20,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=car-return-1";
+} from "./ship-runtime.js?v=self-sealing-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=field-support-1";
+} from "./equipment-runtime.js?v=self-sealing-1";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=blast-area-1";
+} from "./simulation-special-runtime.js?v=self-sealing-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=blast-area-1";
+} from "./simulation-rescue-runtime.js?v=self-sealing-1";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=field-support-1";
+} from "./equipment-item-runtime.js?v=self-sealing-1";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=blast-area-1";
+} from "./simulation-rescue.js?v=self-sealing-1";
 
 import {
   initializeRoundTraitRuntime,

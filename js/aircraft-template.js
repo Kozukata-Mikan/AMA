@@ -1,4 +1,4 @@
-import {normalizeAirTraits} from './aircraft-training.js?v=air-training-1';
+import {normalizeAirTraits} from './aircraft-training.js?v=self-sealing-1';
 // 航空机资料使用独立模板；不把小破／中破或舰船训练效果套入航空机。
 export const AIRCRAFT_TYPES = [
   ['carrier','艦載機'], ['land','陸上機'], ['seaplane','水上機'],
@@ -29,6 +29,8 @@ export function aircraftAirTime(endurance,speed) {
 }
 export function normalizeAircraft(value={}) {
   if(!object(value)||value.version!==undefined&&value.version!==1)throw new Error('航空機資料の書式が不正です。');
+  if(value.selfSealingTank!==undefined&&typeof value.selfSealingTank!=='boolean')throw new Error('自封式燃料タンクは真偽値で指定してください。');
+  const selfSealingTank=value.selfSealingTank??false;
   const type=value.type??'carrier';
   if(!AIRCRAFT_TYPES.some(([id])=>id===type))throw new Error('航空機の種別が不正です。');
   const engines=integer(value.engines??1,'発動機数',1),crew=integer(value.crew??(isDroneType(type)?0:1),'乗員数');
@@ -57,7 +59,7 @@ export function normalizeAircraft(value={}) {
       return{equipmentId:m.equipmentId,count:integer(m.count??1,'搭載装備数',1)};
     })};
   });
-  return {...value,version:1,type,engines,crew,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,traits,acePilotName,remoteRange,attackModes:[...attackModes],loadouts:normalized,
+  return {...value,version:1,type,engines,crew,selfSealingTank,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,traits,acePilotName,remoteRange,attackModes:[...attackModes],loadouts:normalized,
     operations:{takeoff:'runway-or-catapult',preparation:'preparation-area'}};
 }
 export const aircraftParkingSlots = aircraft => normalizeAircraft(aircraft).engines;

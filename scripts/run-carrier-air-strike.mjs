@@ -5,9 +5,9 @@ import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {carrierAirStrikeScene,TEST_SEED} from '../tests/scenarios/carrier-air-strike.mjs';
 import {resetDatabase} from '../tests/save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=blast-area-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=self-sealing-1';
 import {readSave} from '../js/save-database.js';
-import {aviationRunways} from '../tactical-map/aviation-operations.js?v=blast-area-1';
+import {aviationRunways} from '../tactical-map/aviation-operations.js?v=self-sealing-1';
 
 export async function runCarrierAirStrike({outputDirectory=null}={}) {
   const originalCrypto=globalThis.crypto;

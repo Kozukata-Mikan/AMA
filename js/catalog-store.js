@@ -1,11 +1,11 @@
 import {supportEffectOf} from '../tactical-map/support-equipment.js?v=field-support-1';
 import {normalizeAviationComplement} from './equipment-options.js?v=aviation-operations-1';
-import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=air-training-1';
+import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=self-sealing-1';
 import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=field-support-1";
 import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=field-support-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=self-sealing-1";
 import { normalizeFaction } from "./faction-data.js";
 
 

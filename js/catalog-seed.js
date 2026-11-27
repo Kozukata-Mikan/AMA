@@ -177,6 +177,7 @@ export const AIRCRAFT_FIELDS = [
   ...UNIT_FIELDS.filter(field=>['name','branch','faction','sizeLevel','protected','naval.armor','naval.detection','naval.seaRecon','naval.airRecon','naval.aswRecon'].includes(field.key)).map(field=>field.key==='naval.detection'?{...field,label:'探測難度'}:field.key==='naval.armor'?{...field,definition:'艦船と同じ装甲等級を使用します。空戦とPAS対空攻撃では、命中後に装甲・耐性の規則で被害を処理します。'}:field),
   {key:'aircraft.type',label:'種別',type:'aircraft-type',definition:'艦載機・陸上機・水上機・無人機・陸上無人機。起降可能な母艦・施設の区分です。'},
   {key:'aircraft.engines',label:'発動機数 / 最大耐性',type:'number',definition:'発動機数が最大耐性です。耐性0は大破、その後の被攻撃で撃墜。小破・中破はありません。'},
+  {key:'aircraft.selfSealingTank',label:'自封式燃料タンク',type:'checkbox',definition:'被弾で耐性0になる直後に耐性1を自動回復。1機につき発動機数まで使用でき、返航・整備・修理では回数を回復しません。'},
   {key:'aircraft.crew',label:'乗員数',type:'number',definition:'搭乗する乗員の人数。無人機の初期値は0。現時点では性能補正はありません。'},
   {key:'naval.speedKnots',label:'最高速度（ノット）',type:'optional-number',definition:'艦船と同じ速度換算を使用します。滞空時間は航続距離 ÷（最高速度 ÷ 2）の小数切捨てです。'},
   {key:'aircraft.attackModes',label:'使用可能な対地・対艦攻撃方式',type:'air-attack-modes',definition:'複数選択できます。高度差は目標との実高度差で判定し、方式の不利判定を通常命中修正に加算します。'},

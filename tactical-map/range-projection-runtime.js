@@ -1,10 +1,10 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=blast-area-1";
+} from "./formation-target-runtime.js?v=self-sealing-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=blast-area-1";
+} from "./simulation-features.js?v=self-sealing-1";
 
 import {
   resolveHitCoins

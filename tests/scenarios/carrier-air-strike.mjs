@@ -1,5 +1,5 @@
 import {source,ship} from '../fixtures.mjs';
-import {normalizeAircraft} from '../../js/aircraft-template.js';
+import {normalizeAircraft} from '../../js/aircraft-template.js?v=self-sealing-1';
 import {supportEquipmentSeed} from '../../tactical-map/support-equipment.js?v=field-support-1';
 
 export const TEST_SEED = 20261125;

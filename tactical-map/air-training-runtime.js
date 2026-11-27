@@ -1,4 +1,4 @@
-import {effectiveTraining,airTrainingRule,hasAirTrait,trainingId} from '../js/aircraft-training.js?v=air-training-1';
+import {effectiveTraining,airTrainingRule,hasAirTrait,trainingId} from '../js/aircraft-training.js?v=self-sealing-1';
 export {effectiveTraining,airTrainingRule,hasAirTrait};
 export const randomAirCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 export function trainingCoin(coin=randomAirCoin){const v=coin();if(typeof v!=='boolean')throw Error('航空練度の硬貨結果が不正です。');return v;}

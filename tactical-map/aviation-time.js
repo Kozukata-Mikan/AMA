@@ -1,4 +1,4 @@
-import {hasAirTrait} from './air-training-runtime.js?v=air-training-1';
+import {hasAirTrait} from './air-training-runtime.js?v=self-sealing-1';
 import {getTimePeriod,normalizeEnvironment,getWeatherInfo} from './environment-data.js?v=day-catalog-pas-1';
 import {supportCapacity} from './support-equipment.js?v=field-support-1';
 export const nightObservation=u=>supportCapacity(u,'night-observation')>0;

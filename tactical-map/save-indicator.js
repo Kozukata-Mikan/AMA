@@ -1,4 +1,4 @@
-import {subscribeBackgroundStatus} from './background-client.js?v=blast-area-1';
+import {subscribeBackgroundStatus} from './background-client.js?v=self-sealing-1';
 // Saving/computing is visible; selection and panning remain usable.
 export function mountSaveIndicator(store) {
   const indicator = document.createElement('p');

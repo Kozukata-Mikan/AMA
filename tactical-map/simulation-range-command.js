@@ -1,4 +1,4 @@
-import {readBlastPoint} from './blast-area.js?v=blast-area-1';
+import {readBlastPoint} from './blast-area.js?v=self-sealing-1';
 const copy = value => JSON.parse(JSON.stringify(value));
 
 function fail(message) {
