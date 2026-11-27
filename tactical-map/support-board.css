@@ -1,0 +1,19 @@
+.support-board{width:min(1510px,96vw);color:#e0eff7}
+.support-board .aviation-board-head>button{margin-left:auto}
+.support-stats,.support-condition{display:grid;gap:.55rem;grid-template-columns:repeat(5,minmax(0,1fr));margin:.8rem 0}
+.support-metric,.support-column,.support-part{background:#112838;border:1px solid #385a6b;border-radius:.6rem;padding:.75rem}
+.support-metric strong,.support-board small,.support-roster strong{display:block}
+.support-metric strong{font-size:1.22rem;margin-top:.25rem}.support-board small{color:#a9c5d5}
+.support-grid{display:grid;grid-template-columns:minmax(12rem,.75fr) minmax(20rem,1.65fr) minmax(17rem,1fr);gap:.7rem;align-items:start}
+.support-column{min-width:0;max-height:66vh;overflow:auto;scrollbar-gutter:stable}
+.support-column h3{margin:0 0 .7rem}.support-column input[type=search]{width:100%;margin-bottom:.55rem}
+.support-roster,.support-action-body label{display:grid;gap:.4rem;margin:.5rem 0}
+.support-roster button{text-align:left;padding:.65rem}.support-board button[aria-pressed=true]{border-color:#82d9fa;background:#20465b;color:#effaff}
+.support-condition{grid-template-columns:repeat(3,minmax(0,1fr))}.support-effects,.support-wide{grid-column:1/-1}.support-effects{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.support-effects p,.support-part p{margin:.3rem 0}.support-parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:.5rem}
+.support-part{background:#162f40}.support-part header,.support-equipment-line{display:flex;justify-content:space-between;align-items:baseline;gap:.4rem}
+.support-equipment-line{border-top:1px solid #345263;padding:.35rem 0;font-size:.86rem}
+.support-part progress{width:100%;accent-color:#68b7d2}.support-ok{color:#9bd8ce}.support-board .support-alert{color:#ffc28a}
+.support-tabs{display:flex;flex-wrap:wrap;gap:.35rem}.support-action-body [hidden]{display:none!important}.support-action-body details{padding:.5rem 0;border:none}.support-action-body select{max-width:100%}
+@media(max-width:900px){.support-grid{grid-template-columns:1fr 2fr}.support-grid>:last-child{grid-column:1/-1}.support-column{max-height:58vh}}
+@media(max-width:600px){.support-grid{display:block}.support-column{margin:.4rem 0;max-height:none}.support-roster{max-height:12rem;overflow:auto}.support-stats{grid-template-columns:repeat(3,1fr)}}

@@ -65,7 +65,7 @@ function requireItemId(itemId) {
   }
 }
 
-function positionItemId(position) {
+export function positionItemId(position) {
   if (typeof position !== "string") {
     fail("装備位置の保存値が不正です。");
   }
