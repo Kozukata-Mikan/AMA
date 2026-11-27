@@ -1,5 +1,5 @@
 import {serializeBackgroundError} from './background-errors.js?v=settlement-audit-1';
-import {executeBackgroundTask} from './background-tasks.js?v=electronic-ballistic-1';
+import {executeBackgroundTask} from './background-tasks.js?v=visual-support-bridge-1';
 self.onmessage=async event=>{
  const {id,task,payload}=event.data;
  try{self.postMessage({id,result:await executeBackgroundTask(task,payload)})}

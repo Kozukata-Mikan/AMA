@@ -1,8 +1,8 @@
 import {hasAircraftTemplate,readAircraftProfile,ensureAircraftRuntime,applyAircraftHit} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=electronic-ballistic-1';
+import {readShipProfile,applyShipDamageAttack} from './ship-runtime.js?v=visual-support-bridge-1';
 import {compareArmorGrades} from './armor-runtime.js?v=car-return-1';
-export {ensureBuildingState as ensureBuildingCombatRuntime} from './building-state.js?v=facility-rules-1';
-import {ensureBuildingState,applyBuildingHits,chooseBuildingSlot} from './building-state.js?v=facility-rules-1';
+export {ensureBuildingState as ensureBuildingCombatRuntime} from './building-state.js?v=visual-support-bridge-1';
+import {ensureBuildingState,applyBuildingHits,chooseBuildingSlot} from './building-state.js?v=visual-support-bridge-1';
 export function combatTargetState(unit){return hasAircraftTemplate(unit)?unit.aircraftState:unit.branch==='building'?unit.buildingState??{status:unit.currentHp===0?'destroyed':'intact',normalHitRemainder:0,underwaterStrengthUses:0}:unit.shipState;}
 export function readCombatTargetProfile(unit){
  if(hasAircraftTemplate(unit)){const profile=readAircraftProfile(unit);compareArmorGrades('F',unit.snapshot.naval.armor);return{maxHp:profile.maxHp,strength:0,strengthArmor:'F',armor:unit.snapshot.naval.armor};}

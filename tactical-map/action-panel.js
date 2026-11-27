@@ -1,4 +1,4 @@
-import { getBranchName } from "../js/data-store.js?v=electronic-ballistic-1";
+import { getBranchName } from "../js/data-store.js?v=visual-support-bridge-1";
 
 // ===== 行动草案面板 =====
 // 这里只记录意图，不执行战斗裁定或修改参战状态。

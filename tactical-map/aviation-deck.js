@@ -1,7 +1,7 @@
 import {hasAircraftTemplate} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import {aviationRunways,aviationLanes,aviationHostAlive,WATER_LANE} from './aviation-operations.js?v=electronic-ballistic-1';
+import {aviationRunways,aviationLanes,aviationHostAlive,WATER_LANE} from './aviation-operations.js?v=visual-support-bridge-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=self-sealing-1';
-import {supportCapacity,supportEffectOf} from './support-equipment.js?v=electronic-ballistic-1';
+import {supportCapacity,supportEffectOf} from './support-equipment.js?v=visual-support-bridge-1';
 export const aviationDeckZone=p=>['ready','launching','landing'].includes(p.aircraftState?.mission)?'runway':p.aircraftState?.mission==='airborne'?'airborne':p.aircraftState?.deckZone==='preparation'?'preparation':'hangar';
 export function buildAviationDeck(scene,hostId){
  const host=scene.instances.find(u=>u.instanceId===hostId&&u.observationOwn);if(!host)return null;

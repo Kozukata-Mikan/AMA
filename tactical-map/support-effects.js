@@ -1,4 +1,4 @@
-import {supportCapacity} from './support-equipment.js?v=electronic-ballistic-1';
+import {supportCapacity} from './support-equipment.js?v=visual-support-bridge-1';
 import {navalHeight} from './naval-kind.js';
 import {sampleTerrain} from './terrain-data.js';
 export const balloonActive=unit=>unit?.fieldSupport?.balloonRaised===true&&supportCapacity(unit,'observation-balloon')>0&&!['sinking','sunk'].includes(unit.shipState?.status)&&unit.aircraftState?.status!=='destroyed';

@@ -1,7 +1,7 @@
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
 import {
   EQUIPMENT_HIT_ITEMS
-} from "./equipment-damage-runtime.js";
+} from "./equipment-damage-runtime.js?v=visual-support-bridge-1";
 
 
 export function mountRescueUI(store) {

@@ -1,8 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {encodeSpecialHistory,decodeSpecialHistory} from '../tactical-map/special-history-codec.js';
 import {freezeSpecialHistory,copySceneWithSpecialHistory,isImmutableSpecialRecord} from '../tactical-map/special-history-snapshot.js';
-import {getVisibility,getObserverVisibility,initializeSimulationFeatures} from '../tactical-map/simulation-features.js?v=electronic-ballistic-1';
-import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=electronic-ballistic-1';import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=electronic-ballistic-1';
+import {getVisibility,getObserverVisibility,initializeSimulationFeatures} from '../tactical-map/simulation-features.js?v=visual-support-bridge-1';
+import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=visual-support-bridge-1';import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=visual-support-bridge-1';
 import {source,ship} from './fixtures.mjs';
 const copy=x=>JSON.parse(JSON.stringify(x));
 function history(){const eq={groups:[{id:'gun',ammo:6,damaged:false}],itemDamage:{items:{front:{damaged:false}}}};return {specialRuntime:{version:1,lastFireFloodingTurn:2,records:[1,2].map(turn=>({version:1,step:'fire-flooding',turnNumber:turn,phaseId:'special',shipReports:[{version:1,targetId:'ship',turnNumber:turn,phaseId:'special',skipped:false,rolls:[{type:'fire',coin:turn===1,success:turn===1}],events:[],beforeEquipmentState:copy(eq),afterEquipmentState:copy(eq),futureField:{preserved:true}}],rescueInterruptions:[]}))},instances:[{currentHp:10}],otherField:{preserved:true}}}
@@ -31,7 +31,7 @@ test('query-local recon reuse matches per-observer results for all sides and lea
 });
 test('damage, retained discovery expiry, movement, terrain and observation changes invalidate naturally',()=>{
  const s=scene(),a=s.instances[0],b=s.instances[1];assert.equal(getVisibility(s).get('b'),'shadow');
- const recon=a.equipmentState.itemDamage.items['sea-recon'];recon.damaged=true;recon.damagedTurn=1;recon.discoveries=[{targetId:'b',level:'identified'}];assert.equal(getVisibility(s).get('b'),'identified');
+ const recon=a.equipmentState.itemDamage.items.bridge;recon.damaged=true;recon.damagedTurn=1;recon.discoveries=[{targetId:'b',level:'identified'}];assert.equal(getVisibility(s).get('b'),'identified');
  s.turn.number=2;assert(!getVisibility(s).has('b'));recon.damaged=false;recon.damagedTurn=null;recon.discoveries=[];assert.equal(getVisibility(s).get('b'),'shadow');b.x=1000;assert(!getVisibility(s).has('b'));b.x=50;assert.equal(getVisibility(s).get('b'),'identified');
  s.terrain.heights.fill(40);assert(!getVisibility(s).has('b'));s.terrain.heights.fill(-20);assert.equal(getVisibility(s).get('b'),'identified');
  a.shipState.status='sunk';assert(!getVisibility(s).has('b'));s.controls.observationSide='enemy';assert.equal(getVisibility(s).get('b'),'identified');
@@ -39,7 +39,7 @@ test('damage, retained discovery expiry, movement, terrain and observation chang
 
 test('legacy full histories reopen, compact on successful save and preserve public copy contracts',async()=>{
  const {resetDatabase}=await import('./save-test-environment.mjs');await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};
- const {createSimulation,openSimulation}=await import('../tactical-map/simulation-store.js?v=electronic-ballistic-1'),{readSave,writeSave}=await import('../js/save-database.js');
+ const {createSimulation,openSimulation}=await import('../tactical-map/simulation-store.js?v=visual-support-bridge-1'),{readSave,writeSave}=await import('../js/save-database.js');
  const id=await createSimulation(source(),()=>({valid:true}));let store=await openSimulation(id);
  await store.beginMovement();await store.resolveMovement();for(let n=0;n<6;n++)await store.settleAttackPhase(store.getSceneSnapshot().revision);await store.finishSpecialPhase(store.getSceneSnapshot().revision);await store.finishTurn(store.getSceneSnapshot().revision);
  const key='junqi-simulation-v1:'+id,packedRaw=await readSave(key),full=decodeSpecialHistory(JSON.parse(packedRaw));assert(full.specialRuntime.records[0].shipReports.length>0);

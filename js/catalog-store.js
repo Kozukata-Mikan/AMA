@@ -1,11 +1,11 @@
-import {supportEffectOf} from '../tactical-map/support-equipment.js?v=electronic-ballistic-1';
+import {supportEffectOf} from '../tactical-map/support-equipment.js?v=visual-support-bridge-1';
 import {normalizeAviationComplement} from './equipment-options.js?v=aviation-operations-1';
 import {normalizeAircraft,aircraftMounts,aircraftAirTime,AIRCRAFT_WEAPON_ROLES} from './aircraft-template.js?v=self-sealing-1';
-import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=electronic-ballistic-1";
+import { STATION_IDS, supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=visual-support-bridge-1";
 import { normalizeBuilding } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalKind } from "../tactical-map/naval-kind.js?v=catalog-layout-2";
 import { normalizeNavalSymbol } from "./naval-symbols.js?v=naval-formation-2";
-import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=electronic-ballistic-1";
+import { createCatalogSeed,TRAINING_TRAIT_OPTIONS } from "./catalog-seed.js?v=visual-support-bridge-1";
 import { normalizeFaction } from "./faction-data.js";
 
 
@@ -365,7 +365,8 @@ function normalizeCatalog(value) {
   }
 
   const equipmentById=new Map(equipment.map(e=>[e.id,e]));
-  for(const u of units)if(u.branch==='building'&&u.mounts.filter(m=>m.position==='中心').length>1)throw Error('建築の中心配置は1か所にしてください。');
+
+  for(const unit of units)if(unit.branch==='navy')for(const mount of unit.mounts)if(['艦橋','舰桥','bridge'].includes(mount.position)&&equipmentById.get(mount.equipmentId)?.kind!=='support')throw Error('艦橋には支援装備を配置してください。');
   const aircraftById=new Map(units.filter(u=>u.branch==='air'&&u.aircraft).map(u=>[u.id,u]));
   for (const unit of units) {
     if (unitIds.has(unit.id)) {
@@ -440,6 +441,7 @@ export function initializeCatalog(baseUnits) {
   if(!recoveryError&&data.supportStationsVersion<5){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['mine','mine-guard','boat','observation-balloon','spotter','rato'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:5,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
 
   if(!recoveryError&&data.supportStationsVersion<6){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['electronic-warfare-pod','flare'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:6,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
+  if(!recoveryError&&data.supportStationsVersion<7){const existing=new Set(data.equipment.map(e=>e.id));const additions=supportEquipmentSeed().filter(e=>['smoke-generator','searchlight'].includes(e.supportEffect)&&!existing.has(e.id));data=normalizeCatalog({...data,supportStationsVersion:7,equipment:[...data.equipment,...additions]});localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}
   const units = [];
   const listeners = new Set();
   // 只在当前页面内有效，不写入 localStorage。

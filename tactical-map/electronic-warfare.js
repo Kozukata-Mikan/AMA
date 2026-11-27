@@ -1,5 +1,5 @@
-import {supportEffectOf} from './support-equipment.js?v=electronic-ballistic-1';
-import {buildingMountAvailable,buildingAlive} from './building-state.js?v=facility-rules-1';
+import {supportEffectOf} from './support-equipment.js?v=visual-support-bridge-1';
+import {buildingMountAvailable,buildingAlive} from './building-state.js?v=visual-support-bridge-1';
 export const ELECTRONIC_RADIUS=750;
 const fail=message=>{throw Error(message);};
 function alive(u){return u&&Number.isFinite(u.x)&&Number.isFinite(u.y)&&!u.projectileState&&(u.branch==='air'?['airborne','landing'].includes(u.aircraftState?.mission)&&u.aircraftState.status==='operational':u.branch==='building'?buildingAlive(u):u.branch==='navy'?!['sinking','sunk'].includes(u.shipState?.status):false);}

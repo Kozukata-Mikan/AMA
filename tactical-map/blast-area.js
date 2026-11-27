@@ -1,7 +1,7 @@
 import {readPenetrationGrade} from './armor-runtime.js';
 import {sampleTerrain} from './terrain-data.js';
 import {navalHeight} from './naval-kind.js?v=catalog-layout-2';
-import {expandFormationMemberIds} from './formation-target-runtime.js?v=electronic-ballistic-1';
+import {expandFormationMemberIds} from './formation-target-runtime.js?v=visual-support-bridge-1';
 import {formationCenter} from './formation-layout.js';
 export function blastRadius(penetration){const grade=readPenetrationGrade(penetration).grade;return grade===null?0:({U:6,S:5,A:4,B:3,C:2,D:1,E:.5,F:.5})[grade];}
 export function blastUnitPoint(scene,unit){const ground=sampleTerrain(scene.terrain,unit.x,unit.y);return{x:unit.x,y:unit.y,z:unit.branch==='building'?ground.surface:unit.branch==='air'?unit.altitude:navalHeight(unit,ground)};}

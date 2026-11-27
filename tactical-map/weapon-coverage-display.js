@@ -1,6 +1,6 @@
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=electronic-ballistic-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=visual-support-bridge-1';
 import {firingArcDefinition} from './weapon-firing-arc.js?v=blast-area-1';
-import {buildingMountAvailable} from './building-state.js?v=facility-rules-1';
+import {buildingMountAvailable} from './building-state.js?v=visual-support-bridge-1';
 import {activeAircraftMounts} from '../js/aircraft-template.js?v=self-sealing-1';
 import {sampleTerrain} from './terrain-data.js';import {navalHeight} from './naval-kind.js';
 export const COVERAGE_COLORS=['#69d6ff','#ffce70','#bba1ff','#79e4af','#ff94c5','#ffa66d'];

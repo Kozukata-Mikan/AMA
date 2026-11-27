@@ -1,13 +1,13 @@
 import {resolveNumericDamage} from './numeric-damage-runtime.js?v=car-return-1';
-import { supportCapacity } from "./support-equipment.js?v=electronic-ballistic-1";
+import { supportCapacity } from "./support-equipment.js?v=visual-support-bridge-1";
 import { NAVAL_KINDS, navalKind, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import {
   EQUIPMENT_HIT_ITEMS
-} from "./equipment-damage-runtime.js";
+} from "./equipment-damage-runtime.js?v=visual-support-bridge-1";
 
 import {
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-item-runtime.js?v=visual-support-bridge-1";
 
 
 import {
@@ -26,12 +26,12 @@ import {
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-runtime.js?v=visual-support-bridge-1";
 
 import {
   ensureEquipmentItemRuntime,
   applyEquipmentItemDamageControl
-} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-item-runtime.js?v=visual-support-bridge-1";
 
 
 // ===== 舰船数据与推演状态接入 =====
@@ -406,6 +406,7 @@ export function getShipDetailLines(unit, environment) {
       `探測強度：${profile.detection}`,
       `対海偵察：${profile.seaRecon}`,
       `対空偵察：${profile.airRecon}`,
+    `対潜偵察：${profile.aswRecon??"未設定"}`,
     `種類：${NAVAL_KINDS.find(([id])=>id===profile.kind)?.[1]}`,
     `状態：${isSubmerged(unit) ? '潜深 '+unit.depth : profile.kind==='air' ? '高度 '+unit.altitude : '水上／陸上'}`,
     `対潜偵察：${profile.aswRecon ?? 'なし'}`,
@@ -450,6 +451,7 @@ const equipmentLines = EQUIPMENT_HIT_ITEMS.map(item => {
     `探測強度：${profile.detection}`,
     `対海偵察：${profile.seaRecon}`,
     `対空偵察：${profile.airRecon}`,
+    `対潜偵察：${profile.aswRecon??"未設定"}`,
     "【設備状態】",
     ...equipmentLines,
     ...getOwnShipEffectLines(

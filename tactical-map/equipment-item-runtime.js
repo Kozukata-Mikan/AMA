@@ -4,17 +4,20 @@ import {
   validateEquipmentImpactReport,
   resolveEquipmentItemDamageControl,
   validateEquipmentItemControlReport
-} from "./equipment-damage-runtime.js";
+} from "./equipment-damage-runtime.js?v=visual-support-bridge-1";
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-runtime.js?v=visual-support-bridge-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const ITEM_IDS = EQUIPMENT_HIT_ITEMS.map(item => item.id);
-const RECON_IDS = ["sea-recon", "air-recon"];
+const RECON_IDS = ["bridge"];
+const reconAliases=new Set(["sea-recon","air-recon","asw-recon"]);
+const canonicalItem=id=>reconAliases.has(id)?"bridge":id;
 
 const POSITION_NAMES = new Map([
+  ["艦橋","bridge"],["舰桥","bridge"],["bridge","bridge"],
   ["前部", "front"],
   ["中部1", "middle-1"],
   ["中部１", "middle-1"],
@@ -75,7 +78,7 @@ function positionItemId(position) {
 
   // 未识别位置必须拒绝，不能冒充空槽。
   if (!itemId) {
-    fail("装備位置を八項目に対応付けできません。");
+    fail("装備位置を六部位・艦橋に対応付けできません。");
   }
 
   return itemId;
@@ -156,7 +159,7 @@ function groupsForItem(unit, itemId) {
 }
 
 /**
- * 初始化八项状态，并兼容旧装备组存档。
+ * 初始化七项状态，并兼容旧装备组存档。
  *
  * 正式场景初始化或事务工作副本上调用。
  * 不清空旧存档，不修改snapshot。
@@ -180,18 +183,25 @@ export function ensureEquipmentItemRuntime(unit) {
   }
 
   let runtime = unit.equipmentState.itemDamage;
+  if(runtime?.version===1){
+    const old=runtime.items,bridge=emptyItemState(),states=[old?.['sea-recon'],old?.['air-recon'],...groupsForItem(unit,'bridge').map(g=>({damaged:g.damaged,destroyed:g.destroyed===true,damagedTurn:null,discoveries:[]}))];
+    if(!old||Object.keys(old).length!==8||states.slice(0,2).some(s=>!s))fail('旧設備保存形式が不正です。');
+    for(const state of Object.values(old))validateItemState(state);
+    bridge.destroyed=states.some(s=>s.destroyed);bridge.damaged=bridge.destroyed||states.some(s=>s.damaged);
+    const turns=states.filter(s=>s.damaged&&s.damagedTurn!==null).map(s=>s.damagedTurn);bridge.damagedTurn=turns.length?Math.max(...turns):null;
+    const contacts=new Map();for(const state of states)if(state.damagedTurn===bridge.damagedTurn)for(const contact of state.discoveries){const previous=contacts.get(contact.targetId);if(!previous||contact.level==='identified')contacts.set(contact.targetId,copy(contact));}
+    bridge.discoveries=[...contacts.values()];runtime={version:2,items:{...Object.fromEntries(ITEM_IDS.slice(0,6).map(id=>[id,old[id]])),bridge}};unit.equipmentState.itemDamage=runtime;
+  }
 
   if (runtime === undefined) {
     runtime = {
-      version: 1,
+      version: 2,
       items: Object.fromEntries(
         ITEM_IDS.map(id => [id, emptyItemState()])
       )
     };
 
     for (const itemId of ITEM_IDS) {
-      if (RECON_IDS.includes(itemId)) continue;
-
       const groups = groupsForItem(unit, itemId);
       const state = runtime.items[itemId];
 
@@ -208,24 +218,22 @@ export function ensureEquipmentItemRuntime(unit) {
 
   if (
     !object(runtime) ||
-    runtime.version !== 1 ||
+    runtime.version !== 2 ||
     !object(runtime.items) ||
     Object.keys(runtime.items).length !== ITEM_IDS.length ||
     ITEM_IDS.some(id => !Object.hasOwn(runtime.items, id))
   ) {
-    fail("八項目の設備保存形式が不正です。");
+    fail("七項目の設備保存形式が不正です。");
   }
 
   for (const itemId of ITEM_IDS) {
     const state = runtime.items[itemId];
     validateItemState(state);
 
-    if (RECON_IDS.includes(itemId)) continue;
-
     const groups = groupsForItem(unit, itemId);
 
     if (
-      groups.length === 0 &&
+      itemId!=="bridge" && groups.length === 0 &&
       (
         state.damaged ||
         state.destroyed ||
@@ -251,7 +259,7 @@ export function ensureEquipmentItemRuntime(unit) {
  * 查询使用副本，不在观察函数中迁移或写入正式单位。
  */
 export function readEquipmentItemState(unit, itemId) {
-  requireItemId(itemId);
+  itemId=canonicalItem(itemId);requireItemId(itemId);
 
   const working = copy(unit);
   const runtime = ensureEquipmentItemRuntime(working);
@@ -360,9 +368,7 @@ export function applyEquipmentAttack(
     const state = runtime.items[itemId];
     const recon = RECON_IDS.includes(itemId);
 
-    const groups = recon
-      ? []
-      : groupsForItem(working, itemId);
+    const groups = groupsForItem(working, itemId);
 
     const empty = !recon && groups.length === 0;
     const before = copy(state);
@@ -416,7 +422,7 @@ function applyItemResolution(
   itemId,
   success
 ) {
-  requireItemId(itemId);
+  itemId=canonicalItem(itemId);requireItemId(itemId);
 
   if (typeof success !== "boolean") {
     fail("設備修復の成否が不正です。");
@@ -521,7 +527,7 @@ export function applyExternalEquipmentRepairResult(
  * 侦察能力查询。
  */
 export function isEquipmentReconAvailable(unit, itemId) {
-  if (!RECON_IDS.includes(itemId)) {
+  if (!RECON_IDS.includes(canonicalItem(itemId))) {
     fail("偵察項目の指定が不正です。");
   }
 
@@ -538,7 +544,7 @@ export function getRetainedEquipmentDiscovery(
   target,
   itemId
 ) {
-  if (!RECON_IDS.includes(itemId)) {
+  if (!RECON_IDS.includes(canonicalItem(itemId))) {
     fail("偵察項目の指定が不正です。");
   }
 

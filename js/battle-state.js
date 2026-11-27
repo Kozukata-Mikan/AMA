@@ -1,6 +1,6 @@
 import {normalizeAviationComplement} from './equipment-options.js';
 import {aircraftFacilityCompatible} from './aircraft-template.js?v=self-sealing-1';
-import {supportCapacity} from '../tactical-map/support-equipment.js?v=electronic-ballistic-1';
+import {supportCapacity} from '../tactical-map/support-equipment.js?v=visual-support-bridge-1';
 import {normalizeAircraftPosition} from '../tactical-map/aircraft-runtime.js?v=electronic-ballistic-1';
 import { normalizeBuildingUnit } from "../tactical-map/building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition } from "../tactical-map/naval-kind.js?v=catalog-layout-2";

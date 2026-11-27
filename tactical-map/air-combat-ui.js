@@ -1,4 +1,4 @@
-import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
+import {aircraftMayFly} from './aviation-time.js?v=visual-support-bridge-1';
 import {hasAircraftTemplate,aircraftCanAct} from './aircraft-runtime.js?v=electronic-ballistic-1';
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAirCombatUI(store){

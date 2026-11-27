@@ -1,6 +1,6 @@
-import {aviationHostAlive,aviationLanes,initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft} from './aviation-operations.js?v=electronic-ballistic-1';
+import {aviationHostAlive,aviationLanes,initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft} from './aviation-operations.js?v=visual-support-bridge-1';
 import {hasAircraftTemplate,ensureAircraftRuntime} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import {supportCapacity} from './support-equipment.js?v=electronic-ballistic-1';
+import {supportCapacity} from './support-equipment.js?v=visual-support-bridge-1';
 const fail=m=>{throw Error(m);};
 const side=scene=>scene.controls.enemyAutonomy?'ally':scene.controls.observationSide;
 const record=(scene,data)=>scene.aviationRuntime.records.push({turnNumber:scene.turn.number,...data});

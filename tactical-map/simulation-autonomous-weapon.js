@@ -1,7 +1,7 @@
-import {readWeaponProfile, readWeaponTargetScope} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
+import {readWeaponProfile, readWeaponTargetScope} from "./weapon-profile-runtime.js?v=visual-support-bridge-1";
 import {getMaximumCannonHitCredits} from "./cannon-damage-runtime.js?v=car-return-1";
 import {resolveNumericDamage} from "./numeric-damage-runtime.js?v=car-return-1";
-import {parseDamageRule} from "./weapon-damage-rule.js?v=car-return-1";
+import {parseDamageRule} from "./weapon-damage-rule.js?v=visual-support-bridge-1";
 
 export function maximumHullDamage(profile) {
   const rule = parseDamageRule(profile);

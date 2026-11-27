@@ -1,22 +1,22 @@
-import {resolveBuildingFire} from './building-state.js?v=facility-rules-1';
+import {resolveBuildingFire} from './building-state.js?v=visual-support-bridge-1';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=electronic-ballistic-1";
+} from "./ship-runtime.js?v=visual-support-bridge-1";
 
 import {
   initializeRescueState,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=electronic-ballistic-1";
+} from "./simulation-rescue.js?v=visual-support-bridge-1";
 
 import {
   ensureEquipmentRuntime
-} from "./equipment-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-runtime.js?v=visual-support-bridge-1";
 
 import {
   validateEquipmentItemControlReport
-} from "./equipment-damage-runtime.js";
+} from "./equipment-damage-runtime.js?v=visual-support-bridge-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 // 只校验本次新增的设备损管记录。

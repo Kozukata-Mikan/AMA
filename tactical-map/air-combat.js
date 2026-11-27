@@ -1,17 +1,17 @@
-import {flareBlocks} from './electronic-warfare.js?v=electronic-ballistic-1';
-import {spottingBonus} from './support-effects.js?v=electronic-ballistic-1';
+import {flareBlocks} from './electronic-warfare.js?v=visual-support-bridge-1';
+import {spottingBonus} from './support-effects.js?v=visual-support-bridge-1';
 import {airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
 import {initializeAirTraining,resolveAceLosses,airTrainingRule,rollManeuver,applySquadPanic,airConfused,airRetreating,canAmbush,markAmbush} from './air-training-runtime.js?v=electronic-ballistic-1';
 import {checkRayTarget,registerRayTarget,initializeRayTargetRuntime} from './ray-target-runtime.js';
 import {traceAttackTerrainLine,entersTerrainInterior} from './attack-terrain-runtime.js';
 import {hasAircraftTemplate,aircraftCanAct,applyAircraftHit,ensureAircraftRuntime} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
-import {readWeaponProfile} from './weapon-profile-runtime.js?v=electronic-ballistic-1';
-import {parseDamageRule} from './weapon-damage-rule.js?v=car-return-1';
-import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js?v=electronic-ballistic-1';
+import {aircraftMayFly} from './aviation-time.js?v=visual-support-bridge-1';
+import {readWeaponProfile} from './weapon-profile-runtime.js?v=visual-support-bridge-1';
+import {parseDamageRule} from './weapon-damage-rule.js?v=visual-support-bridge-1';
+import {resolveHitCoins,getHitModifiers} from './weapon-hit-runtime.js?v=visual-support-bridge-1';
 import {resolveNumericDamage} from './numeric-damage-runtime.js?v=car-return-1';
 import {compareArmorGrades,readArmorGrade} from './armor-runtime.js?v=car-return-1';
-import {getVisibility,getObserverVisibility} from './simulation-features.js?v=electronic-ballistic-1';
+import {getVisibility,getObserverVisibility} from './simulation-features.js?v=visual-support-bridge-1';
 const fail=m=>{throw Error(m);};
 const randomCoin=()=>Boolean(crypto.getRandomValues(new Uint32Array(1))[0]&1);
 function toss(coin){const value=coin();if(typeof value!=='boolean')fail('空戦のコイン結果が不正です。');return value;}
@@ -52,7 +52,7 @@ function canFireAt(scene,a,b,profile,traces){
 function fireWeapons(scene,shooters,opponents,role,coin){
  const shots=[],applications=[],traces=new Map();for(const a of shooters){if(a.aircraftState.status!=='operational'||a.electronicState?.droneSuppressed&&['drone','land-drone'].includes(a.snapshot.aircraft.type))continue;const choices=opponents.filter(p=>p.aircraftState.status!=='destroyed');if(!choices.length)break;
   const actualRole=airConfused(a)||airRetreating(a)?'自衛武器':role;
-  for(const w of weaponGroups(a,actualRole,scene.turn.phaseId)){if(w.g.remainingAmmo<w.p.fullAmmoCost)continue;const eligible=choices.filter(b=>canFireAt(scene,a,b,w.p,traces));if(!eligible.length)continue;const b=eligible[indexOfRandom(eligible.length,coin)],modifiers=getHitModifiers({guidance:w.p.guidance,environment:scene.environment,globalBonuses:spottingBonus(a),globalPenalties:(distance(a,b)>w.p.range/2+1e-7?1:0)+airDisruptionPenalty(scene,a)});
+  for(const w of weaponGroups(a,actualRole,scene.turn.phaseId)){if(w.g.remainingAmmo<w.p.fullAmmoCost)continue;const eligible=choices.filter(b=>canFireAt(scene,a,b,w.p,traces));if(!eligible.length)continue;const b=eligible[indexOfRandom(eligible.length,coin)],modifiers=getHitModifiers({guidance:w.p.guidance,environment:scene.environment,targetIlluminated:b.searchlightIlluminated===true,globalBonuses:spottingBonus(a),globalPenalties:(distance(a,b)>w.p.range/2+1e-7?1:0)+airDisruptionPenalty(scene,a)});
    const hit=resolveHitCoins({...w.p.projection,guidance:w.p.guidance,radarSuppressed:a.electronicState?.radarSuppressed??false,bonuses:modifiers.bonuses,penalties:modifiers.penalties},coin);w.g.remainingAmmo-=w.p.fullAmmoCost;w.g.lastUsedTurn=scene.turn.number;if(w.p.guidance==='ray')registerRayTarget(scene,{unitId:a.instanceId,targetId:b.instanceId},{turnNumber:scene.turn.number,phaseId:scene.turn.phaseId});
    if(flareBlocks(scene,b,w.p.guidance)){hit.hitCount=0;hit.flareBlocked=true;}
    const rule=parseDamageRule(w.e);let damage=0,normalCredits=0;if(rule.kind==='cannon'){for(let n=0;n<hit.hitCount;n++){const comparison=compareArmorGrades(w.p.penetration,b.snapshot.naval.armor),category=toss(coin)?comparison.category:'normal';normalCredits+=({major:9,penetration:3,normal:1,shatter:0})[category];}}else damage=resolveNumericDamage({powerRule:w.e.powerRule,hitCount:hit.hitCount,penetration:w.p.penetration,armor:b.snapshot.naval.armor,strength:0,strengthRemaining:0,inertial:w.p.guidance==='inertial'}).hpDamage;

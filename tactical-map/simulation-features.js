@@ -1,35 +1,36 @@
-import {resolveFieldMines,observedFieldSupport} from './field-support-runtime.js?v=electronic-ballistic-1';
-import {balloonObserver} from './support-effects.js?v=electronic-ballistic-1';
-import {observedAviationLosses} from './aviation-losses.js?v=electronic-ballistic-1';
+import {smokeBlocks,observedVisualSupport,extendSmokeRoutes} from './visual-support.js?v=visual-support-bridge-1';
+import {resolveFieldMines,observedFieldSupport} from './field-support-runtime.js?v=visual-support-bridge-1';
+import {balloonObserver} from './support-effects.js?v=visual-support-bridge-1';
+import {observedAviationLosses} from './aviation-losses.js?v=visual-support-bridge-1';
 import {airRetreating,hasAirTrait} from './air-training-runtime.js?v=electronic-ballistic-1';
-import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=electronic-ballistic-1';
+import {ensureRetreatMissions,martyrRoutes,applyLowCloud} from './air-special-actions.js?v=visual-support-bridge-1';
 import {airborneUnit} from './air-ground-rules.js?v=car-return-1';
-import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=electronic-ballistic-1';
+import {flightMissionRoutes,finishMissionMovement} from './flight-missions.js?v=visual-support-bridge-1';
 import {observedAirCombat} from './air-combat-report.js?v=self-sealing-1';
-import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
-import {buildingAlive} from './building-state.js?v=facility-rules-1';
-import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=electronic-ballistic-1';
-import {reconcileAviation} from './aviation-operations.js?v=electronic-ballistic-1';
+import {aircraftMayFly} from './aviation-time.js?v=visual-support-bridge-1';
+import {buildingAlive} from './building-state.js?v=visual-support-bridge-1';
+import {checkDroneRoute,enforceRemoteControl,remoteStations} from './aviation-services.js?v=visual-support-bridge-1';
+import {reconcileAviation} from './aviation-operations.js?v=visual-support-bridge-1';
 import {hasAircraftTemplate,normalizeAircraftPosition,aircraftCanAct,readAircraftProfile} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=electronic-ballistic-1";
-import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=electronic-ballistic-1";
+import { supportRadius, hasSupportEquipment } from "./support-equipment.js?v=visual-support-bridge-1";
+import { initializeSupportRuntime, interruptSupportForMovement, reconcileSupports } from "./simulation-support.js?v=visual-support-bridge-1";
 import { normalizeBuildingUnit } from "./building-runtime.js?v=facility-rules-1";
 import { normalizeNavalPosition, navalKind, navalHeight, isSubmerged, setNavalVertical } from "./naval-kind.js?v=catalog-layout-2";
 import {formationCircleMembers,formationMovementMembers,formationMembers,formationCenter,formationOffset,normalizeFormation,validateFormationMembers} from "./formation-layout.js?v=fleet-cohesion-6";
-import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=electronic-ballistic-1";
+import {getAutonomousEngagementRange} from "./simulation-autonomous-weapon.js?v=visual-support-bridge-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   readShipProfile,
   getReconConditions,
   applyShipCollisionDamage
-} from "./ship-runtime.js?v=electronic-ballistic-1";
+} from "./ship-runtime.js?v=visual-support-bridge-1";
 
 import { sampleTerrain } from "./terrain-data.js";
 
 import {
   startPlannedRescues,
   reconcileActiveRescues
-} from "./simulation-rescue.js?v=electronic-ballistic-1";
+} from "./simulation-rescue.js?v=visual-support-bridge-1";
 
 import {
   createShipEffectsState,
@@ -40,11 +41,11 @@ import {
   ensureEquipmentItemRuntime,
   isEquipmentReconAvailable,
   readEquipmentItemState
-} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-item-runtime.js?v=visual-support-bridge-1";
 
 import {
   appendAutonomousRescuePlans
-} from "./simulation-autonomous-rescue.js?v=electronic-ballistic-1";
+} from "./simulation-autonomous-rescue.js?v=visual-support-bridge-1";
 
 import {
   routeLength,
@@ -297,6 +298,7 @@ function getNormalObserverVisibility(scene, observer, target) {
 
   if (distance > Math.max(100, range)) return null;
 
+  if(smokeBlocks(scene,observer,target,reconnaissanceHeight(observer,sampleTerrain(scene.terrain,observer.x,observer.y)),reconnaissanceHeight(target,sampleTerrain(scene.terrain,target.x,target.y)),terrainBreaks))return null;
   if (isTerrainBlocked(scene.terrain, observer, target)) {
     return null;
   }
@@ -344,26 +346,12 @@ export function getEquipmentReconSourceVisibility(
     return null;
   }
 
-  if (itemId === "sea-recon") {
-    if (isSubmerged(target)) return null;
-    if (target.branch !== "navy") return null;
-
-    if (
-      !isEquipmentReconAvailable(observer, "sea-recon")
-    ) {
-      return null;
-    }
-
-    return getNormalObserverVisibility(
-      scene,
-      observer,
-      target
-    );
-  }
-
-  if (itemId === "air-recon") {
-    // 当前文件没有对空侦察算法。
-    return null;
+  if(['bridge','sea-recon','air-recon','asw-recon'].includes(itemId)){
+    if(itemId==='sea-recon'&&(isSubmerged(target)||airborneUnit(target)))return null;
+    if(itemId==='air-recon'&&!airborneUnit(target))return null;
+    if(itemId==='asw-recon'&&!isSubmerged(target))return null;
+    if(!isEquipmentReconAvailable(observer,itemId))return null;
+    return getNormalObserverVisibility(scene,balloonObserver(scene,observer),target);
   }
 
   fail("偵察項目の指定が不正です。");
@@ -380,12 +368,13 @@ export function getEquipmentReconSourceVisibility(
  * 多观察者合并仍由getVisibility负责。
  */
 function observerVisibility(scene, observer, target, readRecon) {
+
   if(observer.electronicState?.reconDisabled&&Math.hypot(observer.x-target.x,observer.y-target.y)>100)return null;
   if (!operational(observer) || !positioned(target)) return null;
-  if (isSubmerged(target)) return getNormalObserverVisibility(scene,balloonObserver(scene,observer),target);
-  if (observer.branch === "navy" && target.branch === "navy") {
+  if (observer.branch === "navy") {
     const state=readRecon(observer);
     if(state.damaged){
+  if(scene.visualSupportRuntime?.smokes.length&&smokeBlocks(scene,balloonObserver(scene,observer),target,reconnaissanceHeight(balloonObserver(scene,observer),sampleTerrain(scene.terrain,observer.x,observer.y)),reconnaissanceHeight(target,sampleTerrain(scene.terrain,target.x,target.y)),terrainBreaks))return null;
       if(state.damagedTurn!==scene.turn?.number)return null;
       return state.discoveries.find(entry=>entry.targetId===target.instanceId)?.level??null;
     }
@@ -482,6 +471,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
         delete observed.trainingState;
         observed.acePilotMarker=unit.aircraftState?.acePilot&&unit.aircraftState.status!=='destroyed'?unit.aircraftState.acePilotName:null;
         if(observed.projectileState){delete observed.projectileState.sourceId;delete observed.projectileState.sourceName;delete observed.projectileState.launchPoint;delete observed.projectileState.weapon;}
+        delete observed.visualSupport;
         delete observed.electronicState;delete observed.flareUse;delete observed.flareAutoEnabled;
         delete observed.aircraftState;
         delete observed.flightPlan;
@@ -641,6 +631,7 @@ export function getObservedScene(scene, {shareTerrain = false} = {}) {
     })),
     actions,
     fieldSupportRuntime:observedFieldSupport(scene,side),
+    visualSupportRuntime:observedVisualSupport(scene,side,new Set([...visibility].filter(([,level])=>level==='identified').map(([id])=>id)),scene.instances.filter(u=>u.side===side&&operational(u)),Math.max(100,getReconConditions(scene.environment).normalRange),(observer,point)=>!isTerrainBlocked(scene.terrain,balloonObserver(scene,observer),{...point,branch:'air',altitude:sampleTerrain(scene.terrain,point.x,point.y).surface+10})),
     airCombatRuntime:observedAirCombat(scene,side),
     aviationRuntime: {version:1,lossReports:observedAviationLosses(scene,side),runwayUse:(scene.aviationRuntime?.runwayUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side)),preparationUse:(scene.aviationRuntime?.preparationUse??[]).filter(r=>scene.instances.some(u=>u.instanceId===r.hostId&&u.side===side))},
     supportRuntime: {version:1, tasks:(scene.supportRuntime?.tasks??[]).filter(task=>visibility.get(task.providerId)==='identified'&&visibility.get(task.targetId)==='identified').map(task=>({id:task.id,kind:task.kind,providerId:task.providerId,targetId:task.targetId,status:task.status,startedTurn:task.startedTurn}))},
@@ -1779,6 +1770,7 @@ validationScene.controls.enemyAutonomy = false;
           );
         }
 
+        extendSmokeRoutes(scene,movement.destinations);
         const mineReports=resolveFieldMines(scene,movement.destinations);
         reconcileActiveRescues(scene);
         reconcileSupports(scene);

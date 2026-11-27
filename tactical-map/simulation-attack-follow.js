@@ -1,20 +1,20 @@
 import {
   readWeaponProfile,
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
+} from "./weapon-profile-runtime.js?v=visual-support-bridge-1";
 
 import {
   replaceAttackCommands
-} from "./simulation-attack-runtime.js?v=electronic-ballistic-1";
+} from "./simulation-attack-runtime.js?v=visual-support-bridge-1";
 
 import {
   filterUnreachableAttackCommands
-} from "./simulation-settlement.js?v=electronic-ballistic-1";
+} from "./simulation-settlement.js?v=visual-support-bridge-1";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=electronic-ballistic-1";
+} from "./simulation-features.js?v=visual-support-bridge-1";
 
 // ===== 分旗舰攻击追随 =====
 // 只在store的候选事务内调用。

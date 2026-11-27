@@ -1,16 +1,16 @@
-import { rescueSupported, supportRadius } from "./support-equipment.js?v=electronic-ballistic-1";
-import { readShipProfile } from "./ship-runtime.js?v=electronic-ballistic-1";
+import { rescueSupported, supportRadius } from "./support-equipment.js?v=visual-support-bridge-1";
+import { readShipProfile } from "./ship-runtime.js?v=visual-support-bridge-1";
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
 
 import {
   assertManualControl,
   assertIdentifiedTargets
-} from "./simulation-features.js?v=electronic-ballistic-1";
+} from "./simulation-features.js?v=visual-support-bridge-1";
 
 import {
   getEquipmentControlCandidates,
   applyExternalEquipmentRepairResult
-} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-item-runtime.js?v=visual-support-bridge-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -61,7 +61,7 @@ function taskKind(value) {
       ![
         "front", "middle-1", "middle-2",
         "both-sides", "rear", "tail",
-        "sea-recon", "air-recon"
+        "sea-recon", "air-recon", "bridge"
       ].includes(value.itemId)
     )
   ) {
@@ -73,7 +73,7 @@ function taskKind(value) {
 
 function repairable(unit, itemId) {
   return getEquipmentControlCandidates(unit)
-    .includes(itemId);
+    .includes(["sea-recon","air-recon","asw-recon"].includes(itemId)?"bridge":itemId);
 }
 
 function targetEligible(target, kind, itemId) {
@@ -141,6 +141,7 @@ export function initializeRescueState(scene) {
   const activeParticipants = new Set();
 
   for (const task of scene.rescueTasks) {
+    if(task?.status==="active"&&task.kind==="equipment-repair"&&["sea-recon","air-recon"].includes(task.itemId))task.itemId="bridge";
     if (
       !task ||
       typeof task !== "object" ||
@@ -306,6 +307,7 @@ export function initializeRescueState(scene) {
   const plannedParticipants = new Set();
 
   for (const plan of scene.rescuePlans) {
+    if(plan?.kind==="equipment-repair"&&["sea-recon","air-recon"].includes(plan.itemId))plan.itemId="bridge";
     if (
       !plan ||
       typeof plan !== "object" ||

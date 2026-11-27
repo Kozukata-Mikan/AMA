@@ -1,23 +1,23 @@
-import {flareBlocks} from './electronic-warfare.js?v=electronic-ballistic-1';
-import {blastArea} from './blast-area.js?v=electronic-ballistic-1';
+import {flareBlocks} from './electronic-warfare.js?v=visual-support-bridge-1';
+import {blastArea} from './blast-area.js?v=visual-support-bridge-1';
 import {applyAirDisruption,airDisruptionPenalty} from './air-disruption.js?v=car-return-1';
 import {initializeAirTraining} from './air-training-runtime.js?v=electronic-ballistic-1';
 import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
-import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=facility-rules-1';
+import {aircraftMayFly} from './aviation-time.js?v=visual-support-bridge-1';
+import {buildingAlive,buildingMountAvailable,ensureBuildingState} from './building-state.js?v=visual-support-bridge-1';
 import {freezeSnapshot} from './read-only-snapshot.js';
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
-import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
-import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=electronic-ballistic-1";
-import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=electronic-ballistic-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=electronic-ballistic-1";
+import { readWeaponProfile ,readWeaponTargetScope} from "./weapon-profile-runtime.js?v=visual-support-bridge-1";
+import { initializeAttackRuntime } from "./simulation-attack-runtime.js?v=visual-support-bridge-1";
+import {ensureUnitCombatRuntime,readEffectiveInitialAmmo} from "./equipment-runtime.js?v=visual-support-bridge-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=visual-support-bridge-1";
 import { initializeRayTargetRuntime } from "./ray-target-runtime.js";
-import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=electronic-ballistic-1";
-import { resolveHitCoins } from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
-import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=electronic-ballistic-1";
-import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=electronic-ballistic-1";
-import { readRangeCommandTarget } from "./simulation-range-command.js?v=electronic-ballistic-1";
-import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=electronic-ballistic-1";
+import { assertIdentifiedTargets, getVisibility } from "./simulation-features.js?v=visual-support-bridge-1";
+import { resolveHitCoins } from "./weapon-hit-runtime.js?v=visual-support-bridge-1";
+import { validateFormationTopology, expandFormationMemberIds} from "./formation-target-runtime.js?v=visual-support-bridge-1";
+import { readAttackCommandTarget } from "./simulation-attack-runtime.js?v=visual-support-bridge-1";
+import { readRangeCommandTarget } from "./simulation-range-command.js?v=visual-support-bridge-1";
+import { prepareRangeProjection, selectRangeOccurrences, resolveRangeProjectionHits } from "./range-projection-runtime.js?v=visual-support-bridge-1";
 import { assertBroadsideQuotas, assertPlannedBroadsideQuotas } from "./weapon-firing-arc.js?v=blast-area-1";
 
 
@@ -228,6 +228,7 @@ export function captureAttackPhaseStart(scene) {
     turnNumber: scene.turn.number,
     phaseId: scene.turn.phaseId,
     elapsedMinutes: scene.turn.elapsedMinutes,
+    visualSupportRuntime:scene.visualSupportRuntime,
     environment: scene.environment,
     controls: scene.controls,
     instances: scene.instances,
@@ -339,6 +340,7 @@ for (const startUnit of start.instances) {
       phaseId: start.phaseId,
       elapsedMinutes: start.elapsedMinutes
     },
+    visualSupportRuntime:start.visualSupportRuntime??scene.visualSupportRuntime,
     instances: start.instances,
     groups: start.groups,
     rayTargetRuntime: start.rayTargetRuntime
@@ -1195,6 +1197,7 @@ export function prepareAttackCommandPreview(scene, command) {
 
   const current = copy({
     terrain: scene.terrain,
+    visualSupportRuntime:scene.visualSupportRuntime,
     environment: scene.environment,
     controls: scene.controls,
     turn: scene.turn,

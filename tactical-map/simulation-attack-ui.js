@@ -1,10 +1,10 @@
-import {createRangeTargetEditor} from './simulation-range-target-ui.js?v=electronic-ballistic-1';
-import {readWeaponTargetScope} from './weapon-profile-runtime.js?v=electronic-ballistic-1';
+import {createRangeTargetEditor} from './simulation-range-target-ui.js?v=visual-support-bridge-1';
+import {readWeaponTargetScope} from './weapon-profile-runtime.js?v=visual-support-bridge-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airborneUnit,airAttackModes} from './air-ground-rules.js?v=car-return-1';
 import { createFleetUnitSelector } from "./fleet-unit-selector.js?v=air-training-1";
-import { getPhaseLabel } from "./simulation-rulebook.js?v=electronic-ballistic-1";
-import { getHitModifiers } from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
+import { getPhaseLabel } from "./simulation-rulebook.js?v=visual-support-bridge-1";
+import { getHitModifiers } from "./weapon-hit-runtime.js?v=visual-support-bridge-1";
 
 
 
@@ -332,7 +332,8 @@ function selectableGroups() {
       try {
         const modifiers = getHitModifiers({
           guidance: profile?.guidance,
-          environment
+          environment,
+          targetIlluminated:store.getSceneSnapshot().instances.find(u=>u.instanceId===target.value)?.searchlightIlluminated===true
         });
 
         const detail = modifiers.breakdown;

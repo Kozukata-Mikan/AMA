@@ -1,4 +1,4 @@
-import {supportGroups} from './electronic-warfare.js?v=electronic-ballistic-1';
+import {supportGroups} from './electronic-warfare.js?v=visual-support-bridge-1';
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountElectronicWarfareUI(store){
  const panel=el('details');panel.dataset.workflowPanel='electronic-warfare';panel.dataset.toolCategory='progress';panel.append(el('summary','電子戦・フレア'));

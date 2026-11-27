@@ -1,4 +1,4 @@
-import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=electronic-ballistic-1";
+import { supportEquipmentSeed } from "../tactical-map/support-equipment.js?v=visual-support-bridge-1";
 // ===== 图鉴初始资料与字段定义 =====
 // 界面文案使用日文，注释使用中文。
 // 未确定的规则只保存参数，不执行计算。

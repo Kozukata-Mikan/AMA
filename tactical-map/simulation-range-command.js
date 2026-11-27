@@ -1,4 +1,4 @@
-import {readBlastPoint} from './blast-area.js?v=electronic-ballistic-1';
+import {readBlastPoint} from './blast-area.js?v=visual-support-bridge-1';
 const copy = value => JSON.parse(JSON.stringify(value));
 
 function fail(message) {

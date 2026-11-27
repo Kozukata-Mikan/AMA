@@ -1,17 +1,17 @@
 import {
   selectRangeOccurrences,
   validateRangeSelection
-} from "./range-projection-runtime.js?v=electronic-ballistic-1";
+} from "./range-projection-runtime.js?v=visual-support-bridge-1";
 
 import {
   withRangeCommandTarget,
   readRangeCommandTarget
-} from "./simulation-range-command.js?v=electronic-ballistic-1";
+} from "./simulation-range-command.js?v=visual-support-bridge-1";
 
 import {
   expandFormationMemberIds,
   validateFormationTopology
-} from "./formation-target-runtime.js?v=electronic-ballistic-1";
+} from "./formation-target-runtime.js?v=visual-support-bridge-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

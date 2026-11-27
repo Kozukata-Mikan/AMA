@@ -1,9 +1,9 @@
 import {createFlightMissionEditor} from './flight-mission-ui.js?v=blast-area-1';
-import {isAirshipBase,isAirship} from './aviation-services.js?v=electronic-ballistic-1';
+import {isAirshipBase,isAirship} from './aviation-services.js?v=visual-support-bridge-1';
 import {hasAircraftTemplate} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import {aviationRunways,aviationLanes,aviationHostAlive} from './aviation-operations.js?v=electronic-ballistic-1';
+import {aviationRunways,aviationLanes,aviationHostAlive} from './aviation-operations.js?v=visual-support-bridge-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=self-sealing-1';
-import {supportCapacity} from './support-equipment.js?v=electronic-ballistic-1';
+import {supportCapacity} from './support-equipment.js?v=visual-support-bridge-1';
 const node=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 export function mountAirshipBaseUI(store,parent){
  const panel=node('details');panel.open=false;panel.dataset.toolCategory='progress';panel.append(node('summary','空中艦基地の運用'));

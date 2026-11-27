@@ -1,13 +1,14 @@
-import {resolveElectronicSpecial} from './electronic-warfare.js?v=electronic-ballistic-1';
+import {resolveVisualSupportSpecial} from './visual-support.js?v=visual-support-bridge-1';
+import {resolveElectronicSpecial} from './electronic-warfare.js?v=visual-support-bridge-1';
 import {resolveAceLosses} from './air-training-runtime.js?v=electronic-ballistic-1';
-import {resolveAirNavigationLosses} from './aviation-losses.js?v=electronic-ballistic-1';
-import {rebuildAircraftClusters} from './aviation-operations.js?v=electronic-ballistic-1';
-import {enforceRemoteControl} from './aviation-services.js?v=electronic-ballistic-1';
-import {ensureBuildingState} from './building-state.js?v=facility-rules-1';
-import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=electronic-ballistic-1';
+import {resolveAirNavigationLosses} from './aviation-losses.js?v=visual-support-bridge-1';
+import {rebuildAircraftClusters} from './aviation-operations.js?v=visual-support-bridge-1';
+import {enforceRemoteControl} from './aviation-services.js?v=visual-support-bridge-1';
+import {ensureBuildingState} from './building-state.js?v=visual-support-bridge-1';
+import {advanceAviationStart,reconcileAviation} from './aviation-operations.js?v=visual-support-bridge-1';
 import {hasAircraftTemplate,finishAircraftTurn} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import { hasSupportEquipment } from "./support-equipment.js?v=electronic-ballistic-1";
-import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=electronic-ballistic-1";
+import { hasSupportEquipment } from "./support-equipment.js?v=visual-support-bridge-1";
+import { resolveSupportsAtSpecial, reconcileSupports } from "./simulation-support.js?v=visual-support-bridge-1";
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import {
   TURN_DURATION_MINUTES
@@ -21,31 +22,31 @@ import {
   ensureShipRuntime,
   readShipProfile,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=electronic-ballistic-1";
+} from "./ship-runtime.js?v=visual-support-bridge-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-runtime.js?v=visual-support-bridge-1";
 
 import {
   initializeSpecialRuntime,
   applyFireFloodingSpecialStep
-} from "./simulation-special-runtime.js?v=electronic-ballistic-1";
+} from "./simulation-special-runtime.js?v=visual-support-bridge-1";
 
 import {
   initializeRescueRuntime,
   applyRescueSpecialStep,
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=electronic-ballistic-1";
+} from "./simulation-rescue-runtime.js?v=visual-support-bridge-1";
 
 import {
   getEquipmentControlCandidates
-} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-item-runtime.js?v=visual-support-bridge-1";
 
 
 import {
   initializeRescueState
-} from "./simulation-rescue.js?v=electronic-ballistic-1";
+} from "./simulation-rescue.js?v=visual-support-bridge-1";
 
 import {
   initializeRoundTraitRuntime,
@@ -451,6 +452,7 @@ export function finishSpecialPhase(scene, coinSource) {
   // 即使随后救助协调使舰船沉没，也保留进入时刻。
   recordSinkingStarts(working, fireFlooding.shipReports);
 
+  resolveVisualSupportSpecial(working);
   const electronicReports=resolveElectronicSpecial(working);
   const externalSupport = resolveSupportsAtSpecial(working);
   recordSinkingStarts(working, externalSupport.filter(item=>item.report).map(item=>item.report));
@@ -473,6 +475,7 @@ export function finishSpecialPhase(scene, coinSource) {
   reconcileAviation(working);
   validateScene(working);
 
+  scene.visualSupportRuntime=working.visualSupportRuntime;
   scene.electronicRuntime=working.electronicRuntime;
   scene.instances = working.instances;
   scene.groups = working.groups;
@@ -573,6 +576,7 @@ export function finishTurn(scene) {
   reconcileAviation(working);
   validateScene(working);
 
+  scene.visualSupportRuntime=working.visualSupportRuntime;
   scene.electronicRuntime=working.electronicRuntime;
   scene.instances = working.instances;
   scene.groups = working.groups;

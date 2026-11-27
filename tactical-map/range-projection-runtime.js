@@ -1,14 +1,14 @@
 import {
   expandFormationMemberIds
-} from "./formation-target-runtime.js?v=electronic-ballistic-1";
+} from "./formation-target-runtime.js?v=visual-support-bridge-1";
 
 import {
   assertIdentifiedTargets
-} from "./simulation-features.js?v=electronic-ballistic-1";
+} from "./simulation-features.js?v=visual-support-bridge-1";
 
 import {
   resolveHitCoins
-} from "./weapon-hit-runtime.js?v=electronic-ballistic-1";
+} from "./weapon-hit-runtime.js?v=visual-support-bridge-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

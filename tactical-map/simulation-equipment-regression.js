@@ -1,11 +1,11 @@
 import {
   ensureShipRuntime,
   applyShipFireFloodingPhase
-} from "./ship-runtime.js?v=electronic-ballistic-1";
+} from "./ship-runtime.js?v=visual-support-bridge-1";
 
 import {
   ensureUnitCombatRuntime
-} from "./equipment-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-runtime.js?v=visual-support-bridge-1";
 
 import {
   ensureEquipmentItemRuntime,
@@ -15,17 +15,17 @@ import {
   getEquipmentControlCandidates,
   readEquipmentItemState,
   getRetainedEquipmentDiscovery
-} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
+} from "./equipment-item-runtime.js?v=visual-support-bridge-1";
 
 import {
   initializeRescueState,
   interruptRescueTask,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=electronic-ballistic-1";
+} from "./simulation-rescue.js?v=visual-support-bridge-1";
 
 import {
   applySinkingEndStep
-} from "./simulation-rescue-runtime.js?v=electronic-ballistic-1";
+} from "./simulation-rescue-runtime.js?v=visual-support-bridge-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 
@@ -400,7 +400,7 @@ export function runEquipmentRegressionTests() {
       {
         selectIndex: () => 6,
         observeBeforeDamage: (unit, observed, itemId) =>
-          itemId === "sea-recon" ? "identified" : null
+          itemId === "bridge" ? "identified" : null
       }
     );
 

@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {source} from './fixtures.mjs';
 import {weapon} from './scenarios/carrier-air-strike.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=electronic-ballistic-1';
-import {settleAttackPhase} from '../tactical-map/simulation-settlement.js?v=electronic-ballistic-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=visual-support-bridge-1';
+import {settleAttackPhase} from '../tactical-map/simulation-settlement.js?v=visual-support-bridge-1';
 import {readSave} from '../js/save-database.js';
 import {resetDatabase} from './save-test-environment.mjs';
 async function fire(guidance,power,coin){

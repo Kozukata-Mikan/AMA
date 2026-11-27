@@ -1,9 +1,9 @@
-// ===== 设备威力与固定八项命中算法 =====
+// ===== 设备威力：新七项抽选与旧八项历史兼容 =====
 // 不修改场景、舰船、图鉴快照或存档。
 // 正式武器命中数来自命中模块。
 // 每枚命中按设备威力产生对应数量的设备命中分配。
 
-export const EQUIPMENT_HIT_ITEMS = Object.freeze([
+export const LEGACY_EQUIPMENT_HIT_ITEMS = Object.freeze([
   Object.freeze({
     id: "front",
     kind: "position",
@@ -45,6 +45,8 @@ export const EQUIPMENT_HIT_ITEMS = Object.freeze([
     label: "対空偵察"
   })
 ]);
+
+export const EQUIPMENT_HIT_ITEMS=Object.freeze([...LEGACY_EQUIPMENT_HIT_ITEMS.slice(0,6),Object.freeze({id:'bridge',kind:'position',label:'艦橋（対海・対空・対潜偵察）'})]);
 
 function fail(message) {
   throw new Error(message);
@@ -161,10 +163,9 @@ export function getEquipmentDamagePlan({
 }
 
 /**
- * 固定八项的等概率随机选择。
+ * 固定七项的等概率随机选择。
  *
- * 八可以整除32位随机数的取值总数，
- * 因此取模不会引入候选概率偏差。
+ * 七不能整除32位随机数范围，因此使用拒绝采样避免取模偏差。
  */
 function randomHitItemIndex() {
   if (!globalThis.crypto?.getRandomValues) {
@@ -174,6 +175,8 @@ function randomHitItemIndex() {
   const value = new Uint32Array(1);
   globalThis.crypto.getRandomValues(value);
 
+  const limit=0x100000000-0x100000000%EQUIPMENT_HIT_ITEMS.length;
+  while(value[0]>=limit)globalThis.crypto.getRandomValues(value);
   return value[0] % EQUIPMENT_HIT_ITEMS.length;
 }
 
@@ -243,6 +246,7 @@ export function resolveEquipmentImpacts(
 
   return {
     ...plan,
+    version:2,
     candidateIds: EQUIPMENT_HIT_ITEMS.map(
       item => item.id
     ),
@@ -259,12 +263,13 @@ export function validateEquipmentImpactReport(report) {
     !report ||
     typeof report !== "object" ||
     Array.isArray(report) ||
-    report.version !== 1 ||
+    ![1,2].includes(report.version) ||
     report.kind !== "equipment"
   ) {
     fail("設備命中の処理記録が不正です。");
   }
 
+  const hitItems=report.version===1?LEGACY_EQUIPMENT_HIT_ITEMS:EQUIPMENT_HIT_ITEMS;
   requireInteger(report.power, "設備威力", 1);
   requireInteger(report.hitCount, "武器命中数");
   requireInteger(
@@ -289,7 +294,7 @@ export function validateEquipmentImpactReport(report) {
     !Array.isArray(report.candidateIds) ||
     JSON.stringify(report.candidateIds) !==
       JSON.stringify(
-        EQUIPMENT_HIT_ITEMS.map(item => item.id)
+        hitItems.map(item => item.id)
       ) ||
     !Array.isArray(report.draws) ||
     report.draws.length !== expectedCount
@@ -312,15 +317,15 @@ export function validateEquipmentImpactReport(report) {
       draw.powerIndex !== index % report.power ||
       !Number.isSafeInteger(draw.candidateIndex) ||
       draw.candidateIndex < 0 ||
-      draw.candidateIndex >= EQUIPMENT_HIT_ITEMS.length ||
+      draw.candidateIndex >= hitItems.length ||
       draw.itemId !==
-        EQUIPMENT_HIT_ITEMS[draw.candidateIndex].id
+        hitItems[draw.candidateIndex].id
     ) {
       fail("設備命中の抽選履歴が一致しません。");
     }
   }
 }
-// ===== 八项项目内部损管 =====
+// ===== 七项项目内部损管 =====
 // 候选单位是舰船六个位置及两项侦察，不是装备组。
 // 先选对象，再对同一对象判定一次R。
 // 失败使选中对象彻底损坏。
@@ -362,15 +367,16 @@ function equipmentControlCoin() {
 }
 
 /**
- * 将内部损管候选固定为八项顺序。
+ * 将内部损管候选固定为七项顺序。
  *
  * 输入只能包含已损坏且未彻底损坏的项目ID。
  * 实际损伤资格由调用方从运行状态中生成；
  * 不允许直接采用页面传入的候选列表。
  */
-function normalizeEquipmentControlCandidates(value) {
+function normalizeEquipmentControlCandidates(value,legacy=false) {
+  const hitItems=legacy?LEGACY_EQUIPMENT_HIT_ITEMS:EQUIPMENT_HIT_ITEMS;
   const allowedIds = new Set(
-    EQUIPMENT_HIT_ITEMS.map(item => item.id)
+    hitItems.map(item => item.id)
   );
 
   if (
@@ -386,13 +392,13 @@ function normalizeEquipmentControlCandidates(value) {
 
   const selectedIds = new Set(value);
 
-  return EQUIPMENT_HIT_ITEMS
+  return hitItems
     .filter(item => selectedIds.has(item.id))
     .map(item => item.id);
 }
 
 /**
- * 八项项目的内部损管算法。
+ * 七项项目的内部损管算法。
  *
  * input:
  * {
@@ -512,7 +518,7 @@ export function validateEquipmentItemControlReport(report) {
 
   const candidateIds =
     normalizeEquipmentControlCandidates(
-      report.candidateIds
+      report.candidateIds,report.candidateIds?.some(id=>["sea-recon","air-recon"].includes(id))
     );
 
   if (

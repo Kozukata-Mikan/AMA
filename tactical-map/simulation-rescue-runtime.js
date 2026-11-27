@@ -1,14 +1,14 @@
 import {copySceneWithSpecialHistory} from './special-history-snapshot.js';
 import { TURN_DURATION_MINUTES } from "./rules-engine.js";
  
-import { ensureShipRuntime } from "./ship-runtime.js?v=electronic-ballistic-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=visual-support-bridge-1";
 
 import {
   initializeRescueState,
   reconcileActiveRescues,
   resolveRescuesAtSpecial,
   isSinkingTimerPaused
-} from "./simulation-rescue.js?v=electronic-ballistic-1";
+} from "./simulation-rescue.js?v=visual-support-bridge-1";
 
 const copy = value => JSON.parse(JSON.stringify(value));
 

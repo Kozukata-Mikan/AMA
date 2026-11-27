@@ -315,7 +315,8 @@ export function getHitModifiers({
   electronicBonuses = 0,
   electronicPenalties = 0,
   globalBonuses = 0,
-  globalPenalties = 0
+  globalPenalties = 0,
+  targetIlluminated = false
 }) {
   if (!GUIDANCE_TYPES.has(guidance)) {
     throw new Error("誘導方式の指定が不正です。");
@@ -332,6 +333,7 @@ export function getHitModifiers({
     requireInteger(value, label);
   }
 
+  if(typeof targetIlluminated!=="boolean")throw Error("探照灯の照明設定が不正です。");
   const normalized = normalizeEnvironment(environment);
   const period = getTimePeriod(normalized.time);
   const weather = getWeatherInfo(normalized.weather);
@@ -343,7 +345,7 @@ export function getHitModifiers({
 
   if (MODIFIED_GUIDANCE.has(guidance)) {
     timePenalties = period.id === "night"
-      ? 2
+      ? targetIlluminated ? 0 : 2
       : ["dawn", "dusk"].includes(period.id)
         ? 1
         : 0;

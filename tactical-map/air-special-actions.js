@@ -1,13 +1,13 @@
 import {hasAirTrait,airRetreating,resolveAceLosses} from './air-training-runtime.js?v=electronic-ballistic-1';
-import {getVisibility} from './simulation-features.js?v=electronic-ballistic-1';
+import {getVisibility} from './simulation-features.js?v=visual-support-bridge-1';
 import {readAircraftProfile} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import {aviationHostAlive,aviationRunways,aviationLanes} from './aviation-operations.js?v=electronic-ballistic-1';
+import {aviationHostAlive,aviationRunways,aviationLanes} from './aviation-operations.js?v=visual-support-bridge-1';
 import {aircraftFacilityCompatible} from '../js/aircraft-template.js?v=self-sealing-1';
 import {sampleTerrain} from './terrain-data.js';
 import {navalHeight} from './naval-kind.js';
-import {detonateAircraftPayloads} from './aviation-detonation.js?v=electronic-ballistic-1';
-import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=electronic-ballistic-1';
-import {applyShipEffectAcquisition} from './ship-runtime.js?v=electronic-ballistic-1';
+import {detonateAircraftPayloads} from './aviation-detonation.js?v=visual-support-bridge-1';
+import {applyCombatTargetDamage,combatTargetState} from './combat-target-runtime.js?v=visual-support-bridge-1';
+import {applyShipEffectAcquisition} from './ship-runtime.js?v=visual-support-bridge-1';
 import {compareArmorGrades} from './armor-runtime.js?v=car-return-1';
 export function ensureRetreatMissions(scene){
  const hosts=scene.instances.filter(aviationHostAlive),map=new Map(scene.instances.map(u=>[u.instanceId,u]));

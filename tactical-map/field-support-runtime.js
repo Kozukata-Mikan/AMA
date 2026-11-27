@@ -1,10 +1,10 @@
-import {supportCapacity,supportEffectOf} from './support-equipment.js?v=electronic-ballistic-1';
-import {buildingMountAvailable} from './building-state.js?v=facility-rules-1';
+import {supportCapacity,supportEffectOf} from './support-equipment.js?v=visual-support-bridge-1';
+import {buildingMountAvailable} from './building-state.js?v=visual-support-bridge-1';
 import {sampleTerrain} from './terrain-data.js';
 import {navalKind} from './naval-kind.js';
-import {balloonActive} from './support-effects.js?v=electronic-ballistic-1';
-import {applyShipMineDamage,readShipProfile} from './ship-runtime.js?v=electronic-ballistic-1';
-import {recordSinkingStarts} from './simulation-phase-finish.js?v=electronic-ballistic-1';
+import {balloonActive} from './support-effects.js?v=visual-support-bridge-1';
+import {applyShipMineDamage,readShipProfile} from './ship-runtime.js?v=visual-support-bridge-1';
+import {recordSinkingStarts} from './simulation-phase-finish.js?v=visual-support-bridge-1';
 const SIDES=['ally','enemy','neutral'],RADIUS=5,EPS=1e-7;
 const fail=m=>{throw Error(m);};
 const key=(unitId,groupId)=>JSON.stringify([unitId,groupId]);

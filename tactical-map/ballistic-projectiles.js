@@ -1,6 +1,6 @@
-import {blastRadius,blastUnitPoint} from './blast-area.js?v=electronic-ballistic-1';
-import {ensureShipRuntime} from './ship-runtime.js?v=electronic-ballistic-1';
-import {ensureUnitCombatRuntime} from './equipment-runtime.js?v=electronic-ballistic-1';
+import {blastRadius,blastUnitPoint} from './blast-area.js?v=visual-support-bridge-1';
+import {ensureShipRuntime} from './ship-runtime.js?v=visual-support-bridge-1';
+import {ensureUnitCombatRuntime} from './equipment-runtime.js?v=visual-support-bridge-1';
 const clone=value=>JSON.parse(JSON.stringify(value));
 export function initializeProjectiles(scene){
  for(const u of scene.instances){const p=u.projectileState;if(!p)continue;

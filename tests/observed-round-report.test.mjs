@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resetDatabase} from './save-test-environment.mjs';
 import {source, ship} from './fixtures.mjs';
-import {createSimulation, openSimulation} from '../tactical-map/simulation-store.js?v=electronic-ballistic-1';
-import {captureRoundWitnesses, buildObservedRoundReports, readObservedRoundReport} from '../tactical-map/simulation-round-report.js?v=electronic-ballistic-1';
-import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=electronic-ballistic-1';
-import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=electronic-ballistic-1';
+import {createSimulation, openSimulation} from '../tactical-map/simulation-store.js?v=visual-support-bridge-1';
+import {captureRoundWitnesses, buildObservedRoundReports, readObservedRoundReport} from '../tactical-map/simulation-round-report.js?v=visual-support-bridge-1';
+import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=visual-support-bridge-1';
+import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=visual-support-bridge-1';
 import {readSave} from '../js/save-database.js';
 
 const revision = store => store.getSceneSnapshot().revision;

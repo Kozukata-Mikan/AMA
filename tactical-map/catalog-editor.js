@@ -1,16 +1,16 @@
-import {drawCatalogSymbol} from './catalog-symbols.js?v=electronic-ballistic-1';
+import {drawCatalogSymbol} from './catalog-symbols.js?v=visual-support-bridge-1';
 import {AIR_TRAITS} from '../js/aircraft-training.js?v=self-sealing-1';
 import {AIR_ATTACK_MODES,ARMOR_OPTIONS} from './air-ground-rules.js?v=car-return-1';
 import {fillEquipmentOptions} from '../js/equipment-options.js?v=aviation-operations-1';
 import {mountAviationComplementEditor} from './aviation-complement-ui.js?v=field-support-1';
 import {AIRCRAFT_TYPES,AIRCRAFT_WEAPON_ROLES,normalizeAircraft,aircraftMounts} from '../js/aircraft-template.js?v=self-sealing-1';
 import {mountAircraftDerivedFields,mountAircraftLoadoutEditor,appendAircraftSummary} from './aircraft-catalog-ui.js?v=self-sealing-1';
-import { SUPPORT_EFFECTS } from "./support-equipment.js?v=electronic-ballistic-1";
+import { SUPPORT_EFFECTS } from "./support-equipment.js?v=visual-support-bridge-1";
 import { BUILDING_KINDS, FACILITY_DURABILITY, AIRPORT_TYPES, PORT_TYPES, normalizeBuilding, drawBuildingIcon, transformBuildingPath } from "./building-runtime.js?v=facility-rules-1";
-import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
+import { GUIDANCE_OPTIONS, getGuidanceLabel } from "./weapon-profile-runtime.js?v=visual-support-bridge-1";
 import { NAVAL_KINDS } from "./naval-kind.js?v=catalog-layout-2";
 import { NAVAL_SYMBOL_OPTIONS, navalSymbolPath } from "../js/naval-symbols.js?v=naval-formation-2";
-import { getCatalogStore } from "../js/catalog-store.js?v=electronic-ballistic-1";
+import { getCatalogStore } from "../js/catalog-store.js?v=visual-support-bridge-1";
 import {FACTION_OPTIONS,getFactionName} from "../js/faction-data.js";
 
 import {
@@ -21,7 +21,7 @@ import {
   getTrainingTraitLabel,
   getEquipmentLabel,
   getProjectionLabel
-} from "../js/catalog-seed.js?v=electronic-ballistic-1";
+} from "../js/catalog-seed.js?v=visual-support-bridge-1";
 
 // ===== 图鉴界面 =====
 
@@ -1228,11 +1228,16 @@ export function mountCatalogEditor({
       const mountHost = node("div", "", "catalog-repeat-list");
       const allocation=node('p','','catalog-muted');
       function updateAllocation(){
-        if(draft.branch!=='building')return;const rows=mountReaders.filter(r=>r.active).map(r=>r.read()),centers=rows.filter(r=>r.position==='中心').length,n=rows.length+(centers?0:1),hp=Number(controls.get('maxHp')?.value??draft.maxHp),base=Math.floor(hp/n),extra=hp%n;
-        allocation.textContent=centers>1?'中心配置は1か所にしてください。':`配置耐性：${n}か所（中心1か所を含む）。通常配置 ${base}、中心 ${base+extra}。装備組数ではなく配置行数で均等配分します。中心未配置の場合は独立中心を自動追加します。`;
+        if(draft.branch!=='building')return;const rows=mountReaders.filter(r=>r.active).map(r=>r.read()),n=rows.filter(r=>r.position!=='中心').length+1,hp=Number(controls.get('maxHp')?.value??draft.maxHp),base=Math.floor(hp/n),extra=hp%n;
+        allocation.textContent=`配置耐性：${n}か所（中心1か所を含む）。通常配置 ${base}、中心 ${base+extra}。装備組数ではなく配置行数で均等配分します。中心には複数の支援設備を置けますが、耐性区画は常に1か所です。`;
       }
       if(draft.branch==='building'){form.append(allocation);controls.get('maxHp')?.addEventListener('input',updateAllocation);}
       const equipment = store.getData().equipment;
+      const compartment=['navy','building'].includes(draft.branch)?node('fieldset','','catalog-section'):null;
+      const compartmentHost=compartment?node('div','','catalog-repeat-list'):null;
+      if(compartment){compartment.append(node('legend',draft.branch==='navy'?'艦橋｜偵察・支援設備':'中心｜偵察・支援設備'),node('p',draft.branch==='navy'?'対海・対空・対潜偵察と追加の支援設備をまとめた区画です。設備威力で艦橋が損傷すると同時に停止します。':'中心は建築に1か所です。複数の支援設備を収容でき、装備を追加しても中心耐性を分割しません。中心停止中は偵察を含む全設備が停止します。'));
+       const sensors=node('div','','catalog-section-grid');for(const key of ['naval.seaRecon','naval.airRecon','naval.aswRecon']){const control=controls.get(key);if(control)sensors.append(control.closest('label'));}compartment.append(sensors,compartmentHost);
+      }
 
       function addMount(value = {
         position: "",
@@ -1244,7 +1249,7 @@ export function mountCatalogEditor({
         const position = labeled(
           row,
           "位置",
-          draft.branch === "building" ? select([["露天","露天"],["地下","地下"],["中心","中心"]], ["地下","中心"].includes(value.position) ? value.position : "露天") : draft.branch === "air" ? select(AIRCRAFT_WEAPON_ROLES.map(([,label])=>[label,label]),(AIRCRAFT_WEAPON_ROLES.some(([,label])=>label===value.position)?value.position:"主動武器")) : input(value.position)
+          draft.branch === "building" ? select([["露天","露天"],["地下","地下"],["中心","中心"]], ["地下","中心"].includes(value.position) ? value.position : "露天") : draft.branch === "air" ? select(AIRCRAFT_WEAPON_ROLES.map(([,label])=>[label,label]),(AIRCRAFT_WEAPON_ROLES.some(([,label])=>label===value.position)?value.position:"主動武器")) : draft.branch==='navy'?select([...new Set(['前部','中部①','中部②','両舷','後部','尾部','艦橋',value.position].filter(Boolean))].map(p=>[p,p]),value.position||'前部'):input(value.position)
         );
 
         const equipmentSelect = labeled(
@@ -1271,12 +1276,14 @@ export function mountCatalogEditor({
         const preview = node("p", "", "catalog-muted");
 
         function updatePreview() {
-          if(draft.branch==='air'){
+          if(draft.branch==='air'||compartment){
             const previous=equipmentSelect.value;
-            const available=equipment.filter(e=>position.value!=='ポッド'||e.kind==='support');
+            const restricted=position.value==='ポッド'||position.value==='艦橋'||position.value==='中心';
+            const available=equipment.filter(e=>!restricted||e.kind==='support'||e.id===value.equipmentId&&value.position==='中心'&&position.value==='中心');
             fillEquipmentOptions(equipmentSelect,available,previous,getEquipmentLabel);
             if(available.some(e=>e.id===previous))equipmentSelect.value=previous;
           }
+          if(compartment){const host=['艦橋','中心'].includes(position.value)?compartmentHost:mountHost;if(row.parentElement!==host)host.append(row);}
           const item = equipment.find(
             candidate => candidate.id === equipmentSelect.value
           );
@@ -1327,7 +1334,7 @@ export function mountCatalogEditor({
           })
         );
 
-        mountHost.append(row);
+        (["艦橋","中心"].includes(position.value)&&compartmentHost?compartmentHost:mountHost).append(row);
         position.addEventListener("change",updateAllocation);
         updateAllocation();
       }
@@ -1353,6 +1360,7 @@ export function mountCatalogEditor({
         })
       );
 
+      if(compartment){compartment.append(button('支援設備を'+(draft.branch==='navy'?'艦橋':'中心')+'に追加',()=>{const support=equipment.find(e=>e.kind==='support');if(!support){message('先に支援装備を登録してください。',true);return;}addMount({position:draft.branch==='navy'?'艦橋':'中心',equipmentId:support.id,count:1});}));form.append(compartment);}
       if(['navy','building'].includes(draft.branch))readComplement=mountAviationComplementEditor(form,store.units,draft.aviationComplement??[]);
       if(draft.branch==='air')readLoadouts=mountAircraftLoadoutEditor(form,equipment,draft.aircraft.loadouts);
 

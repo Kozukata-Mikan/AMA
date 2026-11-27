@@ -1,40 +1,41 @@
-import {initializeProjectiles} from './ballistic-projectiles.js?v=electronic-ballistic-1';
-import {initializeElectronicRuntime,refreshElectronicEffects,setElectronicMode,setFlareAuto} from './electronic-warfare.js?v=electronic-ballistic-1';
-import {blastCenter,blastUnitPoint,readBlastPoint} from './blast-area.js?v=electronic-ballistic-1';
+import {initializeVisualSupport,reconcileVisualSupport,setSmoke,setSearchlight} from './visual-support.js?v=visual-support-bridge-1';
+import {initializeProjectiles} from './ballistic-projectiles.js?v=visual-support-bridge-1';
+import {initializeElectronicRuntime,refreshElectronicEffects,setElectronicMode,setFlareAuto} from './electronic-warfare.js?v=visual-support-bridge-1';
+import {blastCenter,blastUnitPoint,readBlastPoint} from './blast-area.js?v=visual-support-bridge-1';
 import {MAX_SCENE_FILE_BYTES} from '../js/save-limits.js';
-import {dispatchAviation} from './aviation-dispatch.js?v=electronic-ballistic-1';
-import {initializeFieldSupport,operateFieldSupport,fieldSupportOptions} from './field-support-runtime.js?v=electronic-ballistic-1';
-import {buildFleetStatus} from './fleet-status.js?v=electronic-ballistic-1';
+import {dispatchAviation} from './aviation-dispatch.js?v=visual-support-bridge-1';
+import {initializeFieldSupport,operateFieldSupport,fieldSupportOptions} from './field-support-runtime.js?v=visual-support-bridge-1';
+import {buildFleetStatus} from './fleet-status.js?v=visual-support-bridge-1';
 import {manualPasEnabled,validateManualPasSides} from './pas-control.js?v=day-catalog-pas-1';
 import {advanceEnvironment} from './environment-data.js?v=day-catalog-pas-1';
-import {assignFlightMission} from './flight-missions.js?v=electronic-ballistic-1';
-import {aircraftMayFly} from './aviation-time.js?v=electronic-ballistic-1';
+import {assignFlightMission} from './flight-missions.js?v=visual-support-bridge-1';
+import {aircraftMayFly} from './aviation-time.js?v=visual-support-bridge-1';
 import {airborneUnit,checkAirAttackMode} from './air-ground-rules.js?v=car-return-1';
-import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=electronic-ballistic-1';
-import {enforceRemoteControl} from './aviation-services.js?v=electronic-ballistic-1';
-import {buildingAlive,buildingMountAvailable} from './building-state.js?v=facility-rules-1';
-import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=electronic-ballistic-1';
-import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=electronic-ballistic-1';
+import {initializeAirCombat,saveAirCombat} from './air-combat.js?v=visual-support-bridge-1';
+import {enforceRemoteControl} from './aviation-services.js?v=visual-support-bridge-1';
+import {buildingAlive,buildingMountAvailable} from './building-state.js?v=visual-support-bridge-1';
+import {ensureBuildingCombatRuntime} from './combat-target-runtime.js?v=visual-support-bridge-1';
+import {initializeAviationRuntime,prepareAircraft,launchAircraft,landAircraft,reconcileAviation,operateAirshipBase} from './aviation-operations.js?v=visual-support-bridge-1';
 import {hasAircraftTemplate,aircraftCanAct,ensureAircraftRuntime} from './aircraft-runtime.js?v=electronic-ballistic-1';
-import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=electronic-ballistic-1";
+import { initializeSupportRuntime, startSupport, endSupport, reconcileSupports } from "./simulation-support.js?v=visual-support-bridge-1";
 import { navalHeight, isSubmerged } from "./naval-kind.js?v=catalog-layout-2";
 import { normalizeFormationEmblem } from "./flagship-display.js?v=fleet-cohesion-6";
-import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=electronic-ballistic-1";
+import {readObservedRoundReport, visibleRoundNumbers} from "./simulation-round-report.js?v=visual-support-bridge-1";
 import {copySceneWithSpecialHistory,freezeSpecialHistory} from './special-history-snapshot.js';
 import {encodeSpecialHistory,decodeSpecialHistory} from './special-history-codec.js';
 import { readSave, writeSave, listSaveMetadata } from "../js/save-database.js";
-import { runBackgroundTask } from "./background-client.js?v=electronic-ballistic-1";
+import { runBackgroundTask } from "./background-client.js?v=visual-support-bridge-1";
 import { freezeSnapshot } from "./read-only-snapshot.js";
 import { assessCluster } from "./cluster-engine.js?v=aviation-operations-1";
 import { RULESET, TURN_PHASES, evaluateAction } from "./rules-engine.js";
 import { normalizeEnvironment } from "./environment-data.js?v=day-catalog-pas-1";
-import { ensureShipRuntime } from "./ship-runtime.js?v=electronic-ballistic-1";
-import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=electronic-ballistic-1";
+import { ensureShipRuntime } from "./ship-runtime.js?v=visual-support-bridge-1";
+import {initializeSimulationFeatures,getObservedScene,getObservationSide,assertManualControl,assertIdentifiedTargets,createSimulationFeatures} from "./simulation-features.js?v=visual-support-bridge-1";
 
-import {initializeRescueState,createRescueFeatures,reconcileActiveRescues} from "./simulation-rescue.js?v=electronic-ballistic-1";
-import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=electronic-ballistic-1";
-import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
-import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=electronic-ballistic-1";
+import {initializeRescueState,createRescueFeatures,reconcileActiveRescues} from "./simulation-rescue.js?v=visual-support-bridge-1";
+import { ensureUnitCombatRuntime } from "./equipment-runtime.js?v=visual-support-bridge-1";
+import { readWeaponProfile, readWeaponTargetScope } from "./weapon-profile-runtime.js?v=visual-support-bridge-1";
+import { getObserverVisibility , getVisibility} from "./simulation-features.js?v=visual-support-bridge-1";
 
 import {traceAttackTerrainLine,entersTerrainInterior} from "./attack-terrain-runtime.js";
 
@@ -44,26 +45,26 @@ import { getCannonDamagePreview } from "./cannon-damage-runtime.js?v=car-return-
 
 import { getNumericDamagePreview, readNumericPower } from "./numeric-damage-runtime.js?v=car-return-1";
 
-import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=electronic-ballistic-1";
+import { initializeRescueRuntime } from "./simulation-rescue-runtime.js?v=visual-support-bridge-1";
 
-import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=electronic-ballistic-1";
+import { initializeSpecialRuntime } from "./simulation-special-runtime.js?v=visual-support-bridge-1";
 import { initializeRayTargetRuntime, checkRayTarget } from "./ray-target-runtime.js";
 
-import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=electronic-ballistic-1";
+import { initializeAttackRuntime, isAttackPhase, replaceAttackCommands,getAttackExecutionPhase,readAttackCommandTarget } from "./simulation-attack-runtime.js?v=visual-support-bridge-1";
 
-import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=electronic-ballistic-1";
+import {initializeAttackBatchRuntime, captureAttackPhaseStart, prepareAttackBatchResources } from "./simulation-attack-batch.js?v=visual-support-bridge-1";
 
-import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=electronic-ballistic-1";
-import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=electronic-ballistic-1";
+import { initializeUnifiedDamageRuntime } from "./simulation-unified-damage.js?v=visual-support-bridge-1";
+import { initializeSettlementRuntime, settleAttackPhase, validateDeferredAttackPlans , filterUnreachableAttackCommands} from "./simulation-settlement.js?v=visual-support-bridge-1";
 
-import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=electronic-ballistic-1";
+import { initializePhaseFinishRuntime, finishSpecialPhase,  finishTurn} from "./simulation-phase-finish.js?v=visual-support-bridge-1";
 
-import { readRangeCommandTarget } from "./simulation-range-command.js?v=electronic-ballistic-1";
-import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=electronic-ballistic-1";
+import { readRangeCommandTarget } from "./simulation-range-command.js?v=visual-support-bridge-1";
+import { createRangeAttackPanel } from "./simulation-range-target-ui.js?v=visual-support-bridge-1";
 
-import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=electronic-ballistic-1";
+import { ensureEquipmentItemRuntime, getEquipmentControlCandidates} from "./equipment-item-runtime.js?v=visual-support-bridge-1";
 
-import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-runtime.js";
+import { EQUIPMENT_HIT_ITEMS, tryReadEquipmentPower} from "./equipment-damage-runtime.js?v=visual-support-bridge-1";
 
 import { createEquipmentRepairPanel} from "./simulation-equipment-repair-ui.js";
 
@@ -74,7 +75,7 @@ import { buildBattleReport } from "./simulation-battle-report.js?v=blast-area-1"
 
 import { initializeRoundTraitRuntime } from "./simulation-round-trait-runtime.js";
 
-import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=electronic-ballistic-1";
+import { appendFormationAttackFollowers } from "./simulation-attack-follow.js?v=visual-support-bridge-1";
 
 
 
@@ -227,6 +228,7 @@ function initializeCombatRuntime(scene) {
 
   initializeAviationRuntime(scene);
   initializeFieldSupport(scene);
+  initializeVisualSupport(scene);
   initializeAirCombat(scene);
   for (const unit of scene.instances) {
     ensureShipRuntime(unit);
@@ -434,7 +436,7 @@ function readSaved(id, raw) {
   }
 
   initializeCombatRuntime(value);
-  initializeProjectiles(value);initializeElectronicRuntime(value);refreshElectronicEffects(value);
+  initializeProjectiles(value);initializeElectronicRuntime(value);refreshElectronicEffects(value);reconcileVisualSupport(value);
 
 
   initializeSimulationFeatures(value);
@@ -667,7 +669,7 @@ export async function createSimulation(scene, spatialState) {
   };
 
   initializeCombatRuntime(value);
-  initializeProjectiles(value);initializeElectronicRuntime(value);refreshElectronicEffects(value);
+  initializeProjectiles(value);initializeElectronicRuntime(value);refreshElectronicEffects(value);reconcileVisualSupport(value);
   enforceRemoteControl(value);
   initializeSimulationFeatures(value);
   initializeRescueState(value);
@@ -900,6 +902,7 @@ export async function openSimulation(id) {
     reconcileAviation(candidate);
     enforceRemoteControl(candidate);
     initializeSimulationFeatures(candidate);
+    reconcileVisualSupport(candidate);
 
 
     // 正式伤害事务必须先协调救助中断。
@@ -1065,6 +1068,8 @@ export async function openSimulation(id) {
     getFieldSupportOptions(){return fieldSupportOptions(state,getObservationSide(state));},
     async operateFieldSupport(request){await commit(scene=>{const unit=scene.instances.find(u=>u.instanceId===request.unitId);if(!unit)throw Error('ユニットを選択してください。');assertManualControl(scene,[unit]);operateFieldSupport(scene,request);reconcileActiveRescues(scene);reconcileSupports(scene);reconcileAviation(scene);});},
     async assignFlightMission(request){await commit(scene=>assignFlightMission(scene,request));},
+    async setSmoke(request){await commit(scene=>{const u=scene.instances.find(u=>u.instanceId===request.unitId);assertManualControl(scene,u?[u]:[]);setSmoke(scene,request);});},
+    async setSearchlight(request){await commit(scene=>{const u=scene.instances.find(u=>u.instanceId===request.unitId);assertManualControl(scene,u?[u]:[]);setSearchlight(scene,request,new Set([...getVisibility(scene)].filter(([,level])=>level==='identified').map(([id])=>id)));});},
     async setElectronicMode(request){await commit(scene=>setElectronicMode(scene,request));},
     async setFlareAuto(request){await commit(scene=>setFlareAuto(scene,request));},
     async saveAirCombat(request){await commit(scene=>saveAirCombat(scene,request));},
@@ -1761,7 +1766,7 @@ if (equipmentPower) {
   armorPreview = [
     "【設備威力】",
     `武器1枚の命中につき${equipmentPower.power}回、設備項目を抽選します。`,
-    "六つの装備位置と対海・対空偵察の固定8項目から、等確率で抽選します。",
+    "六つの装備位置と艦橋の7項目から等確率で抽選します。艦橋は対海・対空・対潜偵察と艦橋内の支援設備をまとめて損傷します。",
     "空位置・損傷済み・完全破損済みの項目も抽選対象です。",
     "同じ項目への重複命中は損傷を重ねません。",
     "耐性を減らさず、貫通・装甲・慣性防御を適用しません。"

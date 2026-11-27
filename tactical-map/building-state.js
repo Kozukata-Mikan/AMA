@@ -1,11 +1,11 @@
 import {createShipEffectsState,validateShipEffectsState,resolveShipEffectAcquisition,resolveShipDamageControlPhase} from './ship-effects-runtime.js?v=support-stations-1';
 const fail=m=>{throw Error(m);};
 export const buildingAlive=u=>u?.branch==='building'&&(u.buildingState?.version===2?u.buildingState.status==='intact':u.currentHp>0);
-export const buildingMountAvailable=(u,index)=>u?.branch!=='building'||buildingAlive(u)&&(!u.buildingState?.slots||u.buildingState.slots.find(s=>s.mountIndex===index)?.hp>0);
+export const buildingMountAvailable=(u,index)=>u?.branch!=='building'||buildingAlive(u)&&(!u.buildingState?.slots||u.buildingState.slots.find(s=>s.mountIndex===index||u.snapshot.mounts[index]?.position==='中心'&&s.position==='中心')?.hp>0);
 export function ensureBuildingState(u){
  if(u.branch!=='building')return;
- const mounts=u.snapshot.mounts??[],centers=mounts.flatMap((m,i)=>m.position==='中心'?[i]:[]);if(centers.length>1)fail('建築の中心配置は1か所にしてください。');
- const layout=mounts.map((m,i)=>({id:`mount-${i}`,mountIndex:i,position:m.position==='中心'?'中心':m.position==='地下'?'地下':'露天'}));if(!centers.length)layout.push({id:'center',mountIndex:null,position:'中心'});
+ const mounts=u.snapshot.mounts??[],centers=mounts.flatMap((m,i)=>m.position==='中心'?[i]:[]);
+ const layout=mounts.flatMap((m,i)=>m.position==='中心'&&i!==centers[0]?[]:[{id:`mount-${i}`,mountIndex:i,position:m.position==='中心'?'中心':m.position==='地下'?'地下':'露天'}]);if(!centers.length)layout.push({id:'center',mountIndex:null,position:'中心'});
  const base=Math.floor(u.snapshot.maxHp/layout.length),remainder=u.snapshot.maxHp%layout.length;
  if(!u.buildingState||u.buildingState.version===1){
   const old=u.buildingState,slots=layout.map(s=>({...s,maxHp:base+(s.position==='中心'?remainder:0),hp:base+(s.position==='中心'?remainder:0),normalHitRemainder:0,effects:createShipEffectsState()}));

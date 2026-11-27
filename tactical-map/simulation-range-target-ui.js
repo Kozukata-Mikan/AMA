@@ -1,13 +1,13 @@
-import {blastRadius} from './blast-area.js?v=electronic-ballistic-1';
+import {blastRadius} from './blast-area.js?v=visual-support-bridge-1';
 import {manualPasEnabled} from './pas-control.js?v=day-catalog-pas-1';
 import {AIR_ATTACK_MODES,airAttackModes,airborneUnit} from './air-ground-rules.js?v=car-return-1';
 import {
   readRangeCommandTarget
-} from "./simulation-range-command.js?v=electronic-ballistic-1";
+} from "./simulation-range-command.js?v=visual-support-bridge-1";
 
 import {
   readWeaponTargetScope
-} from "./weapon-profile-runtime.js?v=electronic-ballistic-1";
+} from "./weapon-profile-runtime.js?v=visual-support-bridge-1";
 
 
 function fail(message) {

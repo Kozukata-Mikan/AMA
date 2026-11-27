@@ -1,7 +1,7 @@
-import {buildingMountAvailable,buildingAlive} from './building-state.js?v=facility-rules-1';
+import {buildingMountAvailable,buildingAlive} from './building-state.js?v=visual-support-bridge-1';
 // Read-only role lookup; legacy names below are explicit compatibility aliases.
-export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト'],['mine','機雷'],['mine-guard','掃海具'],['boat','舟艇'],['observation-balloon','観測気球'],['spotter','観測員'],['rato','RATO発進補助'],['electronic-warfare-pod','電子戦ポッド'],['flare','フレア']];
-export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult','mine','mine-guard','boat','observation-balloon','spotter','rato','electronic-warfare-pod','flare'];
+export const SUPPORT_EFFECTS=[['','なし'],['repair-station','修理所（救助）'],['damage-control-station','損管所'],['supply-station','補給所'],['parking-stand','駐機枠'],['remote-station','遠隔操作所'],['ground-crew','地上整備員'],['night-observation','夜間観測'],['preparation-area','整備区'],['runway','滑走路'],['catapult','カタパルト'],['mine','機雷'],['mine-guard','掃海具'],['boat','舟艇'],['observation-balloon','観測気球'],['spotter','観測員'],['rato','RATO発進補助'],['electronic-warfare-pod','電子戦ポッド'],['flare','フレア'],['smoke-generator','発煙筒'],['searchlight','探照灯']];
+export const STATION_IDS=['repair-station','damage-control-station','supply-station','parking-stand','control-tower','remote-station','ground-crew','night-observation','preparation-area','runway','catapult','mine','mine-guard','boat','observation-balloon','spotter','rato','electronic-warfare-pod','flare','smoke-generator','searchlight'];
 const LEGACY_SUPPORT_NAMES=new Map([['观测气球','observation-balloon'],['観測気球','observation-balloon'],['破雷卫','mine-guard'],['破雷衛','mine-guard'],['舟艇','boat']]);
 export const supportEffectOf=equipment=>equipment?.supportEffect||(equipment?.kind==='support'?(equipment.id==='eq-seaplane-catapult'?'catapult':LEGACY_SUPPORT_NAMES.get(equipment.name?.trim())??(/(?:弹射器|彈射器|カタパルト)/.test(equipment.name??'')?'catapult':'')):'');
 export const SUPPORT_NAMES={rescue:'救助','damage-control':'外部損管',supply:'補給'};
@@ -39,6 +39,8 @@ export function supportEquipmentSeed(){return [
  ['observation-balloon','観測気球','高度30の係留気球を展開し、偵察視点を高くします。特殊段階で上げ下げします。展開中は校射＋1。全校射源の合計は最大＋1。'],
  ['spotter','観測員','装備するユニットの校射＋1。気球を含む全校射源の合計は最大＋1。'],
  ['electronic-warfare-pod','電子戦ポッド','1組で電子攻撃または電子防御5点。直径1500マスの範囲で対抗し、20/30/40/50点差の電子圧制を適用します。'],
+ ['smoke-generator','発煙筒','特殊段階に発煙を開始。毎ラウンド1組消費し、次回の実移動経路に幅1・地表上10の煙幕を展開。次の特殊段階まで双方の偵察視線を遮蔽します。'],
+ ['searchlight','探照灯','1組につき識別済みの1目標を100マス以内で照射。照射元と目標へ向けられた攻撃の黒夜ペナルティを解除。黎明・夕焼の修正は残ります。'],
  ['flare','フレア','1組を消費して同一次序のレーダー・数値制御攻撃を無効化。1ユニット1ラウンド1回、自動使用は初期ON。強ロック中は使用不可。'],
  ['rato','RATO発進補助','搭載機がカタパルトを使用するための発進補助装置です。']
  ].map(([supportEffect,name,note])=>({id:'eq-support-'+supportEffect,name,kind:'support',supportEffect,note,remoteRange:supportEffect==='remote-station'?0:null,barrelCount:null,projectionCoefficient:null,projectionSuffix:'',ammo:null,slot:'',powerRule:'',penetration:'',ceilingU:null,range:null,maxOrder:'',guidance:'',targetScope:''}));}

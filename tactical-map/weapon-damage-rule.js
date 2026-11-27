@@ -1,4 +1,4 @@
-import {tryReadEquipmentPower} from "./equipment-damage-runtime.js";
+import {tryReadEquipmentPower} from "./equipment-damage-runtime.js?v=visual-support-bridge-1";
 import {readNumericPower} from "./numeric-damage-runtime.js?v=car-return-1";
 
 export function parseDamageRule(profile) {

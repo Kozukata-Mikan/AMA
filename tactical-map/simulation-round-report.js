@@ -1,5 +1,5 @@
 import {advanceEnvironment} from './environment-data.js?v=day-catalog-pas-1';
-import {getObservationSide, getVisibility} from './simulation-features.js?v=electronic-ballistic-1';
+import {getObservationSide, getVisibility} from './simulation-features.js?v=visual-support-bridge-1';
 
 const sides = ['ally', 'enemy', 'neutral'];
 const unknownUnit = '未確認の艦船';
