@@ -4,7 +4,7 @@ import {AIR_TRAITS,hasAirTrait} from '../js/aircraft-training.js?v=air-training-
 import {drawFlightMissions} from './flight-mission-display.js';
 import {mountAirCombatUI} from './air-combat-ui.js?v=aviation-deck-1';
 import {drawWeaponCoverage} from './weapon-coverage-display.js?v=catalog-symbols-1';
-import {mountAviationUI} from './aviation-ui.js?v=aviation-deck-1';
+import {mountAviationUI} from './aviation-ui.js?v=aviation-deck-2';
 import {hasAircraftTemplate,aircraftTimerDisplay,aircraftDetailLines} from './aircraft-runtime.js?v=aviation-deck-1';
 import { buildingDetailLines } from "./building-runtime.js?v=facility-rules-1";
 import { navalHeight } from "./naval-kind.js?v=catalog-layout-2";
