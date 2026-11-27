@@ -11,7 +11,7 @@ import {supportEquipmentSeed,STATION_IDS,supportEffectOf} from '../tactical-map/
 import {ensureBuildingState} from '../tactical-map/building-state.js?v=facility-rules-1';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';
 import {resetDatabase} from '../tests/save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {readSave} from '../js/save-database.js';
 export function auditCases(){
  const cases=[];

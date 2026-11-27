@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {source,ship} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {readSave} from '../js/save-database.js';
 import {navalKind,isSubmerged,normalizeNavalPosition,navalCanTraverse} from '../tactical-map/naval-kind.js';
 import {readShipProfile} from '../tactical-map/ship-runtime.js?v=field-support-1';

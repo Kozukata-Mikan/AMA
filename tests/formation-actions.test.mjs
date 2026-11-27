@@ -5,7 +5,7 @@ import { source, ship } from "./fixtures.mjs";
 import {
   createSimulation,
   openSimulation,
-} from "../tactical-map/simulation-store.js?v=aviation-deck-1";
+} from "../tactical-map/simulation-store.js?v=resume-save-1";
 import { createBattleStore } from "../js/battle-state.js?v=aviation-deck-1";
 import { readSave } from "../js/save-database.js";
 import { normalizeFormation } from "../tactical-map/formation-layout.js";

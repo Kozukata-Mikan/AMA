@@ -11,7 +11,7 @@ import {saveAirCombat,resolveAirCombat} from '../tactical-map/air-combat.js?v=av
 import {ensureRetreatMissions,applyLowCloud,martyrRoutes,resolveMartyrRams,aimedAircraftPosition} from '../tactical-map/air-special-actions.js?v=aviation-deck-1';
 import {assignFlightMission,appendMissionAttacks} from '../tactical-map/flight-missions.js?v=aviation-deck-1';
 import {resolveCannonImpact} from '../tactical-map/cannon-damage-runtime.js';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {resetDatabase} from './save-test-environment.mjs';import {readSave} from '../js/save-database.js';
 const gun=(id='gun',power='1')=>({id,name:id,kind:'weapon',barrelCount:null,projectionCoefficient:null,projectionSuffix:'R',ammo:30,powerRule:power,penetration:'A',guidance:'数控',range:300,ceilingU:500,maxOrder:'5',targetScope:'単体'});
 function plane(id,side='ally',x=0,training='regular',traits=[]){const p=ship(id,side,x);p.branch=p.snapshot.branch='air';p.altitude=20;p.currentHp=p.snapshot.maxHp=2;p.snapshot.aircraft=normalizeAircraft({engines:2,training,traits,maneuverability:'3R',ceiling:500,acePilotName:'試験エース'});p.snapshot.naval={...p.snapshot.naval,speedKnots:20,endurance:'1k',detection:'F',seaRecon:'A',airRecon:'A',armor:'F'};p.snapshot.equipmentSnapshots=[gun('gun','1'),gun('defense','1')];p.snapshot.mounts=[{position:'主動武器',equipmentId:'gun',count:1},{position:'自衛武器',equipmentId:'defense',count:1}];ensureAircraftRuntime(p);ensureUnitCombatRuntime(p);return p;}

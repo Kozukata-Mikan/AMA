@@ -4,7 +4,7 @@ import {ensureShipRuntime} from '../tactical-map/ship-runtime.js?v=field-support
 import {supportEquipmentSeed} from '../tactical-map/support-equipment.js?v=field-support-1';import {finishAircraftTurn} from '../tactical-map/aircraft-runtime.js?v=aviation-deck-1';
 import {initializeAviationRuntime,aviationRunways,aviationLanes,WATER_LANE,prepareAircraft,launchAircraft,landAircraft,advanceAviationStart,reconcileAviation} from '../tactical-map/aviation-operations.js?v=aviation-deck-1';
 import {explodeRunwayPayloads} from '../tactical-map/aviation-detonation.js?v=aviation-deck-1';import {ensureBuildingCombatRuntime} from '../tactical-map/combat-target-runtime.js?v=aviation-deck-1';
-import {resetDatabase} from './save-test-environment.mjs';import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';import {readSave} from '../js/save-database.js';
+import {resetDatabase} from './save-test-environment.mjs';import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';import {readSave} from '../js/save-database.js';
 const bomb={id:'bomb',name:'爆弾',kind:'weapon',barrelCount:1,projectionCoefficient:1,projectionSuffix:'R',ammo:1,powerRule:'5',penetration:'A',guidance:'投射',range:100,ceilingU:100,maxOrder:'5',targetScope:'単体'};
 function scenario({building=false,catapult=false,count=30,preparation=4,seaplane=false}={}){
  const scene=source(),host=ship('host');host.name='航空運用試験';

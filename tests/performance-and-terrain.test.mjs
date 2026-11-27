@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createDemoTerrain, resizeTerrain, sampleTerrain, gridPosition, applyBrush, validateTerrain, readTerrainVertex } from '../tactical-map/terrain-data.js';
 import { terrainRenderWindow, makeTerrainRenderGrid } from '../tactical-map/terrain-render-grid.js';
 import { createBattleStore } from '../js/battle-state.js?v=aviation-deck-1';
-import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import { createSimulation, openSimulation } from '../tactical-map/simulation-store.js?v=resume-save-1';
 import { isTerrainBlocked } from '../tactical-map/simulation-features.js?v=aviation-deck-1';
 import { traceAttackTerrainLine } from '../tactical-map/attack-terrain-runtime.js';
 import { runEquipmentRegressionTests } from '../tactical-map/simulation-equipment-regression.js?v=aviation-deck-1';

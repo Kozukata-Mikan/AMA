@@ -8,7 +8,7 @@ import {initializeAirTraining} from '../tactical-map/air-training-runtime.js';
 import {resolveAirNavigationLosses,resolveForcedLanding} from '../tactical-map/aviation-losses.js?v=field-support-1';
 import {initializeAviationRuntime,aviationRunways,landAircraft,advanceAviationStart} from '../tactical-map/aviation-operations.js?v=aviation-deck-1';
 import {supportEquipmentSeed} from '../tactical-map/support-equipment.js?v=field-support-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {getObservedScene} from '../tactical-map/simulation-features.js?v=aviation-deck-1';
 import {readSave} from '../js/save-database.js';import {resetDatabase} from './save-test-environment.mjs';
 function plane(id='p',training='regular',heavy=true){const p=ship(id);p.branch=p.snapshot.branch='air';p.currentHp=heavy?0:2;p.snapshot.maxHp=2;p.altitude=20;p.snapshot.aircraft=normalizeAircraft({engines:2,training,ceiling:100,maneuverability:'2R'});p.snapshot.naval={...p.snapshot.naval,speedKnots:200,endurance:'1k'};ensureAircraftRuntime(p);ensureUnitCombatRuntime(p);return p;}

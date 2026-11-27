@@ -3,7 +3,7 @@ import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {fourAirScene} from '../tests/scenarios/four-air-exercises.mjs';
 import {resetDatabase} from '../tests/save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {readSave} from '../js/save-database.js';
 import {aviationRunways} from '../tactical-map/aviation-operations.js?v=aviation-deck-1';
 import {assertAircraftLaunchTime} from '../tactical-map/aviation-time.js?v=field-support-1';

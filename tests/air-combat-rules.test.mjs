@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {ship,source} from './fixtures.mjs';import {normalizeAircraft} from '../js/aircraft-template.js';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';import {ensureAircraftRuntime} from '../tactical-map/aircraft-runtime.js?v=aviation-deck-1';
 import {splitAirSquadrons,buildAirEngagements,airReaction,saveAirCombat,resolveAirCombat} from '../tactical-map/air-combat.js?v=aviation-deck-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';import {readSave} from '../js/save-database.js';import {resetDatabase} from './save-test-environment.mjs';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';import {readSave} from '../js/save-database.js';import {resetDatabase} from './save-test-environment.mjs';
 import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=aviation-deck-1';
 import {supportEquipmentSeed} from '../tactical-map/support-equipment.js?v=field-support-1';
 import {assertAircraftPreparationTime,assertAircraftLaunchTime,assertAircraftLandingTime,aircraftMayFly,restrictedAircraftFlight} from '../tactical-map/aviation-time.js?v=field-support-1';

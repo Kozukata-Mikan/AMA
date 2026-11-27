@@ -13,7 +13,7 @@ import { VIEW_SCALE_MIN,  VIEW_SCALE_MAX} from "./map-settings.js";
 import { mountSaveIndicator } from "./save-indicator.js?v=aviation-deck-1";
 import { loadUnitData } from "../js/data-store.js?v=field-support-1";
 import { createBattleStore } from "../js/battle-state.js?v=aviation-deck-1";
-import { mountEditor } from "./editor.js?v=aviation-deck-1";
+import { mountEditor } from "./editor.js?v=resume-save-1";
 import { mountUnitDeployment } from "./unit-deployment.js";
 import { drawTerrainFaces, projectMap } from "./map-display.js?v=day-catalog-pas-1";
 import { getFlagshipDisplayName } from "./flagship-display.js?v=fleet-cohesion-6";

@@ -1,3 +1,4 @@
+import {MAX_SCENE_FILE_BYTES} from '../js/save-limits.js';
 import {dispatchAviation} from './aviation-dispatch.js?v=aviation-deck-1';
 import {initializeFieldSupport,operateFieldSupport,fieldSupportOptions} from './field-support-runtime.js?v=aviation-deck-1';
 import {buildFleetStatus} from './fleet-status.js?v=aviation-deck-1';
@@ -394,7 +395,7 @@ function readSaved(id, raw) {
     throw new Error("推演データが見つかりません。");
   }
 
- const value = unpackSaved(JSON.parse(raw));
+ const value = unpackSaved(typeof raw==='string'?JSON.parse(raw):raw);
 
 
   if (
@@ -681,6 +682,23 @@ export async function createSimulation(scene, spatialState) {
 
   return id;
 
+}
+
+export const SIMULATION_SAVE_FORMAT = 'ama-simulation-save';
+function assertSaveText(text){if(typeof text!=='string'||new TextEncoder().encode(text).byteLength>MAX_SCENE_FILE_BYTES)throw Error('推演セーブは128MB以内のJSONファイルを指定してください。');}
+export async function listSimulationSaves(){return(await listSaveMetadata(PREFIX)).map(entry=>({id:entry.key.slice(PREFIX.length),name:entry.name,updatedAt:entry.updatedAt})).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));}
+export async function importSimulationSave(text){
+ assertSaveText(text);let file;try{file=JSON.parse(text);}catch(error){throw Error('推演セーブのJSONを読み取れません。ファイルを確認してください。',{cause:error});}
+ if(!file||typeof file!=='object'||Array.isArray(file))throw Error('推演セーブの書式が不正です。');
+ if(file.exportType==='observation'||file.restorable===false)throw Error('観察JSONは再開用セーブではありません。「完全セーブを書き出す」で保存したファイルを使用してください。');
+ let source=file;
+ if(file.format!==undefined){if(file.format!==SIMULATION_SAVE_FORMAT||file.version!==1||file.restorable!==true)throw Error('この推演セーブの形式・バージョンには対応していません。');source=file.simulation;}
+ if(!source||source.mode!=='simulation'||typeof source.id!=='string'||!source.initialScene||source.exportType==='observation'||source.restorable===false)throw Error('再開用の完全な推演セーブを指定してください。自定義作戦・図鑑・観察JSONからは再開できません。');
+ // Use the same lossless unpacking and runtime validation as a normal reopen.
+ // All checks finish before the single new-key database write.
+ let value;try{value=readSaved(source.id,source);validateTerrain(value.terrain);validateTerrain(value.initialScene.terrain);if(value.instances.length>10000||new Set(value.instances.map(u=>u.instanceId)).size!==value.instances.length||new Set(value.groups.map(g=>g.id)).size!==value.groups.length)throw Error('ユニット数・識別番号を確認してください。');}catch(error){throw Error('推演セーブの復元検証に失敗しました。既存データは変更していません。'+error.message,{cause:error});}
+ const originalId=value.id,id=newId(),now=new Date().toISOString();value.id=id;value.updatedAt=now;value.restoredFrom={id:originalId,importedAt:now};
+ await writeSaved(value);return id;
 }
 
 export async function openSimulation(id) {
@@ -2685,6 +2703,12 @@ if (equipmentPower) {
       throw new Error(evaluateAction().reason);
     },
 
+    async exportSaveJSON(){
+      if(saving)throw Error('保存・計算中です。処理の完了後に完全セーブを書き出してください。');
+      const exportedState=state,expectedRaw=savedRaw;
+      if(await readSave(PREFIX+id)!==expectedRaw||saving||state!==exportedState)throw Error('推演が更新されました。保存完了を確認し、再読み込みしてから書き出してください。');
+      const header=JSON.stringify({format:SIMULATION_SAVE_FORMAT,version:1,restorable:true,exportedAt:new Date().toISOString(),summary:{name:state.name,day:state.environment.day,time:state.environment.time,turnNumber:state.turn.number,phaseId:state.turn.phaseId}});const text=header.slice(0,-1)+',"simulation":'+packSaved(state)+'}';assertSaveText(text);return text;
+    },
     exportJSON() {
       return JSON.stringify({
         ...observedScene(),

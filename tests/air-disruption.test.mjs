@@ -5,7 +5,7 @@ import {normalizeAircraft} from '../js/aircraft-template.js';
 import {ensureAircraftRuntime} from '../tactical-map/aircraft-runtime.js?v=aviation-deck-1';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';
 import {applyAirDisruption,airDisruptionPenalty} from '../tactical-map/air-disruption.js?v=air-defense-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {captureAttackPhaseStart} from '../tactical-map/simulation-attack-batch.js?v=aviation-deck-1';
 import {settleAttackPhase} from '../tactical-map/simulation-settlement.js?v=aviation-deck-1';
 import {readSave,writeSave} from '../js/save-database.js';

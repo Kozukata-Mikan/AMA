@@ -23,7 +23,7 @@ test('UI calls await asynchronous store writes and constructors',async()=>{
  assert.deepEqual(failures,[],'write UI must wait before displaying success');
 });
 test('simulation calculation callback stays synchronous inside the async persistence transaction',async()=>{
- const source=await readFile(new URL('../tactical-map/simulation-store.js?v=aviation-deck-1',import.meta.url),'utf8');
+ const source=await readFile(new URL('../tactical-map/simulation-store.js?v=resume-save-1',import.meta.url),'utf8');
  assert(source.includes('const result = change(candidate);'));
  assert(!source.includes('const result = await change(candidate);'));
  assert(source.includes('savedRaw = await writeSaved(candidate, expectedRaw);'));

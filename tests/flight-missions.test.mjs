@@ -9,7 +9,7 @@ import {assignFlightMission,flightMissionRoutes,finishMissionMovement,appendMiss
 import {AIR_ATTACK_MODES,checkAirAttackMode,ARMOR_OPTIONS} from '../tactical-map/air-ground-rules.js';
 import {readArmorGrade} from '../tactical-map/armor-runtime.js';
 import {getObservedScene} from '../tactical-map/simulation-features.js?v=aviation-deck-1';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {readSave} from '../js/save-database.js';
 import {resetDatabase} from './save-test-environment.mjs';
 import {getHitModifiers} from '../tactical-map/weapon-hit-runtime.js?v=day-catalog-pas-1';

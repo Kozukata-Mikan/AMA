@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=field-support-1';
 import {source,ship} from './fixtures.mjs';import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';import {readSave,writeSave} from '../js/save-database.js';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';import {readSave,writeSave} from '../js/save-database.js';
 import {ensureShipRuntime,readShipProfile,applyShipFireFloodingPhase} from '../tactical-map/ship-runtime.js?v=field-support-1';
 import {initializeSupportRuntime,startSupport,resolveSupportsAtSpecial,interruptSupportForMovement,reconcileSupports} from '../tactical-map/simulation-support.js?v=aviation-deck-1';
 import {supportEquipmentSeed,supportCapacity,supportRadius} from '../tactical-map/support-equipment.js?v=field-support-1';

@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {normalizeEnvironment,advanceEnvironment,environmentTimeLabel} from '../tactical-map/environment-data.js?v=day-catalog-pas-1';
 import {source,ship} from './fixtures.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {readSave,writeSave} from '../js/save-database.js';
 import {resetDatabase} from './save-test-environment.mjs';
 import {manualPasEnabled} from '../tactical-map/pas-control.js?v=day-catalog-pas-1';

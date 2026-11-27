@@ -39,7 +39,7 @@ test('damage, retained discovery expiry, movement, terrain and observation chang
 
 test('legacy full histories reopen, compact on successful save and preserve public copy contracts',async()=>{
  const {resetDatabase}=await import('./save-test-environment.mjs');await resetDatabase();globalThis.localStorage={getItem:()=>null,setItem(){}};
- const {createSimulation,openSimulation}=await import('../tactical-map/simulation-store.js?v=aviation-deck-1'),{readSave,writeSave}=await import('../js/save-database.js');
+ const {createSimulation,openSimulation}=await import('../tactical-map/simulation-store.js?v=resume-save-1'),{readSave,writeSave}=await import('../js/save-database.js');
  const id=await createSimulation(source(),()=>({valid:true}));let store=await openSimulation(id);
  await store.beginMovement();await store.resolveMovement();for(let n=0;n<6;n++)await store.settleAttackPhase(store.getSceneSnapshot().revision);await store.finishSpecialPhase(store.getSceneSnapshot().revision);await store.finishTurn(store.getSceneSnapshot().revision);
  const key='junqi-simulation-v1:'+id,packedRaw=await readSave(key),full=decodeSpecialHistory(JSON.parse(packedRaw));assert(full.specialRuntime.records[0].shipReports.length>0);

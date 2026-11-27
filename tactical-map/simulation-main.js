@@ -1,3 +1,4 @@
+import {mountSimulationSaveUI} from './simulation-save-ui.js?v=resume-save-1';
 import {mountFleetStatusUI} from './fleet-status-ui.js?v=field-support-1';
 import {environmentTimeLabel} from './environment-data.js?v=day-catalog-pas-1';
 import {AIR_TRAITS,hasAirTrait} from '../js/aircraft-training.js?v=air-training-1';
@@ -65,7 +66,7 @@ import {
 import {
   openSimulation,
   resolveEntity
-} from "./simulation-store.js?v=aviation-deck-1";
+} from "./simulation-store.js?v=resume-save-1";
 
 import {
   gridPosition,
@@ -1403,6 +1404,7 @@ try {
 
   store = await openSimulation(id);
   registerPageDisposer(mountSaveIndicator(store));
+  registerPageDisposer(mountSimulationSaveUI({store,parent:document.querySelector('header')}));
 
 // 开场关闭前，不挂载战斗操作面板，也不绘制战场单位。
 // 模块支持顶层await，当前HTML已使用type="module"。

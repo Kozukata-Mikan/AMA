@@ -4,7 +4,7 @@ import {ensureUnitCombatRuntime} from '../tactical-map/equipment-runtime.js?v=fi
 import {supportEquipmentSeed,supportCapacity,supportEffectOf} from '../tactical-map/support-equipment.js?v=field-support-1';
 import {initializeFieldSupport,operateFieldSupport,resolveFieldMines,remainingMineGroups,observedFieldSupport} from '../tactical-map/field-support-runtime.js?v=aviation-deck-1';
 import {spottingBonus,balloonObserver} from '../tactical-map/support-effects.js?v=field-support-1';import {getObserverVisibility} from '../tactical-map/simulation-features.js?v=aviation-deck-1';
-import {buildFleetStatus} from '../tactical-map/fleet-status.js?v=aviation-deck-1';import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {buildFleetStatus} from '../tactical-map/fleet-status.js?v=aviation-deck-1';import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {readSave} from '../js/save-database.js';import {resetDatabase} from './save-test-environment.mjs';
 function equip(u,role,n=1){const e=supportEquipmentSeed().find(e=>e.supportEffect===role);u.snapshot.equipmentSnapshots.push(e);u.snapshot.mounts.push({equipmentId:e.id,position:'中部①',count:n});delete u.equipmentState;ensureUnitCombatRuntime(u);}
 function field(){const s=source();s.instances=[ship('layer','ally',-20),ship('victim','enemy',20)];s.turn={number:1,phaseId:'special',elapsedMinutes:0};s.controls={observationSide:'ally',enemyAutonomy:false};for(const u of s.instances){ensureShipRuntime(u);ensureUnitCombatRuntime(u);}initializeFieldSupport(s);return s;}

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Worker as NodeWorker} from 'node:worker_threads';
 import {flatTerrain,source} from './fixtures.mjs';
 import {resetDatabase} from './save-test-environment.mjs';
-import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=aviation-deck-1';
+import {createSimulation,openSimulation} from '../tactical-map/simulation-store.js?v=resume-save-1';
 import {executeBackgroundTask} from '../tactical-map/background-tasks.js?v=aviation-deck-1';
 import {readSave} from '../js/save-database.js';
 import {applyBrush,readTerrainVertex,resizeTerrain} from '../tactical-map/terrain-data.js';
