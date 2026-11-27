@@ -1,11 +1,11 @@
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 const names={'mine-laid':'機雷敷設','mine-cleared':'掃海','mine-triggered':'機雷爆発',balloon:'観測気球'};
-export function mountFieldSupportUI(store){
+export function mountFieldSupportUI(store, container){
  const panel=el('details');panel.dataset.workflowPanel='field-support';panel.dataset.toolCategory='progress';panel.append(el('summary','機雷・観測気球'));
  const unit=el('select'),label=el('label');label.append(el('span','操作する自陣営ユニット'),unit);const info=el('p'),message=el('p'),buttons=el('div'),history=el('div');message.setAttribute('role','status');
  const note=el('p','特殊段階で操作します。機雷は1組につき1枚を現在の海域に敷設して消費。敵・中立艦が5マス以内に入ると1回爆発し、威力1の水中被害を与えます。掃海具は5マス以内の他陣営の機雷を自動除去し、消費しません。観測気球は高度＋30で偵察し、上昇中に校射＋1。観測員を含む校射の合計は最大＋1です。');note.className='note';
  let options=[];const controls=[];for(const[action,name]of [['lay-mine','機雷を1枚敷設'],['sweep','周囲を掃海'],['raise-balloon','気球を上げる'],['lower-balloon','気球を下ろす']]){const button=el('button',name);button.type='button';button.addEventListener('click',async()=>{try{await store.operateFieldSupport({unitId:unit.value,action});message.textContent='野外支援の操作を保存しました。';}catch(e){message.textContent=e.message;}});buttons.append(button);controls.push([action,button]);}
- panel.append(label,note,info,buttons,message,history);document.querySelector('aside').append(panel);
+ panel.append(label,note,info,buttons,message,history);container.append(panel);
  function sync(){const old=unit.value;options=store.getFieldSupportOptions();unit.replaceChildren(new Option('ユニットを選択',''),...options.map(u=>new Option(u.name,u.id)));if(options.some(u=>u.id===old))unit.value=old;const selected=options.find(u=>u.id===unit.value),scene=store.getSceneSnapshot();info.textContent=selected?`未使用機雷 ${selected.mines}組 / 掃海具 ${selected.guard?'あり':'なし'} / 気球 ${selected.raised?'上昇中（＋30）':selected.balloon?'格納中':'なし'}`:'';for(const[action,button]of controls){const can=selected&&(action==='lay-mine'?selected.mines>0:action==='sweep'?selected.guard:action==='raise-balloon'?selected.balloon&&!selected.raised:selected.raised);button.disabled=scene.turn.phaseId!=='special'||!can;}const runtime=scene.fieldSupportRuntime;history.replaceChildren(el('p',`自陣営の敷設済み機雷：${runtime?.mines?.length??0}枚`),...(runtime?.records??[]).slice(-8).reverse().map(r=>el('p',`R${r.turnNumber} ${names[r.kind]??r.kind}${r.kind==='balloon'?(r.raised?'上昇':'降下'):`（${r.x}, ${r.y}）`}${r.damage===undefined?'':` / 被害 ${r.damage}`}`)));}
  unit.addEventListener('change',sync);const unsubscribe=store.subscribe(sync);sync();return()=>{unsubscribe();panel.remove();};
 }

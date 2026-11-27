@@ -9,6 +9,9 @@ export function buildAviationDeck(scene,hostId){
  const valid=new Set(aviationRunways(host).map(r=>r.id)),eq=new Map((host.snapshot.equipmentSnapshots??[]).map(e=>[e.id,e])),lanes=[];
  for(const g of host.equipmentState?.groups??[]){const kind=supportEffectOf(eq.get(g.equipmentId));if(!['runway','catapult'].includes(kind))continue;lanes.push({id:g.id,kind,capacity:kind==='runway'?27:3,name:`${kind==='runway'?'滑走路':'カタパルト'} ${lanes.length+1} · ${g.position}`,operational:valid.has(g.id)&&aviationHostAlive(host),position:g.position});}
  if(planes.some(p=>p.snapshot.aircraft.type==='seaplane')&&aviationLanes(host,'seaplane').some(r=>r.id===WATER_LANE))lanes.push({id:WATER_LANE,kind:'water',capacity:null,name:'水面起降',operational:aviationHostAlive(host)});
+ if(planes.some(p=>p.snapshot.aircraft.type==='rotorcraft')){
+  for(const lane of aviationLanes(host,'rotorcraft'))lanes.push({...lane,operational:aviationHostAlive(host)});
+ }
  const zones=[{id:'hangar',name:'格納庫',kind:'hangar'},{id:'preparation',name:'整備区',kind:'preparation'},...lanes.map(r=>({...r,id:'lane:'+r.id,laneId:r.id})),{id:'airborne',name:'飛行中・着陸待機',kind:'airborne'}];const byZone=new Map(zones.map(z=>[z.id,{...z,cards:[],count:0}])),cards=new Map();
  let occupied=0;for(const p of planes){const s=p.aircraftState,zone=aviationDeckZone(p),id=zone==='runway'?'lane:'+s.runwayId:zone;if(s.hostId===hostId)occupied+=p.snapshot.aircraft.engines;if(!byZone.has(id))byZone.set(id,{id,name:'停止した発進場所',kind:'runway',laneId:s.runwayId,operational:false,cards:[],count:0});const distance=Math.hypot(p.x-host.x,p.y-host.y),near=distance<=(host.branch==='building'?25:12.5)+1e-7;
   const key=JSON.stringify([id,p.unitId,p.snapshot.aircraft.type,p.snapshot.maxHp,p.currentHp,s.status,s.activeLoadoutId,s.formationId??'',s.prepared===true,s.preparedTurn===scene.turn.number,s.mission,s.dueTurn??null,s.effectiveTraining,s.trainingTeamId,s.flightPlan?.kind,s.flightPlan?.stage,zone==='airborne'?near:null]);

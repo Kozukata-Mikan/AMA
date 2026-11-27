@@ -2,11 +2,11 @@ import {supportGroups} from './electronic-warfare.js?v=visual-support-bridge-1';
 import {visualSupportActive,visualSupportTarget} from './visual-support.js?v=visual-support-bridge-1';
 import {sampleTerrain} from './terrain-data.js';
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
-export function mountVisualSupportUI(store){
+export function mountVisualSupportUI(store, container){
  const panel=el('details');panel.dataset.toolCategory='progress';panel.append(el('summary','発煙筒・探照灯'));
  panel.append(el('p','発煙筒：特殊段階にON。毎ラウンド1組を消費し、次の移動の実経路に幅1・地表上10の煙幕を展開。次の特殊段階まで双方の偵察（必見距離を含む）を遮蔽します。OFFは次回の消費を停止し、既に発生した煙は残ります。'));
  panel.append(el('p','探照灯：開始・特殊段階に設定。1組1目標、水平100マス以内。照射元と目標へ向けられた攻撃の黒夜ペナルティだけを解除します。距離超過・設備損傷・行動不能で照射を終了します。'));
- const select=el('select'),label=el('label'),body=el('div'),message=el('p');label.append(el('span','操作する自陣営ユニット'),select);message.setAttribute('role','status');panel.append(label,body,message);document.querySelector('aside').append(panel);let scene;
+ const select=el('select'),label=el('label'),body=el('div'),message=el('p');label.append(el('span','操作する自陣営ユニット'),select);message.setAttribute('role','status');panel.append(label,body,message);container.append(panel);let scene;
  async function perform(action){try{await action();message.textContent='野外支援の設定を保存しました。';}catch(e){message.textContent=e.message;}}
  function renderBody(){body.replaceChildren();const u=scene.instances.find(u=>u.instanceId===select.value);if(!u)return;
   if((u.snapshot.equipmentSnapshots??[]).some(e=>e.supportEffect==='smoke-generator')){const check=el('input');check.type='checkbox';check.checked=u.visualSupport?.smokeEnabled===true;check.disabled=scene.turn.phaseId!=='special';const row=el('label');row.append(check,el('span',`発煙を継続（未使用 ${supportGroups(u,'smoke-generator').length}組）`));check.addEventListener('change',()=>perform(()=>store.setSmoke({unitId:u.instanceId,enabled:check.checked})));body.append(row);}

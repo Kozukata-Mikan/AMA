@@ -54,13 +54,18 @@ export function initializeAviationRuntime(scene){
 }
 function assertRunwayOpenForStaging(scene,host,runway){if(runway.kind==='water')return;const use=scene.aviationRuntime.runwayUse.find(u=>u.hostId===host.instanceId&&u.runwayId===runway.id&&u.turnNumber===scene.turn.number);if(use?.kind==='landing'||scene.instances.some(p=>p.aircraftState?.hostId===host.instanceId&&p.aircraftState.runwayId===runway.id&&p.aircraftState.mission==='landing'&&p.aircraftState.status!=='destroyed'))fail('この滑走路は着陸に使用中です。整備区で待機してください。');}
 export const WATER_LANE='water-surface';
-export function aviationLanes(host,type){const lanes=aviationRunways(host);return type==='seaplane'&&aircraftFacilityCompatible(type,host)?[{id:WATER_LANE,name:'水面起降（滑走路不要）',kind:'water',capacity:10000,mountIndex:null,position:'水面'},...lanes.filter(r=>r.kind==='catapult')]:lanes;}
+export const ROTOR_LANE='vertical-pad';
+const immediateLane=runway=>['catapult','vertical'].includes(runway.kind);
+export function aviationLanes(host,type){
+ if(type==='rotorcraft')return aircraftFacilityCompatible(type,host)?[{id:ROTOR_LANE,name:'回転翼機発着区',kind:'vertical',capacity:27,mountIndex:null,position:'発着区'}]:[];
+ const lanes=aviationRunways(host);return type==='seaplane'&&aircraftFacilityCompatible(type,host)?[{id:WATER_LANE,name:'水面起降（滑走路不要）',kind:'water',capacity:10000,mountIndex:null,position:'水面'},...lanes.filter(r=>r.kind==='catapult')]:lanes;}
 function assertLaneAircraft(runway,planes){
+ if(planes.some(p=>(p.snapshot.aircraft.type==='rotorcraft')!==(runway.kind==='vertical')))fail('回転翼機は専用発着区を使用してください。');
  if(runway.kind==='water'&&planes.some(p=>p.snapshot.aircraft.type!=='seaplane'))fail('水面起降は水上機専用です。');
  if(runway.kind==='runway'&&planes.some(p=>p.snapshot.aircraft.type==='seaplane'))fail('水上機は滑走路を使用しません。水面起降かカタパルトを選択してください。');
  if(runway.kind==='catapult'&&planes.some(p=>supportCapacity(p,'rato')<1))fail('カタパルトを使用する航空機にはRATO発進補助が必要です。');
 }
-function runwayFor(scene,hostId,id){const host=scene.instances.find(u=>u.instanceId===hostId);own(scene,host);if(!aviationHostAlive(host))fail('母艦・施設は航空運用できません。');const runway=(id===WATER_LANE?aviationLanes(host,'seaplane'):aviationRunways(host)).find(r=>r.id===id);if(!runway)fail('使用可能な滑走路／カタパルトを選択してください。');return{host,runway};}
+function runwayFor(scene,hostId,id){const host=scene.instances.find(u=>u.instanceId===hostId);own(scene,host);if(!aviationHostAlive(host))fail('母艦・施設は航空運用できません。');const runway=(id===ROTOR_LANE?aviationLanes(host,'rotorcraft'):id===WATER_LANE?aviationLanes(host,'seaplane'):aviationRunways(host)).find(r=>r.id===id);if(!runway)fail('使用可能な滑走路／カタパルトを選択してください。');return{host,runway};}
 function chosen(scene,ids){if(!Array.isArray(ids)||!ids.length||ids.length>10000||new Set(ids).size!==ids.length)fail('対象機を重複なく選択してください。');return ids.map(id=>{const p=planeFor(scene,id);if(!p)fail('対象航空機がありません。');return p;});}
 function roundStart(scene){initializeAviationRuntime(scene);if(scene.turn.phaseId!=='start')fail('整備・起降はラウンド開始時に指定してください。');}
 function reserveRunway(scene,host,runway,kind,count){if(runway.kind==='water')return;const r=scene.aviationRuntime;let use=r.runwayUse.find(u=>u.turnNumber===scene.turn.number&&u.hostId===host.instanceId&&u.runwayId===runway.id);if(use&&use.kind!==kind)fail('このラウンドは同じ滑走路で離陸・着陸を併用できません。');if((use?.count??0)+count>runway.capacity)fail(`この滑走路の1ラウンド${runway.capacity}機の上限を超えています。`);if(!use){use={turnNumber:scene.turn.number,hostId:host.instanceId,runwayId:runway.id,kind,count:0};r.runwayUse.push(use);}use.count+=count;}
@@ -82,9 +87,9 @@ export function launchAircraft(scene,{hostId,runwayId,aircraftIds}){
  roundStart(scene);const{host,runway}=runwayFor(scene,hostId,runwayId);own(scene,host);const planes=chosen(scene,aircraftIds);assertLaneAircraft(runway,planes);
  for(const p of planes){own(scene,p);assertAircraftLaunchTime(scene,p);const s=ensureAircraftRuntime(p);if(s.hostId!==hostId||s.runwayId!==runwayId||s.mission!=='ready'||!s.prepared||s.status!=='operational'||p.currentHp<p.snapshot.maxHp)fail('指定滑走路の整備済み機を選択してください。');if(Math.max(1,(host.branch==='navy'&&navalKind(host)==='air'?host.altitude:sampleTerrain(scene.terrain,host.x,host.y).surface)+1)>p.snapshot.aircraft.ceiling)fail('施設高度が上昇限度以上です。');}
  reserveRunway(scene,host,runway,'takeoff',planes.length);
- for(const p of planes){if(runway.kind==='catapult')depart(scene,p,host);else Object.assign(p.aircraftState,{mission:'launching',dueTurn:scene.turn.number+1});}
+ for(const p of planes){if(immediateLane(runway))depart(scene,p,host);else Object.assign(p.aircraftState,{mission:'launching',dueTurn:scene.turn.number+1});}
  enforceRemoteControl(scene);rebuildAircraftClusters(scene);
- scene.aviationRuntime.records.push({kind:'takeoff',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],immediate:runway.kind==='catapult'});
+ scene.aviationRuntime.records.push({kind:'takeoff',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],immediate:immediateLane(runway)});
 }
 export function landAircraft(scene,{hostId,runwayId,aircraftIds},coin){
  roundStart(scene);const{host,runway}=runwayFor(scene,hostId,runwayId);own(scene,host);const planes=chosen(scene,aircraftIds);assertLaneAircraft(runway,planes);
@@ -92,9 +97,9 @@ export function landAircraft(scene,{hostId,runwayId,aircraftIds},coin){
  if(runway.kind!=='water'&&scene.instances.some(p=>hasAircraftTemplate(p)&&p.aircraftState?.hostId===hostId&&p.aircraftState.runwayId===runwayId&&p.aircraftState.mission==='ready'&&p.aircraftState.status!=='destroyed'))fail('滑走路に発進待機機があります。先に整備区または格納庫へ移してください。');
  for(const p of planes){own(scene,p);assertAircraftLandingTime(scene,p);const s=ensureAircraftRuntime(p);if(s.mission!=='airborne'||s.status==='destroyed'||!aircraftFacilityCompatible(p.snapshot.aircraft.type,host))fail('着陸可能な飛行中の機体を選択してください。');if(Math.hypot(p.x-host.x,p.y-host.y)>(host.branch==='building'?25:12.5)+1e-7)fail('機体が母艦・施設の着陸範囲外です。');occupied+=p.snapshot.aircraft.engines;}
  if(occupied>supportCapacity(host,'parking-stand'))fail('着陸先の駐機枠が不足しています。');reserveRunway(scene,host,runway,'landing',planes.length);
- for(const p of planes){const landing=resolveForcedLanding(scene,p,{hostId,runwayId,stage:'registration'},coin);if(landing&&!landing.success)continue;const s=p.aircraftState;if(!s.clusterId)s.formationId=p.groupId??s.formationId??null;p.groupId=s.formationId??null;Object.assign(s,{mission:runway.kind==='catapult'?'parked':'landing',hostId,runwayId:runway.kind==='catapult'?null:runwayId,prepared:false,dueTurn:runway.kind==='catapult'?null:scene.turn.number+1,clusterId:null});}
+ for(const p of planes){const landing=resolveForcedLanding(scene,p,{hostId,runwayId,stage:'registration'},coin);if(landing&&!landing.success)continue;const s=p.aircraftState;if(!s.clusterId)s.formationId=p.groupId??s.formationId??null;p.groupId=s.formationId??null;Object.assign(s,{mission:immediateLane(runway)?'parked':'landing',hostId,runwayId:immediateLane(runway)?null:runwayId,prepared:false,dueTurn:immediateLane(runway)?null:scene.turn.number+1,clusterId:null});}
  recordAviationAceLosses(scene,coin);
- scene.aviationRuntime.records.push({kind:'landing',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],immediate:runway.kind==='catapult'});clearLandedPanic(scene);rebuildAircraftClusters(scene);
+ scene.aviationRuntime.records.push({kind:'landing',turnNumber:scene.turn.number,hostId,runwayId,aircraftIds:[...aircraftIds],immediate:immediateLane(runway)});clearLandedPanic(scene);rebuildAircraftClusters(scene);
 }
 export function advanceAviationStart(scene,coin){
  initializeAviationRuntime(scene);
@@ -122,7 +127,7 @@ export function reconcileAviation(scene){
  advanceAirshipBaseServices(scene);
  const planes=scene.instances.filter(p=>hasAircraftTemplate(p)&&p.aircraftState?.hostId);if(!planes.length)return;
  const hosts=new Map(scene.instances.filter(h=>['navy','building'].includes(h.branch)).map(h=>[h.instanceId,h])),lanes=new Map();
- for(const p of planes){const s=p.aircraftState,host=hosts.get(s.hostId);if(!host)fail('搭載機の母艦参照がありません。');if(s.mission!=='landing'){p.x=host.x;p.y=host.y;}if(!lanes.has(host.instanceId))lanes.set(host.instanceId,new Set([...aviationRunways(host).map(r=>r.id),...(aircraftFacilityCompatible('seaplane',host)?[WATER_LANE]:[])]));
+ for(const p of planes){const s=p.aircraftState,host=hosts.get(s.hostId);if(!host)fail('搭載機の母艦参照がありません。');if(s.mission!=='landing'){p.x=host.x;p.y=host.y;}if(!lanes.has(host.instanceId))lanes.set(host.instanceId,new Set([...aviationRunways(host).map(r=>r.id),...aviationLanes(host,'rotorcraft').map(r=>r.id),...(aircraftFacilityCompatible('seaplane',host)?[WATER_LANE]:[])]));
   if(!aviationHostAlive(host)||s.runwayId&&!lanes.get(host.instanceId).has(s.runwayId)){if(['ready','launching'].includes(s.mission)){s.status='destroyed';p.currentHp=0;s.destroyedReason='runway-destroyed';}if(s.mission==='landing')s.mission='parked';s.prepared=false;s.runwayId=null;s.dueTurn=null;}
  }
 }

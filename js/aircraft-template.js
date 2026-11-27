@@ -2,7 +2,7 @@ import {normalizeAirTraits} from './aircraft-training.js?v=self-sealing-1';
 // 航空机资料使用独立模板；不把小破／中破或舰船训练效果套入航空机。
 export const AIRCRAFT_TYPES = [
   ['carrier','艦載機'], ['land','陸上機'], ['seaplane','水上機'],
-  ['drone','無人機'], ['land-drone','陸上無人機']
+  ['rotorcraft','回転翼機'], ['drone','無人機'], ['land-drone','陸上無人機']
 ];
 export const AIRCRAFT_WEAPON_ROLES = [
   ['active','主動武器'], ['defense','自衛武器'], ['pod','ポッド']
@@ -60,7 +60,7 @@ export function normalizeAircraft(value={}) {
     })};
   });
   return {...value,version:1,type,engines,crew,selfSealingTank,maneuverability:maneuverability.replace(/\s/g,'').toUpperCase(),ceiling,training,traits,acePilotName,remoteRange,attackModes:[...attackModes],loadouts:normalized,
-    operations:{takeoff:'runway-or-catapult',preparation:'preparation-area'}};
+    operations:{takeoff:type==='rotorcraft'?'vertical':'runway-or-catapult',preparation:'preparation-area'}};
 }
 export const aircraftParkingSlots = aircraft => normalizeAircraft(aircraft).engines;
 export function aircraftMounts(unit) {

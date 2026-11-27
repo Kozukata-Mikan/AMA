@@ -3,6 +3,7 @@ import {AIRCRAFT_TYPES} from '../js/aircraft-template.js?v=self-sealing-1';
 const shape=d=>({tag:'path',d,fill:'currentColor',stroke:'none'});
 const line=d=>({tag:'path',d,fill:'none',stroke:'currentColor','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round'});
 const PLANE='M0 -30 L6 -7 L26 7 L26 13 L5 6 L4 19 L12 24 L12 28 L0 24 L-12 28 L-12 24 L-4 19 L-5 6 L-26 13 L-26 7 L-6 -7 Z';
+export const ROTORCRAFT_PATH='M 0 -21 L 7 -17 L 9 -3 L 4 9 L 2 23 L 8 26 L 8 29 L -8 29 L -8 26 L -2 23 L -4 9 L -9 -3 L -7 -17 Z M -25 -18 L 25 8 M -22 13 L 22 -23';
 const DRONE='M0 -29 L7 -10 L27 13 L24 18 L5 10 L4 23 L0 26 L-4 23 L-5 10 L-24 18 L-27 13 L-7 -10 Z';
 const RUNWAY=line('M-24 33 H24 M-17 30 V36 M17 30 V36');
 const RADIO=line('M16 -26 Q25 -33 34 -26 M20 -21 Q25 -25 30 -21 M25 -16 h.1');
@@ -18,6 +19,7 @@ const WEAPONS={
 export function catalogSymbol(item){
  if(item.branch==='air'){
   const type=item.aircraft?.type??'carrier',parts=[shape(type==='drone'||type==='land-drone'?DRONE:PLANE)];
+  if(type==='rotorcraft')return {label:'回転翼機',parts:[line(ROTORCRAFT_PATH)]};
   if(type==='carrier')parts.push(line('M17 18 V29 Q17 35 24 35 Q31 35 31 28 M13 22 H21'));
   if(type==='land'||type==='land-drone')parts.push(RUNWAY);
   if(type==='seaplane')parts.push(shape('M-17 12 H-11 V25 Q-14 30 -17 25 Z M11 12 H17 V25 Q14 30 11 25 Z'),line('M-27 33 Q-20 28 -13 33 T1 33 T15 33 T29 33'));

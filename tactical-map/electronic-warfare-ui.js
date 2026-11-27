@@ -1,9 +1,9 @@
 import {supportGroups} from './electronic-warfare.js?v=visual-support-bridge-1';
 const el=(tag,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
-export function mountElectronicWarfareUI(store){
+export function mountElectronicWarfareUI(store, container){
  const panel=el('details');panel.dataset.workflowPanel='electronic-warfare';panel.dataset.toolCategory='progress';panel.append(el('summary','電子戦・フレア'));
  panel.append(el('p','電子戦ポッド1組＝5点、水平半径750マス。開始・特殊段階に各組の攻撃／防御を選びます。同ラウンドの再切替は不可。未設定は防御です。移動段階に入ると、その設定で本ラウンドを固定します。20点差で偵察無効・強ロック、30でレーダー50%・無人機攻撃不能、40で無人機喪失、50で敵の探測難度E。通常の必見距離は維持します。'));
- const select=el('select'),label=el('label'),body=el('div'),message=el('p');message.setAttribute('role','status');label.append(el('span','自陣営の電子装備'),select);panel.append(label,body,message);document.querySelector('aside').append(panel);
+ const select=el('select'),label=el('label'),body=el('div'),message=el('p');message.setAttribute('role','status');label.append(el('span','自陣営の電子装備'),select);panel.append(label,body,message);container.append(panel);
  let scene;
  async function perform(action){try{await action();message.textContent='電子装備の設定を保存しました。';}catch(e){message.textContent=e.message;}}
  function renderBody(){body.replaceChildren();const u=scene.instances.find(u=>u.instanceId===select.value);if(!u)return;body.append(el('p',`受けている電子圧制：${u.electronicState?.margin??0}点差${u.electronicState?.strongLock?' / 強ロック中':''}`));

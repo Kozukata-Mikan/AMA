@@ -1,3 +1,4 @@
+import {ROTORCRAFT_PATH} from './catalog-symbols.js?v=visual-support-bridge-1';
 import {hasAircraftTemplate} from './aircraft-runtime.js?v=electronic-ballistic-1';
 import { drawBuildingIcon, buildingPlacement } from "./building-runtime.js?v=facility-rules-1";
 import { navalPlacement, navalHeight } from "./naval-kind.js?v=catalog-layout-2";
@@ -563,6 +564,7 @@ function getUnitIconPath(unit) {
       return navalSymbolPath(navalSymbolFor(unit), unit.sizeLevel);
 
     case "air":
+      if(unit.snapshot?.aircraft?.type==='rotorcraft')return ROTORCRAFT_PATH;
       return makeAirPath(unit.sizeLevel);
 
     case "army":

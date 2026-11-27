@@ -27,3 +27,22 @@ test('a late invalid aircraft in a mixed batch leaves squadron assignment and sa
 test('independent preparation and squadron changes persist through real worker movement and queued launch at next start',async()=>{const {Worker}=await import('node:worker_threads');const {shutdownBackground}=await import('../tactical-map/background-client.js?v=visual-support-bridge-1');globalThis.Worker=class{constructor(){this.worker=new Worker(new URL('./worker-thread-adapter.mjs',import.meta.url));this.worker.on('message',data=>this.onmessage?.({data}));this.worker.on('error',e=>this.onerror?.(e));}postMessage(v){this.worker.postMessage(v)}terminate(){this.worker.terminate()}};try{const{store,key,id}=await saved({count:4}),planes=ids(store.getSceneSnapshot()),go=(operation,extra={},aircraftIds=planes)=>store.dispatchAviation({hostId:'host',operation,aircraftIds,...extra});await go('stage',{zone:'preparation'});await go('prepare',{loadoutId:'A'});await go('squadron',{squadron:'甲中隊'});const reopened=await openSimulation(id);assert.equal(reopened.getSceneSnapshot().instances.find(p=>p.instanceId===planes[0]).aircraftState.deckZone,'preparation');const lane=aviationRunways(reopened.getSceneSnapshot().instances.find(p=>p.instanceId==='host'))[0].id;await go('stage',{zone:'runway',runwayId:lane},planes.slice(0,2));await go('takeoff',{},planes.slice(0,2));await store.beginMovement();await store.resolveMovement();for(let i=0;i<6;i++)await store.settleAttackPhase(store.getSceneSnapshot().revision);await store.finishSpecialPhase(store.getSceneSnapshot().revision);await store.finishTurn(store.getSceneSnapshot().revision);const raw=await stored(key);assert.equal(raw.instances.find(p=>p.instanceId===planes[0]).aircraftState.mission,'airborne');assert.equal(raw.instances.find(p=>p.instanceId===planes[2]).aircraftState.deckZone,'preparation');await openSimulation(id);}finally{shutdownBackground();delete globalThis.Worker;}});
 test('deck view groups by squadron, loadout, health and waiting state, exposes disabled lanes, and never leaks foreign aircraft',()=>{const s=scene({count:4}),host=s.instances[0];s.instances[1].aircraftState.formationId='第二中隊';s.instances[2].currentHp=0;s.instances[2].aircraftState.status='heavy';s.instances[3].side='enemy';host.equipmentState.groups.at(-1).damaged=true;const observed={...s,instances:s.instances.map(p=>({...p,observationOwn:p.side==='ally'}))},before=JSON.stringify(observed),deck=buildAviationDeck(observed,'host');assert.equal(deck.planes.length,3);assert.equal(deck.zones.find(z=>z.id==='hangar').cards.length,3);assert.ok(deck.zones.some(z=>z.operational===false));assert.equal(JSON.stringify(observed),before);assert.equal(buildAviationDeck(observed,s.instances[3].instanceId),null);});
 test('dispatch keeps nighttime preparation and launch restrictions and rejects airborne reassignment',()=>{const s=scene({count:1});command(s,'stage',{zone:'preparation'});s.environment.time='22:00';assert.throws(()=>command(s,'prepare'),/黒夜/);s.environment.time='12:00';command(s,'prepare');command(s,'stage',{zone:'runway',runwayId:aviationRunways(s.instances[0])[0].id});s.environment.time='21:00';assert.throws(()=>command(s,'takeoff'),/白昼/);});
+
+test('rotorcraft use one instant 27-aircraft pad without runway or RATO',()=>{
+ const s=scene({count:28,prep:4,lanes:0});
+ for(const plane of s.instances.slice(1))plane.snapshot.aircraft.type='rotorcraft';
+ command(s,'stage',{zone:'preparation'});
+ command(s,'prepare');
+ command(s,'stage',{zone:'runway',runwayId:'vertical-pad'});
+ assert.throws(()=>command(s,'takeoff'),/27機/);
+ const batch=ids(s,27);
+ dispatchAviation(s,{hostId:'host',operation:'takeoff',aircraftIds:batch});
+ assert.ok(s.instances.slice(1,28).every(p=>p.aircraftState.mission==='airborne'));
+ assert.throws(()=>dispatchAviation(s,{hostId:'host',operation:'takeoff',aircraftIds:ids(s,1,27)}),/27機/);
+ dispatchAviation(s,{hostId:'host',operation:'stage',zone:'hangar',aircraftIds:ids(s,1,27)});
+ const land=()=>dispatchAviation(s,{hostId:'host',operation:'landing',runwayId:'vertical-pad',aircraftIds:batch});
+ assert.throws(land,/併用/);
+ s.turn.number++;
+ land();
+ assert.ok(s.instances.slice(1,28).every(p=>p.aircraftState.mission==='parked'));
+});
