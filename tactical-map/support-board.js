@@ -1,4 +1,5 @@
-import {conditionLabel,effectLabel,equipmentStatus,supportCompartments,unitNeedsAttention} from './support-condition.js';
+import {indexSupportRoster,filterSupportRoster} from './support-roster.js';
+import {conditionLabel,effectLabel,equipmentStatus,supportCompartments} from './support-condition.js';
 import {SUPPORT_NAMES} from './support-equipment.js?v=visual-support-bridge-1';
 
 function el(tag,text='',className=''){
@@ -65,9 +66,12 @@ export function mountSupportBoard(store,sections){
  header.append(el('h2','支援管制センター'),round,button('閉じる',()=>dialog.close()));
  const stats=el('div','','support-stats'),grid=el('div','','support-grid');
  const fleet=el('section','','support-column'),search=el('input'),filter=el('label'),check=el('input'),roster=el('div','','support-roster');
- search.type='search';search.placeholder='ユニット名を検索';search.setAttribute('aria-label',search.placeholder);
+ search.type='search';search.placeholder='ユニット名・編隊名を検索';search.setAttribute('aria-label',search.placeholder);
  check.type='checkbox';filter.append(check,' 要対応のみ');
- fleet.append(el('h3','自陣営ユニット'),search,filter,roster);
+ const formation=el('select'),resultCount=el('small');
+ formation.setAttribute('aria-label','編隊で絞り込み');formation.className='support-formation';
+ resultCount.setAttribute('role','status');
+ fleet.append(el('h3','自陣営ユニット'),search,formation,filter,resultCount,roster);
  const detail=el('section','','support-column'),unitTitle=el('h3'),condition=el('div','','support-condition'),parts=el('div','','support-parts');
  detail.append(unitTitle,condition,parts);
  const actions=el('section','','support-column'),tabs=el('div','','support-tabs'),actionBody=el('div','','support-action-body'),activeTasks=el('div');
@@ -98,20 +102,30 @@ export function mountSupportBoard(store,sections){
    activeTasks.append(el('p',`${SUPPORT_NAMES[t.kind]??'設備修復'} · ${selected===t.targetId?'受援元':'支援先'} ${peer?.name??'—'} · R${t.startedTurn} 開始`));
   }
  }
+ let indexedScene=null,index;
  function refresh(){
   if(!dialog.open)return;
-  const scene=store.getSceneSnapshot(),own=scene.instances.filter(u=>u.observationOwn&&!u.projectileState);
-  const damaged=own.filter(unitNeedsAttention);
-  const shown=(check.checked?damaged:own).filter(u=>u.name.toLowerCase().includes(search.value.trim().toLowerCase()));
+  const scene=store.getSceneSnapshot();
+  if(scene!==indexedScene){
+   index=indexSupportRoster(scene);indexedScene=scene;
+   const previous=formation.value;
+   formation.replaceChildren(new Option('すべての編隊',''),...index.options.map(g=>
+    new Option(`${g.label}（${g.total}・要対応 ${g.attention}）`,g.id)));
+   if(index.options.some(g=>g.id===previous))formation.value=previous;
+  }
+  const {own,damaged}=index;
+  const shown=filterSupportRoster(index,formation.value,search.value,check.checked);
+  resultCount.textContent=`該当 ${shown.length} ユニット`;
   if(!shown.some(u=>u.instanceId===selected))selected=shown[0]?.instanceId??'';
   const unit=shown.find(u=>u.instanceId===selected);
   round.textContent=`R${scene.turn.number} · ${phases[scene.turn.phaseId]??scene.turn.phaseId.replace('order-','次序 ')}`;
   const fire=own.filter(u=>u.shipState?.effects?.fire||u.buildingState?.slots?.some(s=>s.effects?.fire)).length;
-  stats.replaceChildren(metric('自陣営',own.length),metric('要対応',damaged.length),metric('火災',fire),metric('浸水',own.filter(u=>u.shipState?.effects?.flooding).length),metric('沈没寸前',own.filter(u=>u.shipState?.status==='sinking').length));
+  stats.replaceChildren(metric('自陣営',own.length),metric('要対応',damaged.size),metric('火災',fire),metric('浸水',own.filter(u=>u.shipState?.effects?.flooding).length),metric('沈没寸前',own.filter(u=>u.shipState?.status==='sinking').length));
   roster.replaceChildren();
   for(const u of shown.slice(0,visibleCount)){
    const b=button('',()=>{selected=u.instanceId;refresh();});b.setAttribute('aria-pressed',String(selected===u.instanceId));
-   b.append(el('strong',u.name),el('small',`${conditionLabel(u)} · 耐性 ${u.currentHp} / ${u.snapshot.maxHp}`));roster.append(b);
+   b.append(el('strong',u.name),el('small',`${conditionLabel(u)} · 耐性 ${u.currentHp} / ${u.snapshot.maxHp}`));
+   b.append(el('small',index.members.get(u.instanceId).group.label||'編隊なし'));roster.append(b);
   }
   if(shown.length>visibleCount)roster.append(button('さらに表示（残り '+(shown.length-visibleCount)+'）',()=>{visibleCount+=80;refresh();}));
   if(!shown.length)roster.append(el('p','該当ユニットなし'));
@@ -127,7 +141,9 @@ export function mountSupportBoard(store,sections){
   }
   renderActions(unit,scene);
  }
- search.addEventListener('input',refresh);check.addEventListener('change',refresh);
+ function updateFilter(){visibleCount=80;roster.scrollTop=0;refresh();}
+ search.addEventListener('input',updateFilter);check.addEventListener('change',updateFilter);
+ formation.addEventListener('change',updateFilter);
  const unsubscribe=store.subscribe(refresh);
  dialog.addEventListener('close',()=>{if(dialog.open)return;unmount?.();unmount=null;mountedKey=null;});
  return ()=>{unsubscribe();unmount?.();dialog.remove();entry.remove();css.remove();};
