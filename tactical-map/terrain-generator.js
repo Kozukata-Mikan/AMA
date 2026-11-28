@@ -5,13 +5,13 @@ const kinds=['mountains','hills','island','archipelago','plain','ocean','coast',
 function number(value,label,min,max){if(value===null||value===undefined||String(value).trim()==='')throw new Error(`${label}を入力してください。`);const n=Number(value);if(!Number.isFinite(n)||n<min||n>max)throw new Error(`${label}：${min}～${max}で指定してください。`);return n}
 export function normalizeGenerationOptions(input){
  const mode=input.mode??'description';if(!['description','geographic'].includes(mode))throw new Error('生成方式が不正です。');
- const width=Math.round(number(input.widthKm??60,'東西の範囲(km)',24,1440)*5),height=Math.round(number(input.heightKm??60,'南北の範囲(km)',24,1440)*5);
+ const width=Math.round(number(input.widthKm??60,'東西の範囲(km)',24,2880.2)*5),height=Math.round(number(input.heightKm??60,'南北の範囲(km)',24,2880.2)*5);
  const seed=number(input.seed??1,'シード',0,4294967295);if(!Number.isInteger(seed))throw new Error('シードは整数です。');
  const detail=Number(input.detail??513);if(![257,513].includes(detail))throw new Error('生成精度が不正です。');
  const kind=input.kind??'mountains';if(!kinds.includes(kind))throw new Error('対応していない地形です。');
  const elevation=input.elevation??'dem';if(!['dem','approximate','flat'].includes(elevation))throw new Error('標高方式が不正です。');
  const o={mode,kind,width,height,widthKm:width/5,heightKm:height/5,seed,detail,elevation,
-  lengthKm:number(input.lengthKm??10,'地形の長さ(km)',0.2,1440),heightMeters:number(input.heightMeters??1200,'山頂の高さ(m)',1,60000),
+  lengthKm:number(input.lengthKm??10,'地形の長さ(km)',0.2,2880.2),heightMeters:number(input.heightMeters??1200,'山頂の高さ(m)',1,60000),
   seaDepthMeters:number(input.seaDepthMeters??200,'仮の海底深さ(m)',1,20000),angle:number(input.angle??0,'方向(度)',-360,360),
   description:String(input.description??'').slice(0,500),label:String(input.label??'').slice(0,250)};
  if(mode==='description'&&o.lengthKm>Math.min(o.widthKm,o.heightKm)*0.9)throw new Error('地形の長さが範囲に収まりません。東西・南北の範囲を広げてください。');
@@ -30,7 +30,7 @@ export function parseTerrainDescription(description){
  const lengthKm=length?Number(length[1]):10;
  const heightMeters=peak?Number(peak[1])*(/^(km|公里|千米)$/i.test(peak[2])?1000:1):(kind==='hills'?300:1200);
  const angle=/东北|東北|northeast/i.test(text)?-45:/西北|northwest/i.test(text)?45:/南北|north.?south/i.test(text)?90:0;
- return {kind,lengthKm,heightMeters,angle,widthKm:Math.min(1440,Math.max(24,Math.ceil(lengthKm*1.4))),heightKm:Math.min(1440,Math.max(24,Math.ceil(lengthKm*1.4))),description:text};
+ return {kind,lengthKm,heightMeters,angle,widthKm:Math.min(2880.2,Math.max(24,Math.ceil(lengthKm*1.4))),heightKm:Math.min(2880.2,Math.max(24,Math.ceil(lengthKm*1.4))),description:text};
 }
 function hash(x,y,seed){let n=Math.imul(x|0,374761393)^Math.imul(y|0,668265263)^seed;n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295}
 function noise(x,y,seed){const a=Math.floor(x),b=Math.floor(y),fx=x-a,fy=y-b,s=t=>t*t*(3-2*t),u=s(fx),v=s(fy);return (1-v)*((1-u)*hash(a,b,seed)+u*hash(a+1,b,seed))+v*((1-u)*hash(a,b+1,seed)+u*hash(a+1,b+1,seed))}

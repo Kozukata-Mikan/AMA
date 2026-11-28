@@ -33,3 +33,18 @@ test('blast boundaries are inclusive and air altitude and underwater depth use t
 test('friendly fire includes the firing ship when it is inside the blast sphere',async()=>{const s=scenario(),{id,store}=await open(s);await fire(store,{kind:'point',x:2,y:0,z:0});const raw=JSON.parse(await readSave('junqi-simulation-v1:'+id)),{settleAttackPhase}=await import('../tactical-map/simulation-settlement.js?v=visual-support-bridge-1');settleAttackPhase(raw,()=>true);assert.equal(raw.instances[0].currentHp,9);assert.equal(raw.instances[0].equipmentState.groups[0].remainingAmmo,29);});
 test('range and firing arc are checked against the blast center rather than each collateral victim',async()=>{const s=scenario();s.instances[0].snapshot.equipmentSnapshots[0].range=49;const {id,store}=await open(s);await fire(store,{...point,x:49});await store.settleAttackPhase(store.getSceneSnapshot().revision);const raw=JSON.parse(await readSave('junqi-simulation-v1:'+id));assert.ok(raw.settlementRuntime.attackRecords.at(-1).hitReports.some(h=>h.targetId==='b'));});
 test('aircraft can execute coordinate ground attacks with their allowed attack mode',async()=>{const s=scenario(),a=s.instances[0];a.branch=a.snapshot.branch='air';a.snapshot.aircraft=normalizeAircraft({engines:10,ceiling:100,maneuverability:'1R',attackModes:['bvr']});a.altitude=10;a.snapshot.mounts[0].position='主動武器';const {id,store}=await open(s),group=store.getAttackGroupReport('a').groups[0];await store.saveAttackCommands({unitId:'a',attackMethod:'bvr',assignments:[{groupId:group.groupId,targetRef:point}]},store.getSceneSnapshot().revision);await store.settleAttackPhase(store.getSceneSnapshot().revision);const raw=JSON.parse(await readSave('junqi-simulation-v1:'+id));assert.ok(raw.settlementRuntime.attackRecords.at(-1).hitReports.some(h=>h.targetId==='b'));assert.equal(raw.instances[0].equipmentState.groups[0].remainingAmmo,29);});
+
+test('settled surface change survives reopening and preserves deployment terrain', async()=>{
+ const s=scenario(),t=s.terrain;
+ const col=60,row=40,index=row*t.cols+col;
+ t.heights[index]=2;
+ const {id,store}=await open(s);
+ const {sampleTerrain}=await import('../tactical-map/terrain-data.js');
+ const before=sampleTerrain(store.getSceneSnapshot().terrain,150,0).height;
+ await fire(store,{kind:'point',x:150,y:0,z:2});
+ await store.settleAttackPhase(store.getSceneSnapshot().revision);
+ const restored=await openSimulation(id);
+ assert.equal(sampleTerrain(restored.getSceneSnapshot().terrain,150,0).height,before-1);
+ const saved=JSON.parse(await restored.exportSaveJSON()).simulation;
+ assert.equal(sampleTerrain(saved.initialScene.terrain,150,0).height,before);
+});

@@ -3,7 +3,7 @@ import {freezeSnapshot} from './read-only-snapshot.js';
 // v1保留旧密集网格；v2保存原地形和稀疏精细顶点，不为整张大地图预分配数组。
 // v3以32×32顶点分块保存编辑差分；三种格式共用精确三角面插值。
 // 显示抽样不得用于规则判定。
-export const MAX_TERRAIN_SAMPLES = 7201;
+export const MAX_TERRAIN_SAMPLES = 14402;
 export const DENSE_TERRAIN_LIMIT = 10000;
 export const TERRAIN_CHUNK_SIZE = 32;
 const editContexts = new WeakMap();
@@ -189,9 +189,9 @@ export function validateTerrain(value, depth = 0, reuseImmutable = false) {
       typeof value[key] !== "number" ||
       !Number.isFinite(value[key]) ||
       value[key] < 120 ||
-      value[key] > 7200
+      value[key] > 14401
     ) {
-      throw new Error("地図の幅と高さは 120～7200 で指定してください。");
+      throw new Error("地図の幅と高さは 120～14401 で指定してください。");
     }
   }
 
@@ -201,7 +201,7 @@ export function validateTerrain(value, depth = 0, reuseImmutable = false) {
       value[key] < 9 ||
       value[key] > MAX_TERRAIN_SAMPLES
     ) {
-      throw new Error("地形の列数と行数は 9～7201 の整数で指定してください。");
+      throw new Error("地形の列数と行数は 9～14402 の整数で指定してください。");
     }
   }
 
@@ -381,8 +381,8 @@ export function resizeTerrain(source, settings) {
 
   // 先验证参数，避免创建过大的数组。
   if (
-    !Number.isFinite(width) || width < 120 || width > 7200 ||
-    !Number.isFinite(height) || height < 120 || height > 7200 ||
+    !Number.isFinite(width) || width < 120 || width > 14401 ||
+    !Number.isFinite(height) || height < 120 || height > 14401 ||
     !Number.isInteger(cols) || cols < 9 || cols > MAX_TERRAIN_SAMPLES ||
     !Number.isInteger(rows) || rows < 9 || rows > MAX_TERRAIN_SAMPLES
   ) {

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width"
+  /><title>AMA · 地形观察室</title>
+  <style>
+    [hidden] {
+      display: none !important;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #0c1820;
+      color: #e5eef0;
+      font:
+        15px/1.55 system-ui,
+        sans-serif;
+    }
+    header {
+      height: 62px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 22px;
+      border-bottom: 1px solid #334852;
+    }
+    header b {
+      letter-spacing: 0.16em;
+      color: #a7daca;
+    }
+    h1 {
+      font-size: 19px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 268px;
+      height: calc(100dvh - 62px);
+    }
+    #locate input {
+      width: 68px;
+      color: inherit;
+      background: #233c48;
+      border: 1px solid #48606c;
+      padding: 5px;
+    }
+    #view {
+      position: relative;
+      overflow: hidden;
+      background: #1b303c;
+    }
+    #view canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    aside {
+      padding: 16px 20px;
+      overflow: auto;
+    }
+    h2 {
+      font-size: 15px;
+      margin: 18px 0 7px;
+    }
+    p,
+    output {
+      font-size: 13px;
+      color: #bfd1d7;
+    }
+    button,
+    .file {
+      display: inline-block;
+      font: inherit;
+      font-size: 13px;
+      color: inherit;
+      background: #233c48;
+      border: 1px solid #48606c;
+      border-radius: 5px;
+      padding: 6px 10px;
+      cursor: pointer;
+      margin: 3px 0;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    select {
+      color: inherit;
+      background: #233c48;
+      padding: 5px;
+      border: 1px solid #48606c;
+      border-radius: 4px;
+    }
+    button:hover,
+    .file:hover {
+      background: #355360;
+    }
+    input[type="range"],
+    #map {
+      width: 100%;
+    }
+    #map {
+      cursor: crosshair;
+      border: 1px solid #405965;
+    }
+    #hint {
+      position: absolute;
+      left: 14px;
+      bottom: 12px;
+      background: #10202be8;
+      padding: 5px 10px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    #status {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+    input[type="file"] {
+      max-width: 100%;
+    }
+    @media (max-width: 680px) {
+      main {
+        display: block;
+        height: auto;
+      }
+      #view {
+        height: 58dvh;
+      }
+      aside {
+        padding: 12px 18px;
+      }
+      #map {
+        width: 160px;
+      }
+    }
+  </style>
+  <header>
+    <b>AMA</b>
+    <h1>地形观察室</h1>
+  </header>
+  <main>
+    <section id="view">
+      <output id="hint">拖动旋转 · 右键平移 · 滚轮缩放 · 单击查看地格</output>
+    </section>
+    <aside>
+      <h2>地形来源</h2>
+      <output id="status" aria-live="polite"></output
+      ><label class="file"
+        >导入地形或场景 JSON<input
+          id="file"
+          type="file"
+          accept=".json,application/json"
+          hidden /></label
+      ><button id="demo">示例岛屿</button>
+      <button id="large">打开 14401 × 14401 大地图</button>
+      <h2>二维参照图</h2>
+      <canvas
+        id="map"
+        width="224"
+        height="224"
+        aria-label="点击地形定位"
+      ></canvas>
+      <p>点击参照图定位。上方为北。</p>
+      <form id="locate">
+        <label>X <input id="coordX" type="number" step="any" required /></label>
+        <label>Y <input id="coordY" type="number" step="any" required /></label>
+        <button>定位</button>
+      </form>
+      <h2>视角</h2>
+      <button id="home">全图</button> <button id="port">示例港址</button>
+      <p>
+        <label
+          >垂直夸张 <output id="factor">2×</output
+          ><input id="scale" type="range" min="1" max="8" value="2" step=".5"
+        /></label>
+      </p>
+      <h2>地表编辑</h2>
+      <label
+        >笔刷
+        <select id="brush">
+          <option value="lower">降低 100 m</option>
+          <option value="raise">升高 100 m</option>
+          <option value="auto">恢复自动地表</option>
+        </select></label
+      >
+      <label
+        >半径
+        <select id="radius">
+          <option value="0">单格</option>
+          <option value="4">4 格</option>
+          <option value="12" selected>12 格</option>
+          <option value="32">32 格</option>
+        </select></label
+      >
+      <p>点选地格后应用笔刷。水面会随地形高程变化。导出工程可保存编辑。</p>
+      <button id="apply" disabled>应用到选区</button>
+      <button id="undo" disabled>撤销</button>
+      <button id="export">导出地形工程</button>
+      <output id="liveUnits" hidden></output>
+      <h2>选中地格</h2>
+      <output id="point">点击地图查看地格坐标与原始高程。</output>
+    </aside>
+  </main>
+  <script type="module" src="./main.js"></script>
+</html>

@@ -105,7 +105,7 @@ function element(tag, text = "", className = "") {
   return result;
 }
 
-export async function mountSceneLibrary({
+export function mountSceneLibrary({
   container,
   store,
   getView,
@@ -363,7 +363,7 @@ export async function mountSceneLibrary({
   // 初始化期间禁用按钮，避免与首次读取交错。
   setBusy(true);
 
-  await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await await refreshEntries()
+  void refreshEntries()
     .then(() => {
       show("保存スロットを選んで操作してください。");
     })

@@ -1,5 +1,5 @@
 <!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>地形生成の資料と精度</title><style>body{max-width:850px;margin:50px auto;padding:0 22px;font:15px/1.9 system-ui;background:#10202c;color:#d7e4e9}a{color:#9fd5e7}h1,h2{color:#c5e5df}li{margin:8px 0}small{color:#abc2cd}</style><h1>地形生成の資料と精度</h1>
-<p>地形だけを生成します。地理生成の北は−Y、東は＋Xです。XYは1格200m、Zは1格100mで換算します。最大7200×7200格の範囲を維持し、生成時の標高・海岸線は適応間隔でサンプリングします。編集グリッドと元資料の精度は異なります。</p>
+<p>地形だけを生成します。地理生成の北は−Y、東は＋Xです。XYは1格200m、Zは1格100mで換算します。最大14401×14401格の範囲を維持し、生成時の標高・海岸線は適応間隔でサンプリングします。編集グリッドと元資料の精度は異なります。</p>
 <h2>海岸線</h2><p>Made with <a href="https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/">Natural Earth 1:10m Land v5.1.1</a>。Public domain。元ポリゴンを0.002度の許容差で概略化し、1/10000度に量子化しています。小島や細い海峡、沿岸の形状は実物と異なる場合があります。<a href="https://www.naturalearthdata.com/about/terms-of-use/">利用条件</a>。</p>
 <h2>陸地の高さと海底</h2><p>オンライン高程は <a href="https://registry.opendata.aws/terrain-tiles/">Mapzen / Tilezen Terrain Tiles</a> のTerrarium画像から取得します。近似山地は地理上の高さを再現するものではありません。平坦モードは陸地を10mに設定します。海底は全モードで指定した一様な仮の深さを使い、実測水深は取り込みません。</p>
 <p>生成間隔、資料の解像度、局所投影と海岸線の一般化により誤差があります。高さ取得に失敗した際に推測地形へ自動で切り替えることはありません。低地の海岸線と高程資料の不一致部は、海陸マスクを優先し陸地を最低1mとします。河川・湖沼の現実データはこの版の地理生成には含みません。</p>

@@ -123,6 +123,25 @@ function getRenderScene() {
   return renderSceneCache;
 }
 
+const terrainDialog=$("terrainDialog");
+const terrainFrame=$("terrainFrame");
+let sentTerrain=null;
+function updateTerrainWindow(){
+  if(!terrainDialog.open||!store||!terrainFrame.contentWindow?.amaRenderObservation)return;
+  const scene=getRenderScene();
+  const ships=scene.instances.filter(u=>u.branch==="navy"&&Number.isFinite(u.x)&&Number.isFinite(u.y)&&u.shipState?.status!=="sunk").map(u=>({
+    x:u.x,y:u.y,side:u.side,heavy:u.observationLevel!=="shadow"&&u.shipState?.status==="heavy"&&!u.underwater
+  }));
+  terrainFrame.contentWindow.amaRenderObservation(scene.terrain===sentTerrain?null:scene.terrain,ships,scene.name);
+  sentTerrain=scene.terrain;
+}
+terrainFrame.onload=()=>{sentTerrain=null;updateTerrainWindow();};
+$("showTerrain3d").onclick=()=>{
+  terrainDialog.showModal();
+  terrainFrame.src="./terrain-3d.html?live";
+};
+$("closeTerrain").onclick=()=>terrainDialog.close();
+terrainDialog.addEventListener("close",()=>{sentTerrain=null;terrainFrame.removeAttribute("src");});
 let selectedId = "";
 let coverageSelection=null;
 let selectedPanelKey = "";
@@ -713,6 +732,10 @@ function drawMap() {
       scale = 1;
     } else {
       scale = drawUnitIcon(unit, group);
+      if (unit.branch === "navy" && unit.shipState?.status === "heavy" && !unit.underwater) {
+        const smoke=svgNode("g",{class:"damage-smoke","pointer-events":"none","aria-label":"大破・黒煙"},group);
+        for(let i=0;i<3;i++)svgNode("circle",{cx:i*1.5,cy:-4-i*3,r:2+i*.6,fill:"#20262a",style:"animation-delay:"+(-i*.6)+"s"},smoke);
+      }
 
       if (unit.shipState?.status === "sunk") {
         for (const [x1, y1, x2, y2] of [
@@ -1434,6 +1457,7 @@ registerPageDisposer(mountViewSettings(document.querySelector(".toolbar"),[$("ax
 registerPageDisposer(store.subscribe(() => {
   renderSceneCache = null;
   refresh();
+  updateTerrainWindow();
 }));
 
 

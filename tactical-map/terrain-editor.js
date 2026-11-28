@@ -101,14 +101,14 @@ export function mountTerrainEditor({
   const sizeSection = node("section", "", "editor-section");
   sizeSection.append(node("h3", "地図サイズ"));
 
-  const width = field(sizeSection, "幅（120～7200）", numberInput(600));
-  const height = field(sizeSection, "高さ（120～7200）", numberInput(600));
+  const width = field(sizeSection, "幅（120～14401）", numberInput(600));
+  const height = field(sizeSection, "高さ（120～14401）", numberInput(600));
   for (const control of [width, height]) {
     control.min = "120";
-    control.max = "7200";
+    control.max = "14401";
   }
-  const cols = field(sizeSection, "列数（9～7201）", numberInput(81));
-  const rows = field(sizeSection, "行数（9～7201）", numberInput(81));
+  const cols = field(sizeSection, "列数（9～14402）", numberInput(81));
+  const rows = field(sizeSection, "行数（9～14402）", numberInput(81));
   for (const control of [cols, rows]) {
     control.min = "9"; control.max = String(MAX_TERRAIN_SAMPLES); control.step = "1";
   }

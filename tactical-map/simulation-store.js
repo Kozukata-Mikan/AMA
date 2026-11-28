@@ -1,3 +1,4 @@
+import { settleTerrainEvents } from "./terrain-events.js";
 import {operateTransport,validateTransport} from './transport-hold.js';
 import {initializeVisualSupport,reconcileVisualSupport,setSmoke,setSearchlight} from './visual-support.js?v=visual-support-bridge-1';
 import {initializeProjectiles} from './ballistic-projectiles.js?v=visual-support-bridge-1';
@@ -814,6 +815,11 @@ export async function openSimulation(id) {
         throw new Error('計算結果の保存形式が不正です。');
       }
       Object.assign(candidate, decodeSpecialHistory(calculation.fields));
+      if (backgroundOperation === 'attack') {
+        const record = candidate.settlementRuntime.attackRecords.at(-1);
+        if(record?.turnNumber === previousTurn && record.phaseId === previousPhase)
+          candidate.terrain = settleTerrainEvents(state.terrain, record.rangeSelections);
+      }
       backgroundReceipt = calculation.receipt;
       roundObservation = calculation.roundObservation;
     }

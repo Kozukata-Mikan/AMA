@@ -27,7 +27,7 @@ export function mountTerrainGenerator({container,store,canAct,setBusy,saveGenera
  const analyze=button(section,'説明を設定に反映',()=>safe(()=>applyDescription()));
  const local=node('div');local.className='terrain-generator-fields';section.append(local);
  const kind=field(local,'地形の種類',select(Object.entries(labels),'mountains'));
- const length=field(local,'地形の長さ(km)',number(10,.2,1440));
+ const length=field(local,'地形の長さ(km)',number(10,.2,2880.2));
  const angle=field(local,'方向（0°＝東西 / 90°＝南北）',number(0,-360,360));
  const geo=node('div');geo.hidden=true;section.append(geo);
  const preset=field(geo,'地域プリセット',select([['','任意の中心座標'],...GEOGRAPHIC_PRESETS.map((p,i)=>[String(i),p.name])],''));
@@ -43,11 +43,11 @@ export function mountTerrainGenerator({container,store,canAct,setBusy,saveGenera
  const elevation=field(geo,'陸地の標高',select([['dem','オンライン高程（概略）'],['approximate','近似の山地（推測）'],['flat','海岸線のみ（陸地10m）']],'dem'));
  geo.append(node('p','検索で見つからない島や海域は経緯度を指定できます。高程取得に失敗した場合は、近似山地か平坦を選んで再生成してください。'));
  const common=node('div');common.className='terrain-generator-fields';section.append(common);
- const width=field(common,'生成範囲・東西(km)',number(24,24,1440)),height=field(common,'生成範囲・南北(km)',number(24,24,1440));
+ const width=field(common,'生成範囲・東西(km)',number(24,24,2880.2)),height=field(common,'生成範囲・南北(km)',number(24,24,2880.2));
  const peak=field(common,'山地の高さ目安(m)',number(1200,1,60000)),depth=field(common,'仮の海底深さ(m)',number(200,1,20000));
  const seed=field(common,'シード（同じ設定で再現）',number(1,0,4294967295,'1'));
  const detail=field(section,'生成精度',select([['257','標準（広域の概観向け）'],['513','詳細（海岸・山地向け）']],'513'));
- section.append(node('p','XY：1格200m / Z：1格100m。最大7200×7200格。生成時の地形間隔は範囲と精度に応じて変わり、プレビューに表示します。'));
+ section.append(node('p','XY：1格200m / Z：1格100m。最大14401×14401格。生成時の地形間隔は範囲と精度に応じて変わり、プレビューに表示します。'));
  const actions=node('div');actions.className='editor-actions';section.append(actions);
  const generate=button(actions,'地形プレビューを生成',()=>safe(async()=>{
   if(mode.value==='description'&&description.value!==lastDescription)applyDescription();

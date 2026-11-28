@@ -8,7 +8,7 @@ for(const [description,kind,length]of [['我想要生成一片连绵10km左右�
 test('description parameters and invalid input are explicit',()=>{
  assert.equal(parseTerrainDescription('东西10km山脉，高度1500m').heightMeters,1500);assert.equal(parseTerrainDescription('南北10km山脉').angle,90);
  for(const s of ['', '随便来一点', 'x'.repeat(501)])assert.throws(()=>parseTerrainDescription(s));
- for(const options of [{widthKm:1441},{heightKm:0},{detail:1025},{seed:-1},{seed:1.5},{kind:'port'},{mode:'unknown'},{heightMeters:60001},{seaDepthMeters:20001},{mode:'geographic',latitude:'',longitude:123}])assert.throws(()=>normalizeGenerationOptions(options));
+ for(const options of [{widthKm:2880.4},{heightKm:0},{detail:1025},{seed:-1},{seed:1.5},{kind:'port'},{mode:'unknown'},{heightMeters:60001},{seaDepthMeters:20001},{mode:'geographic',latitude:'',longitude:123}])assert.throws(()=>normalizeGenerationOptions(options));
 });
 for(const kind of ['mountains','hills','island','archipelago','plain','ocean','coast','river','valley'])test(`generation is deterministic and editable: ${kind}`,()=>{
  const options={kind,widthKm:24,heightKm:24,lengthKm:10,seed:938};const a=generateDescribedTerrain(options),b=generateDescribedTerrain(options);assert.deepEqual(a,b);assert.equal(a.terrain.cols,121);assert.equal(a.terrain.width/5,24);
@@ -43,4 +43,10 @@ test('DEM decoding, tile bounds and offline place presets',async()=>{
  assert.equal(terrariumMeters(128,0,0),0);assert.equal(terrariumMeters(128,3,128),3.5);
  for(const longitude of [-180,0,123.8,180])for(const latitude of [-70,0,70]){const o=normalizeGenerationOptions({mode:'geographic',latitude,longitude,widthKm:1440,heightKm:1440});const p=elevationTilePlan(o);assert((p.x1-p.x0+1)*(p.y1-p.y0+1)<=16);assert(p.z>=0)}
  const original=globalThis.fetch;globalThis.fetch=()=>{throw Error('offline')};try{const places=await searchGeographicPlaces('我想要生成菲律宾的宿务群岛');assert.equal(places[0].latitude,10.3)}finally{globalThis.fetch=original}
+});
+
+test('14401-cell generated archipelago has a sparse one-cell edit grid and a bounded base',()=>{
+ const result=generateDescribedTerrain({kind:'archipelago',widthKm:2880.2,heightKm:2880.2,lengthKm:1200,seed:42,detail:257});
+ assert.equal(result.terrain.width,14401);assert.equal(result.terrain.rows,14402);
+ assert.deepEqual(result.terrain.chunks,{});assert.ok(result.terrain.base.rows<=257);
 });

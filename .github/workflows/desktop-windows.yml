@@ -1,0 +1,48 @@
+name: AMA Windows desktop verification
+on:
+  push:
+    branches: [prototype/desktop-terrain]
+    paths:
+      - '.github/workflows/desktop-windows.yml'
+      - 'prototype/**'
+      - 'tactical-map/**'
+      - 'js/**'
+      - 'data/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build terrain viewer
+        working-directory: prototype/terrain
+        run: |
+          npm ci
+          npm run build
+      - name: Install desktop test driver
+        working-directory: prototype/baseline
+        run: npm ci
+      - name: Build Windows distribution from verified Electron runtime
+        shell: pwsh
+        run: |
+          curl.exe --fail --location --retry 2 --output electron.zip https://github.com/electron/electron/releases/download/v45.5.0/electron-v45.5.0-win32-x64.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python prototype/desktop/package.py electron.zip AMA-Windows-x64.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Expand-Archive AMA-Windows-x64.zip -DestinationPath extracted
+      - name: Verify Windows launch, save, exit, restart and 3D view
+        env:
+          AMA_TEST_ARGS: '["--enable-unsafe-swiftshader","--use-angle=swiftshader"]'
+        run: node prototype/desktop/verify.mjs "${{ github.workspace }}/extracted/AMA/AMA.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AMA-Windows-x64
+          path: AMA-Windows-x64.zip

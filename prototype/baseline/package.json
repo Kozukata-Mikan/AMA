@@ -1,0 +1,11 @@
+{
+  "name": "ama-browser-baseline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node runner.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "25.19.0"
+  }
+}

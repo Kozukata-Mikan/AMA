@@ -58,6 +58,6 @@ test('worker simulation phase results match shared rules and store commits remai
 
 test('worker awaits asynchronous terrain generation and returns saveable terrain',async()=>{
  globalThis.Worker=BrowserWorker;
- try{const result=await runBackgroundTask('terrain-generate',{options:{kind:'mountains',widthKm:24,heightKm:24,lengthKm:10,seed:42}});assert.equal(result.terrain.generation.seed,42);assert.equal(result.terrain.cols,121);assert.equal(result.summary.widthKm,24);assert(result.terrain.base.chunks);await assert.rejects(runBackgroundTask('terrain-generate',{options:{widthKm:2000}}))}
+ try{const result=await runBackgroundTask('terrain-generate',{options:{kind:'mountains',widthKm:24,heightKm:24,lengthKm:10,seed:42}});assert.equal(result.terrain.generation.seed,42);assert.equal(result.terrain.cols,121);assert.equal(result.summary.widthKm,24);assert(result.terrain.base.chunks);await assert.rejects(runBackgroundTask('terrain-generate',{options:{widthKm:2880.4}}))}
  finally{shutdownBackground();delete globalThis.Worker}
 });

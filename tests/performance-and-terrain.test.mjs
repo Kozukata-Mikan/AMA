@@ -51,7 +51,7 @@ test('malformed large vertices and invalid grid dimensions are rejected',()=>{
  assert.throws(()=>validateTerrain({...t,vertices:{'51854401':[0,0,0]}}));
  assert.throws(()=>validateTerrain({...t,vertices:{'1':[NaN,0,0]}}));
  assert.throws(()=>validateTerrain({...t,vertices:{'1':[0,2,0]}}));
- assert.throws(()=>resizeTerrain(t,{...t,cols:7202}));
+ assert.throws(()=>resizeTerrain(t,{...t,cols:14403}));
 });
 test('same-resolution resize does not nest bases or drop fine edits',()=>{
  let t=resizeTerrain(flatTerrain(),{width:7200,height:7200,cols:7201,rows:7201,contourInterval:6});
