@@ -38,7 +38,7 @@ const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y,(a.altitude??0)-(b.altitude??0)
 export function saveAirCombat(scene,request){
  if(!/^order-[1-5]$/.test(scene.turn.phaseId))fail('空戦計画は次序1～5で指定してください。');const r=initializeAirCombat(scene),c={id:crypto.randomUUID(),turnNumber:scene.turn.number,phaseId:scene.turn.phaseId,actorIds:[...request.actorIds],targetIds:[...request.targetIds]};validateBattle(scene,c,{manual:true});if(r.commands.some(o=>o.turnNumber===c.turnNumber&&o.phaseId===c.phaseId&&o.actorIds.some(id=>c.actorIds.includes(id))))fail('この機体の空戦計画は登録済みです。先に取り消してください。');r.commands.push(c);
 }
-export function preflightAirCombat(scene){const r=initializeAirCombat(scene);for(const c of r.commands.filter(c=>c.turnNumber===scene.turn.number&&c.phaseId===scene.turn.phaseId))validateBattle(scene,c);}
+export function preflightAirCombat(scene){const r=initializeAirCombat(scene);for(const c of r.commands.filter(c=>c.turnNumber===scene.turn.number&&c.phaseId===scene.turn.phaseId)){try{validateBattle(scene,c);}catch(error){error.blockedCommand="air:"+c.id;throw error;}}}
 function readiness(squad,encounter,coin){const members=squad.filter(p=>p.aircraftState.status==='operational'&&!airRetreating(p));if(!members.length)return{normal:false,reason:'unable',roll:null};if(encounter===0)return{normal:true,reason:'first',roll:null};const reaction=airTrainingRule(members[0]).reaction;if(encounter>reaction)return{normal:false,reason:'exhausted',reaction,roll:null};const roll=toss(coin);return{normal:roll,reason:roll?'reaction-success':'reaction-failed',reaction,roll};}
 function canFireAt(scene,a,b,profile,traces){
  if(distance(a,b)>profile.range+1e-7||b.altitude-a.altitude>profile.ceilingU+1e-7)return false;

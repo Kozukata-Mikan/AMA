@@ -412,6 +412,9 @@ if (!movement) {
 
 
   let drag = null;
+  const route=svgElement("g",{"pointer-events":"none",visibility:"hidden"},svg);
+  const guide=svgElement("line",{stroke:"#74d6eb","stroke-width":2,"stroke-dasharray":"6 3"},route);
+  const cost=svgElement("text",{fill:"#fff",stroke:"#132533","stroke-width":3,"paint-order":"stroke","font-size":13},route);
   let suppressClickUntil = 0;
 
   svg.addEventListener("pointerdown", event => {
@@ -447,6 +450,7 @@ if (!movement) {
         pointerId: event.pointerId,
         ref: movementRef,
         followFormationMovement: follow.checked,
+        limit:info.limit,
         unitX: info.x,
         unitY: info.y,
         startX: point.x,
@@ -485,6 +489,11 @@ if (!movement) {
 
     x.value = (drag.unitX + mapDX).toFixed(6);
     y.value = (drag.unitY + mapDY).toFixed(6);
+    const distance=Math.hypot(mapDX,mapDY);
+    route.setAttribute("visibility","visible");
+    for(const [key,value] of Object.entries({x1:drag.startX,y1:drag.startY,x2:point.x,y2:point.y,stroke:distance>drag.limit?"#ff9977":"#74d6eb"}))guide.setAttribute(key,value);
+    cost.setAttribute("x",point.x+9);cost.setAttribute("y",point.y-9);
+    cost.textContent="移動力 "+distance.toFixed(1)+" / "+drag.limit+" 格　"+(distance*.4/1.852).toFixed(1)+" kt";
 
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -495,6 +504,7 @@ if (!movement) {
 
     const current = drag;
     drag = null;
+    route.setAttribute("visibility","hidden");
 
     event.stopImmediatePropagation();
 
@@ -526,6 +536,7 @@ if (!movement) {
 
   svg.addEventListener("lostpointercapture", () => {
     drag = null;
+    route.setAttribute("visibility","hidden");
   });
 
   svg.addEventListener("click", event => {

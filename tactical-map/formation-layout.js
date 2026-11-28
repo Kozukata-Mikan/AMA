@@ -213,7 +213,8 @@ export function drawFormationViews(layer, scene, project, select) {
 }
 
 export function compactFormationIcon(root, unit) {
-  for (const node of root.querySelectorAll("text,.unit-stem,.unit-dot"))
+  root.classList.add("compact-member");
+  for (const node of root.querySelectorAll("text:not(.ship-name),.unit-stem,.unit-dot"))
     node.style.display = "none";
   const marks = getFlagshipMarks(unit);
   if (!marks) return;

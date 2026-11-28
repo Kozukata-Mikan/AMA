@@ -108,6 +108,16 @@ export function mountSimulationWorkflow(store) {
   const overview = element("section");
   overview.className = "workflow-overview";
 
+  const recover=element("button","中断原因の命令を取り消して段階を再実行");
+  const recoveryNote=element("p");recoveryNote.setAttribute("role","status");
+  recover.type="button";recover.hidden=true;
+  recover.onclick=async()=>{
+    recover.disabled=true;
+    try{await store.recoverBlockedCommand();recoveryNote.textContent="中断命令を取り消し、段階を処理しました。";}
+    catch{recoveryNote.textContent="段階は進んでいません。残りの中断原因を確認してください。";}
+    finally{recover.disabled=false;sync();}
+  };
+
   const current = element("p");
   current.className = "note";
   current.setAttribute("aria-live", "polite");
@@ -126,7 +136,7 @@ export function mountSimulationWorkflow(store) {
 
   const timeline=element("details");
   timeline.append(element("summary","段階一覧"),rail);
-  overview.append(element("h2","ラウンドの進行"),current,timeline,nextAction);
+  overview.append(element("h2","ラウンドの進行"),current,timeline,nextAction,recover,recoveryNote);
 
   const startSection = section(
     "1｜ラウンド開始",
@@ -203,6 +213,7 @@ export function mountSimulationWorkflow(store) {
     if (disposed) return;
 
     const scene = store.getSceneSnapshot();
+    recover.hidden=!store.canRecoverBlockedCommand?.();
     const phaseId = scene.turn.phaseId;
     const index = STEPS.findIndex(step => step.id === phaseId);
     const step = STEPS[index];

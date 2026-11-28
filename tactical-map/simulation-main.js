@@ -130,7 +130,7 @@ function updateTerrainWindow(){
   if(!terrainDialog.open||!store||!terrainFrame.contentWindow?.amaRenderObservation)return;
   const scene=getRenderScene();
   const ships=scene.instances.filter(u=>u.branch==="navy"&&Number.isFinite(u.x)&&Number.isFinite(u.y)&&u.shipState?.status!=="sunk").map(u=>({
-    x:u.x,y:u.y,side:u.side,heavy:u.observationLevel!=="shadow"&&u.shipState?.status==="heavy"&&!u.underwater
+    x:u.x,y:u.y,name:u.observationLevel==="shadow"?"未識別艦":u.name,side:u.side,heavy:u.observationLevel!=="shadow"&&u.shipState?.status==="heavy"&&!u.underwater
   }));
   terrainFrame.contentWindow.amaRenderObservation(scene.terrain===sentTerrain?null:scene.terrain,ships,scene.name);
   sentTerrain=scene.terrain;
@@ -767,7 +767,8 @@ function drawMap() {
       y: -labelHeight + 4
     }, group);
 
-  label.textContent = getFlagshipDisplayName(unit);
+  label.setAttribute("class","ship-name");
+    label.textContent = getFlagshipDisplayName(unit);
     const ace=(unit.clusterMembers??[unit]).find(p=>p.aircraftState?.acePilot&&p.aircraftState.status!=='destroyed'||p.acePilotMarker);if(ace){const mark=svgNode('tspan',{fill:'#ffd674','font-weight':'900',dx:8},label);mark.textContent='ACE';const title=svgNode('title',{},mark);title.textContent=ace.aircraftState?.acePilotName??ace.acePilotMarker;}
     const aircraftTimer=aircraftTimerDisplay(unit);
     if(aircraftTimer){const timer=svgNode('tspan',{fill:aircraftTimer.color,'font-weight':'800',dx:8},label);timer.textContent=aircraftTimer.text;}

@@ -2118,6 +2118,7 @@ export function filterUnreachableAttackCommands(
         );
 
       if (!canSkipTarget) {
+        error.blockedCommand="attack:"+command.id;
         throw error;
       }
 

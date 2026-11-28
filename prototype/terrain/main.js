@@ -113,6 +113,7 @@ function overview() {
 }
 function load(t, name, isDemo, scenePort = null, savedLayer) {
   layer = createSurfaceLayer(t, savedLayer);
+  setNames([]);
   el("apply").disabled = true;
   el("undo").disabled = true;
   terrain = t;
@@ -293,6 +294,7 @@ function updateTiles() {
       tiles.delete(key);
     }
 }
+let drawNames=()=>{};
 function schedule() {
   if (frame || !renderer || !terrain) return;
   frame = requestAnimationFrame(() => {
@@ -300,6 +302,7 @@ function schedule() {
     if (rebuild) updateTiles();
     rebuild = false;
     renderer.render(scene, camera);
+    drawNames();
   });
 }
 try {
@@ -397,6 +400,7 @@ el("file").onchange = async (e) => {
           : null,
       data.surfaceLayer,
     );
+    if(Array.isArray(src.instances))setNames(src.instances.filter(u=>u?.branch==="navy"&&Number.isFinite(u.x)&&Number.isFinite(u.y)&&typeof u.name==="string"));
   } catch (err) {
     el("status").textContent = "导入失败 ｜ " + err.message;
   } finally {
@@ -440,6 +444,33 @@ el("export").onclick = () => {
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 };
+  const toggle=document.createElement("input");toggle.type="checkbox";
+  const toggleLabel=document.createElement("label");toggleLabel.append(toggle," 显示舰名");el("liveUnits").after(toggleLabel);
+  const names=document.createElement("div");names.style.cssText="position:absolute;inset:0;overflow:hidden;pointer-events:none";view.append(names);
+  let labels=[];
+  toggle.onchange=()=>{names.hidden=!toggle.checked;schedule();};
+  drawNames=()=>{
+    if(!toggle.checked)return;
+    const occupied=[],w=view.clientWidth,h=view.clientHeight;
+    for(const {unit,label} of labels){
+      const pt=new T.Vector3(unit.x,2,unit.y).project(camera);
+      const x=(pt.x+1)*w/2,y=(1-pt.y)*h/2-18;
+      const right=x+Math.min(200,unit.name.length*14+10);
+      const show=pt.z>=-1&&pt.z<=1&&x>=0&&x<w&&y>=0&&y<h&&!occupied.some(r=>r.x<right&&x<r.right&&Math.abs(y-r.y)<18);
+      label.hidden=!show;
+      if(show){occupied.push({x,right,y});label.style.transform="translate("+x+"px,"+y+"px)";}
+    }
+  };
+function setNames(units){
+    names.replaceChildren();names.hidden=!toggle.checked;
+    labels=units.filter(u=>u.name).map(unit=>{
+      const label=document.createElement("span");label.textContent=unit.name;
+      label.style.cssText="position:absolute;top:0;left:0;background:#10202bdd;color:#fff;padding:0 4px;font-size:12px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis";
+      names.append(label);return {unit,label};
+    });
+toggleLabel.hidden=!labels.length;
+ schedule();
+}
 el("demo").onclick = () => load(createDemoTerrain(), "AMA 示例岛屿", true);
 el("demo").click();
 
@@ -523,6 +554,7 @@ if (new URLSearchParams(location.search).has("live")) {
       hulls.dispose();
       smoke.dispose();
     }
+    setNames(units);
     damaged = units.filter((u) => u.heavy);
     el("liveUnits").hidden = false;
     el("liveUnits").textContent =

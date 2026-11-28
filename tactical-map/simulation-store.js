@@ -738,6 +738,7 @@ export async function openSimulation(id) {
   const deploymentSnapshotText = JSON.stringify(state.instances.filter(u=>!u.projectileState).map(unit => ({
     instanceId: unit.instanceId, snapshot: unit.snapshot
   })));
+  let blocked=null;
   let observedSource = null;
   let observedSnapshot = null;
   function observedScene() {
@@ -796,6 +797,12 @@ export async function openSimulation(id) {
       terrain: state.terrain, initialScene: state.initialScene
     };
 
+    if(backgroundRequest?.cancelBlocked){
+      const ids=new Set(backgroundRequest.cancelBlocked);
+      candidate.attackRuntime.commands=candidate.attackRuntime.commands.filter(c=>!ids.has("attack:"+c.id));
+      if(candidate.airCombatRuntime)candidate.airCombatRuntime.commands=candidate.airCombatRuntime.commands.filter(c=>!ids.has("air:"+c.id));
+      candidate.movementPlans=candidate.movementPlans.filter((_,i)=>!ids.has("move:"+i));
+    }
     const previousTurn = state.turn.number;
     const previousPhase = state.turn.phaseId;
     const previousRevision = state.revision;
@@ -982,7 +989,23 @@ export async function openSimulation(id) {
   }
 
   async function commitBackground(operation, request = null) {
-    return commit(() => {}, operation, false, request);
+    try {return await commit(() => {}, operation, false, request);}
+    catch(error){
+      let cause=error;while(cause&&!cause.blockedCommand)cause=cause.cause;
+      let key=cause?.blockedCommand;
+      const prior=request?.cancelBlocked??[];
+      if(key?.startsWith("move:")){
+        const remaining=state.movementPlans.map((_,i)=>"move:"+i).filter(id=>!prior.includes(id));
+        key=remaining[Number(key.slice(5))];
+      }
+      const current=c=>c.turnNumber===state.turn.number&&c.phaseId===state.turn.phaseId;
+      if(key&&(operation==="movement"&&key.startsWith("move:")||operation==="attack"&&
+         (state.attackRuntime.commands.some(c=>current(c)&&key==="attack:"+c.id)||state.airCombatRuntime?.commands.some(c=>current(c)&&key==="air:"+c.id)))){
+        blocked={revision:state.revision,operation,ids:[...new Set([...prior,key])]};
+        notify();
+      }
+      throw error;
+    }
   }
 
 
@@ -1074,6 +1097,11 @@ export async function openSimulation(id) {
        const api = {
     getFleetStatus(){return buildFleetStatus(state,observedScene());},
     getFieldSupportOptions(){return fieldSupportOptions(state,getObservationSide(state));},
+    canRecoverBlockedCommand(){return blocked?.revision===state.revision;},
+    async recoverBlockedCommand(){
+      if(blocked?.revision!==state.revision)throw Error("取消できる中断命令がありません。");
+      return commitBackground(blocked.operation,{cancelBlocked:blocked.ids});
+    },
     async operateTransport(request){await commit(scene=>operateTransport(scene,request));},
     async operateFieldSupport(request){await commit(scene=>{const unit=scene.instances.find(u=>u.instanceId===request.unitId);if(!unit)throw Error('ユニットを選択してください。');assertManualControl(scene,[unit]);operateFieldSupport(scene,request);reconcileActiveRescues(scene);reconcileSupports(scene);reconcileAviation(scene);});},
     async assignFlightMission(request){await commit(scene=>assignFlightMission(scene,request));},

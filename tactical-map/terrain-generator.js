@@ -17,7 +17,7 @@ export function normalizeGenerationOptions(input){
  if(mode==='description'&&o.lengthKm>Math.min(o.widthKm,o.heightKm)*0.9)throw new Error('地形の長さが範囲に収まりません。東西・南北の範囲を広げてください。');
  if(mode==='geographic'){
   o.latitude=number(input.latitude,'中心緯度',-75,75);o.longitude=number(input.longitude,'中心経度',-180,180);
-  const b=geographicBounds(o);if(b.south< -80||b.north>80||b.east-b.west>120)throw new Error('この範囲は極域または投影の対応範囲を超えています。中心か範囲を調整してください。');
+  const b=geographicBounds(o);if(o.elevation==='dem'&&(b.south< -85.05||b.north>85.05))throw new Error('オンライン標高の範囲は南北85.05°までです。近似山地か海岸線のみを選択してください。');if(b.south< -90||b.north>90||b.east-b.west>120)throw new Error('この範囲は極点または投影の対応範囲を超えています。中心か範囲を調整してください。');
  }
  return o;
 }

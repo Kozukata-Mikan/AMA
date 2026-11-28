@@ -542,3 +542,9 @@ button:disabled {
   border: 1px solid var(--ui-border);
   color: var(--ui-text);
 }
+
+.formation-overview text,.compact-member .ship-name{paint-order:stroke;stroke:#10202b;stroke-width:3px;stroke-linejoin:round}
+.compact-member .ship-name{visibility:hidden;pointer-events:none}
+.compact-member:is(:hover,:focus,.selected) .ship-name{visibility:visible}
+.compact-member:is(:hover,:focus,.selected) .unit-stem{display:block!important;opacity:.6}
+.compact-member:is(:hover,:focus,.selected) .formation-flagship-mark{visibility:hidden}

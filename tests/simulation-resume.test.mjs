@@ -18,3 +18,22 @@ test('a database failure rolls back the new restored copy and all existing saves
 test('export refuses a stale tab or a write in progress rather than silently exporting an outdated state',async()=>{const{id,store}=await setup(),other=await openSimulation(id);await other.setObservationSide('enemy');await assert.rejects(store.exportSaveJSON(),/更新/);const reopened=await openSimulation(id),pending=reopened.setObservationSide('ally');await assert.rejects(reopened.exportSaveJSON(),/保存・計算中/);await pending;assert.equal(JSON.parse(await reopened.exportSaveJSON()).simulation.controls.observationSide,'ally');});
 test('active supply links and locks restore at special stage and apply the next support effect once',async()=>{const{ensureShipRuntime}=await import('../tactical-map/ship-runtime.js?v=visual-support-bridge-1');const s=source();s.instances[1].side='ally';s.instances[1].x=5;const e=supportEquipmentSeed().find(e=>e.supportEffect==='supply-station');s.instances[0].snapshot.mounts=[{equipmentId:e.id,position:'後部',count:1}];s.instances[0].snapshot.equipmentSnapshots=[e];ensureShipRuntime(s.instances[1]);s.instances[1].shipState.remainingEndurance=0;const{store}=await setup(s);await toSpecial(store);await store.startSupport({providerId:'a',targetId:'b',kind:'supply'});const file=await store.exportSaveJSON(),id=await importSimulationSave(file),next=await openSimulation(id);assert.deepEqual(comparable(await next.exportSaveJSON()),comparable(file));await next.finishSpecialPhase(next.getSceneSnapshot().revision);const loaded=await raw(id);assert.ok(loaded.instances[1].shipState.remainingEndurance>0);assert.equal(loaded.supportRuntime.tasks[0].status,'active');assert.equal(loaded.instances[0].supportLocked,true);});
 test('a sparse 7200-grid map survives full saves and a completed simulation stays completed after import',async()=>{const{resizeTerrain}=await import('../tactical-map/terrain-data.js');const s=source();s.terrain=resizeTerrain(s.terrain,{width:7200,height:7200,cols:7201,rows:7201,contourInterval:6});const{store}=await setup(s);await store.endSimulation(store.getSceneSnapshot().revision);const file=await store.exportSaveJSON(),id=await importSimulationSave(file),next=await openSimulation(id);assert.deepEqual(comparable(await next.exportSaveJSON()),comparable(file));assert.equal(next.getSimulationStatus().ended,true);assert.equal(next.getSceneSnapshot().terrain.width,7200);await assert.rejects(next.beginMovement());});
+
+test('command recovery removes only the failed movement plan and commits the remaining movement once',async()=>{
+ const scene=source();scene.instances[1].side='ally';
+ const {id,store}=await setup(scene);
+ await store.beginMovement();
+ await store.planMovement({kind:'unit',id:'a'},5,0);
+ await store.planMovement({kind:'unit',id:'b'},251,0);
+ const file=JSON.parse(await store.exportSaveJSON());file.simulation.movementPlans[0].destinations[0].fromX=3;
+ const copyId=await importSimulationSave(JSON.stringify(file));
+ const restored=await openSimulation(copyId);
+ await assert.rejects(restored.resolveMovement());
+ assert.equal(restored.canRecoverBlockedCommand(),true);
+ assert.equal((await raw(copyId)).movementPlans.length,2);
+ await restored.recoverBlockedCommand();
+ const result=await raw(copyId);
+ assert.deepEqual(result.instances.map(u=>u.x),[0,251]);
+ assert.equal(result.turn.phaseId,'order-5');
+ assert.equal(restored.canRecoverBlockedCommand(),false);
+});

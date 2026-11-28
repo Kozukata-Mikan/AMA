@@ -31,7 +31,12 @@ export function mountTerrainGenerator({container,store,canAct,setBusy,saveGenera
  const angle=field(local,'方向（0°＝東西 / 90°＝南北）',number(0,-360,360));
  const geo=node('div');geo.hidden=true;section.append(geo);
  const preset=field(geo,'地域プリセット',select([['','任意の中心座標'],...GEOGRAPHIC_PRESETS.map((p,i)=>[String(i),p.name])],''));
- const search=button(geo,'地名を検索',()=>safe(async()=>{
+ const search=button(geo,'地名・座標を検索',()=>safe(async()=>{
+  const coords=description.value.trim().match(/^([+-]?\d+(?:\.\d+)?)\s*[,，; ]?\s*([+-]\d+(?:\.\d+)?)$/);
+  if(coords){
+    if(Math.abs(Number(coords[1]))>75||Math.abs(Number(coords[2]))>180)throw Error("中心座標の範囲を確認してください。");
+    latitude.value=coords[1];longitude.value=coords[2];invalidate();message("入力した Y・X を中心に設定しました。");return;
+  }
   const found=await searchGeographicPlaces(description.value);places=found;results.replaceChildren();
   results.append(new Option(found.length?'候補を選択してください':'見つかりません。経緯度で指定できます。',''));
   for(let i=0;i<found.length;i++)results.append(new Option(found[i].name,String(i)));results.value='';
@@ -39,11 +44,18 @@ export function mountTerrainGenerator({container,store,canAct,setBusy,saveGenera
  }));
  const results=field(geo,'地名検索の候補',select([['','検索結果']],''));
  const geoFields=node('div');geoFields.className='terrain-generator-fields';geo.append(geoFields);
- const latitude=field(geoFields,'中心緯度',number(10.3,-75,75)),longitude=field(geoFields,'中心経度',number(123.8,-180,180));
- const elevation=field(geo,'陸地の標高',select([['dem','オンライン高程（概略）'],['approximate','近似の山地（推測）'],['flat','海岸線のみ（陸地10m）']],'dem'));
+ const latitude=field(geoFields,'中心 Y（南＋ / 北−）',number(-10.3,-75,75)),longitude=field(geoFields,'中心 X（東＋ / 西−）',number(123.8,-180,180));
+ const elevation=field(geo,'陸地の標高',select([['dem','オンライン高程（概略）'],['approximate','近似の山地（推測）'],['flat','海岸線のみ（陸地10m）']],'approximate'));
  geo.append(node('p','検索で見つからない島や海域は経緯度を指定できます。高程取得に失敗した場合は、近似山地か平坦を選んで再生成してください。'));
  const common=node('div');common.className='terrain-generator-fields';section.append(common);
  const width=field(common,'生成範囲・東西(km)',number(24,24,2880.2)),height=field(common,'生成範囲・南北(km)',number(24,24,2880.2));
+ let customWidth=false,customHeight=false;
+ width.addEventListener("input",()=>customWidth=true);height.addEventListener("input",()=>customHeight=true);
+ const dimensions=node('output');
+ const updateDimensions=()=>{dimensions.textContent=[width,height].every(e=>e.value&&Number(e.value)>=24&&Number(e.value)<=2880.2)?Math.round(Number(width.value)*5)+" × "+Math.round(Number(height.value)*5)+" 格":"";};
+ common.append(dimensions);
+ button(common,"最大範囲（2880.2 km 四方）",()=>{if(busy)return;width.value=height.value="2880.2";customWidth=customHeight=true;invalidate();updateDimensions();});
+ width.addEventListener("input",updateDimensions);height.addEventListener("input",updateDimensions);updateDimensions();
  const peak=field(common,'山地の高さ目安(m)',number(1200,1,60000)),depth=field(common,'仮の海底深さ(m)',number(200,1,20000));
  const seed=field(common,'シード（同じ設定で再現）',number(1,0,4294967295,'1'));
  const detail=field(section,'生成精度',select([['257','標準（広域の概観向け）'],['513','詳細（海岸・山地向け）']],'513'));
@@ -61,7 +73,7 @@ export function mountTerrainGenerator({container,store,canAct,setBusy,saveGenera
   summary.textContent=[`${s.widthKm}×${s.heightKm}km / ${result.terrain.width}×${result.terrain.height}格`,
    `生成地形の間隔：約${Math.round(s.spacingMeters)}m（編集グリッドは200m）`,
    s.heightSource,s.seaSource,
-   mode.value==='geographic'?`中心：${g.latitude.toFixed(4)}, ${g.longitude.toFixed(4)} / 北＝−Y・東＝＋X`:'',
+   mode.value==='geographic'?`中心：${g.latitude<0?"南緯":"北緯"} ${Math.abs(g.latitude).toFixed(4)}° / ${g.longitude<0?"西経":"東経"} ${Math.abs(g.longitude).toFixed(4)}° / 北＝−Y・東＝＋X`:'',
    s.landFraction===0?'この範囲には資料上の陸地がありません。':s.landFraction===1?'この範囲は資料上すべて陸地です。':'',
    'プレビューは北が上です。地図に適用するまで現在の地形は変わりません。'].filter(Boolean).join('\n');
   message('プレビューを確認し、必要なら中心・範囲・高さを調整してください。');
@@ -83,16 +95,16 @@ export function mountTerrainGenerator({container,store,canAct,setBusy,saveGenera
  function message(text,error=false){if(destroyed)return;status.textContent=text;status.classList.toggle('error',error)}
  function clearPreview(){candidate=null;preview.hidden=true;apply.disabled=true;image.removeAttribute?.('src')}
  function invalidate(){epoch++;clearPreview()}
- function choose(place){invalidate();latitude.value=String(place.latitude);longitude.value=String(place.longitude);width.value=String(place.widthKm);height.value=String(place.heightKm);message(`${place.name} の中心と範囲を設定しました。範囲は変更できます。`)}
- function applyDescription(){const p=parseTerrainDescription(description.value);kind.value=p.kind;length.value=String(p.lengthKm);angle.value=String(p.angle);width.value=String(p.widthKm);height.value=String(p.heightKm);peak.value=String(p.heightMeters);lastDescription=description.value;message(`${labels[p.kind]} / 長さ${p.lengthKm}km の設定を反映しました。`)}
- function readOptions(){return {mode:mode.value,kind:kind.value,lengthKm:length.value,angle:angle.value,widthKm:width.value,heightKm:height.value,heightMeters:peak.value,seaDepthMeters:depth.value,seed:seed.value,detail:detail.value,latitude:latitude.value,longitude:longitude.value,elevation:elevation.value,description:description.value,label:description.value}}
+ function choose(place){invalidate();latitude.value=String(-place.latitude);longitude.value=String(place.longitude);if(!customWidth)width.value=String(place.widthKm);if(!customHeight)height.value=String(place.heightKm);updateDimensions();message(`${place.name} の中心と範囲を設定しました。範囲は変更できます。`)}
+ function applyDescription(){const p=parseTerrainDescription(description.value);kind.value=p.kind;length.value=String(p.lengthKm);angle.value=String(p.angle);if(!customWidth)width.value=String(p.widthKm);if(!customHeight)height.value=String(p.heightKm);peak.value=String(p.heightMeters);lastDescription=description.value;updateDimensions();message(`${labels[p.kind]} / 長さ${p.lengthKm}km の設定を反映しました。`)}
+ function readOptions(){return {mode:mode.value,kind:kind.value,lengthKm:length.value,angle:angle.value,widthKm:width.value,heightKm:height.value,heightMeters:peak.value,seaDepthMeters:depth.value,seed:seed.value,detail:detail.value,latitude:latitude.value.trim()===''?'':-Number(latitude.value),longitude:longitude.value,elevation:elevation.value,description:description.value,label:description.value}}
  async function safe(action){
   if(busy||destroyed)return;if(!canAct()){message('描画・計算・保存の完了後に操作してください。',true);return}
   busy=true;setBusy(true);for(const e of [generate,apply,search,analyze,mode,description,kind,length,angle,width,height,peak,depth,seed,detail,latitude,longitude,elevation,preset,results])e.disabled=true;
   try{await action()}catch(e){message(e.name==='AbortError'?'接続が時間内に完了しませんでした。再試行するか近似山地を選択してください。':e.message,true)}
   finally{busy=false;setBusy(false);if(!destroyed){for(const e of [generate,search,analyze,mode,description,kind,length,angle,width,height,peak,depth,seed,detail,latitude,longitude,elevation,preset,results])e.disabled=false;apply.disabled=!candidate}}
  }
- mode.addEventListener('change',()=>{invalidate();const real=mode.value==='geographic';geo.hidden=!real;local.hidden=real;analyze.hidden=real;help.textContent=real?'例：菲律宾宿务群岛 / 沖縄 / Taiwan。候補または経緯度で中心を決めてください。':'対応キーワード：山脈・丘陵・島・群島・平原・海域・海岸・河川・渓谷（中文・English可）';if(real){if(description.value===initialDescription)description.value='菲律宾宿务群岛';choose(GEOGRAPHIC_PRESETS[0])}else if(description.value==='菲律宾宿务群岛'){description.value=initialDescription;applyDescription()}});
+ mode.addEventListener('change',()=>{invalidate();const real=mode.value==='geographic';geo.hidden=!real;local.hidden=real;analyze.hidden=real;help.textContent=real?'例：菲律宾宿务群岛 / 沖縄 / Taiwan。座標例：+73-45（南緯73°・西経45°）。':'対応キーワード：山脈・丘陵・島・群島・平原・海域・海岸・河川・渓谷（中文・English可）';if(real){if(description.value===initialDescription)description.value='菲律宾宿务群岛';choose(GEOGRAPHIC_PRESETS[0])}else if(description.value==='菲律宾宿务群岛'){description.value=initialDescription;applyDescription()}});
  preset.addEventListener('change',()=>{if(preset.value!=='')choose(GEOGRAPHIC_PRESETS[Number(preset.value)])});
  results.addEventListener('change',()=>{if(results.value!=='')choose(places[Number(results.value)])});
  for(const e of [description,kind,length,angle,width,height,peak,depth,seed,detail,latitude,longitude,elevation])for(const event of ['input','change'])e.addEventListener(event,()=>{if(candidate){invalidate();message('設定を変更しました。プレビューを再生成してください。')}});

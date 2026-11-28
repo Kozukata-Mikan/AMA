@@ -89,6 +89,9 @@ try {
   await frame.waitForFunction(() =>
     document.querySelector("#liveUnits")?.textContent.includes("大破冒烟 1"),
   );
+  const nameSwitch=await frame.waitForSelector('label input[type="checkbox"]');
+  await nameSwitch.click();
+  await frame.waitForFunction(()=>[...document.querySelectorAll("#view span")].some(label=>!label.hidden&&label.textContent.trim()));
   await page.click("#closeTerrain");
   await page.waitForFunction(
     () => !document.querySelector("#terrainDialog").open,

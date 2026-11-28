@@ -1496,22 +1496,16 @@ export function resolveMovementScene(scene) {
 if (autonomyEnabled) {
   // 开启前手动保存的非我方计划不能静默覆盖或删除。
   // 明确停止，由玩家先处理旧计划。
-  const hasNonAllyManualPlan = scene.movementPlans.some(
-    plan => plan.memberIds.some(id => {
-      const unit = scene.instances.find(
-        item => item.instanceId === id
-      );
-
-      return unit && unit.side !== "ally";
-    })
-  );
-
-  if (hasNonAllyManualPlan) {
-    fail(
-      "敵・中立の手動移動計画が残っています。" +
-      "自律行動を一度無効にして、その計画を取り消してください。"
-    );
+  const conflicting = scene.movementPlans.findIndex(plan => plan.memberIds.some(id => {
+    const unit=scene.instances.find(member=>member.instanceId===id);
+    return unit && unit.side!=="ally";
+  }));
+  if(conflicting!==-1){
+    const error=new Error("敵・中立の手動移動計画が残っています。中断命令を取り消すか、自律行動を解除してください。");
+    error.blockedCommand="move:"+conflicting;
+    throw error;
   }
+
 }
 
 const rescueApproachPlans =
@@ -1539,6 +1533,7 @@ validationScene.controls.enemyAutonomy = false;
         const used = new Set();
 
         for (const saved of movementPlans) {
+          try {
           if (saved.turnNumber !== scene.turn.number) {
             fail("別ラウンドの移動計画が混在しています。");
           }
@@ -1657,6 +1652,11 @@ validationScene.controls.enemyAutonomy = false;
           }
           if (saved.vertical) rebuilt.vertical = clone(saved.vertical);
           checked.push(rebuilt);
+          } catch(error) {
+            const index=scene.movementPlans.indexOf(saved);
+            if(index!==-1)error.blockedCommand="move:"+index;
+            throw error;
+          }
         }
 
         for (const plan of checked) if (plan.vertical)

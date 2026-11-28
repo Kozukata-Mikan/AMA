@@ -50,3 +50,11 @@ test('14401-cell generated archipelago has a sparse one-cell edit grid and a bou
  assert.equal(result.terrain.width,14401);assert.equal(result.terrain.rows,14402);
  assert.deepEqual(result.terrain.chunks,{});assert.ok(result.terrain.base.rows<=257);
 });
+
+test('large southern geographic maps generate at the same scale as named places',async()=>{
+ const coast=await decodeCoastline(await fs.readFile(new URL('../data/terrain-land.b64',import.meta.url),'utf8'));
+ for(const [latitude,longitude,size] of [[-73,-45,2880.2],[10.3,123.8,2000]]){
+  const result=generateGeographicTerrain({mode:'geographic',latitude,longitude,widthKm:size,heightKm:size,detail:257,elevation:'approximate'},coast);
+  assert.equal(result.terrain.width,Math.round(size*5));assert.equal(result.terrain.generation.latitude,latitude);
+ }
+});

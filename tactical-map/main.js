@@ -978,7 +978,8 @@ if (unit.branch === "air") {
       y: -labelHeight + 4
     }, group);
 
-   label.textContent = getFlagshipDisplayName(unit);
+   label.setAttribute("class","ship-name");
+    label.textContent = getFlagshipDisplayName(unit);
 
     if (compactIds.has(unit.instanceId)) compactFormationIcon(group, unit);
 
