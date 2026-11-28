@@ -41,6 +41,25 @@ async function start() {
 let browser, page, id;
 try {
   ({ browser, page } = await start());
+  // Exercise the actual geographic form, including Chromium number input normalization.
+  await page.waitForSelector(".terrain-generator",{visible:false});
+  await page.evaluate(()=>{
+    const panel=document.querySelector(".terrain-generator");
+    const mode=panel.querySelector("select");mode.value="geographic";mode.dispatchEvent(new Event("change"));
+    panel.querySelector("textarea").value="+73-45";
+    const press=text=>[...panel.querySelectorAll("button")].find(b=>b.textContent.includes(text)).click();
+    press("地名・座標を検索");
+  });
+  await page.waitForFunction(()=>!document.querySelector(".terrain-generator select").disabled);
+  await page.evaluate(()=>{
+    const buttons=[...document.querySelectorAll(".terrain-generator button")];
+    buttons.find(b=>b.textContent.includes("最大範囲")).click();
+    buttons.find(b=>b.textContent.includes("地形プレビューを生成")).click();
+  });
+  await page.waitForFunction(()=>{
+    const text=document.querySelector(".terrain-generation-preview p")?.textContent??"";
+    return text.includes("14401×14401格")&&text.includes("南緯 73.0000°")&&text.includes("西経 45.0000°");
+  },{timeout:60000});
   const scenario = source();
   const damaged = ship("damaged", "ally", 20);
   damaged.currentHp = 0;

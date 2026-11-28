@@ -35,7 +35,7 @@ export function mountTerrainGenerator({container,store,canAct,setBusy,saveGenera
   const coords=description.value.trim().match(/^([+-]?\d+(?:\.\d+)?)\s*[,，; ]?\s*([+-]\d+(?:\.\d+)?)$/);
   if(coords){
     if(Math.abs(Number(coords[1]))>75||Math.abs(Number(coords[2]))>180)throw Error("中心座標の範囲を確認してください。");
-    latitude.value=coords[1];longitude.value=coords[2];invalidate();message("入力した Y・X を中心に設定しました。");return;
+    latitude.value=String(Number(coords[1]));longitude.value=String(Number(coords[2]));invalidate();message("入力した Y・X を中心に設定しました。");return;
   }
   const found=await searchGeographicPlaces(description.value);places=found;results.replaceChildren();
   results.append(new Option(found.length?'候補を選択してください':'見つかりません。経緯度で指定できます。',''));
